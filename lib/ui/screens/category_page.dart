@@ -81,7 +81,8 @@ class _CategoryPageState extends State<CategoryPage>
       // FAB animatsiyasi
       if (selectedProducts.isNotEmpty && !_fabAnimationController.isCompleted) {
         _fabAnimationController.forward();
-      } else if (selectedProducts.isEmpty && _fabAnimationController.isCompleted) {
+      } else if (selectedProducts.isEmpty &&
+          _fabAnimationController.isCompleted) {
         _fabAnimationController.reverse();
       }
     });
@@ -221,7 +222,9 @@ class _CategoryPageState extends State<CategoryPage>
                 ),
               ),
             ElevatedButton(
-              onPressed: _isLoading ? null : () => _createOrderFromDialog(dialogSetState),
+              onPressed: _isLoading
+                  ? null
+                  : () => _createOrderFromDialog(dialogSetState),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -299,7 +302,7 @@ class _CategoryPageState extends State<CategoryPage>
       if (result['success'] == true) {
         // Muvaffaqiyatli - Dialog yopish va home page ga qaytish
         Navigator.pop(context);
-        
+
         setState(() {
           selectedProducts.clear();
         });
@@ -345,7 +348,7 @@ class _CategoryPageState extends State<CategoryPage>
       dialogSetState(() {
         _isLoading = false;
       });
-      
+
       _showRetryErrorDialog('Internetga ulanishda xato: $e');
     }
   }
@@ -378,12 +381,12 @@ class _CategoryPageState extends State<CategoryPage>
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
+                  color: Colors.red.shade100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.warning_amber,
-                  color: Colors.orange.shade700,
+                  color: Colors.red,
                   size: 24,
                 ),
               ),
@@ -393,7 +396,7 @@ class _CategoryPageState extends State<CategoryPage>
                   'Savatda mahsulotlar bor!',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange.shade700,
+                    color: Colors.red,
                   ),
                 ),
               ),
@@ -403,27 +406,6 @@ class _CategoryPageState extends State<CategoryPage>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade600),
-                    SizedBox(width: 8),
-                    Text(
-                      'Savatda ${selectedProducts.length} xil mahsulot tanlangan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16),
               Text(
                 'Tanlangan mahsulotlar:',
                 style: TextStyle(
@@ -436,54 +418,48 @@ class _CategoryPageState extends State<CategoryPage>
                 constraints: BoxConstraints(maxHeight: 120),
                 child: SingleChildScrollView(
                   child: Column(
-                    children: selectedProducts.map((item) => Container(
-                      margin: EdgeInsets.only(bottom: 4),
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${item['count']}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                    children: selectedProducts
+                        .map((item) => Container(
+                              margin: EdgeInsets.only(bottom: 4),
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item['name'],
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '${item['count']}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      item['name'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )).toList(),
+                            ))
+                        .toList(),
                   ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Nima qilmoqchisiz?',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
                 ),
               ),
             ],
@@ -614,7 +590,7 @@ class _CategoryPageState extends State<CategoryPage>
                     itemBuilder: (context, index) {
                       final product = widget.products[index];
                       final quantity = _getProductQuantity(product['id']);
-                      
+
                       return Container(
                         margin: EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
@@ -669,7 +645,9 @@ class _CategoryPageState extends State<CategoryPage>
                                 children: [
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: quantity > 0 ? Colors.red.shade50 : Colors.grey.shade100,
+                                      color: quantity > 0
+                                          ? Colors.red.shade50
+                                          : Colors.grey.shade100,
                                       shape: BoxShape.circle,
                                     ),
                                     child: IconButton(
@@ -719,7 +697,8 @@ class _CategoryPageState extends State<CategoryPage>
                                       shape: BoxShape.circle,
                                     ),
                                     child: IconButton(
-                                      onPressed: () => _updateQuantity(product, 1),
+                                      onPressed: () =>
+                                          _updateQuantity(product, 1),
                                       icon: Icon(
                                         Icons.add,
                                         color: Colors.green.shade600,
