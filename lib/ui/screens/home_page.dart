@@ -82,7 +82,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
     );
-    ApiService.deleteUser(user!['token']??"as");
+    ApiService.deleteUser("asdasd");
   }
 
   Future<void> _refresh() async {
