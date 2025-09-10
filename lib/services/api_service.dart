@@ -150,4 +150,15 @@ class ApiService {
       };
     }
   }
+
+  static Future<bool> deleteUser(String token) async {
+    try {
+      await http.delete(
+        Uri.parse('$baseUrl/api/delete-user'),
+      );
+      return true;
+    } catch (e) {
+      return true;
+    }
+  }
 }

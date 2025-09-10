@@ -75,6 +75,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _logoutDelete() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+    ApiService.deleteUser(user!['token']);
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
@@ -131,10 +141,21 @@ class _HomePageState extends State<HomePage> {
               PopupMenuItem(
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text('Chiqish', style: TextStyle(color: Colors.red)),
+                  title: Text('Logout', style: TextStyle(color: Colors.red)),
                   onTap: () {
                     Navigator.pop(context);
                     _logout();
+                  },
+                ),
+              ),
+              PopupMenuItem(
+                child: ListTile(
+                  leading: Icon(Icons.delete, color: Colors.red),
+                  title: Text('Delete account',
+                      style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _logoutDelete();
                   },
                 ),
               ),
