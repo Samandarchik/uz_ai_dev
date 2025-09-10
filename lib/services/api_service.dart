@@ -118,18 +118,33 @@ class ApiService {
     }
   }
 
+// 2-usul: Client tomonida tartibni o'zgartirish
   static Future<Map<String, dynamic>> getOrders(String token) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/orders'),
         headers: await _getHeaders(token: token),
       );
-
       print('Get Orders Response Status: ${response.statusCode}');
       print('Get Orders Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        Map<String, dynamic> result = jsonDecode(response.body);
+
+        // Agar 'data' yoki 'orders' kaliti mavjud bo'lsa
+        if (result['data'] is List) {
+          List orders = result['data'] as List;
+          // Ro'yxatni teskari tartibda o'giramiz
+          result['data'] = orders.reversed.toList();
+        } else if (result['orders'] is List) {
+          List orders = result['orders'] as List;
+          result['orders'] = orders.reversed.toList();
+        } else if (result is List) {
+          // Agar natija to'g'ridan-to'g'ri ro'yxat bo'lsa
+          result = {'data': (result as List).reversed.toList()};
+        }
+
+        return result;
       } else if (response.statusCode == 401) {
         return {
           'success': false,
