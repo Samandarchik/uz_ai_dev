@@ -1,10 +1,16 @@
 // main.dart
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
 import 'ui/screens/splash_screen.dart';
 
-void main() {
-  runApp(MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupInit();
+  runApp(
+    const MyApp(),
+  );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

@@ -1,11 +1,59 @@
 // ui/screens/category_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/ui/screens/exit_confirm_dialog.dart';
+import 'package:uz_ai_dev/ui/screens/order_summary_dialog.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
-import '../widgets/error_retry_dialog.dart';
-import 'login_page.dart';
+
 import 'home_page.dart';
+
+// Number formatter class
+class NumberTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    // Remove all non-digit characters
+    String digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+
+    if (digits.isEmpty) {
+      return TextEditingValue.empty;
+    }
+
+    // Add commas every 3 digits
+    String formatted = _addCommas(digits);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  String _addCommas(String value) {
+    if (value.length <= 3) return value;
+
+    String result = '';
+    int counter = 0;
+
+    for (int i = value.length - 1; i >= 0; i--) {
+      if (counter == 3) {
+        result = ',$result';
+        counter = 0;
+      }
+      result = value[i] + result;
+      counter++;
+    }
+
+    return result;
+  }
+}
 
 class CategoryPage extends StatefulWidget {
   final String category;
@@ -42,6 +90,189 @@ class _CategoryPageState extends State<CategoryPage>
       parent: _fabAnimationController,
       curve: Curves.elasticOut,
     ));
+  }
+
+  void _showQuantityInputDialog(Map<String, dynamic> product) {
+    final TextEditingController controller = TextEditingController();
+    final int currentQuantity = _getProductQuantity(product['id']);
+
+    if (currentQuantity > 0) {
+      // Format the current quantity with commas
+      String formattedQuantity = _formatNumber(currentQuantity.toString());
+      controller.text = formattedQuantity;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.edit,
+                color: Colors.blue.shade700,
+                size: 20,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Miqdorni kiriting',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              product['name'] ?? 'Mahsulot',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              inputFormatters: [NumberTextInputFormatter()],
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Miqdori',
+                hintText: 'Miqdorni kiriting',
+                suffix: Text(product['type'] ?? "null"),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue, width: 2),
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Omborda: ${_formatNumber((product['count'] ?? 0).toString())} ${product['type'] ?? "dona"}',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Bekor qilish',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final String inputText = controller.text.trim();
+              if (inputText.isNotEmpty) {
+                // Remove commas and parse
+                String cleanText = inputText.replaceAll(',', '');
+                final int? newCount = int.tryParse(cleanText);
+                if (newCount != null && newCount >= 0) {
+                  _setQuantityDirectly(product, newCount);
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Iltimos, to\'g\'ri raqam kiriting!'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              } else {
+                _setQuantityDirectly(product, 0);
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text('Saqlash'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(String value) {
+    if (value.isEmpty || value == '0') return value;
+
+    String digits = value.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.isEmpty) return '';
+
+    if (digits.length <= 3) return digits;
+
+    String result = '';
+    int counter = 0;
+
+    for (int i = digits.length - 1; i >= 0; i--) {
+      if (counter == 3) {
+        result = ',$result';
+        counter = 0;
+      }
+      result = digits[i] + result;
+      counter++;
+    }
+
+    return result;
+  }
+
+  void _setQuantityDirectly(Map<String, dynamic> product, int newCount) {
+    setState(() {
+      int existingIndex = selectedProducts.indexWhere(
+        (item) => item['product_id'] == product['id'],
+      );
+
+      if (newCount <= 0) {
+        if (existingIndex != -1) {
+          selectedProducts.removeAt(existingIndex);
+        }
+      } else {
+        if (existingIndex != -1) {
+          selectedProducts[existingIndex]['count'] = newCount;
+        } else {
+          selectedProducts.add({
+            'product_id': product['id'],
+            'name': product['name'],
+            'count': newCount,
+          });
+        }
+      }
+
+      // FAB animatsiyasi
+      if (selectedProducts.isNotEmpty && !_fabAnimationController.isCompleted) {
+        _fabAnimationController.forward();
+      } else if (selectedProducts.isEmpty &&
+          _fabAnimationController.isCompleted) {
+        _fabAnimationController.reverse();
+      }
+    });
   }
 
   @override
@@ -102,186 +333,23 @@ class _CategoryPageState extends State<CategoryPage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, dialogSetState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.shopping_cart_checkout,
-                  color: Colors.green.shade700,
-                  size: 20,
-                ),
-              ),
-              SizedBox(width: 12),
-              Text(
-                'Buyurtma ro\'yxati',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          content: Container(
-            width: double.maxFinite,
-            constraints: BoxConstraints(maxHeight: 400),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade600),
-                      SizedBox(width: 8),
-                      Text(
-                        'Jami: ${selectedProducts.length} xil mahsulot',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: selectedProducts.length,
-                    itemBuilder: (context, index) {
-                      final item = selectedProducts[index];
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: ListTile(
-                          leading: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${item['count']}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            item['name'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            'Soni: ${item['count']} dona',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            if (!_isLoading)
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Bekor qilish',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ),
-            ElevatedButton(
-              onPressed: _isLoading
-                  ? null
-                  : () => _createOrderFromDialog(dialogSetState),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: _isLoading
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Text('Yuborilmoqda...'),
-                      ],
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.send, size: 18),
-                        SizedBox(width: 6),
-                        Text('Buyurtma berish'),
-                      ],
-                    ),
-            ),
-          ],
-        ),
+      builder: (context) => OrderSummaryDialog(
+        selectedProducts: selectedProducts,
+        onOrderCreate: _createOrder,
+        onOrderSuccess: _onOrderSuccess,
       ),
     );
   }
 
-  Future<void> _createOrderFromDialog(StateSetter dialogSetState) async {
-    if (selectedProducts.isEmpty) return;
-
-    dialogSetState(() {
-      _isLoading = true;
-    });
-
+  Future<Map<String, dynamic>> _createOrder(
+      List<Map<String, dynamic>> products) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
       String? userData = prefs.getString('user');
 
       if (token == null || userData == null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
-        );
-        return;
+        return {'success': false, 'needLogin': true};
       }
 
       Map<String, dynamic> user = jsonDecode(userData);
@@ -289,7 +357,7 @@ class _CategoryPageState extends State<CategoryPage>
       final orderData = {
         'username': 'Mijoz',
         'filial': user['filial']['name'],
-        'items': selectedProducts
+        'items': products
             .map((item) => {
                   'product_id': item['product_id'],
                   'count': item['count'],
@@ -297,72 +365,40 @@ class _CategoryPageState extends State<CategoryPage>
             .toList(),
       };
 
-      final result = await ApiService.createOrder(token, orderData);
-
-      if (result['success'] == true) {
-        // Muvaffaqiyatli - Dialog yopish va home page ga qaytish
-        Navigator.pop(context);
-
-        setState(() {
-          selectedProducts.clear();
-        });
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-          (route) => false,
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text('Buyurtma muvaffaqiyatli yuborildi!'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else {
-        // Xato - Dialog ochiq qolsin va error dialog ko'rsat
-        dialogSetState(() {
-          _isLoading = false;
-        });
-
-        _showRetryErrorDialog(result['message'] ?? 'Server xatosi yuz berdi');
-
-        if (result['needLogin'] == true) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => LoginPage()),
-          );
-        }
-      }
+      return await ApiService.createOrder(token, orderData);
     } catch (e) {
-      // Xato - Dialog ochiq qolsin
-      dialogSetState(() {
-        _isLoading = false;
-      });
-
-      _showRetryErrorDialog('Internetga ulanishda xato: $e');
+      return {
+        'success': false,
+        'message': 'Internetga ulanishda xato: $e',
+      };
     }
   }
 
-  void _showRetryErrorDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ErrorRetryDialog(
-        message: message,
-        onRetry: () {
-          Navigator.pop(context); // Error dialog yopish
-          // Buyurtma dialog ochiq qoladi, faqat retry tugmasi yana faol bo'ladi
-        },
+  void _onOrderSuccess() {
+    setState(() {
+      selectedProducts.clear();
+      _fabAnimationController.reverse();
+    });
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+      (route) => false,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('Buyurtma muvaffaqiyatli yuborildi!'),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
       ),
     );
   }
@@ -371,133 +407,16 @@ class _CategoryPageState extends State<CategoryPage>
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.warning_amber,
-                  color: Colors.red,
-                  size: 24,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Savatda mahsulotlar bor!',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Tanlangan mahsulotlar:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              SizedBox(height: 8),
-              Container(
-                constraints: BoxConstraints(maxHeight: 120),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: selectedProducts
-                        .map((item) => Container(
-                              margin: EdgeInsets.only(bottom: 4),
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade100,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      '${item['count']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade800,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      item['name'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop('continue'),
-              child: Text(
-                'Davom etish',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop('order'),
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.green.shade50,
-                foregroundColor: Colors.green.shade700,
-              ),
-              child: Text('Buyurtma berish'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop('clear'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: Text('Savatni tozalash'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => ExitConfirmDialog(
+        selectedProducts: selectedProducts,
+        onOrderPressed: _showOrderSummary,
+      ),
     );
 
     switch (result) {
       case 'continue':
         return false;
       case 'order':
-        _showOrderSummary();
         return false;
       case 'clear':
         setState(() {
@@ -560,7 +479,7 @@ class _CategoryPageState extends State<CategoryPage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: EdgeInsets.all(20),
+                        padding: EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -584,8 +503,9 @@ class _CategoryPageState extends State<CategoryPage>
                   ),
                 )
               : Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.symmetric(horizontal: 10),
                   child: ListView.builder(
+                    padding: EdgeInsets.only(bottom: 120),
                     itemCount: widget.products.length,
                     itemBuilder: (context, index) {
                       final product = widget.products[index];
@@ -604,111 +524,121 @@ class _CategoryPageState extends State<CategoryPage>
                             ),
                           ],
                         ),
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product['name'] ?? 'Mahsulot nomi',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.grey.shade800,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.inventory_2_outlined,
-                                          size: 14,
-                                          color: Colors.grey.shade500,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Omborda: ${product['count'] ?? 0} dona',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: quantity > 0
-                                          ? Colors.red.shade50
-                                          : Colors.grey.shade100,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: IconButton(
-                                      onPressed: quantity > 0
-                                          ? () => _updateQuantity(product, -1)
-                                          : null,
-                                      icon: Icon(
-                                        Icons.remove,
-                                        color: quantity > 0
-                                            ? Colors.red.shade600
-                                            : Colors.grey.shade400,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 50,
-                                    height: 40,
-                                    margin: EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: quantity > 0
-                                          ? Colors.blue.shade100
-                                          : Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: quantity > 0
-                                            ? Colors.blue.shade300
-                                            : Colors.grey.shade300,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '$quantity',
+                        child: GestureDetector(
+                          onTap: () => _showQuantityInputDialog(product),
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "${product['name'] ?? 'Mahsulot nomi'} (${product['type'] ?? 'null'})",
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
+                                          color: Colors.grey.shade800,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 14,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Omborda: ${_formatNumber((product['count'] ?? 0).toString())} ${product['type'] ?? 'dona'}',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 35,
+                                      decoration: BoxDecoration(
+                                        color: quantity > 0
+                                            ? Colors.red.shade50
+                                            : Colors.grey.shade100,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        onPressed: quantity > 0
+                                            ? () => _updateQuantity(product, -1)
+                                            : null,
+                                        icon: Icon(
+                                          Icons.remove,
                                           color: quantity > 0
-                                              ? Colors.blue.shade800
-                                              : Colors.grey.shade500,
+                                              ? Colors.red.shade600
+                                              : Colors.grey.shade400,
+                                          size: 15,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade50,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: IconButton(
-                                      onPressed: () =>
-                                          _updateQuantity(product, 1),
-                                      icon: Icon(
-                                        Icons.add,
-                                        color: Colors.green.shade600,
-                                        size: 20,
+                                    Container(
+                                      width: 50,
+                                      height: 40,
+                                      margin:
+                                          EdgeInsets.symmetric(horizontal: 8),
+                                      decoration: BoxDecoration(
+                                        color: quantity > 0
+                                            ? Colors.blue.shade100
+                                            : Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: quantity > 0
+                                              ? Colors.blue.shade300
+                                              : Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: InkWell(
+                                        onTap: () =>
+                                            _showQuantityInputDialog(product),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Center(
+                                          child: Text(
+                                            _formatNumber(quantity.toString()),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13.5,
+                                              color: quantity > 0
+                                                  ? Colors.blue.shade800
+                                                  : Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    Container(
+                                      width: 35,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        onPressed: () =>
+                                            _updateQuantity(product, 1),
+                                        icon: Icon(Icons.add,
+                                            color: Colors.green.shade600,
+                                            size: 15),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );

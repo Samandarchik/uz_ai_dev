@@ -1,7 +1,6 @@
-// ui/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/api_service.dart';
+import 'package:uz_ai_dev/admin/ui/admin_page.dart';
 import 'login_page.dart';
 import 'home_page.dart';
 
@@ -19,26 +18,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
   checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
+    bool? isAdmin = prefs.getBool('is_admin');
 
-    await Future.delayed(Duration(seconds: 2));
-
-    if (token != null && token.isNotEmpty) {
-      // Token bor bo'lsa, mahsulotlarni yuklash orqali tekshirish
-      final result = await ApiService.getProducts(token);
-      if (result['success'] == true) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
-      } else {
-        // Token yaroqsiz bo'lsa
-        await prefs.clear();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
-        );
-      }
+    await Future.delayed(Duration(seconds: 1));
+    if (isAdmin == true) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (isAdmin == false) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     } else {
       Navigator.pushReplacement(
         context,

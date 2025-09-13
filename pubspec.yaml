@@ -7,10 +7,13 @@ environment:
   sdk: ^3.6.1
 
 dependencies:
+  dio: ^5.9.0
   flutter:
     sdk: flutter
+  get_it: ^8.2.0
   http: ^1.5.0
   shared_preferences: ^2.5.3
+  talker_dio_logger: ^5.0.0
 
 dev_dependencies:
   flutter_test:

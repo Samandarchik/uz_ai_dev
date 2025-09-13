@@ -1,9 +1,54 @@
 // services/api_service.dart
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
 
-class ApiService {
+class ApiAdminService {
+ final Dio dio = sl<Dio>();
   static const String baseUrl = 'http://localhost:1010';
+
+
+
+
+  Future<List<CategoryProduct>> getCategories() async {
+    try {
+      final response = await dio.get(AppUrls.category);
+
+      return (response.data as List).map((e) => CategoryProduct.fromJson(e)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+
+
+
+
+
+
+
+
+
+
+  static Future<int> updateCategory(
+      String token, CategoryProduct categoryData) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/categories/${categoryData.id}'),
+        headers: await _getHeaders(token: token),
+        body: jsonEncode(categoryData),
+      );
+      return response.statusCode;
+    } catch (e) {
+      return 500;
+    }
+  } 
+
+
+  
 
   static Future<Map<String, String>> _getHeaders({String? token}) async {
     Map<String, String> headers = {

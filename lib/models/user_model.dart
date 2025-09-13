@@ -2,6 +2,7 @@
 class User {
   final int? id;
   final String? name;
+  final bool? isAdmin;
   final String? phone;
   final Filial? filial;
 
@@ -10,6 +11,7 @@ class User {
     this.name,
     this.phone,
     this.filial,
+    this.isAdmin,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,7 @@ class User {
       name: json['name'],
       phone: json['phone'],
       filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
+      isAdmin: json['is_admin'],
     );
   }
 
@@ -27,6 +30,7 @@ class User {
       'name': name,
       'phone': phone,
       'filial': filial?.toJson(),
+      'is_admin': isAdmin,
     };
   }
 }

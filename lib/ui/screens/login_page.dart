@@ -1,11 +1,13 @@
-// ui/screens/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/admin/ui/admin_page.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -37,10 +39,14 @@ class _LoginPageState extends State<LoginPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(result['data']['user']));
+      await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(
+            builder: (context) => result['data']['user']["is_admin"] == false
+                ? HomePage()
+                : AdminPage()),
       );
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
@@ -133,7 +139,6 @@ class _LoginPageState extends State<LoginPage> {
                             borderSide:
                                 BorderSide(color: Colors.blue, width: 2),
                           ),
-                          
                         ),
                       ),
                       SizedBox(height: 20),

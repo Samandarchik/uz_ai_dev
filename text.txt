@@ -1,0 +1,663 @@
+# Shop Backend - cURL Test Commands
+
+## 🧪 To'liq API Testing Guide
+
+### 1. 🏥 Health Check (Server Running Test)
+
+```bash
+# Server ishlayotganini tekshirish
+curl -X GET http://localhost:8080/api/health
+
+# Expected Response:
+{
+  "status": "ok",
+  "timestamp": "2024-08-13T10:00:00Z",
+  "version": "1.0.0",
+  "database": {
+    "users": 1,
+    "categories": 4,
+    "products": 2,
+    "orders": 0
+  }
+}
+```
+
+---
+
+## 2. 📂 Categories Test
+
+```bash
+# Barcha kategoriyalarni olish
+curl -X GET http://localhost:8080/api/categories
+
+# Expected Response:
+[
+  {
+    "id": 1,
+    "name": "Erkaklar kiyimi",
+    "image_url": "",
+    "position": 1
+  },
+  {
+    "id": 2,
+    "name": "Ayollar kiyimi",
+    "image_url": "",
+    "position": 2
+  },
+  {
+    "id": 3,
+    "name": "Poyabzallar",
+    "image_url": "",
+    "position": 3
+  },
+  {
+    "id": 4,
+    "name": "Aksessuarlar",
+    "image_url": "",
+    "position": 4
+  }
+]
+```
+
+---
+
+## 3. 🛍️ Products Test
+
+### A) Barcha mahsulotlar
+```bash
+curl -X GET http://localhost:8080/api/products
+
+# Expected Response:
+[
+  {
+    "id": 1,
+    "name": "Classic T-shirt",
+    "price": 50000,
+    "image_url_list": ["/uploads/images/tshirt1.jpg"],
+    "size_list": ["S", "M", "L", "XL"],
+    "category_id": 1,
+    "category_name": "Erkaklar kiyimi",
+    "color": "Blue",
+    "gender": "Male",
+    "material": "Cotton",
+    "description": "Yumshoq va qulay klassik paxta t-shirt",
+    "tags": ["tshirt", "cotton", "casual"],
+    "total_stock": 50,
+    "stock_by_size": {"S": 10, "M": 20, "L": 15, "XL": 5},
+    "is_active": true,
+    "view_count": 0,
+    "created_at": "2024-08-13T10:30:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Slim Fit Jeans",
+    "price": 150000,
+    "image_url_list": ["/uploads/images/jeans1.jpg"],
+    "size_list": ["28", "30", "32", "34", "36"],
+    "category_id": 1,
+    "category_name": "Erkaklar kiyimi",
+    "color": "Dark Blue",
+    "gender": "Male",
+    "material": "Denim",
+    "description": "Zamonaviy slim fit jeans",
+    "tags": ["jeans", "denim", "slim"],
+    "total_stock": 30,
+    "stock_by_size": {"28": 5, "30": 8, "32": 10, "34": 5, "36": 2},
+    "is_active": true,
+    "view_count": 0,
+    "created_at": "2024-08-13T10:30:00Z"
+  }
+]
+```
+
+### B) Kategoriya bo'yicha filter
+```bash
+curl -X GET "http://localhost:8080/api/products?category_id=1"
+```
+
+### C) Featured mahsulotlar
+```bash
+curl -X GET "http://localhost:8080/api/products?featured=true"
+```
+
+### D) Bitta mahsulot
+```bash
+curl -X GET http://localhost:8080/api/products/1
+
+# Expected Response:
+{
+  "id": 1,
+  "name": "Classic T-shirt",
+  "price": 50000,
+  ...
+}
+```
+
+### E) View count oshirish
+```bash
+curl -X POST http://localhost:8080/api/products/1/view
+
+# Expected Response:
+{
+  "success": true
+}
+```
+
+---
+
+## 4. 🔍 Search & Filter Tests
+
+### A) Text qidirish
+```bash
+curl -X GET "http://localhost:8080/api/products/search?q=t-shirt"
+
+# Expected Response:
+{
+  "products": [...],
+  "total": 1,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 1
+}
+```
+
+### B) Kategoriya filter
+```bash
+curl -X GET "http://localhost:8080/api/products/search?category=1"
+```
+
+### C) Narx oralig'i
+```bash
+curl -X GET "http://localhost:8080/api/products/search?min_price=40000&max_price=60000"
+```
+
+### D) Gender filter
+```bash
+curl -X GET "http://localhost:8080/api/products/search?gender=male"
+```
+
+### E) Kombinatsiya filter
+```bash
+curl -X GET "http://localhost:8080/api/products/search?q=t-shirt&category=1&min_price=40000&max_price=60000&gender=male&page=1&limit=10"
+```
+
+### F) Size filter
+```bash
+curl -X GET "http://localhost:8080/api/products/search?size=M"
+```
+
+### G) Color filter
+```bash
+curl -X GET "http://localhost:8080/api/products/search?color=blue"
+```
+
+---
+
+## 5. 🔐 Authentication Tests
+
+### A) User Registration (Manual)
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "+998901234567",
+    "tg_id": 123456789,
+    "first_name": "John",
+    "last_name": "Doe",
+    "username": "johndoe"
+  }'
+
+# Expected Response:
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 2,
+    "login": "+998901234567",
+    "tg_id": 123456789,
+    "phone_number": "+998901234567",
+    "first_name": "John",
+    "last_name": "Doe",
+    "username": "johndoe",
+    "is_admin": false,
+    "is_active": true,
+    "last_login": "",
+    "created_at": "2024-08-13T10:00:00Z"
+  },
+  "message": "Muvaffaqiyatli ro'yxatdan o'tildi"
+}
+```
+
+### B) User Login
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "+998901234567",
+    "tg_id": 123456789
+  }'
+
+# Expected Response:
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 2,
+    "login": "+998901234567",
+    "tg_id": 123456789,
+    "phone_number": "+998901234567",
+    "first_name": "John",
+    "last_name": "Doe",
+    "username": "johndoe",
+    "is_admin": false,
+    "is_active": true,
+    "last_login": "2024-08-13T10:05:00Z",
+    "created_at": "2024-08-13T10:00:00Z"
+  },
+  "message": "Muvaffaqiyatli tizimga kirildi"
+}
+```
+
+### C) Current User Info
+```bash
+# JWT tokenni register/login dan oling
+export JWT_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+curl -X GET http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer $JWT_TOKEN"
+
+# Expected Response:
+{
+  "id": 2,
+  "login": "+998901234567",
+  "tg_id": 123456789,
+  "phone_number": "+998901234567",
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "johndoe",
+  "is_admin": false,
+  "is_active": true,
+  "last_login": "2024-08-13T10:05:00Z",
+  "created_at": "2024-08-13T10:00:00Z"
+}
+```
+
+### D) Invalid Token Test
+```bash
+curl -X GET http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer invalid_token"
+
+# Expected Response:
+HTTP 401 Unauthorized
+"Noto'g'ri token"
+```
+
+### E) Missing Token Test
+```bash
+curl -X GET http://localhost:8080/api/auth/me
+
+# Expected Response:
+HTTP 401 Unauthorized
+"Authorization header kerak"
+```
+
+---
+
+## 6. 📦 Orders Tests
+
+### A) Quick Order Creation (User)
+```bash
+# Avval login qiling va JWT token oling
+export JWT_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+curl -X POST http://localhost:8080/api/orders/quick \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "products": [
+      {
+        "product_id": 1,
+        "quantity": 2,
+        "size": "M"
+      },
+      {
+        "product_id": 2,
+        "quantity": 1,
+        "size": "32"
+      }
+    ],
+    "delivery_address": "Toshkent, Chilonzor tumani, Bunyodkor ko'chasi 1-uy"
+  }'
+
+# Expected Response:
+{
+  "success": true,
+  "order_id": 1,
+  "order_number": "25-08-13-1",
+  "total_price": 260000,
+  "message": "Buyurtma yaratildi! Telegram botda tasdiqlang."
+}
+```
+
+### B) Get Orders (User - faqat o'z buyurtmalari)
+```bash
+curl -X GET http://localhost:8080/api/orders \
+  -H "Authorization: Bearer $JWT_TOKEN"
+
+# Expected Response:
+[
+  {
+    "id": 1,
+    "order_number": "25-08-13-1",
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "login": "+998901234567",
+      "tg_id": 123456789,
+      ...
+    },
+    "products": [
+      {
+        "product_id": 1,
+        "name": "Classic T-shirt",
+        "price": 50000,
+        "quantity": 2,
+        "size": "M",
+        "total": 100000
+      },
+      {
+        "product_id": 2,
+        "name": "Slim Fit Jeans",
+        "price": 150000,
+        "quantity": 1,
+        "size": "32",
+        "total": 150000
+      }
+    ],
+    "sub_total": 250000,
+    "delivery_fee": 10000,
+    "total_price": 260000,
+    "status": "waiting_confirmation",
+    "payment_status": "pending",
+    "delivery_address": "Toshkent, Chilonzor tumani, Bunyodkor ko'chasi 1-uy",
+    "delivery_time": "",
+    "customer_name": "John Doe",
+    "customer_phone": "+998901234567",
+    "customer_notes": "",
+    "admin_notes": "",
+    "created_at": "2024-08-13T10:30:00Z",
+    "updated_at": "2024-08-13T10:30:00Z"
+  }
+]
+```
+
+### C) Get Orders (Admin - barcha buyurtmalar)
+```bash
+# Admin token kerak (tg_id: 1066137436)
+export ADMIN_TOKEN="admin_jwt_token_here"
+
+curl -X GET http://localhost:8080/api/orders \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Admin barcha foydalanuvchilarning buyurtmalarini ko'radi
+```
+
+### D) Update Order Status (Admin only)
+```bash
+curl -X PUT http://localhost:8080/api/orders/1/status \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "confirmed",
+    "admin_notes": "Buyurtma tasdiqlandi, tayyorlanmoqda"
+  }'
+
+# Expected Response:
+{
+  "success": true,
+  "message": "Status yangilandi"
+}
+```
+
+### E) Status Update Tests (Admin)
+```bash
+# Preparing status
+curl -X PUT http://localhost:8080/api/orders/1/status \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "preparing",
+    "admin_notes": "Buyurtma tayyorlanmoqda"
+  }'
+
+# Shipped status
+curl -X PUT http://localhost:8080/api/orders/1/status \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "shipped",
+    "admin_notes": "Buyurtma yuborildi"
+  }'
+
+# Delivered status
+curl -X PUT http://localhost:8080/api/orders/1/status \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "delivered",
+    "admin_notes": "Buyurtma yetkazib berildi"
+  }'
+```
+
+---
+
+## 7. 🚫 Error Tests
+
+### A) Invalid Product ID
+```bash
+curl -X GET http://localhost:8080/api/products/999
+
+# Expected Response:
+HTTP 404 Not Found
+"Mahsulot topilmadi"
+```
+
+### B) Invalid Order ID
+```bash
+curl -X PUT http://localhost:8080/api/orders/999/status \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "confirmed"
+  }'
+
+# Expected Response:
+HTTP 404 Not Found
+"Buyurtma topilmadi"
+```
+
+### C) Non-admin trying to update order
+```bash
+curl -X PUT http://localhost:8080/api/orders/1/status \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "confirmed"
+  }'
+
+# Expected Response:
+HTTP 403 Forbidden
+"Admin huquqlari kerak"
+```
+
+### D) Invalid JSON format
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d 'invalid json'
+
+# Expected Response:
+HTTP 400 Bad Request
+"Noto'g'ri ma'lumot formati"
+```
+
+---
+
+## 8. 🤖 Telegram Webhook Test
+
+### A) Manual Webhook Test (Development)
+```bash
+# Simulate Telegram callback query
+curl -X POST http://localhost:8080/webhook/telegram \
+  -H "Content-Type: application/json" \
+  -d '{
+    "update_id": 123456,
+    "callback_query": {
+      "id": "callback123",
+      "from": {
+        "id": 123456789,
+        "first_name": "John",
+        "last_name": "Doe"
+      },
+      "data": "confirm_order_1"
+    }
+  }'
+
+# Expected Response:
+HTTP 200 OK
+```
+
+### B) Simulate Contact Message
+```bash
+curl -X POST http://localhost:8080/webhook/telegram \
+  -H "Content-Type: application/json" \
+  -d '{
+    "update_id": 123457,
+    "message": {
+      "message_id": 123,
+      "from": {
+        "id": 123456789,
+        "first_name": "John",
+        "last_name": "Doe",
+        "username": "johndoe"
+      },
+      "chat": {
+        "id": 123456789,
+        "type": "private"
+      },
+      "contact": {
+        "phone_number": "+998901234567",
+        "first_name": "John",
+        "last_name": "Doe",
+        "user_id": 123456789
+      }
+    }
+  }'
+
+# Bu user ni register qiladi va login link yuboradi
+```
+
+---
+
+## 9. 📝 Complete Test Script
+
+```bash
+#!/bin/bash
+# test-all-apis.sh
+
+BASE_URL="http://localhost:8080"
+echo "🧪 Testing Shop Backend APIs..."
+
+# 1. Health Check
+echo "1. Health Check..."
+curl -s "$BASE_URL/api/health" | jq '.'
+
+# 2. Categories
+echo "2. Categories..."
+curl -s "$BASE_URL/api/categories" | jq '.'
+
+# 3. Products
+echo "3. Products..."
+curl -s "$BASE_URL/api/products" | jq '.'
+
+# 4. Product Search
+echo "4. Product Search..."
+curl -s "$BASE_URL/api/products/search?q=t-shirt" | jq '.'
+
+# 5. Register User
+echo "5. Registering User..."
+REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "+998901234567",
+    "tg_id": 123456789,
+    "first_name": "Test",
+    "last_name": "User",
+    "username": "testuser"
+  }')
+
+echo $REGISTER_RESPONSE | jq '.'
+
+# Extract token
+TOKEN=$(echo $REGISTER_RESPONSE | jq -r '.token')
+
+# 6. Get User Info
+echo "6. User Info..."
+curl -s "$BASE_URL/api/auth/me" \
+  -H "Authorization: Bearer $TOKEN" | jq '.'
+
+# 7. Create Order
+echo "7. Creating Order..."
+ORDER_RESPONSE=$(curl -s -X POST "$BASE_URL/api/orders/quick" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "products": [
+      {
+        "product_id": 1,
+        "quantity": 2,
+        "size": "M"
+      }
+    ],
+    "delivery_address": "Test Address"
+  }')
+
+echo $ORDER_RESPONSE | jq '.'
+
+# 8. Get Orders
+echo "8. Get Orders..."
+curl -s "$BASE_URL/api/orders" \
+  -H "Authorization: Bearer $TOKEN" | jq '.'
+
+echo "✅ All tests completed!"
+```
+
+### Script ni ishlatish:
+```bash
+chmod +x test-all-apis.sh
+./test-all-apis.sh
+```
+
+---
+
+## 10. 📊 Performance Test
+
+```bash
+# Apache Bench (ab) bilan load test
+ab -n 100 -c 10 http://localhost:8080/api/products
+
+# Curl bilan response time test
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8080/api/products
+
+# curl-format.txt file content:
+#     time_namelookup:  %{time_namelookup}\n
+#        time_connect:  %{time_connect}\n
+#     time_appconnect:  %{time_appconnect}\n
+#    time_pretransfer:  %{time_pretransfer}\n
+#       time_redirect:  %{time_redirect}\n
+#  time_starttransfer:  %{time_starttransfer}\n
+#                     ----------\n
+#          time_total:  %{time_total}\n
+```
+
+Bu testlar orqali backend ning barcha funksiyalarini to'liq test qila olasiz! 🧪✅
