@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/model/filial_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
+import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
 
 class ProductsPage extends StatefulWidget {
   final int categoryId;
@@ -33,10 +35,9 @@ class _ProductsPageState extends State<ProductsPage> {
     setState(() {
       isLoading = true;
     });
-
+    
     try {
-      final fetchedProducts =
-          await apiService.getProductsByCategoryId(widget.categoryId);
+      final fetchedProducts = await apiService.getProductsByCategoryId(widget.categoryId);
       setState(() {
         products = fetchedProducts;
         isLoading = false;
@@ -264,7 +265,11 @@ class _ProductsPageState extends State<ProductsPage> {
                           children: [
                             Text('Turi: ${product.type}'),
                             Text(
-                                'Filiallar: ${product.filialNames.join(', ')}'),
+                              'Filiallar: ${product.filialNames.isNotEmpty ? product.filialNames.join(', ') : 'Filiallar yuklanmoqda...'}',
+                              style: TextStyle(
+                                color: product.filialNames.isEmpty ? Colors.grey : null,
+                              ),
+                            ),
                           ],
                         ),
                         trailing: PopupMenuButton<String>(
@@ -297,6 +302,11 @@ class _ProductsPageState extends State<ProductsPage> {
                               ),
                             ),
                           ],
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Colors.grey,
+                          ),
+                          tooltip: 'Harakatlar',
                         ),
                       ),
                     );
@@ -313,6 +323,7 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 }
 
+// ADD PRODUCT DIALOG - 100% REAL BACKEND
 class AddProductDialog extends StatefulWidget {
   final int categoryId;
 
@@ -325,15 +336,39 @@ class AddProductDialog extends StatefulWidget {
 class _AddProductDialogState extends State<AddProductDialog> {
   final nameController = TextEditingController();
   final typeController = TextEditingController();
+  final filialService = ApiFilialService();
+  
   List<int> selectedFilials = [];
+  List<Filial> availableFilials = [];
+  bool isLoadingFilials = true;
+  String? errorMessage;
 
-  // Mock filials data - real dasturda APIdan keladi
-  final List<Map<String, dynamic>> mockFilials = [
-    {'id': 1, 'name': 'Гелион'},
-    {'id': 2, 'name': 'Сибирские пелемени'},
-    {'id': 3, 'name': 'Мархабо'},
-    {'id': 4, 'name': 'Fresco'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFilials();
+  }
+
+  Future<void> _loadFilials() async {
+    setState(() {
+      isLoadingFilials = true;
+      errorMessage = null;
+    });
+    
+    try {
+      final filials = await filialService.getFilials();
+      setState(() {
+        availableFilials = filials;
+        isLoadingFilials = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingFilials = false;
+        errorMessage = 'Filiallarni yuklashda xatolik: ${e.toString()}';
+      });
+      print('Filiallarni yuklashda xatolik: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -346,44 +381,160 @@ class _AddProductDialogState extends State<AddProductDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Yangi mahsulot qo\'shish'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Mahsulot nomi',
-                border: OutlineInputBorder(),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Mahsulot nomi *',
+                  border: OutlineInputBorder(),
+                  hintText: 'Masalan: Коробка торт Бенто',
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: typeController,
-              decoration: const InputDecoration(
-                labelText: 'Turi (шт, кг, л)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(
+                  labelText: 'Turi *',
+                  border: OutlineInputBorder(),
+                  hintText: 'шт, кг, л, м, dona',
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Filiallar:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            ...mockFilials.map((filial) {
-              return CheckboxListTile(
-                title: Text(filial['name']),
-                value: selectedFilials.contains(filial['id']),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedFilials.add(filial['id']);
-                    } else {
-                      selectedFilials.remove(filial['id']);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ],
+              const SizedBox(height: 16),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Filiallar *:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // FILIALLAR LOADING SECTION
+              if (isLoadingFilials)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 8),
+                      Text('Filiallar yuklanmoqda...'),
+                    ],
+                  ),
+                )
+              else if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.error, color: Colors.red, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: _loadFilials,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Qayta urinish'),
+                      ),
+                    ],
+                  ),
+                )
+              else if (availableFilials.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.location_off, color: Colors.grey, size: 48),
+                      SizedBox(height: 8),
+                      Text(
+                        'Hech qanday filial topilmadi',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // REAL FILIALLAR FROM BACKEND
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: availableFilials.map((filial) {
+                      final isSelected = selectedFilials.contains(filial.id);
+                      return CheckboxListTile(
+                        title: Text(
+                          filial.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text(
+                          filial.location,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        value: isSelected,
+                        activeColor: Colors.blue,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedFilials.add(filial.id);
+                            } else {
+                              selectedFilials.remove(filial.id);
+                            }
+                          });
+                        },
+                        secondary: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '#${filial.id}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isSelected ? Colors.white : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              if (selectedFilials.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Tanlangan filiallar: ${selectedFilials.length}',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -391,18 +542,47 @@ class _AddProductDialogState extends State<AddProductDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Bekor qilish'),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
-            if (nameController.text.trim().isNotEmpty &&
-                typeController.text.trim().isNotEmpty &&
-                selectedFilials.isNotEmpty) {
-              Navigator.of(context).pop({
-                'name': nameController.text.trim(),
-                'type': typeController.text.trim(),
-                'filials': selectedFilials,
-              });
+            // VALIDATION
+            if (nameController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mahsulot nomini kiriting'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
             }
+            if (typeController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mahsulot turini kiriting'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+            if (selectedFilials.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Kamida bitta filial tanlang'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
+            Navigator.of(context).pop({
+              'name': nameController.text.trim(),
+              'type': typeController.text.trim(),
+              'filials': selectedFilials,
+            });
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Qo\'shish'),
         ),
       ],
@@ -410,6 +590,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   }
 }
 
+// EDIT PRODUCT DIALOG - 100% REAL BACKEND
 class EditProductDialog extends StatefulWidget {
   final ProductModel product;
 
@@ -423,14 +604,11 @@ class _EditProductDialogState extends State<EditProductDialog> {
   late TextEditingController nameController;
   late TextEditingController typeController;
   late List<int> selectedFilials;
-
-  // Mock filials data
-  final List<Map<String, dynamic>> mockFilials = [
-    {'id': 1, 'name': 'Гелион'},
-    {'id': 2, 'name': 'Сибирские пелемени'},
-    {'id': 3, 'name': 'Мархабо'},
-    {'id': 4, 'name': 'Fresco'},
-  ];
+  final filialService = ApiFilialService();
+  
+  List<Filial> availableFilials = [];
+  bool isLoadingFilials = true;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -438,6 +616,28 @@ class _EditProductDialogState extends State<EditProductDialog> {
     nameController = TextEditingController(text: widget.product.name);
     typeController = TextEditingController(text: widget.product.type);
     selectedFilials = List.from(widget.product.filials);
+    _loadFilials();
+  }
+
+  Future<void> _loadFilials() async {
+    setState(() {
+      isLoadingFilials = true;
+      errorMessage = null;
+    });
+    
+    try {
+      final filials = await filialService.getFilials();
+      setState(() {
+        availableFilials = filials;
+        isLoadingFilials = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingFilials = false;
+        errorMessage = 'Filiallarni yuklashda xatolik: ${e.toString()}';
+      });
+      print('Filiallarni yuklashda xatolik: $e');
+    }
   }
 
   @override
@@ -450,45 +650,159 @@ class _EditProductDialogState extends State<EditProductDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Mahsulotni tahrirlash'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Mahsulot nomi',
-                border: OutlineInputBorder(),
+      title: Text('${widget.product.name} - Tahrirlash'),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Mahsulot nomi *',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: typeController,
-              decoration: const InputDecoration(
-                labelText: 'Turi (шт, кг, л)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(
+                  labelText: 'Turi *',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Filiallar:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            ...mockFilials.map((filial) {
-              return CheckboxListTile(
-                title: Text(filial['name']),
-                value: selectedFilials.contains(filial['id']),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedFilials.add(filial['id']);
-                    } else {
-                      selectedFilials.remove(filial['id']);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ],
+              const SizedBox(height: 16),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Filiallar *:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // FILIALLAR LOADING SECTION
+              if (isLoadingFilials)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 8),
+                      Text('Filiallar yuklanmoqda...'),
+                    ],
+                  ),
+                )
+              else if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.error, color: Colors.red, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: _loadFilials,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Qayta urinish'),
+                      ),
+                    ],
+                  ),
+                )
+              else if (availableFilials.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.location_off, color: Colors.grey, size: 48),
+                      SizedBox(height: 8),
+                      Text(
+                        'Hech qanday filial topilmadi',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // REAL FILIALLAR FROM BACKEND
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: availableFilials.map((filial) {
+                      final isSelected = selectedFilials.contains(filial.id);
+                      return CheckboxListTile(
+                        title: Text(
+                          filial.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text(
+                          filial.location,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        value: isSelected,
+                        activeColor: Colors.blue,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedFilials.add(filial.id);
+                            } else {
+                              selectedFilials.remove(filial.id);
+                            }
+                          });
+                        },
+                        secondary: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '#${filial.id}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isSelected ? Colors.white : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              if (selectedFilials.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Tanlangan filiallar: ${selectedFilials.length}',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -496,18 +810,47 @@ class _EditProductDialogState extends State<EditProductDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Bekor qilish'),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
-            if (nameController.text.trim().isNotEmpty &&
-                typeController.text.trim().isNotEmpty &&
-                selectedFilials.isNotEmpty) {
-              Navigator.of(context).pop({
-                'name': nameController.text.trim(),
-                'type': typeController.text.trim(),
-                'filials': selectedFilials,
-              });
+            // VALIDATION
+            if (nameController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mahsulot nomini kiriting'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
             }
+            if (typeController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mahsulot turini kiriting'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+            if (selectedFilials.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Kamida bitta filial tanlang'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
+            Navigator.of(context).pop({
+              'name': nameController.text.trim(),
+              'type': typeController.text.trim(),
+              'filials': selectedFilials,
+            });
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Saqlash'),
         ),
       ],

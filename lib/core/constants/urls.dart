@@ -3,6 +3,9 @@ abstract final class AppUrls {
   static const String login = '$baseUrl/api/login';
   static const String refresh = '$baseUrl/api/auth/refresh';
   static const String productAll = '$baseUrl/api/products/all';
+  static const String product = '$baseUrl/api/products';
+  //filials
+  static const String filials = '$baseUrl/api/filials';
   //Category
   static const String category = '$baseUrl/api/categories';
   static String categoryById(String id) => '$baseUrl/api/categories/$id';

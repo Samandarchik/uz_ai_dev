@@ -66,7 +66,7 @@ class ApiProductService {
   Future<ProductModel> createProduct(ProductModel product) async {
     try {
       final response = await dio.post(
-        AppUrls.productAll, // product endpoint
+        AppUrls.product, // product endpoint
         data: product.toCreateJson(),
       );
 
@@ -95,7 +95,7 @@ class ApiProductService {
   Future<ProductModel> updateProduct(ProductModel product) async {
     try {
       final response = await dio.put(
-        '${AppUrls.productAll}/${product.id}',
+        '${AppUrls.product}/${product.id}',
         data: product.toUpdateJson(),
       );
 
@@ -127,7 +127,7 @@ class ApiProductService {
   Future<ProductModel> deleteProduct(ProductModel product) async {
     try {
       final response = await dio.delete(
-        '${AppUrls.productAll}/${product.id}',
+        '${AppUrls.product}/${product.id}',
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -163,7 +163,7 @@ class ApiProductService {
   // Get single product by ID
   Future<ProductModel?> getProductById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.productAll}/$id');
+      final response = await dio.get('${AppUrls.product}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
