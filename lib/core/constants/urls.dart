@@ -1,5 +1,5 @@
 abstract final class AppUrls {
-  static const String baseUrl = "http://localhost:1010";
+  static const String baseUrl = "https://api.uz-dev-ai.uz";
   static const String login = '$baseUrl/api/login';
   static const String refresh = '$baseUrl/api/auth/refresh';
   static const String productAll = '$baseUrl/api/products/all';

@@ -37,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (result['success'] == true) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', result['data']['token']);
+      await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(result['data']['user']));
       await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
 

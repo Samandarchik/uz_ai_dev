@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/filial_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
-import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
 
 class ProductsPage extends StatefulWidget {
   final int categoryId;
@@ -35,9 +33,10 @@ class _ProductsPageState extends State<ProductsPage> {
     setState(() {
       isLoading = true;
     });
-    
+
     try {
-      final fetchedProducts = await apiService.getProductsByCategoryId(widget.categoryId);
+      final fetchedProducts =
+          await apiService.getProductsByCategoryId(widget.categoryId);
       setState(() {
         products = fetchedProducts;
         isLoading = false;
@@ -257,17 +256,18 @@ class _ProductsPageState extends State<ProductsPage> {
                           ),
                         ),
                         title: Text(
-                          product.name,
+                          "${product.name} (${product.type})",
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Turi: ${product.type}'),
                             Text(
                               'Filiallar: ${product.filialNames.isNotEmpty ? product.filialNames.join(', ') : 'Filiallar yuklanmoqda...'}',
                               style: TextStyle(
-                                color: product.filialNames.isEmpty ? Colors.grey : null,
+                                color: product.filialNames.isEmpty
+                                    ? Colors.grey
+                                    : null,
                               ),
                             ),
                           ],
@@ -337,7 +337,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   final nameController = TextEditingController();
   final typeController = TextEditingController();
   final filialService = ApiFilialService();
-  
+
   List<int> selectedFilials = [];
   List<Filial> availableFilials = [];
   bool isLoadingFilials = true;
@@ -354,7 +354,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       isLoadingFilials = true;
       errorMessage = null;
     });
-    
+
     try {
       final filials = await filialService.getFilials();
       setState(() {
@@ -605,7 +605,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
   late TextEditingController typeController;
   late List<int> selectedFilials;
   final filialService = ApiFilialService();
-  
+
   List<Filial> availableFilials = [];
   bool isLoadingFilials = true;
   String? errorMessage;
@@ -624,7 +624,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
       isLoadingFilials = true;
       errorMessage = null;
     });
-    
+
     try {
       final filials = await filialService.getFilials();
       setState(() {

@@ -1,8 +1,10 @@
-
 import 'package:flutter/foundation.dart';
 
-void pPrint(Object? object,[int level = 3,String? title,]) {
-
+void pPrint(
+  Object? object, [
+  int level = 3,
+  String? title,
+]) {
   if (kDebugMode) {
     String color;
     switch (level) {
@@ -29,12 +31,12 @@ void pPrint(Object? object,[int level = 3,String? title,]) {
     }
 
     title ??= 'Debug';
-    print(
-      '''$color
-************$title*********
-${object.toString()}
-************$title*********\x1B[0m''',
+//     print(
+//       '''$color
+// ************$title*********
+// ${object.toString()}
+// ************$title*********\x1B[0m''',
 
-    );
+//     );
   }
 }

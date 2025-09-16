@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
-import 'package:uz_ai_dev/admin/ui/products_page.dart'; // ProductsPage import qiling
+import 'package:uz_ai_dev/admin/ui/products_page.dart';
+import 'package:uz_ai_dev/ui/screens/login_page.dart'; // ProductsPage import qiling
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -270,9 +272,35 @@ class _AdminPageState extends State<AdminPage> {
     super.dispose();
   }
 
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: SafeArea(
+        child: Drawer(
+          child: ListView(
+            padding: EdgeInsets.only(top: 20),
+            children: [
+              ListTile(
+                title: const Text('Userlar'),
+                onTap: _update,
+              ),
+              ListTile(
+                title: const Text('Chiqish'),
+                onTap: _logout,
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
         title: const Text('Admin Panel'),
         backgroundColor: Colors.blue,
@@ -285,9 +313,7 @@ class _AdminPageState extends State<AdminPage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              // logout functionality
-            },
+            onPressed: _logout,
             tooltip: 'Chiqish',
           ),
         ],
