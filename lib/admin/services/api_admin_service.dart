@@ -1,4 +1,8 @@
+// ================ ADMIN SERVICES ================
+// services/api_admin_service.dart
+
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -16,18 +20,18 @@ class ApiAdminService {
         final List<dynamic> data = response.data['data'] ?? response.data;
         return data.map((e) => CategoryProduct.fromJson(e)).toList();
       } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
+        throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         throw Exception(
-            'Server xatosi: ${e.response!.statusCode} - ${e.response!.statusMessage}');
+            'server_error'.tr() + ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
       } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
+        throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
       print('Xatolik getCategories: $e');
-      throw Exception('Kutilmagan xatolik: $e');
+      throw Exception('unexpected_error'.tr() + ': $e');
     }
   }
 
@@ -44,20 +48,20 @@ class ApiAdminService {
         final responseData = response.data['data'] ?? response.data;
         return CategoryProduct.fromJson(responseData);
       } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
+        throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Kategoriya yaratishda xatolik: $errorMessage');
+            'unknown_server_error'.tr();
+        throw Exception('category_create_error'.tr() + ': $errorMessage');
       } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
+        throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
       print('Xatolik createCategory: $e');
-      throw Exception('Kategoriya yaratishda kutilmagan xatolik: $e');
+      throw Exception('category_create_unexpected'.tr() + ': $e');
     }
   }
 
@@ -73,23 +77,23 @@ class ApiAdminService {
         final responseData = response.data['data'] ?? response.data;
         return CategoryProduct.fromJson(responseData);
       } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
+        throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         if (e.response!.statusCode == 404) {
-          throw Exception('Kategoriya topilmadi');
+          throw Exception('category_not_found'.tr());
         }
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Kategoriya yangilashda xatolik: $errorMessage');
+            'unknown_server_error'.tr();
+        throw Exception('category_update_error'.tr() + ': $errorMessage');
       } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
+        throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
       print('Xatolik updateCategory: $e');
-      throw Exception('Kategoriya yangilashda kutilmagan xatolik: $e');
+      throw Exception('category_update_unexpected'.tr() + ': $e');
     }
   }
 
@@ -110,25 +114,25 @@ class ApiAdminService {
           return CategoryProduct.fromJson(responseData);
         }
       } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
+        throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         if (e.response!.statusCode == 404) {
-          throw Exception('Kategoriya topilmadi');
+          throw Exception('category_not_found'.tr());
         } else if (e.response!.statusCode == 409) {
-          throw Exception('Kategoriya o\'chirib bo\'lmaydi, u ishlatilmoqda');
+          throw Exception('category_cannot_delete'.tr());
         }
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Kategoriya o\'chirishda xatolik: $errorMessage');
+            'unknown_server_error'.tr();
+        throw Exception('category_delete_error'.tr() + ': $errorMessage');
       } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
+        throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
       print('Xatolik deleteCategory: $e');
-      throw Exception('Kategoriya o\'chirishda kutilmagan xatolik: $e');
+      throw Exception('category_delete_unexpected'.tr() + ': $e');
     }
   }
 
@@ -147,10 +151,10 @@ class ApiAdminService {
       if (e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Kategoriya olishda xatolik: ${e.message}');
+      throw Exception('category_fetch_error'.tr() + ': ${e.message}');
     } catch (e) {
       print('Xatolik getCategoryById: $e');
-      throw Exception('Kategoriya olishda kutilmagan xatolik: $e');
+      throw Exception('category_fetch_unexpected'.tr() + ': $e');
     }
   }
 }

@@ -1,6 +1,8 @@
 // ui/screens/home_page.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/main.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
 import 'login_page.dart';
@@ -103,11 +105,11 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Salom, ${user?['name'] ?? 'User'}',
+              '${user?['name'] ?? 'User'}',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              '${user?['filial']?['name'] ?? 'Filial'} filiali',
+              '${user?['filial']?['name'] ?? 'Filial'} ${"filial".tr()}',
               style: TextStyle(fontSize: 12),
             ),
           ],
@@ -127,13 +129,14 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
+          LanguageDropdown(),
           PopupMenuButton(
             icon: Icon(Icons.more_vert),
             itemBuilder: (context) => [
               PopupMenuItem(
                 child: ListTile(
                   leading: Icon(Icons.refresh),
-                  title: Text('Yangilash'),
+                  title: Text('update'.tr()),
                   onTap: () {
                     Navigator.pop(context);
                     _refresh();
@@ -182,7 +185,7 @@ class _HomePageState extends State<HomePage> {
                     CircularProgressIndicator(color: Colors.white),
                     SizedBox(height: 16),
                     Text(
-                      'Mahsulotlar yuklanmoqda...',
+                      'loading_products'.tr(),
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],
@@ -207,7 +210,7 @@ class _HomePageState extends State<HomePage> {
                         SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: _refresh,
-                          child: Text('Qayta urinish'),
+                          child: Text('retry'.tr()),
                         ),
                       ],
                     ),
@@ -220,7 +223,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Kategoriyalar',
+                            'categpries'.tr(),
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -276,18 +279,18 @@ class _HomePageState extends State<HomePage> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            Container(
-                                              padding: EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.shade100,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.category,
-                                                size: 30,
-                                                color: Colors.blue.shade700,
-                                              ),
-                                            ),
+                                            // Container(
+                                            //   padding: EdgeInsets.all(12),
+                                            //   decoration: BoxDecoration(
+                                            //     color: Colors.blue.shade100,
+                                            //     shape: BoxShape.circle,
+                                            //   ),
+                                            //   child: Icon(
+                                            //     Icons.safety_check,
+                                            //     size: 30,
+                                            //     color: Colors.blue.shade700,
+                                            //   ),
+                                            // ),
                                             SizedBox(height: 12),
                                             Text(
                                               category,
@@ -302,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                             SizedBox(height: 6),
                                             Text(
-                                              '${products[category]!.length} mahsulot',
+                                              '${products[category]!.length}${"product".tr()}',
                                               style: TextStyle(
                                                 color: Colors.grey[600],
                                                 fontSize: 12,

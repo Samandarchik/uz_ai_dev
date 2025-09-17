@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_page.dart';
@@ -61,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Icon(Icons.error, color: Colors.red),
             SizedBox(width: 10),
-            Text('Xato'),
+            Text('error'.tr()),
           ],
         ),
         content: Text(message),
@@ -110,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       SizedBox(height: 20),
                       Text(
-                        'Tizimga kirish',
+                        'login'.tr(),
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -119,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Ma\'lumotlaringizni kiriting',
+                        'enter_your_details'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -129,7 +130,7 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _phoneController,
                         decoration: InputDecoration(
-                          labelText: 'Login',
+                          labelText: 'login'.tr(),
                           prefixIcon: Icon(Icons.person, color: Colors.blue),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -145,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
-                          labelText: 'Parol',
+                          labelText: 'password'.tr(),
                           prefixIcon: Icon(Icons.lock, color: Colors.blue),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -172,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: _obscurePassword,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Parolni kiriting';
+                            return 'enter_password'.tr();
                           }
                           return null;
                         },
@@ -204,11 +205,11 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     ),
                                     SizedBox(width: 10),
-                                    Text('Kuting...'),
+                                    Text('wait'.tr()),
                                   ],
                                 )
                               : Text(
-                                  'Kirish',
+                                  'login'.tr(),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,

@@ -59,7 +59,7 @@ class CategoryPage extends StatefulWidget {
   final String category;
   final List<dynamic> products;
 
-  CategoryPage({required this.category, required this.products});
+  const CategoryPage({super.key, required this.category, required this.products});
 
   @override
   _CategoryPageState createState() => _CategoryPageState();
@@ -68,7 +68,6 @@ class CategoryPage extends StatefulWidget {
 class _CategoryPageState extends State<CategoryPage>
     with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> selectedProducts = [];
-  bool _isLoading = false;
   late AnimationController _fabAnimationController;
   late Animation<double> _fabScaleAnimation;
 

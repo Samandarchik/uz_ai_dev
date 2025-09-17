@@ -58,7 +58,7 @@ class ApiService {
       } else if (response.statusCode == 401) {
         return {
           'success': false,
-          'message': 'Token yaroqsiz. Qaytadan kiring.',
+          'message': 'Qaytadan login qiling!',
           'needLogin': true,
         };
       } else {
@@ -111,30 +111,57 @@ class ApiService {
     }
   }
 
-// 2-usul: Client tomonida tartibni o'zgartirish
-  static Future<Map<String, dynamic>> getOrders(String token) async {
+  // Pagination bilan buyurtmalarni olish
+  static Future<Map<String, dynamic>> getOrders(String token,
+      {int page = 1, int limit = 30}) async {
     try {
+      // URL ga pagination parametrlarini qo'shamiz
+      String url = '$baseUrl/api/orders?page=$page&limit=$limit';
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/orders'),
+        Uri.parse(url),
         headers: await _getHeaders(token: token),
       );
+
       print('Get Orders Response Status: ${response.statusCode}');
       print('Get Orders Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         Map<String, dynamic> result = jsonDecode(response.body);
 
-        // Agar 'data' yoki 'orders' kaliti mavjud bo'lsa
+        // Response formatiga qarab ma'lumotlarni qayta ishlash
         if (result['data'] is List) {
+          // Ma'lumotlarni teskari tartibda qaytaramiz (yangi buyurtmalar birinchi bo'lsin)
           List orders = result['data'] as List;
-          // Ro'yxatni teskari tartibda o'giramiz
           result['data'] = orders.reversed.toList();
         } else if (result['orders'] is List) {
           List orders = result['orders'] as List;
           result['orders'] = orders.reversed.toList();
         } else if (result is List) {
           // Agar natija to'g'ridan-to'g'ri ro'yxat bo'lsa
-          result = {'data': (result as List).reversed.toList()};
+          List orders = result as List;
+          result = {
+            'success': true,
+            'data': orders.reversed.toList(),
+            'current_page': page,
+            'per_page': limit,
+            'total': orders.length,
+            'last_page': 1,
+          };
+        }
+
+        // Pagination ma'lumotlarini qo'shamiz (agar server tomonida yo'q bo'lsa)
+        if (!result.containsKey('current_page')) {
+          result['current_page'] = page;
+        }
+        if (!result.containsKey('per_page')) {
+          result['per_page'] = limit;
+        }
+        if (!result.containsKey('last_page')) {
+          result['last_page'] = 1;
+        }
+        if (!result.containsKey('total')) {
+          result['total'] = (result['data'] as List?)?.length ?? 0;
         }
 
         return result;
@@ -157,6 +184,11 @@ class ApiService {
         'message': 'Internetga ulanishda xato: $e',
       };
     }
+  }
+
+  // Barcha buyurtmalarni birdan olish (eski usul - backward compatibility uchun)
+  static Future<Map<String, dynamic>> getAllOrders(String token) async {
+    return getOrders(token, page: 1, limit: 1000); // Katta limit bilan
   }
 
   static Future<bool> deleteUser(String token) async {

@@ -1,4 +1,5 @@
 // ui/dialogs/exit_confirm_dialog.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 class ExitConfirmDialog extends StatelessWidget {
@@ -34,7 +35,7 @@ class ExitConfirmDialog extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Savatda mahsulotlar bor!',
+              'cart_has_products'.tr(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
@@ -48,7 +49,7 @@ class ExitConfirmDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tanlangan mahsulotlar:',
+            'selected_products'.tr(),
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade700,
@@ -109,7 +110,7 @@ class ExitConfirmDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop('continue'),
           child: Text(
-            'Davom etish',
+            'continue'.tr(),
             style: TextStyle(color: Colors.grey.shade600),
           ),
         ),
@@ -122,7 +123,7 @@ class ExitConfirmDialog extends StatelessWidget {
             backgroundColor: Colors.green.shade50,
             foregroundColor: Colors.green.shade700,
           ),
-          child: Text('Buyurtma berish'),
+          child: Text('place_order'.tr()),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop('clear'),
@@ -130,7 +131,7 @@ class ExitConfirmDialog extends StatelessWidget {
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
           ),
-          child: Text('Savatni tozalash'),
+          child: Text('clear_cart'.tr()),
         ),
       ],
     );

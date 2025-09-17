@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_page.dart';
@@ -5,6 +6,8 @@ import 'login_page.dart';
 import 'home_page.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -77,7 +80,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             SizedBox(height: 10),
             Text(
-              'Yuklanmoqda...',
+              'loading'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,

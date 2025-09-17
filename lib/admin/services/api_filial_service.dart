@@ -1,4 +1,9 @@
+
+// ================ FILIAL SERVICE ================
+// services/api_filial_service.dart
+
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/admin/model/filial_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -15,18 +20,18 @@ class ApiFilialService {
         final List<dynamic> data = response.data['data'] ?? response.data;
         return data.map((e) => Filial.fromJson(e)).toList();
       } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
+        throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         throw Exception(
-            'Server xatosi: ${e.response!.statusCode} - ${e.response!.statusMessage}');
+            'server_error'.tr() + ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
       } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
+        throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
       print('Xatolik getFilials: $e');
-      throw Exception('Kutilmagan xatolik: $e');
+      throw Exception('unexpected_error'.tr() + ': $e');
     }
   }
 
@@ -45,10 +50,10 @@ class ApiFilialService {
       if (e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Filial olishda xatolik: ${e.message}');
+      throw Exception('filial_fetch_error'.tr() + ': ${e.message}');
     } catch (e) {
       print('Xatolik getFilialById: $e');
-      throw Exception('Filial olishda kutilmagan xatolik: $e');
+      throw Exception('filial_fetch_unexpected'.tr() + ': $e');
     }
   }
 }

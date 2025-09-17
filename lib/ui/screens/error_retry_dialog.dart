@@ -1,4 +1,5 @@
 // ui/widgets/error_retry_dialog.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -90,7 +91,7 @@ class _ErrorRetryDialogState extends State<ErrorRetryDialog>
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Xatolik yuz berdi',
+                'error_occurred'.tr(),
                 style: TextStyle(
                   color: Colors.red.shade700,
                   fontWeight: FontWeight.bold,
@@ -149,7 +150,7 @@ class _ErrorRetryDialogState extends State<ErrorRetryDialog>
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Buyurtma serverga yuborilmadi. Iltimos, qayta urinib ko\'ring.',
+                      'order_not_sent'.tr(),
                       style: TextStyle(
                         color: Colors.red.shade700,
                         fontSize: 14,
@@ -186,7 +187,7 @@ class _ErrorRetryDialogState extends State<ErrorRetryDialog>
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Qayta urinish uchun $_countdown soniya kutib turing...',
+                        'wait_seconds'.tr().replaceAll('{seconds}', '$_countdown'),
                         style: TextStyle(
                           color: Colors.orange.shade700,
                           fontSize: 14,
@@ -204,7 +205,7 @@ class _ErrorRetryDialogState extends State<ErrorRetryDialog>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Bekor qilish',
+              'cancel'.tr(),
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
@@ -237,7 +238,7 @@ class _ErrorRetryDialogState extends State<ErrorRetryDialog>
                     ),
                     SizedBox(width: 8),
                     Text(
-                      _canRetry ? 'Qayta urinish' : '$_countdown soniya',
+                      _canRetry ? 'retry'.tr() : '$_countdown ${'seconds'.tr()}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                       ),

@@ -1,4 +1,5 @@
 // ui/screens/orders_page.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
@@ -12,15 +13,52 @@ class OrdersPage extends StatefulWidget {
 class _OrdersPageState extends State<OrdersPage> {
   List<dynamic> orders = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   String? _errorMessage;
+  Set<String> _expandedOrders = Set<String>();
+
+  // Pagination variables
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _limit = 30;
+  bool _hasMore = true;
+
+  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _scrollController.addListener(_onScroll);
   }
 
-  _loadOrders() async {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Scroll listener - oxirga yetganda yana yuklash
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingMore && _hasMore) {
+        _loadMoreOrders();
+      }
+    }
+  }
+
+  _loadOrders({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMore = true;
+        orders.clear();
+        _expandedOrders.clear();
+      });
+    }
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
 
@@ -32,7 +70,8 @@ class _OrdersPageState extends State<OrdersPage> {
       return;
     }
 
-    final result = await ApiService.getOrders(token);
+    final result =
+        await ApiService.getOrders(token, page: _currentPage, limit: _limit);
 
     setState(() {
       _isLoading = false;
@@ -40,8 +79,16 @@ class _OrdersPageState extends State<OrdersPage> {
 
     if (result['success'] == true) {
       setState(() {
-        orders = result['data'] ?? [];
+        if (isRefresh) {
+          orders = result['data'] ?? [];
+        } else {
+          orders.addAll(result['data'] ?? []);
+        }
+
         _errorMessage = null;
+        _currentPage = result['current_page'] ?? 1;
+        _totalPages = result['last_page'] ?? 1;
+        _hasMore = _currentPage < _totalPages;
       });
     } else {
       if (result['needLogin'] == true) {
@@ -57,12 +104,47 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
+  // Qo'shimcha buyurtmalar yuklash
+  _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+
+    if (token == null) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      return;
+    }
+
+    final result = await ApiService.getOrders(token,
+        page: _currentPage + 1, limit: _limit);
+
+    setState(() {
+      _isLoadingMore = false;
+    });
+
+    if (result['success'] == true) {
+      setState(() {
+        orders.addAll(result['data'] ?? []);
+        _currentPage = result['current_page'] ?? _currentPage + 1;
+        _totalPages = result['last_page'] ?? 1;
+        _hasMore = _currentPage < _totalPages;
+      });
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    await _loadOrders();
+    await _loadOrders(isRefresh: true);
   }
 
   Color _getStatusColor(String status) {
@@ -83,16 +165,26 @@ class _OrdersPageState extends State<OrdersPage> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
-        return 'Chop Etildi';
+        return 'status_sent_to_printer'.tr();
       case 'preparing':
-        return 'Tayyorlanmoqda';
+        return 'status_preparing'.tr();
       case 'ready':
-        return 'Tayyor';
+        return 'status_ready'.tr();
       case 'delivered':
-        return 'Yetkazildi';
+        return 'status_delivered'.tr();
       default:
         return status;
     }
+  }
+
+  void _toggleOrderExpansion(String orderId) {
+    setState(() {
+      if (_expandedOrders.contains(orderId)) {
+        _expandedOrders.remove(orderId);
+      } else {
+        _expandedOrders.add(orderId);
+      }
+    });
   }
 
   @override
@@ -100,7 +192,7 @@ class _OrdersPageState extends State<OrdersPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Buyurtmalarim',
+          'my_orders'.tr(),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue,
@@ -119,7 +211,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Buyurtmalar yuklanmoqda...'),
+                  Text('loading_orders'.tr()),
                 ],
               ),
             )
@@ -142,7 +234,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: _refresh,
-                        child: Text('Qayta urinish'),
+                        child: Text('retry'.tr()),
                       ),
                     ],
                   ),
@@ -165,7 +257,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 20),
                                   Text(
-                                    'Hali buyurtmalar yo\'q',
+                                    'no_orders_yet'.tr(),
                                     style: TextStyle(
                                       fontSize: 24,
                                       color: Colors.grey,
@@ -174,7 +266,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Birinchi buyurtmangizni bering!',
+                                    'place_first_order'.tr(),
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.grey,
@@ -190,166 +282,406 @@ class _OrdersPageState extends State<OrdersPage> {
                   : RefreshIndicator(
                       onRefresh: _refresh,
                       child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: ListView.builder(
-                            itemCount: orders.length,
-                            itemBuilder: (context, index) {
-                              final order = orders[index];
-                              return Card(
-                                margin: EdgeInsets.only(bottom: 12),
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            // Pagination info
+                            if (_totalPages > 1)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                margin: EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.blue[200]!),
                                 ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      /// Buyurtma raqami va status
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              'Buyurtma #${order['order_id'] ?? order['id']}',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.blue.shade800,
-                                              ),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(
-                                                      order['status'] ??
-                                                          'unknown')
-                                                  .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: _getStatusColor(
-                                                    order['status'] ??
-                                                        'unknown'),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              _getStatusText(
-                                                  order['status'] ?? 'unknown'),
-                                              style: TextStyle(
-                                                color: _getStatusColor(
-                                                    order['status'] ??
-                                                        'unknown'),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.info_outline,
+                                        size: 16, color: Colors.blue[700]),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'page_info'
+                                          .tr()
+                                          .replaceAll(
+                                              '{current}', '$_currentPage')
+                                          .replaceAll('{total}', '$_totalPages')
+                                          .replaceAll(
+                                              '{count}', '${orders.length}'),
+                                      style: TextStyle(
+                                        color: Colors.blue[700],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      SizedBox(height: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                                      /// Mijoz
-                                      Row(
-                                        children: [
-                                          Icon(Icons.person,
-                                              size: 16, color: Colors.grey),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Mijoz: ${order['username'] ?? 'N/A'}',
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 6),
-
-                                      /// Filial
-                                      Row(
-                                        children: [
-                                          Icon(Icons.location_on,
-                                              size: 16, color: Colors.grey),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Filial: ${order['filial_name'] ?? 'N/A'}',
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-
-                                      /// Mahsulotlar ro'yxati (chek formatida)
-                                      if (order['items'] != null &&
-                                          order['items'].isNotEmpty) ...[
-                                        SizedBox(height: 8),
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                            // Orders list
+                            Expanded(
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                itemCount:
+                                    orders.length + (_isLoadingMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  // Loading indicator at the end
+                                  if (index >= orders.length) {
+                                    return Container(
+                                      padding: EdgeInsets.all(20),
+                                      child: Center(
+                                        child: Column(
                                           children: [
-                                            Icon(Icons.shopping_bag,
-                                                size: 16, color: Colors.grey),
-                                            SizedBox(width: 6),
-                                            Expanded(
-                                              child: Column(
-                                                children: List.generate(
-                                                  order['items'].length,
-                                                  (itemIndex) => Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          order['items'][
-                                                                      itemIndex]
-                                                                  ['name'] ??
-                                                              'N/A',
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        order['items']
-                                                                    [itemIndex]
-                                                                ['count']
-                                                            .toString(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
+                                            CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'loading_more'.tr(),
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ],
-
-                                      SizedBox(height: 8),
-
-                                      /// Vaqti
-                                      Row(
-                                        children: [
-                                          Icon(Icons.access_time,
-                                              size: 16, color: Colors.grey),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Vaqti: ${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split('.')[0] : 'N/A'}',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          )),
+                                    );
+                                  }
+
+                                  final order = orders[index];
+                                  final orderId =
+                                      order['order_id'] ?? order['id'] ?? index;
+                                  final isExpanded =
+                                      _expandedOrders.contains(orderId);
+
+                                  return Card(
+                                    margin: EdgeInsets.only(bottom: 12),
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: InkWell(
+                                      onTap: () =>
+                                          _toggleOrderExpansion(orderId),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            /// Buyurtma raqami va status (har doim ko'rinadigan qism)
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    'order_number'.tr().replaceAll(
+                                                        '{id}',
+                                                        '${order['order_id'] ?? order['id']}'),
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          Colors.blue.shade800,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 6),
+                                                      decoration: BoxDecoration(
+                                                        color: _getStatusColor(
+                                                                order['status'] ??
+                                                                    'unknown')
+                                                            .withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(20),
+                                                        border: Border.all(
+                                                          color: _getStatusColor(
+                                                              order['status'] ??
+                                                                  'unknown'),
+                                                          width: 1,
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        _getStatusText(
+                                                            order['status'] ??
+                                                                'unknown'),
+                                                        style: TextStyle(
+                                                          color: _getStatusColor(
+                                                              order['status'] ??
+                                                                  'unknown'),
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    AnimatedRotation(
+                                                      turns:
+                                                          isExpanded ? 0.5 : 0,
+                                                      duration: Duration(
+                                                          milliseconds: 200),
+                                                      child: Icon(
+                                                        Icons
+                                                            .keyboard_arrow_down,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+
+                                            /// Qisqacha ma'lumot (yopiq holatda)
+                                            if (!isExpanded) ...[
+                                              SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.access_time,
+                                                      size: 14,
+                                                      color: Colors.grey),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split(' ')[0] : 'N/A'}',
+                                                    style: TextStyle(
+                                                      color: Colors.grey[600],
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  Spacer(),
+                                                  if (order['items'] != null &&
+                                                      order['items'].isNotEmpty)
+                                                    Text(
+                                                      'products_count'
+                                                          .tr()
+                                                          .replaceAll('{count}',
+                                                              '${order['items'].length}'),
+                                                      style: TextStyle(
+                                                        color: Colors.grey[600],
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
+
+                                            /// Batafsil ma'lumot (ochilgan holatda)
+                                            AnimatedCrossFade(
+                                              firstChild: Container(),
+                                              secondChild: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  SizedBox(height: 12),
+                                                  Divider(
+                                                      color: Colors.grey[300]),
+                                                  SizedBox(height: 8),
+
+                                                  /// Mijoz
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.person,
+                                                          size: 16,
+                                                          color: Colors.grey),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        'customer'.tr().replaceAll(
+                                                            '{name}',
+                                                            '${order['username'] ?? 'N/A'}'),
+                                                        style: TextStyle(
+                                                            fontSize: 14),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 6),
+
+                                                  /// Filial
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.location_on,
+                                                          size: 16,
+                                                          color: Colors.grey),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        'branch1'.tr().replaceAll(
+                                                            '{name}',
+                                                            '${order['filial_name'] ?? 'N/A'}'),
+                                                        style: TextStyle(
+                                                            fontSize: 14),
+                                                      ),
+                                                    ],
+                                                  ),
+
+                                                  /// Mahsulotlar ro'yxati
+                                                  if (order['items'] != null &&
+                                                      order['items']
+                                                          .isNotEmpty) ...[
+                                                    SizedBox(height: 12),
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.all(12),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[50],
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
+                                                        border: Border.all(
+                                                            color: Colors
+                                                                .grey[200]!),
+                                                      ),
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Row(
+                                                            children: [
+                                                              Icon(
+                                                                  Icons
+                                                                      .shopping_bag,
+                                                                  size: 16,
+                                                                  color: Colors
+                                                                      .grey),
+                                                              SizedBox(
+                                                                  width: 6),
+                                                              Text(
+                                                                'products'.tr(),
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 14,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          SizedBox(height: 8),
+                                                          ...List.generate(
+                                                            order['items']
+                                                                .length,
+                                                            (itemIndex) =>
+                                                                Padding(
+                                                              padding: EdgeInsets
+                                                                  .only(
+                                                                      bottom:
+                                                                          4),
+                                                              child: Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .spaceBetween,
+                                                                children: [
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      '• ${order['items'][itemIndex]['name'] ?? 'N/A'}',
+                                                                      style: TextStyle(
+                                                                          fontSize:
+                                                                              13),
+                                                                    ),
+                                                                  ),
+                                                                  Container(
+                                                                    padding: EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            8,
+                                                                        vertical:
+                                                                            2),
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: Colors
+                                                                          .blue[50],
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              12),
+                                                                    ),
+                                                                    child: Text(
+                                                                      'count_unit'
+                                                                          .tr()
+                                                                          .replaceAll(
+                                                                              '{count}',
+                                                                              '${order['items'][itemIndex]['count']}'),
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            12,
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                        color: Colors
+                                                                            .blue[700],
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+
+                                                  SizedBox(height: 12),
+
+                                                  /// To'liq vaqt ma'lumoti
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.access_time,
+                                                          size: 16,
+                                                          color: Colors.grey),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        'order_time'.tr(),
+                                                        style: TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 22),
+                                                    child: Text(
+                                                      '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split('.')[0] : 'N/A'}',
+                                                      style: TextStyle(
+                                                        color: Colors.grey[600],
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              crossFadeState: isExpanded
+                                                  ? CrossFadeState.showSecond
+                                                  : CrossFadeState.showFirst,
+                                              duration:
+                                                  Duration(milliseconds: 300),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
     );
   }

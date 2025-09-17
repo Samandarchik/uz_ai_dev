@@ -1,26 +1,30 @@
-// models/user_model.dart
 class User {
-  final int? id;
-  final String? name;
-  final bool? isAdmin;
-  final String? phone;
+  final int id;
+  final String name;
+  final String phone;
+  final bool isAdmin;
+  final int? filialId;
   final Filial? filial;
+  final String? password;
 
   User({
-    this.id,
-    this.name,
-    this.phone,
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.isAdmin,
+    this.filialId,
     this.filial,
-    this.isAdmin,
+    this.password,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      name: json['name'],
-      phone: json['phone'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      phone: json['phone'] ?? '',
+      isAdmin: json['is_admin'] ?? false,
+      filialId: json['filial_id'],
       filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
-      isAdmin: json['is_admin'],
     );
   }
 
@@ -29,25 +33,57 @@ class User {
       'id': id,
       'name': name,
       'phone': phone,
-      'filial': filial?.toJson(),
       'is_admin': isAdmin,
+      'filial_id': filialId,
+      if (password != null) 'password': password,
     };
   }
+
+  User copyWith({
+    int? id,
+    String? name,
+    String? phone,
+    bool? isAdmin,
+    int? filialId,
+    Filial? filial,
+    String? password,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      isAdmin: isAdmin ?? this.isAdmin,
+      filialId: filialId ?? this.filialId,
+      filial: filial ?? this.filial,
+      password: password ?? this.password,
+    );
+  }
 }
+// ================ MODELS ================
+// models/user_models.dart
 
 class Filial {
-  final int? id;
-  final String? name;
+  final int id;
+  final String name;
+  final String? address;
+  final String? phone;
+  final String? location;
 
   Filial({
-    this.id,
-    this.name,
+    required this.id,
+    required this.name,
+    this.address,
+    this.phone,
+    this.location,
   });
 
   factory Filial.fromJson(Map<String, dynamic> json) {
     return Filial(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      address: json['address'],
+      phone: json['phone'],
+      location: json['location'],
     );
   }
 
@@ -55,6 +91,73 @@ class Filial {
     return {
       'id': id,
       'name': name,
+      'address': address,
+      'phone': phone,
+      'location': location,
+    };
+  }
+}
+
+class UpdateUserRequest {
+  final String? name;
+  final String? phone;
+  final bool? isAdmin;
+  final int? filialId;
+  final String? password;
+
+  UpdateUserRequest({
+    this.name,
+    this.phone,
+    this.isAdmin,
+    this.filialId,
+    this.password,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+    if (name != null) data['name'] = name;
+    if (phone != null) data['phone'] = phone;
+    if (isAdmin != null) data['is_admin'] = isAdmin;
+    if (filialId != null) data['filial_id'] = filialId;
+    if (password != null && password!.isNotEmpty) data['password'] = password;
+    return data;
+  }
+}
+
+class CreateUserRequest {
+  final String name;
+  final String phone;
+  final String password;
+  final bool isAdmin;
+  final int? filialId;
+
+  CreateUserRequest({
+    required this.name,
+    required this.phone,
+    required this.password,
+    this.isAdmin = false,
+    this.filialId,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'phone': phone,
+      'password': password,
+      'is_admin': isAdmin,
+      if (filialId != null) 'filial_id': filialId,
+    };
+  }
+}
+
+class AssignFilialRequest {
+  final int filialId;
+
+  AssignFilialRequest({required this.filialId});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'filial_id': filialId,
     };
   }
 }

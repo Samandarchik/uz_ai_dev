@@ -1,4 +1,5 @@
 // ui/dialogs/order_summary_dialog.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../widgets/error_retry_dialog.dart';
 import '../screens/login_page.dart';
@@ -43,7 +44,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
           _isLoading = false;
         });
 
-        _showRetryErrorDialog(result['message'] ?? 'Server xatosi yuz berdi');
+        _showRetryErrorDialog(result['message'] ?? "internal_error".tr());
 
         if (result['needLogin'] == true) {
           Navigator.pushReplacement(
@@ -58,7 +59,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
         _isLoading = false;
       });
 
-      _showRetryErrorDialog('Internetga ulanishda xato: $e');
+      _showRetryErrorDialog('${"internal_error"}: $e');
     }
   }
 
@@ -98,7 +99,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
           ),
           SizedBox(width: 12),
           Text(
-            'Buyurtma ro\'yxati',
+            'order_list'.tr(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.blue.shade800,
@@ -124,7 +125,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                   Icon(Icons.info_outline, color: Colors.blue.shade600),
                   SizedBox(width: 8),
                   Text(
-                    'Jami: ${widget.selectedProducts.length} xil mahsulot',
+                    '${"total".tr()}: ${widget.selectedProducts.length} ${"different_product".tr()}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -173,7 +174,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        'Soni: ${item['count']} dona',
+                        '${"count".tr()}: ${item['count']} ${"pieces".tr()}',
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           fontSize: 12,
@@ -192,7 +193,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Bekor qilish',
+              'cancel'.tr(),
               style: TextStyle(color: Colors.grey.shade600),
             ),
           ),
@@ -219,7 +220,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                       ),
                     ),
                     SizedBox(width: 8),
-                    Text('Yuborilmoqda...'),
+                    Text('sending'.tr()),
                   ],
                 )
               : Row(
@@ -227,7 +228,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                   children: [
                     Icon(Icons.send, size: 18),
                     SizedBox(width: 6),
-                    Text('Buyurtma berish'),
+                    Text('ordering'.tr()),
                   ],
                 ),
         ),

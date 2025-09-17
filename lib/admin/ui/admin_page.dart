@@ -1,8 +1,11 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
 import 'package:uz_ai_dev/admin/ui/products_page.dart';
+import 'package:uz_ai_dev/admin/user_management_screen.dart';
+import 'package:uz_ai_dev/main.dart';
 import 'package:uz_ai_dev/ui/screens/login_page.dart'; // ProductsPage import qiling
 
 class AdminPage extends StatefulWidget {
@@ -30,8 +33,6 @@ class _AdminPageState extends State<AdminPage> {
     });
     try {
       final fetchedCategories = await apiService.getCategories();
-      print(
-          'Fetched Categories: ${fetchedCategories.map((e) => e.name).toList()}');
       setState(() {
         categories = fetchedCategories;
         isLoading = false;
@@ -40,8 +41,7 @@ class _AdminPageState extends State<AdminPage> {
       setState(() {
         isLoading = false;
       });
-      print('Xatolik: $e');
-      _showErrorSnackBar('Ma\'lumotlarni yuklashda xatolik: $e');
+      _showErrorSnackBar("error_loading_data".tr() + e.toString());
     }
   }
 
@@ -283,6 +283,7 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
+    context.setLocale(const Locale('ru'));
     return Scaffold(
       drawer: SafeArea(
         child: Drawer(
@@ -290,8 +291,15 @@ class _AdminPageState extends State<AdminPage> {
             padding: EdgeInsets.only(top: 20),
             children: [
               ListTile(
-                title: const Text('Userlar'),
-                onTap: _update,
+                title: Text('hello'.tr()),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserManagementScreen(),
+                    ),
+                  );
+                },
               ),
               ListTile(
                 title: const Text('Chiqish'),
@@ -316,6 +324,7 @@ class _AdminPageState extends State<AdminPage> {
             onPressed: _logout,
             tooltip: 'Chiqish',
           ),
+          LanguageDropdown(),
         ],
       ),
       body: isLoading
