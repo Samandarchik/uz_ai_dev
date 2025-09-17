@@ -283,7 +283,6 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
-    context.setLocale(const Locale('ru'));
     return Scaffold(
       drawer: SafeArea(
         child: Drawer(
