@@ -2,6 +2,9 @@
 // widgets/edit_user_dialog.dart
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/services/category_service.dart';
+import 'package:uz_ai_dev/admin/services/filial_service.dart';
 import 'package:uz_ai_dev/admin/user_management_service.dart';
 import 'package:uz_ai_dev/models/user_model.dart';
 
@@ -23,19 +26,23 @@ class _EditUserDialogState extends State<EditUserDialog> {
   final _formKey = GlobalKey<FormState>();
   final UserManagementService _userService = UserManagementService();
   final FilialService _filialService = FilialService();
+  final CategoryService _categoryService = CategoryService();
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _passwordController;
 
-  bool _isAdmin = false;
   int? _selectedFilialId;
+  List<int> _selectedCategoryIds = []; // Multiple selection uchun list
   bool _isLoading = false;
   bool _isLoadingFilials = false;
+  bool _isLoadingCategories = false;
   bool _obscurePassword = true;
 
   List<Filial> _filials = [];
+  List<CategoryProduct> _categories = [];
   String _filialError = '';
+  String _categoryError = '';
 
   @override
   void initState() {
@@ -43,9 +50,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _nameController = TextEditingController(text: widget.user?.name ?? '');
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
     _passwordController = TextEditingController();
-    _isAdmin = widget.user?.isAdmin ?? false;
     _selectedFilialId = widget.user?.filialId;
+    // Agar user mavjud bo'lsa va categorylari bo'lsa, ularni initialize qilish
+    _selectedCategoryIds = widget.user?.categoryIds ?? [];
     _loadFilials();
+    _loadCategories();
   }
 
   @override
@@ -54,6 +63,26 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categoryError = '';
+    });
+
+    try {
+      final categories = await _categoryService.getAllCategorys();
+      setState(() {
+        _categories = categories;
+        _isLoadingCategories = false;
+      });
+    } catch (e) {
+      setState(() {
+        _categoryError = e.toString();
+        _isLoadingCategories = false;
+      });
+    }
   }
 
   Future<void> _loadFilials() async {
@@ -94,8 +123,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
         final request = UpdateUserRequest(
           name: _nameController.text.trim(),
           phone: _formatPhoneForRequest(_phoneController.text.trim()),
-          isAdmin: _isAdmin,
           filialId: _selectedFilialId,
+          categoryIds: _selectedCategoryIds, // Category IDs qo'shildi
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
               : null,
@@ -109,8 +138,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
           name: _nameController.text.trim(),
           phone: _formatPhoneForRequest(_phoneController.text.trim()),
           password: _passwordController.text,
-          isAdmin: _isAdmin,
           filialId: _selectedFilialId!.toInt(),
+          categoryIds: _selectedCategoryIds, // Category IDs qo'shildi
         );
 
         print('Creating user with request: ${request.toJson()}'); // Debug log
@@ -313,13 +342,193 @@ class _EditUserDialogState extends State<EditUserDialog> {
     );
   }
 
+  Widget _buildCategorySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'categories'.tr(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: 300, // Checkbox list uchun max height
+          ),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: _isLoadingCategories
+              ? Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text('categories_loading'.tr()),
+                    ],
+                  ),
+                )
+              : _categoryError.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: Colors.red.shade600, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'categories_loading_error'.tr(),
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed:
+                                _loadCategories, // Bu yerda _loadCategories bo'lishi kerak
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: Text('retry'.tr()),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _categories.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'no_categories_available'.tr(),
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            // Header - tanlangan kategoriyalar soni
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(11),
+                                  topRight: Radius.circular(11),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.category_outlined,
+                                      color: Colors.blue.shade600, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '${_selectedCategoryIds.length} / ${_categories.length} ${'selected'.tr()}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.blue.shade600,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  if (_selectedCategoryIds.isNotEmpty)
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedCategoryIds.clear();
+                                        });
+                                      },
+                                      style: TextButton.styleFrom(
+                                        minimumSize: Size(0, 0),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                      ),
+                                      child: Text(
+                                        'clear_all'.tr(),
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            // Category list with checkboxes
+                            Expanded(
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _categories.length,
+                                itemBuilder: (context, index) {
+                                  final category = _categories[index];
+                                  final isSelected = _selectedCategoryIds
+                                      .contains(category.id);
+
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        if (value == true) {
+                                          if (!_selectedCategoryIds
+                                              .contains(category.id)) {
+                                            _selectedCategoryIds
+                                                .add(category.id);
+                                          }
+                                        } else {
+                                          _selectedCategoryIds
+                                              .remove(category.id);
+                                        }
+                                      });
+                                    },
+                                    title: Text(
+                                      category.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      'ID: ${category.id}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    activeColor: Colors.blue.shade600,
+                                    dense: true,
+                                    controlAffinity:
+                                        ListTileControlAffinity.trailing,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -519,7 +728,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Filial Selector
+                      // Category Selector (Multiple selection with checkboxes)
+                      _buildCategorySelector(),
+                      const SizedBox(height: 20),
+
+                      // Filial Selector (Single selection)
                       _buildFilialSelector(),
                       const SizedBox(height: 20),
                     ],
@@ -550,8 +763,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Bekor qilish',
+                      child: Text(
+                        'cancel'.tr(),
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
@@ -580,7 +793,9 @@ class _EditUserDialogState extends State<EditUserDialog> {
                               ),
                             )
                           : Text(
-                              widget.user != null ? 'Yangilash' : 'Yaratish',
+                              widget.user != null
+                                  ? 'update'.tr()
+                                  : 'create'.tr(),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,

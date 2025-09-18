@@ -1,48 +1,56 @@
-
-// ================ FILIAL SERVICE ================
-// services/api_filial_service.dart
-
+// services/filial_service.dart
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/models/user_model.dart';
 
-class ApiFilialService {
+class FilialService {
   final Dio dio = sl<Dio>();
 
-  // Get all filials
-  Future<List<Filial>> getFilials() async {
+  Future<List<Filial>> getAllFilials() async {
     try {
       final response = await dio.get(AppUrls.filials);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? response.data;
-        return data.map((e) => Filial.fromJson(e)).toList();
+        final responseData = response.data;
+
+        if (responseData['success'] == true) {
+          final List<dynamic> data = responseData['data'] ?? [];
+          return data.map((e) => Filial.fromJson(e)).toList();
+        } else {
+          throw Exception(
+              responseData['message'] ?? 'filials_fetch_error'.tr());
+        }
       } else {
         throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception(
-            'server_error'.tr() + ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        final errorMessage = e.response!.data['message'] ??
+            'server_error'.tr() + ': ${e.response!.statusCode}';
+        throw Exception(errorMessage);
       } else {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getFilials: $e');
-      throw Exception('unexpected_error'.tr() + ': $e');
+      print('Xatolik getAllFilials: $e');
+      throw Exception('unexpected_error_filials'.tr() + ': $e');
     }
   }
 
-  // Get single filial by ID
   Future<Filial?> getFilialById(int id) async {
     try {
       final response = await dio.get('${AppUrls.filials}/$id');
 
       if (response.statusCode == 200) {
-        final responseData = response.data['data'] ?? response.data;
-        return Filial.fromJson(responseData);
+        final responseData = response.data;
+
+        if (responseData['success'] == true) {
+          return Filial.fromJson(responseData['data']);
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
@@ -53,7 +61,7 @@ class ApiFilialService {
       throw Exception('filial_fetch_error'.tr() + ': ${e.message}');
     } catch (e) {
       print('Xatolik getFilialById: $e');
-      throw Exception('filial_fetch_unexpected'.tr() + ': $e');
+      throw Exception('unexpected_error_filial'.tr() + ': $e');
     }
   }
 }

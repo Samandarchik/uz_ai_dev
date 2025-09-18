@@ -151,12 +151,8 @@ class _OrdersPageState extends State<OrdersPage> {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
         return Colors.blue;
-      case 'preparing':
-        return Colors.orange;
-      case 'ready':
-        return Colors.green;
-      case 'delivered':
-        return Colors.purple;
+      case 'eror_print':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -165,13 +161,7 @@ class _OrdersPageState extends State<OrdersPage> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
-        return 'status_sent_to_printer'.tr();
-      case 'preparing':
-        return 'status_preparing'.tr();
-      case 'ready':
-        return 'status_ready'.tr();
-      case 'delivered':
-        return 'status_delivered'.tr();
+        return 'eror_print'.tr();
       default:
         return status;
     }
@@ -509,21 +499,23 @@ class _OrdersPageState extends State<OrdersPage> {
                                                   SizedBox(height: 6),
 
                                                   /// Filial
-                                                  Row(
-                                                    children: [
-                                                      Icon(Icons.location_on,
-                                                          size: 16,
-                                                          color: Colors.grey),
-                                                      SizedBox(width: 6),
-                                                      Text(
-                                                        'branch1'.tr().replaceAll(
-                                                            '{name}',
-                                                            '${order['filial_name'] ?? 'N/A'}'),
-                                                        style: TextStyle(
-                                                            fontSize: 14),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                  // Row(
+                                                  //   children: [
+                                                  //     Icon(Icons.location_on,
+                                                  //         size: 16,
+                                                  //         color: Colors.grey),
+                                                  //     SizedBox(width: 6),
+                                                  //     Text(
+                                                  //       'branch1'.tr().replaceAll(
+                                                  //           '{name}',
+                                                  //           '${order['filial_name'] ?? 'N/A'}'),
+                                                  //       overflow: TextOverflow
+                                                  //           .ellipsis,
+                                                  //       style: TextStyle(
+                                                  //           fontSize: 14),
+                                                  //     ),
+                                                  //   ],
+                                                  // ),
 
                                                   /// Mahsulotlar ro'yxati
                                                   if (order['items'] != null &&

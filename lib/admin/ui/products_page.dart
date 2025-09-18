@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/admin/model/product.dart';
-import 'package:uz_ai_dev/admin/model/filial_model.dart';
+import 'package:uz_ai_dev/models/user_model.dart';
+
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
 
@@ -45,8 +47,8 @@ class _ProductsPageState extends State<ProductsPage> {
       setState(() {
         isLoading = false;
       });
-      print('Xatolik: $e');
-      _showErrorSnackBar('Mahsulotlarni yuklashda xatolik: $e');
+      print('products_page.error'.tr(args: [e.toString()]));
+      _showErrorSnackBar('products_page.load_error'.tr(args: [e.toString()]));
     }
   }
 
@@ -76,15 +78,16 @@ class _ProductsPageState extends State<ProductsPage> {
 
         if (createdProduct.id != 0) {
           await _loadProducts();
-          _showSuccessSnackBar('Mahsulot muvaffaqiyatli qo\'shildi!');
+          _showSuccessSnackBar('products_page.add_success'.tr());
         } else {
-          _showErrorSnackBar('Mahsulot qo\'shishda xatolik yuz berdi');
+          _showErrorSnackBar('products_page.add_error'.tr());
         }
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Mahsulot qo\'shishda xatolik: $e');
+        _showErrorSnackBar(
+            'products_page.add_error_detailed'.tr(args: [e.toString()]));
       }
     }
   }
@@ -111,18 +114,19 @@ class _ProductsPageState extends State<ProductsPage> {
 
         if (updated.id != 0) {
           await _loadProducts();
-          _showSuccessSnackBar('Mahsulot muvaffaqiyatli yangilandi!');
+          _showSuccessSnackBar('products_page.update_success'.tr());
         } else {
           setState(() {
             isLoading = false;
           });
-          _showErrorSnackBar('Mahsulot yangilashda xatolik yuz berdi');
+          _showErrorSnackBar('products_page.update_error'.tr());
         }
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Mahsulot yangilashda xatolik: $e');
+        _showErrorSnackBar(
+            'products_page.update_error_detailed'.tr(args: [e.toString()]));
       }
     }
   }
@@ -131,19 +135,20 @@ class _ProductsPageState extends State<ProductsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Mahsulotni o\'chirish'),
+        title: Text('products_page.delete_title'.tr()),
         content: Text(
-          'Haqiqatan ham "${products[index].name}" mahsulotini o\'chirmoqchimisiz?',
+          'products_page.delete_confirmation'
+              .tr(namedArgs: {'name': products[index].name}),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Bekor qilish'),
+            child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('O\'chirish'),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -157,12 +162,13 @@ class _ProductsPageState extends State<ProductsPage> {
       try {
         await apiService.deleteProduct(products[index]);
         await _loadProducts();
-        _showSuccessSnackBar('Mahsulot muvaffaqiyatli o\'chirildi!');
+        _showSuccessSnackBar('products_page.delete_success'.tr());
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Mahsulot o\'chirishda xatolik: $e');
+        _showErrorSnackBar(
+            'products_page.delete_error_detailed'.tr(args: [e.toString()]));
       }
     }
   }
@@ -195,14 +201,15 @@ class _ProductsPageState extends State<ProductsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.categoryName} - Mahsulotlar'),
+        title: Text('products_page.title'
+            .tr(namedArgs: {'category': widget.categoryName})),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadProducts,
-            tooltip: 'Yangilash',
+            tooltip: 'common.refresh'.tr(),
           ),
         ],
       ),
@@ -219,15 +226,16 @@ class _ProductsPageState extends State<ProductsPage> {
                         color: Colors.grey,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Bu kategoriyada mahsulot yo\'q',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      Text(
+                        'products_page.no_products'.tr(),
+                        style:
+                            const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _addProduct,
                         icon: const Icon(Icons.add),
-                        label: const Text('Birinchi mahsulot qo\'shing'),
+                        label: Text('products_page.add_first_product'.tr()),
                       ),
                     ],
                   ),
@@ -263,7 +271,11 @@ class _ProductsPageState extends State<ProductsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Filiallar: ${product.filialNames.isNotEmpty ? product.filialNames.join(', ') : 'Filiallar yuklanmoqda...'}',
+                              'products_page.filials'.tr(namedArgs: {
+                                'filials': product.filialNames.isNotEmpty
+                                    ? product.filialNames.join(', ')
+                                    : 'products_page.filials_loading'.tr()
+                              }),
                               style: TextStyle(
                                 color: product.filialNames.isEmpty
                                     ? Colors.grey
@@ -281,23 +293,23 @@ class _ProductsPageState extends State<ProductsPage> {
                             }
                           },
                           itemBuilder: (context) => [
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'edit',
                               child: Row(
                                 children: [
-                                  Icon(Icons.edit, color: Colors.blue),
-                                  SizedBox(width: 8),
-                                  Text('Tahrirlash'),
+                                  const Icon(Icons.edit, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Text('common.edit'.tr()),
                                 ],
                               ),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('O\'chirish'),
+                                  const Icon(Icons.delete, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Text('common.delete'.tr()),
                                 ],
                               ),
                             ),
@@ -306,7 +318,7 @@ class _ProductsPageState extends State<ProductsPage> {
                             Icons.more_vert,
                             color: Colors.grey,
                           ),
-                          tooltip: 'Harakatlar',
+                          tooltip: 'common.actions'.tr(),
                         ),
                       ),
                     );
@@ -316,7 +328,7 @@ class _ProductsPageState extends State<ProductsPage> {
         onPressed: _addProduct,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        tooltip: 'Yangi mahsulot qo\'shish',
+        tooltip: 'products_page.add_new_product'.tr(),
         child: const Icon(Icons.add),
       ),
     );
@@ -364,9 +376,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
     } catch (e) {
       setState(() {
         isLoadingFilials = false;
-        errorMessage = 'Filiallarni yuklashda xatolik: ${e.toString()}';
+        errorMessage =
+            'add_product_dialog.filials_load_error'.tr(args: [e.toString()]);
       });
-      print('Filiallarni yuklashda xatolik: $e');
+      print('add_product_dialog.filials_load_error'.tr(args: [e.toString()]));
     }
   }
 
@@ -380,7 +393,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Yangi mahsulot qo\'shish'),
+      title: Text('add_product_dialog.title'.tr()),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         height: MediaQuery.of(context).size.height * 0.6,
@@ -390,27 +403,27 @@ class _AddProductDialogState extends State<AddProductDialog> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Mahsulot nomi *',
-                  border: OutlineInputBorder(),
-                  hintText: 'Masalan: Коробка торт Бенто',
+                decoration: InputDecoration(
+                  labelText: 'add_product_dialog.product_name'.tr(),
+                  border: const OutlineInputBorder(),
+                  hintText: 'add_product_dialog.product_name_hint'.tr(),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: typeController,
-                decoration: const InputDecoration(
-                  labelText: 'Turi *',
-                  border: OutlineInputBorder(),
-                  hintText: 'шт, кг, л, м, dona',
+                decoration: InputDecoration(
+                  labelText: 'add_product_dialog.type'.tr(),
+                  border: const OutlineInputBorder(),
+                  hintText: 'add_product_dialog.type_hint'.tr(),
                 ),
               ),
               const SizedBox(height: 16),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Filiallar *:',
-                  style: TextStyle(
+                  'add_product_dialog.filials_required'.tr(),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -419,13 +432,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
               const SizedBox(height: 8),
               // FILIALLAR LOADING SECTION
               if (isLoadingFilials)
-                const Padding(
-                  padding: EdgeInsets.all(20.0),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 8),
-                      Text('Filiallar yuklanmoqda...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text('add_product_dialog.filials_loading'.tr()),
                     ],
                   ),
                 )
@@ -434,7 +447,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     children: [
-                      Icon(Icons.error, color: Colors.red, size: 48),
+                      const Icon(Icons.error, color: Colors.red, size: 48),
                       const SizedBox(height: 8),
                       Text(
                         errorMessage!,
@@ -445,21 +458,22 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       ElevatedButton.icon(
                         onPressed: _loadFilials,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Qayta urinish'),
+                        label: Text('common.retry'.tr()),
                       ),
                     ],
                   ),
                 )
               else if (availableFilials.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(20.0),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      Icon(Icons.location_off, color: Colors.grey, size: 48),
-                      SizedBox(height: 8),
+                      const Icon(Icons.location_off,
+                          color: Colors.grey, size: 48),
+                      const SizedBox(height: 8),
                       Text(
-                        'Hech qanday filial topilmadi',
-                        style: TextStyle(color: Colors.grey),
+                        'add_product_dialog.no_filials_found'.tr(),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
@@ -478,13 +492,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         title: Text(
                           filial.name,
                           style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        subtitle: Text(
-                          filial.location,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
                         ),
                         value: isSelected,
                         activeColor: Colors.blue,
@@ -525,7 +532,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Tanlangan filiallar: ${selectedFilials.length}',
+                    'add_product_dialog.selected_filials'.tr(namedArgs: {
+                      'count': selectedFilials.length.toString()
+                    }),
                     style: const TextStyle(
                       color: Colors.blue,
                       fontWeight: FontWeight.w500,
@@ -540,15 +549,16 @@ class _AddProductDialogState extends State<AddProductDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Bekor qilish'),
+          child: Text('common.cancel'.tr()),
         ),
         ElevatedButton(
           onPressed: () {
             // VALIDATION
             if (nameController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mahsulot nomini kiriting'),
+                SnackBar(
+                  content:
+                      Text('add_product_dialog.validation.name_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -556,8 +566,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
             }
             if (typeController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mahsulot turini kiriting'),
+                SnackBar(
+                  content:
+                      Text('add_product_dialog.validation.type_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -565,8 +576,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
             }
             if (selectedFilials.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Kamida bitta filial tanlang'),
+                SnackBar(
+                  content: Text(
+                      'add_product_dialog.validation.filials_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -583,7 +595,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
           ),
-          child: const Text('Qo\'shish'),
+          child: Text('common.add'.tr()),
         ),
       ],
     );
@@ -634,9 +646,10 @@ class _EditProductDialogState extends State<EditProductDialog> {
     } catch (e) {
       setState(() {
         isLoadingFilials = false;
-        errorMessage = 'Filiallarni yuklashda xatolik: ${e.toString()}';
+        errorMessage =
+            'edit_product_dialog.filials_load_error'.tr(args: [e.toString()]);
       });
-      print('Filiallarni yuklashda xatolik: $e');
+      print('edit_product_dialog.filials_load_error'.tr(args: [e.toString()]));
     }
   }
 
@@ -650,7 +663,8 @@ class _EditProductDialogState extends State<EditProductDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('${widget.product.name} - Tahrirlash'),
+      title: Text('edit_product_dialog.title'
+          .tr(namedArgs: {'name': widget.product.name})),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         height: MediaQuery.of(context).size.height * 0.6,
@@ -660,25 +674,25 @@ class _EditProductDialogState extends State<EditProductDialog> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Mahsulot nomi *',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'edit_product_dialog.product_name'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: typeController,
-                decoration: const InputDecoration(
-                  labelText: 'Turi *',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'edit_product_dialog.type'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Filiallar *:',
-                  style: TextStyle(
+                  'edit_product_dialog.filials_required'.tr(),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -687,13 +701,13 @@ class _EditProductDialogState extends State<EditProductDialog> {
               const SizedBox(height: 8),
               // FILIALLAR LOADING SECTION
               if (isLoadingFilials)
-                const Padding(
-                  padding: EdgeInsets.all(20.0),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 8),
-                      Text('Filiallar yuklanmoqda...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text('edit_product_dialog.filials_loading'.tr()),
                     ],
                   ),
                 )
@@ -702,7 +716,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     children: [
-                      Icon(Icons.error, color: Colors.red, size: 48),
+                      const Icon(Icons.error, color: Colors.red, size: 48),
                       const SizedBox(height: 8),
                       Text(
                         errorMessage!,
@@ -713,21 +727,22 @@ class _EditProductDialogState extends State<EditProductDialog> {
                       ElevatedButton.icon(
                         onPressed: _loadFilials,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Qayta urinish'),
+                        label: Text('common.retry'.tr()),
                       ),
                     ],
                   ),
                 )
               else if (availableFilials.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(20.0),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      Icon(Icons.location_off, color: Colors.grey, size: 48),
-                      SizedBox(height: 8),
+                      const Icon(Icons.location_off,
+                          color: Colors.grey, size: 48),
+                      const SizedBox(height: 8),
                       Text(
-                        'Hech qanday filial topilmadi',
-                        style: TextStyle(color: Colors.grey),
+                        'edit_product_dialog.no_filials_found'.tr(),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
@@ -748,7 +763,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                         subtitle: Text(
-                          filial.location,
+                          filial.location ?? "",
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -793,7 +808,9 @@ class _EditProductDialogState extends State<EditProductDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Tanlangan filiallar: ${selectedFilials.length}',
+                    'edit_product_dialog.selected_filials'.tr(namedArgs: {
+                      'count': selectedFilials.length.toString()
+                    }),
                     style: const TextStyle(
                       color: Colors.blue,
                       fontWeight: FontWeight.w500,
@@ -808,15 +825,16 @@ class _EditProductDialogState extends State<EditProductDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Bekor qilish'),
+          child: Text('common.cancel'.tr()),
         ),
         ElevatedButton(
           onPressed: () {
             // VALIDATION
             if (nameController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mahsulot nomini kiriting'),
+                SnackBar(
+                  content:
+                      Text('edit_product_dialog.validation.name_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -824,8 +842,9 @@ class _EditProductDialogState extends State<EditProductDialog> {
             }
             if (typeController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mahsulot turini kiriting'),
+                SnackBar(
+                  content:
+                      Text('edit_product_dialog.validation.type_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -833,8 +852,9 @@ class _EditProductDialogState extends State<EditProductDialog> {
             }
             if (selectedFilials.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Kamida bitta filial tanlang'),
+                SnackBar(
+                  content: Text(
+                      'edit_product_dialog.validation.filials_required'.tr()),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -851,7 +871,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
           ),
-          child: const Text('Saqlash'),
+          child: Text('common.save'.tr()),
         ),
       ],
     );

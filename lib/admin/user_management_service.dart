@@ -105,6 +105,7 @@ class UserManagementService {
   // Update user - PUT /api/users/{id}
   Future<User> updateUser(int id, UpdateUserRequest request) async {
     try {
+      print(request.toJson());
       final response = await dio.put(
         '${AppUrls.users}/$id',
         data: request.toJson(),
@@ -265,68 +266,6 @@ class UserManagementService {
       return await updateUser(userId, updateRequest);
     } catch (e) {
       throw Exception('toggle_admin_error'.tr() + ': $e');
-    }
-  }
-}
-
-// services/filial_service.dart
-class FilialService {
-  final Dio dio = sl<Dio>();
-
-  Future<List<Filial>> getAllFilials() async {
-    try {
-      final response = await dio.get(AppUrls.filials);
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          final List<dynamic> data = responseData['data'] ?? [];
-          return data.map((e) => Filial.fromJson(e)).toList();
-        } else {
-          throw Exception(
-              responseData['message'] ?? 'filials_fetch_error'.tr());
-        }
-      } else {
-        throw Exception('server_error'.tr() + ': ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final errorMessage = e.response!.data['message'] ??
-            'server_error'.tr() + ': ${e.response!.statusCode}';
-        throw Exception(errorMessage);
-      } else {
-        throw Exception('network_error'.tr() + ': ${e.message}');
-      }
-    } catch (e) {
-      print('Xatolik getAllFilials: $e');
-      throw Exception('unexpected_error_filials'.tr() + ': $e');
-    }
-  }
-
-  Future<Filial?> getFilialById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.filials}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          return Filial.fromJson(responseData['data']);
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('filial_fetch_error'.tr() + ': ${e.message}');
-    } catch (e) {
-      print('Xatolik getFilialById: $e');
-      throw Exception('unexpected_error_filial'.tr() + ': $e');
     }
   }
 }

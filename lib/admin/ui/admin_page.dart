@@ -6,7 +6,7 @@ import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
 import 'package:uz_ai_dev/admin/ui/products_page.dart';
 import 'package:uz_ai_dev/admin/user_management_screen.dart';
 import 'package:uz_ai_dev/main.dart';
-import 'package:uz_ai_dev/ui/screens/login_page.dart'; // ProductsPage import qiling
+import 'package:uz_ai_dev/ui/screens/login_page.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -49,13 +49,13 @@ class _AdminPageState extends State<AdminPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Yangi kategoriya qo\'shish'),
+        title: Text('add_new_category'.tr()),
         content: TextField(
           controller: controllerAdd,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Kategoriya nomini kiriting',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: 'category_name_hint'.tr(),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -63,7 +63,7 @@ class _AdminPageState extends State<AdminPage> {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('Bekor qilish'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -71,7 +71,7 @@ class _AdminPageState extends State<AdminPage> {
                 Navigator.of(context).pop(controllerAdd.text.trim());
               }
             },
-            child: const Text('Qo\'shish'),
+            child: Text('add'.tr()),
           ),
         ],
       ),
@@ -93,15 +93,16 @@ class _AdminPageState extends State<AdminPage> {
         if (createdCategory.id != 0) {
           controllerAdd.clear();
           await _update();
-          _showSuccessSnackBar('Kategoriya muvaffaqiyatli qo\'shildi!');
+          _showSuccessSnackBar('category_added_success'.tr());
         } else {
-          _showErrorSnackBar('Kategoriya qo\'shishda xatolik yuz berdi');
+          _showErrorSnackBar('category_add_error'.tr());
         }
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Kategoriya qo\'shishda xatolik: $e');
+        _showErrorSnackBar('category_add_error_with_message'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -112,13 +113,13 @@ class _AdminPageState extends State<AdminPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kategoriya nomini tahrirlash'),
+        title: Text('edit_category_name'.tr()),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Yangi nomni kiriting',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: 'enter_new_name'.tr(),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -126,7 +127,7 @@ class _AdminPageState extends State<AdminPage> {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('Bekor qilish'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -134,7 +135,7 @@ class _AdminPageState extends State<AdminPage> {
                 Navigator.of(context).pop(controller.text.trim());
               }
             },
-            child: const Text('Saqlash'),
+            child: Text('save'.tr()),
           ),
         ],
       ),
@@ -157,18 +158,19 @@ class _AdminPageState extends State<AdminPage> {
 
         if (updated.id != 0) {
           await _update();
-          _showSuccessSnackBar('Kategoriya muvaffaqiyatli yangilandi!');
+          _showSuccessSnackBar('category_updated_success'.tr());
         } else {
           setState(() {
             isLoading = false;
           });
-          _showErrorSnackBar('Kategoriya yangilashda xatolik yuz berdi');
+          _showErrorSnackBar('category_update_error'.tr());
         }
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Kategoriya yangilashda xatolik: $e');
+        _showErrorSnackBar('category_update_error_with_message'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -177,16 +179,17 @@ class _AdminPageState extends State<AdminPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kategoriyani o\'chirish'),
+        title: Text('delete_category'.tr()),
         content: Text(
-          'Haqiqatan ham "${categories[index].name}" kategoriyasini o\'chirmoqchimisiz?',
+          'delete_category_confirmation'
+              .tr(namedArgs: {'categoryName': categories[index].name}),
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(false);
             },
-            child: const Text('Bekor qilish'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -195,7 +198,7 @@ class _AdminPageState extends State<AdminPage> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('O\'chirish'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -213,18 +216,19 @@ class _AdminPageState extends State<AdminPage> {
         if (deletedCategory.id == categories[index].id ||
             deletedCategory.id == 0) {
           await _update();
-          _showSuccessSnackBar('Kategoriya muvaffaqiyatli o\'chirildi!');
+          _showSuccessSnackBar('category_deleted_success'.tr());
         } else {
           setState(() {
             isLoading = false;
           });
-          _showErrorSnackBar('Kategoriya o\'chirishda xatolik yuz berdi');
+          _showErrorSnackBar('category_delete_error'.tr());
         }
       } catch (e) {
         setState(() {
           isLoading = false;
         });
-        _showErrorSnackBar('Kategoriya o\'chirishda xatolik: $e');
+        _showErrorSnackBar('category_delete_error_with_message'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -284,44 +288,30 @@ class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: SafeArea(
-        child: Drawer(
-          child: ListView(
-            padding: EdgeInsets.only(top: 20),
-            children: [
-              ListTile(
-                title: Text('hello'.tr()),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const UserManagementScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                title: const Text('Chiqish'),
-                onTap: _logout,
-              ),
-            ],
-          ),
-        ),
-      ),
       appBar: AppBar(
-        title: const Text('Admin Panel'),
+        leading: IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UserManagementScreen(),
+                ),
+              );
+            }),
+        title: Text('admin_panel'.tr()),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _update,
-            tooltip: 'Yangilash',
+            tooltip: 'refresh'.tr(),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
-            tooltip: 'Chiqish',
+            tooltip: 'logout'.tr(),
           ),
           LanguageDropdown(),
         ],
@@ -339,9 +329,9 @@ class _AdminPageState extends State<AdminPage> {
                         color: Colors.grey,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Hech qanday kategoriya topilmadi',
-                        style: TextStyle(
+                      Text(
+                        'no_categories_found'.tr(),
+                        style: const TextStyle(
                           fontSize: 18,
                           color: Colors.grey,
                         ),
@@ -350,7 +340,7 @@ class _AdminPageState extends State<AdminPage> {
                       ElevatedButton.icon(
                         onPressed: _addCategory,
                         icon: const Icon(Icons.add),
-                        label: const Text('Birinchi kategoriya qo\'shing'),
+                        label: Text('add_first_category'.tr()),
                       ),
                     ],
                   ),
@@ -382,7 +372,7 @@ class _AdminPageState extends State<AdminPage> {
                                 color: Colors.red,
                               ),
                               onPressed: () => _deleteCategory(index),
-                              tooltip: 'O\'chirish',
+                              tooltip: 'delete'.tr(),
                             ),
                           ),
                           // Edit button
@@ -395,7 +385,7 @@ class _AdminPageState extends State<AdminPage> {
                                 color: Colors.blue,
                               ),
                               onPressed: () => _editCategory(index),
-                              tooltip: 'Tahrirlash',
+                              tooltip: 'edit'.tr(),
                             ),
                           ),
                           // Category name
@@ -415,15 +405,6 @@ class _AdminPageState extends State<AdminPage> {
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Mahsulotlarni ko\'rish uchun bosing',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                    textAlign: TextAlign.center,
                                   ),
                                 ],
                               ),
@@ -470,7 +451,7 @@ class _AdminPageState extends State<AdminPage> {
         onPressed: _addCategory,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        tooltip: 'Yangi kategoriya qo\'shish',
+        tooltip: 'add_new_category_tooltip'.tr(),
         child: const Icon(Icons.add),
       ),
     );

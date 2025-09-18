@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/models/user_model.dart';
 
@@ -369,102 +370,4 @@ class UserManagementService {
       throw Exception('Admin holatini o\'zgartirishda xatolik: $e');
     }
   }
-}
-
-// services/filial_service.dart
-class FilialService {
-  final Dio dio = sl<Dio>();
-
-  Future<List<Filial>> getAllFilials() async {
-    try {
-      print('Loading filials...'); // Debug log
-
-      final response = await dio.get(AppUrls.filials);
-
-      print('Filials response status: ${response.statusCode}'); // Debug log
-      print('Filials response data: ${response.data}'); // Debug log
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          final List<dynamic> data = responseData['data'] ?? [];
-          final filials = data.map((e) => Filial.fromJson(e)).toList();
-          print('Loaded ${filials.length} filials'); // Debug log
-          return filials;
-        } else {
-          final errorMessage =
-              responseData['message'] ?? 'Filiallarni olishda xatolik';
-          print('Filials error message: $errorMessage');
-          throw Exception(errorMessage);
-        }
-      } else {
-        final responseData = response.data;
-        final errorMessage =
-            responseData['message'] ?? 'Server xatosi: ${response.statusCode}';
-        print('Filials status error: $errorMessage');
-        throw Exception(errorMessage);
-      }
-    } on DioException catch (e) {
-      print('DioException in getAllFilials: ${e.toString()}'); // Debug log
-
-      if (e.response != null) {
-        print('Filials error response data: ${e.response!.data}'); // Debug log
-
-        dynamic responseData = e.response!.data;
-        String errorMessage;
-
-        if (responseData is Map<String, dynamic>) {
-          errorMessage = responseData['message'] ??
-              'Server xatosi: ${e.response!.statusCode}';
-        } else {
-          errorMessage = 'Server xatosi: ${e.response!.statusCode}';
-        }
-
-        print('Parsed filials error message: $errorMessage');
-        throw Exception(errorMessage);
-      } else {
-        print('Filials network error: ${e.message}');
-        throw Exception('Tarmoq xatosi: ${e.message}');
-      }
-    } catch (e) {
-      print('General error in getAllFilials: $e');
-      throw Exception('Filiallarni olishda kutilmagan xatolik: $e');
-    }
-  }
-
-  Future<Filial?> getFilialById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.filials}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          return Filial.fromJson(responseData['data']);
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('Filial olishda xatolik: ${e.message}');
-    } catch (e) {
-      print('Xatolik getFilialById: $e');
-      throw Exception('Filial olishda kutilmagan xatolik: $e');
-    }
-  }
-}
-
-// ================ URLS CONSTANTS ================
-// core/constants/urls.dart
-class AppUrls {
-  static const String baseUrl = 'YOUR_BASE_URL';
-  static const String users = '/api/users';
-  static const String register = '/api/register'; // Yangi endpoint
-  static const String filials = '/api/filials';
 }

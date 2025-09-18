@@ -16,7 +16,7 @@ Future<void> main() async {
         Locale('ru'),
       ],
       path: 'assets/translations', // JSON tarjima fayllar yo‘li
-      fallbackLocale: const Locale('uz'),
+      fallbackLocale: const Locale('ru'),
       child: const MyApp(),
     ),
   );

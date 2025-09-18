@@ -6,6 +6,7 @@ class User {
   final int? filialId;
   final Filial? filial;
   final String? password;
+  final List<int>? categoryIds;
 
   User({
     required this.id,
@@ -15,6 +16,7 @@ class User {
     this.filialId,
     this.filial,
     this.password,
+    this.categoryIds,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -104,14 +106,15 @@ class UpdateUserRequest {
   final bool? isAdmin;
   final int? filialId;
   final String? password;
+  final List<int>? categoryIds;
 
-  UpdateUserRequest({
-    this.name,
-    this.phone,
-    this.isAdmin,
-    this.filialId,
-    this.password,
-  });
+  UpdateUserRequest(
+      {this.name,
+      this.phone,
+      this.isAdmin,
+      this.filialId,
+      this.password,
+      this.categoryIds});
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = {};
@@ -120,6 +123,7 @@ class UpdateUserRequest {
     if (isAdmin != null) data['is_admin'] = isAdmin;
     if (filialId != null) data['filial_id'] = filialId;
     if (password != null && password!.isNotEmpty) data['password'] = password;
+    if (categoryIds != null) data['category_list'] = categoryIds;
     return data;
   }
 }
@@ -130,14 +134,15 @@ class CreateUserRequest {
   final String password;
   final bool isAdmin;
   final int? filialId;
+  final List<int> categoryIds;
 
-  CreateUserRequest({
-    required this.name,
-    required this.phone,
-    required this.password,
-    this.isAdmin = false,
-    this.filialId,
-  });
+  CreateUserRequest(
+      {required this.name,
+      required this.phone,
+      required this.password,
+      this.isAdmin = false,
+      this.filialId,
+      required this.categoryIds});
 
   Map<String, dynamic> toJson() {
     return {
@@ -146,6 +151,7 @@ class CreateUserRequest {
       'password': password,
       'is_admin': isAdmin,
       if (filialId != null) 'filial_id': filialId,
+      'category_list': categoryIds
     };
   }
 }
