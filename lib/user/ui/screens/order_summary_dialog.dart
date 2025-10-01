@@ -2,7 +2,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../widgets/error_retry_dialog.dart';
-import '../screens/login_page.dart';
+import 'login_page.dart';
 
 class OrderSummaryDialog extends StatefulWidget {
   final List<Map<String, dynamic>> selectedProducts;

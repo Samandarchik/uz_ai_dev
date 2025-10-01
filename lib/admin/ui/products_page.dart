@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/admin/model/product.dart';
-import 'package:uz_ai_dev/models/user_model.dart';
+import 'package:uz_ai_dev/user/models/user_model.dart';
 
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
@@ -22,7 +22,7 @@ class ProductsPage extends StatefulWidget {
 
 class _ProductsPageState extends State<ProductsPage> {
   final apiService = ApiProductService();
-  List<ProductModel> products = [];
+  List<ProductModelAdmin> products = [];
   bool isLoading = true;
 
   @override
@@ -64,7 +64,7 @@ class _ProductsPageState extends State<ProductsPage> {
       });
 
       try {
-        final newProduct = ProductModel(
+        final newProduct = ProductModelAdmin(
           id: 0,
           name: result['name'],
           categoryId: widget.categoryId,
@@ -604,7 +604,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
 // EDIT PRODUCT DIALOG - 100% REAL BACKEND
 class EditProductDialog extends StatefulWidget {
-  final ProductModel product;
+  final ProductModelAdmin product;
 
   const EditProductDialog({super.key, required this.product});
 

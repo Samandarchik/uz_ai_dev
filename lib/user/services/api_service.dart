@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  static const String baseUrl = 'https://api.uz-dev-ai.uz';
+  static const String baseUrl = 'http://localhost:1010';
 
   static Future<Map<String, String>> _getHeaders({String? token}) async {
     Map<String, String> headers = {

@@ -1,0 +1,179 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
+import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
+import 'package:uz_ai_dev/admin/ui/dasdasd.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
+
+class AdminHomeUi extends StatefulWidget {
+  const AdminHomeUi({super.key});
+
+  @override
+  State<AdminHomeUi> createState() => _AdminHomeUiState();
+}
+
+class _AdminHomeUiState extends State<AdminHomeUi> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCategories();
+    });
+  }
+
+  Future<void> _loadCategories() async {
+    final categoryProvider = context.read<CategoryProviderAdmin>();
+    await categoryProvider.getCategories();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Admin Panel'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_box),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddProductPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadCategories,
+          ),
+        ],
+      ),
+      body: Consumer<CategoryProviderAdmin>(
+        builder: (context, categoryProvider, child) {
+          if (categoryProvider.isLoading &&
+              categoryProvider.categories.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (categoryProvider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Xatolik: ${categoryProvider.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadCategories,
+                    child: const Text('Qayta urinish'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (categoryProvider.categories.isEmpty) {
+            return const Center(child: Text('Kategoriyalar topilmadi'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: categoryProvider.categories.length,
+            itemBuilder: (context, index) {
+              final category = categoryProvider.categories[index];
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: ClipOval(
+                  child: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: CachedNetworkImage(
+                            imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                            fit: BoxFit.contain,
+                            errorWidget: (context, url, error) => const Icon(
+                                Icons.error,
+                                size: 40,
+                                color: Colors.white),
+                          ),
+                        ),
+                      );
+                    },
+                    child: category.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.image_not_supported),
+                          )
+                        : Container(
+                            width: 55,
+                            height: 55,
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                  ),
+                ),
+                title: Text(
+                  category.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Text(
+                  'ID: ${category.id}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminProductUi(
+                        categoryId: category.id,
+                        categoryName: category.name,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddCategoryDialog(context),
+        backgroundColor: Colors.blue,
+        child: const Icon(
+          Icons.category,
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+
+  void _showAddCategoryDialog(BuildContext context) {
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder: (context) => const CategoryManagementPage(),
+    //     ),
+    //   ).then((_) => _loadCategories());
+  }
+}

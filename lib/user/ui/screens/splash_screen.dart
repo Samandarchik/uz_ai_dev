@@ -1,9 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uz_ai_dev/admin/ui/admin_page.dart';
+import 'package:uz_ai_dev/admin/ui/user_ui.dart';
+import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/core/data/local/token_storage.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/user/provider/category_ui.dart';
 import 'login_page.dart';
-import 'home_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,6 +16,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  TokenStorage tokenStorage = sl<TokenStorage>();
   @override
   void initState() {
     super.initState();
@@ -21,24 +25,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
   checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = await tokenStorage.getToken();
     bool? isAdmin = prefs.getBool('is_admin');
 
     await Future.delayed(Duration(seconds: 1));
-    if (isAdmin == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
-    } else if (isAdmin == false) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+
+    if (token.isEmpty) {
+      // token yo‘q -> login page
+      context.pushReplacement(LoginPage());
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
+      // token bor -> endi adminligini tekshiramiz
+      if (isAdmin == true) {
+        context.pushReplacement(UserManagementScreen());
+      } else {
+        context.pushReplacement(UserHomeUi());
+      }
     }
   }
 
@@ -70,14 +71,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             SizedBox(height: 30),
-            Text(
-              'User Panel',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade800,
-              ),
-            ),
             SizedBox(height: 10),
             Text(
               'loading'.tr(),

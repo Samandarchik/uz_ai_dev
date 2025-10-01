@@ -129,7 +129,6 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
-          LanguageDropdown(),
           PopupMenuButton(
             icon: Icon(Icons.more_vert),
             itemBuilder: (context) => [
@@ -305,7 +304,7 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                             SizedBox(height: 6),
                                             Text(
-                                              '${products[category]!.length}${"product".tr()}',
+                                              '${products[category]!.length}-${"product".tr()}',
                                               style: TextStyle(
                                                 color: Colors.grey[600],
                                                 fontSize: 12,

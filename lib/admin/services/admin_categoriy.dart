@@ -1,6 +1,3 @@
-// ================ ADMIN SERVICES ================
-// services/api_admin_service.dart
-
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
@@ -11,21 +8,21 @@ class ApiAdminService {
   final Dio dio = sl<Dio>();
 
   // Get all categories
-  Future<List<CategoryProduct>> getCategories() async {
+  Future<List<CategoryProductAdmin>> getCategories() async {
     try {
       final response = await dio.get(AppUrls.category);
 
       if (response.statusCode == 200) {
         // 'data' maydonini olish
         final List<dynamic> data = response.data['data'] ?? response.data;
-        return data.map((e) => CategoryProduct.fromJson(e)).toList();
+        return data.map((e) => CategoryProductAdmin.fromJson(e)).toList();
       } else {
         throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception(
-            'server_error'.tr() + ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        throw Exception('server_error'.tr() +
+            ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
       } else {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
@@ -36,7 +33,8 @@ class ApiAdminService {
   }
 
   // Create new category
-  Future<CategoryProduct> createCategory(CategoryProduct category) async {
+  Future<CategoryProductAdmin> createCategory(
+      CategoryProductAdmin category) async {
     try {
       final response = await dio.post(
         AppUrls.category,
@@ -46,7 +44,7 @@ class ApiAdminService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         // Server 'data' maydonida qaytarishi mumkin yoki to'g'ridan-to'g'ri obyekt
         final responseData = response.data['data'] ?? response.data;
-        return CategoryProduct.fromJson(responseData);
+        return CategoryProductAdmin.fromJson(responseData);
       } else {
         throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
@@ -66,7 +64,8 @@ class ApiAdminService {
   }
 
   // Update existing category
-  Future<CategoryProduct> updateCategory(CategoryProduct category) async {
+  Future<CategoryProductAdmin> updateCategory(
+      CategoryProductAdmin category) async {
     try {
       final response = await dio.put(
         '${AppUrls.category}/${category.id}',
@@ -75,7 +74,7 @@ class ApiAdminService {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
-        return CategoryProduct.fromJson(responseData);
+        return CategoryProductAdmin.fromJson(responseData);
       } else {
         throw Exception('server_error'.tr() + ': ${response.statusCode}');
       }
@@ -98,7 +97,8 @@ class ApiAdminService {
   }
 
   // Delete category
-  Future<CategoryProduct> deleteCategory(CategoryProduct category) async {
+  Future<CategoryProductAdmin> deleteCategory(
+      CategoryProductAdmin category) async {
     try {
       final response = await dio.delete(
         '${AppUrls.category}/${category.id}',
@@ -111,7 +111,7 @@ class ApiAdminService {
           return category;
         } else {
           final responseData = response.data['data'] ?? response.data;
-          return CategoryProduct.fromJson(responseData);
+          return CategoryProductAdmin.fromJson(responseData);
         }
       } else {
         throw Exception('server_error'.tr() + ': ${response.statusCode}');
@@ -137,13 +137,13 @@ class ApiAdminService {
   }
 
   // Get single category by ID (optional method)
-  Future<CategoryProduct?> getCategoryById(int id) async {
+  Future<CategoryProductAdmin?> getCategoryById(int id) async {
     try {
       final response = await dio.get('${AppUrls.category}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
-        return CategoryProduct.fromJson(responseData);
+        return CategoryProductAdmin.fromJson(responseData);
       } else {
         return null;
       }

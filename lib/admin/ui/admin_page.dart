@@ -2,11 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
-import 'package:uz_ai_dev/admin/services/api_admin_service.dart';
+import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/products_page.dart';
 import 'package:uz_ai_dev/admin/user_management_screen.dart';
 import 'package:uz_ai_dev/main.dart';
-import 'package:uz_ai_dev/ui/screens/login_page.dart';
+import 'package:uz_ai_dev/user/ui/screens/login_page.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -17,7 +17,7 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   final apiService = ApiAdminService();
-  List<CategoryProduct> categories = [];
+  List<CategoryProductAdmin> categories = [];
   final controllerAdd = TextEditingController();
   bool isLoading = true;
 
@@ -82,28 +82,26 @@ class _AdminPageState extends State<AdminPage> {
         isLoading = true;
       });
 
-      try {
-        final newCategory = CategoryProduct(
-          id: 0, // Server tomonidan generate qilinadi
-          name: result,
-        );
+      // try {
+      //   final newCategory =
+      //       CategoryProductAdmin(id: 4, name: "name", printerId: 4);
 
-        final createdCategory = await apiService.createCategory(newCategory);
+      //   final createdCategory = await apiService.createCategory(newCategory);
 
-        if (createdCategory.id != 0) {
-          controllerAdd.clear();
-          await _update();
-          _showSuccessSnackBar('category_added_success'.tr());
-        } else {
-          _showErrorSnackBar('category_add_error'.tr());
-        }
-      } catch (e) {
-        setState(() {
-          isLoading = false;
-        });
-        _showErrorSnackBar('category_add_error_with_message'
-            .tr(namedArgs: {'error': e.toString()}));
-      }
+      //   if (createdCategory.id != 0) {
+      //     controllerAdd.clear();
+      //     await _update();
+      //     _showSuccessSnackBar('category_added_success'.tr());
+      //   } else {
+      //     _showErrorSnackBar('category_add_error'.tr());
+      //   }
+      // } catch (e) {
+      //   setState(() {
+      //     isLoading = false;
+      //   });
+      //   _showErrorSnackBar('category_add_error_with_message'
+      //       .tr(namedArgs: {'error': e.toString()}));
+      // }
     }
   }
 
@@ -149,9 +147,11 @@ class _AdminPageState extends State<AdminPage> {
       });
 
       try {
-        final updatedCategory = CategoryProduct(
+        final updatedCategory = CategoryProductAdmin(
           id: categories[index].id,
           name: result,
+          imageUrl: categories[index].imageUrl,
+          printerId: categories[index].printerId,
         );
 
         final updated = await apiService.updateCategory(updatedCategory);
@@ -234,7 +234,7 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   // Kategoriyaga bosganda produktslar sahifasiga o'tish
-  void _navigateToProducts(CategoryProduct category) {
+  void _navigateToProducts(CategoryProductAdmin category) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -278,7 +278,7 @@ class _AdminPageState extends State<AdminPage> {
 
   Future<void> _logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove("token");
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
@@ -292,12 +292,12 @@ class _AdminPageState extends State<AdminPage> {
         leading: IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UserManagementScreen(),
-                ),
-              );
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(
+              //     builder: (context) => const UserManagementScreen(),
+              //   ),
+              // );
             }),
         title: Text('admin_panel'.tr()),
         backgroundColor: Colors.blue,
@@ -313,7 +313,6 @@ class _AdminPageState extends State<AdminPage> {
             onPressed: _logout,
             tooltip: 'logout'.tr(),
           ),
-          LanguageDropdown(),
         ],
       ),
       body: isLoading
@@ -347,11 +346,11 @@ class _AdminPageState extends State<AdminPage> {
                 )
               : GridView.builder(
                   padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 200, // Har bir itemning maksimal eni
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
-                    childAspectRatio: 1.2,
+                    childAspectRatio: 1, // nisbatni o'zingiz belgilaysiz
                   ),
                   itemCount: categories.length,
                   itemBuilder: (context, index) => Card(

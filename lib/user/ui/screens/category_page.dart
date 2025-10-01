@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uz_ai_dev/ui/screens/exit_confirm_dialog.dart';
-import 'package:uz_ai_dev/ui/screens/order_summary_dialog.dart';
+import 'package:uz_ai_dev/user/ui/screens/exit_confirm_dialog.dart';
+import 'package:uz_ai_dev/user/ui/screens/order_summary_dialog.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
 
@@ -59,7 +59,8 @@ class CategoryPage extends StatefulWidget {
   final String category;
   final List<dynamic> products;
 
-  const CategoryPage({super.key, required this.category, required this.products});
+  const CategoryPage(
+      {super.key, required this.category, required this.products});
 
   @override
   _CategoryPageState createState() => _CategoryPageState();

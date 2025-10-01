@@ -1,70 +1,41 @@
-class FilialNames {
+class AdminFilialModel {
   final String name;
 
-  FilialNames({required this.name});
+  AdminFilialModel({required this.name});
 
-  factory FilialNames.fromJson(Map<String, dynamic> json) {
-    return FilialNames(name: json['name'] ?? '');
+  factory AdminFilialModel.fromJson(Map<String, dynamic> json) {
+    return AdminFilialModel(name: json['name'] ?? '');
   }
 }
 
-class CategoryProduct {
+class CategoryProductAdmin {
   final int id;
   final String name;
+  final String imageUrl;
+  final int printerId;
 
-  CategoryProduct({required this.id, required this.name});
+  CategoryProductAdmin(
+      {required this.id,
+      required this.name,
+    required  this.imageUrl,
+      required this.printerId});
   //  toJson
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
+      'image_url': imageUrl,
+      'printer': printerId,
     };
   }
 
-  static CategoryProduct fromJson(Map<String, dynamic> json) {
-    return CategoryProduct(
+  static CategoryProductAdmin fromJson(Map<String, dynamic> json) {
+    return CategoryProductAdmin(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
+      imageUrl: json['image_url'],
+      printerId: json['printer'],
     );
-  }
-}
-
-class SelectedProduct {
-  final int productId;
-  final String name;
-  int count;
-
-  SelectedProduct({
-    required this.productId,
-    required this.name,
-    required this.count,
-  });
-
-  factory SelectedProduct.fromJson(Map<String, dynamic> json) {
-    return SelectedProduct(
-      productId: json['product_id'] ?? 0,
-      name: json['name'] ?? '',
-      count: json['count'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'product_id': productId,
-      'name': name,
-      'count': count,
-    };
-  }
-}
-
-class OrderItem {
-  final int productId;
-  final int count;
-  final String? type;
-  OrderItem({required this.productId, required this.count, this.type});
-
-  Map<String, dynamic> toJson() {
-    return {'product_id': productId, 'count': count, 'type': type};
   }
 }

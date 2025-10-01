@@ -1,8 +1,15 @@
 // main.dart
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
+import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
+import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
+import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'ui/screens/splash_screen.dart';
+import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'user/ui/screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,14 +17,22 @@ Future<void> main() async {
   await setupInit();
 
   runApp(
-    EasyLocalization(
-      supportedLocales: const [
-        Locale('uz'),
-        Locale('ru'),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProviderAdmin()),
+        ChangeNotifierProvider(create: (_) => CategoryProviderAdmin()),
+        ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),
+        ChangeNotifierProvider(create: (_) => UserProviderAdmin()),
       ],
-      path: 'assets/translations', // JSON tarjima fayllar yo‘li
-      fallbackLocale: const Locale('ru'),
-      child: const MyApp(),
+      child: EasyLocalization(
+        supportedLocales: const [
+          Locale('ru'),
+        ],
+        path: 'assets/translations', // JSON tarjima fayllar yo‘li
+        fallbackLocale: const Locale('ru'),
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -30,73 +45,26 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'User Panel',
       theme: ThemeData(
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.white,
+        ),
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      home: const LanguageSelectorWrapper(),
+      home: AdminHomeUi(),
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-/// Bu widget SplashScreen va til tanlashni o‘rab turadi
-class LanguageSelectorWrapper extends StatelessWidget {
-  const LanguageSelectorWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          SplashScreen(),
-          Positioned(
-            top: 40,
-            right: 16,
-            child: LanguageDropdown(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Dropdown orqali til tanlash
-class LanguageDropdown extends StatelessWidget {
-  LanguageDropdown({super.key});
-
-  final List<Locale> locales = const [
-    Locale('uz'),
-    Locale('ru'),
-  ];
-
-  final Map<String, String> languageNames = const {
-    'uz': '🇺🇿 UZ',
-    'ru': '🇷🇺 RU',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButton<Locale>(
-      value: context.locale,
-      underline: const SizedBox(),
-      icon: const Icon(Icons.language, color: Colors.blue),
-      items: locales.map((locale) {
-        return DropdownMenuItem(
-          value: locale,
-          child: Text(
-            languageNames[locale.languageCode]!,
-            selectionColor: Colors.white,
-          ),
-        );
-      }).toList(),
-      onChanged: (newLocale) {
-        if (newLocale != null) {
-          context.setLocale(newLocale);
-        }
-      },
     );
   }
 }

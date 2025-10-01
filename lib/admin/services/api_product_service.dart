@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
@@ -8,14 +7,14 @@ class ApiProductService {
   final Dio dio = sl<Dio>();
 
   // Get all products
-  Future<List<ProductModel>> getAllProducts() async {
+  Future<List<ProductModelAdmin>> getAllProducts() async {
     try {
       final response =
           await dio.get(AppUrls.productAll); // product/all endpoint
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? response.data;
-        return data.map((e) => ProductModel.fromJson(e)).toList();
+        return data.map((e) => ProductModelAdmin.fromJson(e)).toList();
       } else {
         throw Exception('Server xatosi: ${response.statusCode}');
       }
@@ -33,14 +32,15 @@ class ApiProductService {
   }
 
   // Get products by category ID
-  Future<List<ProductModel>> getProductsByCategoryId(int categoryId) async {
+  Future<List<ProductModelAdmin>> getProductsByCategoryId(
+      int categoryId) async {
     try {
       final response = await dio.get(AppUrls.productAll);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? response.data;
-        final List<ProductModel> allProducts =
-            data.map((e) => ProductModel.fromJson(e)).toList();
+        final List<ProductModelAdmin> allProducts =
+            data.map((e) => ProductModelAdmin.fromJson(e)).toList();
 
         // Filter products by category_id
         return allProducts
@@ -63,7 +63,7 @@ class ApiProductService {
   }
 
   // Create new product
-  Future<ProductModel> createProduct(ProductModel product) async {
+  Future<ProductModelAdmin> createProduct(ProductModelAdmin product) async {
     try {
       final response = await dio.post(
         AppUrls.product, // product endpoint
@@ -72,7 +72,7 @@ class ApiProductService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
-        return ProductModel.fromJson(responseData);
+        return ProductModelAdmin.fromJson(responseData);
       } else {
         throw Exception('Server xatosi: ${response.statusCode}');
       }
@@ -92,7 +92,7 @@ class ApiProductService {
   }
 
   // Update existing product
-  Future<ProductModel> updateProduct(ProductModel product) async {
+  Future<ProductModelAdmin> updateProduct(ProductModelAdmin product) async {
     try {
       final response = await dio.put(
         '${AppUrls.product}/${product.id}',
@@ -101,7 +101,7 @@ class ApiProductService {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
-        return ProductModel.fromJson(responseData);
+        return ProductModelAdmin.fromJson(responseData);
       } else {
         throw Exception('Server xatosi: ${response.statusCode}');
       }
@@ -124,7 +124,7 @@ class ApiProductService {
   }
 
   // Delete product
-  Future<ProductModel> deleteProduct(ProductModel product) async {
+  Future<ProductModelAdmin> deleteProduct(ProductModelAdmin product) async {
     try {
       final response = await dio.delete(
         '${AppUrls.product}/${product.id}',
@@ -135,7 +135,7 @@ class ApiProductService {
           return product;
         } else {
           final responseData = response.data['data'] ?? response.data;
-          return ProductModel.fromJson(responseData);
+          return ProductModelAdmin.fromJson(responseData);
         }
       } else {
         throw Exception('Server xatosi: ${response.statusCode}');
@@ -161,13 +161,13 @@ class ApiProductService {
   }
 
   // Get single product by ID
-  Future<ProductModel?> getProductById(int id) async {
+  Future<ProductModelAdmin?> getProductById(int id) async {
     try {
       final response = await dio.get('${AppUrls.product}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
-        return ProductModel.fromJson(responseData);
+        return ProductModelAdmin.fromJson(responseData);
       } else {
         return null;
       }

@@ -2,9 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_page.dart';
+import 'package:uz_ai_dev/user/provider/category_ui.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
-import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +19,63 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  List<Map<String, String>> _savedAccounts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedAccounts();
+  }
+
+  Future<void> _loadSavedAccounts() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? accounts = prefs.getStringList('saved_accounts');
+    if (accounts != null) {
+      setState(() {
+        _savedAccounts = accounts
+            .map((account) => Map<String, String>.from(jsonDecode(account)))
+            .toList();
+      });
+    }
+  }
+
+  Future<void> _saveAccount(String phone, String password) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Agar akkaunt allaqachon mavjud bo'lsa, uni o'chirish
+    _savedAccounts.removeWhere((account) => account['phone'] == phone);
+
+    // Yangi akkauntni boshiga qo'shish
+    _savedAccounts.insert(0, {'phone': phone, 'password': password});
+
+    // Faqat oxirgi 5 ta akkauntni saqlash
+    if (_savedAccounts.length > 7) {
+      _savedAccounts = _savedAccounts.sublist(0, 7);
+    }
+
+    List<String> accountsToSave =
+        _savedAccounts.map((account) => jsonEncode(account)).toList();
+
+    await prefs.setStringList('saved_accounts', accountsToSave);
+  }
+
+  Future<void> _deleteAccount(int index) async {
+    setState(() {
+      _savedAccounts.removeAt(index);
+    });
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> accountsToSave =
+        _savedAccounts.map((account) => jsonEncode(account)).toList();
+    await prefs.setStringList('saved_accounts', accountsToSave);
+  }
+
+  void _selectAccount(Map<String, String> account) {
+    setState(() {
+      _phoneController.text = account['phone']!;
+      _passwordController.text = account['password']!;
+    });
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -37,6 +94,9 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     if (result['success'] == true) {
+      // Akkauntni saqlash
+      await _saveAccount(_phoneController.text, _passwordController.text);
+
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(result['data']['user']));
@@ -46,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(
             builder: (context) => result['data']['user']["is_admin"] == false
-                ? HomePage()
+                ? UserHomeUi()
                 : AdminPage()),
       );
     } else {
@@ -217,6 +277,54 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                         ),
                       ),
+                      SizedBox(height: 20),
+                      // Saqlangan akkauntlar ro'yxati
+                      if (_savedAccounts.isNotEmpty) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Avval kirgan akkauntlar:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: _savedAccounts.length,
+                            separatorBuilder: (context, index) =>
+                                Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final account = _savedAccounts[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.shade100,
+                                  child: Icon(Icons.person, color: Colors.blue),
+                                ),
+                                title: Text(
+                                  account['phone']!,
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                trailing: IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteAccount(index),
+                                ),
+                                onTap: () => _selectAccount(account),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                      ],
                     ],
                   ),
                 ),
@@ -226,5 +334,12 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
