@@ -52,6 +52,7 @@ class CategoryModel {
     );
   }
 }
+
 // Order Item Model
 class OrderItem {
   final int productId;
@@ -202,7 +203,7 @@ class ProductProvider extends ChangeNotifier {
       // Muvaffaqiyatli yuborilgandan keyin tozalash
       clearSelection();
     } catch (e) {
-      throw Exception('Buyurtma yuborishda xatolik: $e');
+      throw Exception('Buyurtma yuborishda Ошибка: $e');
     }
   }
 }
@@ -255,7 +256,7 @@ class ProductService {
 
             productsByCategory[category] = productList;
 
-            // Har bir mahsulot uchun print raqamini saqlash
+            // Har bir mahsulot uchun print raqamini Сохранять
             for (var product in productList) {
               productPrintMap[product.id] = printNumber;
             }

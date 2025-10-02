@@ -6,10 +6,10 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/provider/order_ui.dart';
 import 'package:uz_ai_dev/user/provider/product_ui.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
-import 'package:uz_ai_dev/user/ui/screens/login_page.dart';
+import 'package:uz_ai_dev/user/ui/order_ui.dart';
+import 'package:uz_ai_dev/user/ui/login_page.dart';
 
 // Kategoriyalar ekrani
 class UserHomeUi extends StatefulWidget {
@@ -50,11 +50,11 @@ class _UserHomeUiState extends State<UserHomeUi> {
       body: Consumer<ProductProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator.adaptive());
           }
 
           if (provider.errorMessage != null) {
-            return Center(child: Text('Xatolik: ${provider.errorMessage}'));
+            return Center(child: Text('Ошибка: ${provider.errorMessage}'));
           }
 
           return LayoutBuilder(
@@ -144,37 +144,6 @@ class _UserHomeUiState extends State<UserHomeUi> {
             return FloatingActionButton.extended(
               onPressed: () async {
                 context.push(CartPage());
-                // try {
-                //   // Loading dialog
-                //   showDialog(
-                //     context: context,
-                //     barrierDismissible: false,
-                //     builder: (context) => Center(
-                //       child: CircularProgressIndicator(),
-                //     ),
-                //   );
-
-                //   // await provider.submitOrder();
-
-                //   Navigator.pop(context); // Close loading dialog
-
-                //   // Success message
-                //   ScaffoldMessenger.of(context).showSnackBar(
-                //     SnackBar(
-                //       content: Text('Buyurtma muvaffaqiyatli yuborildi!'),
-                //       backgroundColor: Colors.green,
-                //     ),
-                //   );
-                // } catch (e) {
-                //   Navigator.pop(context); // Close loading dialog
-
-                //   ScaffoldMessenger.of(context).showSnackBar(
-                //     SnackBar(
-                //       content: Text('Xatolik: $e'),
-                //       backgroundColor: Colors.red,
-                //     ),
-                //   );
-                // }
               },
               icon: Icon(Icons.shopping_basket_outlined),
               label: Text('(${provider.totalSelectedProducts})'),

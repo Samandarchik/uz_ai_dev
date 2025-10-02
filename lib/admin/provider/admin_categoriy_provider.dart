@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';
 
 class CategoryProviderAdmin extends ChangeNotifier {

@@ -24,13 +24,13 @@ class ProductsScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Nechta kerak?'),
+            Text('Сколько вам нужно?'),
             SizedBox(height: 16),
             TextField(
               controller: controller,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Miqdor',
+                labelText: 'Количество',
                 border: OutlineInputBorder(),
                 suffixText: product.type,
               ),
@@ -41,7 +41,7 @@ class ProductsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Bekor qilish'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -51,7 +51,7 @@ class ProductsScreen extends StatelessWidget {
               }
               Navigator.pop(context);
             },
-            child: Text('Qo\'shish'),
+            child: Text('Добавлять'),
           ),
         ],
       ),
@@ -71,7 +71,7 @@ class ProductsScreen extends StatelessWidget {
           final products = provider.getProductsByCategory(categoryName);
 
           if (products.isEmpty) {
-            return Center(child: Text('Mahsulotlar topilmadi'));
+            return Center(child: Text('Товары не найдены.'));
           }
 
           return ListView.builder(

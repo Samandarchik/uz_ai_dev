@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:dio/dio.dart';
+import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
 
 class CategoryProviderAdminUpload extends ChangeNotifier {
   final ApiAdminService _service = ApiAdminService();
+  final Dio _dio = sl<Dio>(); // Dio();
   final String baseUrl = AppUrls.baseUrl; // Replace with your base URL
 
   List<CategoryProductAdmin> _categories = [];
@@ -25,7 +26,7 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
   CategoryProductAdmin? get selectedCategory => _selectedCategory;
   double get uploadProgress => _uploadProgress;
 
-  // Upload image to /api/upload
+  // Upload image to /api/upload using Dio
   Future<String?> uploadImage(File imageFile) async {
     _isUploading = true;
     _uploadProgress = 0.0;
@@ -33,25 +34,57 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/upload'),
+      print('📤 Starting image upload...');
+      print('📁 File path: ${imageFile.path}');
+      print('📊 File size: ${await imageFile.length()} bytes');
+
+      // Create FormData
+      String fileName = imageFile.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        ),
+      });
+
+      print('🌐 Upload URL: $baseUrl/api/upload');
+
+      // Send request with progress tracking
+      final response = await _dio.post(
+        '$baseUrl/api/upload',
+        data: formData,
+        onSendProgress: (sent, total) {
+          _uploadProgress = sent / total;
+          print(
+              '📈 Upload progress: ${(_uploadProgress * 100).toStringAsFixed(1)}%');
+          notifyListeners();
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
       );
 
-      // Add the image file
-      var multipartFile = await http.MultipartFile.fromPath(
-        'image',
-        imageFile.path,
-      );
-      request.files.add(multipartFile);
-
-      // Send request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      print('📥 Response status: ${response.statusCode}');
+      print('📦 Response data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonResponse = json.decode(response.body);
-        final imageUrl = jsonResponse['url'] ?? jsonResponse['image_url'];
+        final imageUrl = response.data['url'] ??
+            response.data['image_url'] ??
+            response.data['data']?['url'] ??
+            response.data['data']?['image_url'];
+
+        if (imageUrl == null) {
+          print('❌ Image URL not found in response');
+          print('📦 Full response: ${response.data}');
+          throw Exception('Image URL not found in response');
+        }
+
+        print('✅ Upload successful! Image URL: $imageUrl');
 
         _isUploading = false;
         _uploadProgress = 1.0;
@@ -59,10 +92,29 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
 
         return imageUrl;
       } else {
-        throw Exception('Failed to upload image: ${response.statusCode}');
+        print('❌ Upload failed with status: ${response.statusCode}');
+        print('📦 Response: ${response.data}');
+        throw Exception(
+            'Upload failed: ${response.statusCode} - ${response.data}');
       }
-    } catch (e) {
-      _error = 'Image upload failed: ${e.toString()}';
+    } on DioException catch (e) {
+      print('❌ DioException occurred:');
+      print('Type: ${e.type}');
+      print('Message: ${e.message}');
+      print('Response: ${e.response?.data}');
+      print('Status Code: ${e.response?.statusCode}');
+
+      _error = 'Upload failed: ${e.message}';
+      _isUploading = false;
+      _uploadProgress = 0.0;
+      notifyListeners();
+      return null;
+    } catch (e, stackTrace) {
+      print('❌ Unexpected error during upload:');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+
+      _error = 'Upload failed: ${e.toString()}';
       _isUploading = false;
       _uploadProgress = 0.0;
       notifyListeners();
@@ -97,14 +149,19 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('🏗️ Creating category: ${category.name}');
+
       String? imageUrl;
 
       // Upload image if provided
       if (imageFile != null) {
+        print('📸 Image file provided, uploading...');
         imageUrl = await uploadImage(imageFile);
         if (imageUrl == null) {
+          print('❌ Image upload failed');
           throw Exception('Failed to upload image');
         }
+        print('✅ Image uploaded successfully: $imageUrl');
       }
 
       // Create category with uploaded image URL
@@ -115,12 +172,19 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         imageUrl: imageUrl ?? category.imageUrl,
       );
 
+      print('💾 Saving category to database...');
       final newCategory = await _service.createCategory(categoryWithImage);
       _categories.add(newCategory);
       _isLoading = false;
       notifyListeners();
+
+      print('✅ Category created successfully: ${newCategory.name}');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error creating category:');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -141,14 +205,19 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('✏️ Updating category: ${category.name}');
+
       String? uploadedImageUrl;
 
       // Upload new image if provided
       if (imageFile != null) {
+        print('📸 New image file provided, uploading...');
         uploadedImageUrl = await uploadImage(imageFile);
         if (uploadedImageUrl == null) {
+          print('❌ Image upload failed');
           throw Exception('Failed to upload image');
         }
+        print('✅ Image uploaded successfully: $uploadedImageUrl');
       }
 
       // Create updated category object with new values
@@ -159,6 +228,7 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         imageUrl: uploadedImageUrl ?? newImageUrl ?? category.imageUrl,
       );
 
+      print('💾 Updating category in database...');
       // Call API service
       final result = await _service.updateCategory(updatedCategory);
 
@@ -175,8 +245,14 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
+
+      print('✅ Category updated successfully');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error updating category:');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -294,35 +370,3 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-// Example usage in UI:
-/*
-// Create category with image
-File imageFile = File('/path/to/image.jpg');
-await provider.createCategory(
-  CategoryProductAdmin(id: 0, name: "New Category", print: 1),
-  imageFile: imageFile,
-);
-
-// Update category with new image
-await provider.updateCategory(
-  category,
-  newName: "Updated Name",
-  imageFile: imageFile,
-);
-
-// Update only image
-await provider.updateCategoryImage(categoryId, imageFile);
-
-// Listen to upload progress
-Consumer<CategoryProviderAdmin>(
-  builder: (context, provider, child) {
-    if (provider.isUploading) {
-      return CircularProgressIndicator(
-        value: provider.uploadProgress,
-      );
-    }
-    return YourWidget();
-  },
-)
-*/

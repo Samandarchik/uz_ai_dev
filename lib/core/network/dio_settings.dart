@@ -99,7 +99,7 @@ class AppInterceptors extends QueuedInterceptorsWrapper {
       }
     }
 
-    // Boshqa xatoliklar uchun xatoni uzatish
+    // Boshqa Ошибкаlar uchun xatoni uzatish
     return handler.next(err);
   }
 
@@ -134,7 +134,7 @@ class AppInterceptors extends QueuedInterceptorsWrapper {
       );
 
       if (refreshResponse.statusCode == 200) {
-        // Yangi token va refresh tokenlarni saqlash
+        // Yangi token va refresh tokenlarni Сохранять
         final accessToken = refreshResponse.data['token'];
         final newRefreshToken = refreshResponse.data['refreshToken'];
 

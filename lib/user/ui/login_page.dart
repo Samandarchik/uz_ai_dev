@@ -2,9 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
-import 'package:uz_ai_dev/user/provider/category_ui.dart';
+import 'package:uz_ai_dev/user/ui/category_ui.dart';
 import 'dart:convert';
-import '../../services/api_service.dart';
+import '../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -48,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
     // Yangi akkauntni boshiga qo'shish
     _savedAccounts.insert(0, {'phone': phone, 'password': password});
 
-    // Faqat oxirgi 5 ta akkauntni saqlash
+    // Faqat oxirgi 5 ta akkauntni Сохранять
     if (_savedAccounts.length > 7) {
       _savedAccounts = _savedAccounts.sublist(0, 7);
     }
@@ -94,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     if (result['success'] == true) {
-      // Akkauntni saqlash
+      // Akkauntni Сохранять
       await _saveAccount(_phoneController.text, _passwordController.text);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();

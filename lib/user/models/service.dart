@@ -19,7 +19,7 @@ class UserManagementService {
           return data.map((e) => User.fromJson(e)).toList();
         } else {
           throw Exception(
-              responseData['message'] ?? 'Foydalanuvchilarni olishda xatolik');
+              responseData['message'] ?? 'Foydalanuvchilarni olishda Ошибка');
         }
       } else {
         throw Exception('Server xatosi: ${response.statusCode}');
@@ -33,8 +33,8 @@ class UserManagementService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getAllUsers: $e');
-      throw Exception('Foydalanuvchilarni olishda kutilmagan xatolik: $e');
+      print('Ошибка getAllUsers: $e');
+      throw Exception('Foydalanuvchilarni olishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -58,10 +58,10 @@ class UserManagementService {
       if (e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Foydalanuvchi olishda xatolik: ${e.message}');
+      throw Exception('Foydalanuvchi olishda Ошибка: ${e.message}');
     } catch (e) {
-      print('Xatolik getUserById: $e');
-      throw Exception('Foydalanuvchi olishda kutilmagan xatolik: $e');
+      print('Ошибка getUserById: $e');
+      throw Exception('Foydalanuvchi olishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -86,7 +86,7 @@ class UserManagementService {
         } else {
           // Success false bo'lganda message ni ko'rsatish
           final errorMessage =
-              responseData['message'] ?? 'Foydalanuvchi yaratishda xatolik';
+              responseData['message'] ?? 'Foydalanuvchi yaratishda Ошибка';
           print('Register error message: $errorMessage');
           throw Exception(errorMessage);
         }
@@ -124,7 +124,7 @@ class UserManagementService {
       }
     } catch (e) {
       print('General error in createUser: $e');
-      throw Exception('Foydalanuvchi yaratishda kutilmagan xatolik: $e');
+      throw Exception('Foydalanuvchi yaratishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -148,7 +148,7 @@ class UserManagementService {
           return User.fromJson(responseData['data']);
         } else {
           final errorMessage =
-              responseData['message'] ?? 'Foydalanuvchi yangilashda xatolik';
+              responseData['message'] ?? 'Foydalanuvchi yangilashda Ошибка';
           print('Update error message: $errorMessage');
           throw Exception(errorMessage);
         }
@@ -188,7 +188,7 @@ class UserManagementService {
       }
     } catch (e) {
       print('General error in updateUser: $e');
-      throw Exception('Foydalanuvchi yangilashda kutilmagan xatolik: $e');
+      throw Exception('Foydalanuvchi yangilashda kutilmagan Ошибка: $e');
     }
   }
 
@@ -237,7 +237,7 @@ class UserManagementService {
       }
     } catch (e) {
       print('General error in deleteUser: $e');
-      throw Exception('Foydalanuvchi o\'chirishda kutilmagan xatolik: $e');
+      throw Exception('Foydalanuvchi o\'chirishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -264,11 +264,11 @@ class UserManagementService {
             return user;
           } else {
             throw Exception(
-                'Yangilangan foydalanuvchi ma\'lumotlarini olishda xatolik');
+                'Yangilangan foydalanuvchi ma\'lumotlarini olishda Ошибка');
           }
         } else {
           final errorMessage =
-              responseData['message'] ?? 'Filial belgilashda xatolik';
+              responseData['message'] ?? 'Filial belgilashda Ошибка';
           print('Assign filial error message: $errorMessage');
           throw Exception(errorMessage);
         }
@@ -309,7 +309,7 @@ class UserManagementService {
       }
     } catch (e) {
       print('General error in assignFilialToUser: $e');
-      throw Exception('Filial belgilashda kutilmagan xatolik: $e');
+      throw Exception('Filial belgilashda kutilmagan Ошибка: $e');
     }
   }
 
@@ -319,8 +319,7 @@ class UserManagementService {
       final allUsers = await getAllUsers();
       return allUsers.where((user) => user.filialId == filialId).toList();
     } catch (e) {
-      throw Exception(
-          'Filial bo\'yicha foydalanuvchilarni olishda xatolik: $e');
+      throw Exception('Filial bo\'yicha foydalanuvchilarni olishda Ошибка: $e');
     }
   }
 
@@ -329,7 +328,7 @@ class UserManagementService {
       final allUsers = await getAllUsers();
       return allUsers.where((user) => user.isAdmin).toList();
     } catch (e) {
-      throw Exception('Admin foydalanuvchilarni olishda xatolik: $e');
+      throw Exception('Admin foydalanuvchilarni olishda Ошибка: $e');
     }
   }
 
@@ -338,7 +337,7 @@ class UserManagementService {
       final allUsers = await getAllUsers();
       return allUsers.where((user) => !user.isAdmin).toList();
     } catch (e) {
-      throw Exception('Oddiy foydalanuvchilarni olishda xatolik: $e');
+      throw Exception('Oddiy foydalanuvchilarni olishda Ошибка: $e');
     }
   }
 
@@ -353,7 +352,7 @@ class UserManagementService {
         return nameMatch || phoneMatch;
       }).toList();
     } catch (e) {
-      throw Exception('Foydalanuvchilarni qidirishda xatolik: $e');
+      throw Exception('Foydalanuvchilarni qidirishda Ошибка: $e');
     }
   }
 
@@ -367,7 +366,7 @@ class UserManagementService {
       final updateRequest = UpdateUserRequest(isAdmin: !user.isAdmin);
       return await updateUser(userId, updateRequest);
     } catch (e) {
-      throw Exception('Admin holatini o\'zgartirishda xatolik: $e');
+      throw Exception('Admin holatini o\'zgartirishda Ошибка: $e');
     }
   }
 }

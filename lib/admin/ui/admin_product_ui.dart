@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:uz_ai_dev/admin/model/product.dart';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_edit_product_ui.dart';
@@ -61,7 +61,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
       body: Consumer<ProductProviderAdmin>(
         builder: (context, productProvider, child) {
           if (productProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator.adaptive());
           }
 
           if (productProvider.filteredProducts.isEmpty) {
@@ -133,7 +133,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.blue),
+            icon: const Icon(Icons.edit, color: Colors.black),
             onPressed: () {
               Navigator.push(
                 context,
@@ -162,7 +162,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Bekor qilish'),
+            child: const Text('Отмена'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

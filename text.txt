@@ -436,7 +436,7 @@ curl -X PUT http://localhost:8080/api/orders/1/status \
   -H "Content-Type: application/json" \
   -d '{
     "status": "shipped",
-    "admin_notes": "Buyurtma yuborildi"
+    "admin_notes": "Заказ отправлен."
   }'
 
 # Delivered status

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:uz_ai_dev/admin/model/product.dart';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
@@ -26,8 +26,8 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getAllProducts: $e');
-      throw Exception('Kutilmagan xatolik: $e');
+      print('Ошибка getAllProducts: $e');
+      throw Exception('Kutilmagan Ошибка: $e');
     }
   }
 
@@ -57,8 +57,8 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getProductsByCategoryId: $e');
-      throw Exception('Kutilmagan xatolik: $e');
+      print('Ошибка getProductsByCategoryId: $e');
+      throw Exception('Kutilmagan Ошибка: $e');
     }
   }
 
@@ -81,13 +81,13 @@ class ApiProductService {
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
             'Noma\'lum server xatosi';
-        throw Exception('Mahsulot yaratishda xatolik: $errorMessage');
+        throw Exception('Mahsulot yaratishda Ошибка: $errorMessage');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik createProduct: $e');
-      throw Exception('Mahsulot yaratishda kutilmagan xatolik: $e');
+      print('Ошибка createProduct: $e');
+      throw Exception('Mahsulot yaratishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -113,13 +113,13 @@ class ApiProductService {
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
             'Noma\'lum server xatosi';
-        throw Exception('Mahsulot yangilashda xatolik: $errorMessage');
+        throw Exception('Mahsulot yangilashda Ошибка: $errorMessage');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik updateProduct: $e');
-      throw Exception('Mahsulot yangilashda kutilmagan xatolik: $e');
+      print('Ошибка updateProduct: $e');
+      throw Exception('Mahsulot yangilashda kutilmagan Ошибка: $e');
     }
   }
 
@@ -150,13 +150,13 @@ class ApiProductService {
         final errorMessage = e.response!.data['message'] ??
             e.response!.data['error'] ??
             'Noma\'lum server xatosi';
-        throw Exception('Mahsulot o\'chirishda xatolik: $errorMessage');
+        throw Exception('Mahsulot o\'chirishda Ошибка: $errorMessage');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik deleteProduct: $e');
-      throw Exception('Mahsulot o\'chirishda kutilmagan xatolik: $e');
+      print('Ошибка deleteProduct: $e');
+      throw Exception('Mahsulot o\'chirishda kutilmagan Ошибка: $e');
     }
   }
 
@@ -175,10 +175,10 @@ class ApiProductService {
       if (e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Mahsulot olishda xatolik: ${e.message}');
+      throw Exception('Mahsulot olishda Ошибка: ${e.message}');
     } catch (e) {
-      print('Xatolik getProductById: $e');
-      throw Exception('Mahsulot olishda kutilmagan xatolik: $e');
+      print('Ошибка getProductById: $e');
+      throw Exception('Mahsulot olishda kutilmagan Ошибка: $e');
     }
   }
 }

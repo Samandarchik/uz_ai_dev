@@ -26,7 +26,7 @@ class ApiFilialService {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getFilials: $e');
+      print('Ошибка getFilials: $e');
       throw Exception('unexpected_error'.tr() + ': $e');
     }
   }
@@ -48,7 +48,7 @@ class ApiFilialService {
       }
       throw Exception('filial_fetch_error'.tr() + ': ${e.message}');
     } catch (e) {
-      print('Xatolik getFilialById: $e');
+      print('Ошибка getFilialById: $e');
       throw Exception('filial_fetch_unexpected'.tr() + ': $e');
     }
   }

@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
-import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/core/data/local/token_storage.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/user/ui/login_page.dart';
 
 class AdminHomeUi extends StatefulWidget {
   const AdminHomeUi({super.key});
@@ -28,6 +31,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
     await categoryProvider.getCategories();
   }
 
+  TokenStorage tokenStorage = sl<TokenStorage>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,7 +39,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         title: const Text('Admin Panel'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_box),
+            icon: const Icon(Icons.edit),
             onPressed: () {
               Navigator.push(
                 context,
@@ -49,6 +53,12 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadCategories,
           ),
+          IconButton(
+              onPressed: () {
+                tokenStorage.removeToken();
+                context.pushAndRemove(const LoginPage());
+              },
+              icon: const Icon(Icons.logout)),
         ],
       ),
       body: Consumer<CategoryProviderAdmin>(
@@ -65,7 +75,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 children: [
                   const Icon(Icons.error_outline, size: 60, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('Xatolik: ${categoryProvider.error}'),
+                  Text('Ошибка: ${categoryProvider.error}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _loadCategories,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/admin/model/product.dart';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 
 // ==================== PRODUCT PROVIDER ====================

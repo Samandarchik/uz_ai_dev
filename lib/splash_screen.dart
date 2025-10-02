@@ -1,13 +1,11 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
-import 'package:uz_ai_dev/admin/ui/user_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/provider/category_ui.dart';
-import 'login_page.dart';
+import 'package:uz_ai_dev/user/ui/category_ui.dart';
+import 'package:uz_ai_dev/user/ui/login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -74,14 +72,14 @@ class _SplashScreenState extends State<SplashScreen> {
             SizedBox(height: 30),
             SizedBox(height: 10),
             Text(
-              'loading'.tr(),
+              "загрузка",
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
               ),
             ),
             SizedBox(height: 30),
-            CircularProgressIndicator(
+            CircularProgressIndicator.adaptive(
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
           ],

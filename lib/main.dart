@@ -7,11 +7,9 @@ import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
 import 'package:uz_ai_dev/admin/services/upload_image.dart';
-import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
-import 'package:uz_ai_dev/user/ui/screens/login_page.dart';
-import 'user/ui/screens/splash_screen.dart';
+import 'splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

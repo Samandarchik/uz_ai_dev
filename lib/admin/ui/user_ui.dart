@@ -167,7 +167,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.pop(context, false),
-                                      child: Text('Bekor qilish'),
+                                      child: Text('Отмена'),
                                     ),
                                     TextButton(
                                       onPressed: () =>

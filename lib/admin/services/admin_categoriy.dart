@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
@@ -27,7 +27,7 @@ class ApiAdminService {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getCategories: $e');
+      print('Ошибка getCategories: $e');
       throw Exception('unexpected_error'.tr() + ': $e');
     }
   }
@@ -58,7 +58,7 @@ class ApiAdminService {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik createCategory: $e');
+      print('Ошибка createCategory: $e');
       throw Exception('category_create_unexpected'.tr() + ': $e');
     }
   }
@@ -91,7 +91,7 @@ class ApiAdminService {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik updateCategory: $e');
+      print('Ошибка updateCategory: $e');
       throw Exception('category_update_unexpected'.tr() + ': $e');
     }
   }
@@ -131,7 +131,7 @@ class ApiAdminService {
         throw Exception('network_error'.tr() + ': ${e.message}');
       }
     } catch (e) {
-      print('Xatolik deleteCategory: $e');
+      print('Ошибка deleteCategory: $e');
       throw Exception('category_delete_unexpected'.tr() + ': $e');
     }
   }
@@ -153,7 +153,7 @@ class ApiAdminService {
       }
       throw Exception('category_fetch_error'.tr() + ': ${e.message}');
     } catch (e) {
-      print('Xatolik getCategoryById: $e');
+      print('Ошибка getCategoryById: $e');
       throw Exception('category_fetch_unexpected'.tr() + ': $e');
     }
   }
