@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uz_ai_dev/admin/ui/admin_page.dart';
+import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/user/provider/category_ui.dart';
 import 'dart:convert';
 import '../../services/api_service.dart';
@@ -107,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(
             builder: (context) => result['data']['user']["is_admin"] == false
                 ? UserHomeUi()
-                : AdminPage()),
+                : AdminHomeUi()),
       );
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');

@@ -6,9 +6,11 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
+import 'package:uz_ai_dev/admin/services/upload_image.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'package:uz_ai_dev/user/ui/screens/login_page.dart';
 import 'user/ui/screens/splash_screen.dart';
 
 Future<void> main() async {
@@ -24,6 +26,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CategoryProviderAdmin()),
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),
         ChangeNotifierProvider(create: (_) => UserProviderAdmin()),
+        ChangeNotifierProvider(create: (_) => CategoryProviderAdminUpload()),
       ],
       child: EasyLocalization(
         supportedLocales: const [
@@ -47,6 +50,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
+          surfaceTintColor: Colors.white,
           iconTheme: IconThemeData(color: Colors.black),
           titleTextStyle: TextStyle(
             color: Colors.black,
@@ -63,7 +67,7 @@ class MyApp extends StatelessWidget {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      home: AdminHomeUi(),
+      home: SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

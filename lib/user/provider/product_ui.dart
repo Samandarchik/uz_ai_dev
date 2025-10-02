@@ -81,54 +81,61 @@ class ProductsScreen extends StatelessWidget {
               final quantity = provider.getProductQuantity(product.id);
               final isSelected = quantity > 0;
 
-              return ListTile(
-                selected: isSelected,
-                selectedTileColor: Colors.grey.shade300,
-                selectedColor: Colors.black,
-                leading: ClipOval(
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => Dialog(
-                          backgroundColor: Colors.transparent,
-                          child: CachedNetworkImage(
-                            imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                            fit: BoxFit.contain,
-                            errorWidget: (context, url, error) =>
-                                Icon(Icons.error, size: 40),
-                          ),
+              return Column(
+                children: [
+                  ListTile(
+                    selected: isSelected,
+                    selectedTileColor: Colors.grey.shade300,
+                    selectedColor: Colors.black,
+                    leading: ClipOval(
+                      child: GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              child: CachedNetworkImage(
+                                imageUrl:
+                                    "${AppUrls.baseUrl}${product.imageUrl}",
+                                fit: BoxFit.contain,
+                                errorWidget: (context, url, error) =>
+                                    Icon(Icons.error, size: 40),
+                              ),
+                            ),
+                          );
+                        },
+                        child: CachedNetworkImage(
+                          imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                          width: 55,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.error),
                         ),
-                      );
+                      ),
+                    ),
+                    title: Text('${product.name} (${product.type})'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min, // 🔑 MUHIM
+                      children: [
+                        if (isSelected)
+                          Text('$quantity', style: TextStyle(fontSize: 16)),
+                        IconButton(
+                          icon: Icon(Icons.remove_circle_outline,
+                              color: Colors.red),
+                          onPressed: () {
+                            provider.decrementProduct(product.id);
+                          },
+                        ),
+                      ],
+                    ),
+                    onLongPress: () {
+                      _showQuantityDialog(context, product);
                     },
-                    child: CachedNetworkImage(
-                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                      width: 55,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Icon(Icons.error),
-                    ),
+                    onTap: () => provider.incrementProduct(product.id),
                   ),
-                ),
-                title: Text('${product.name} (${product.type})'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min, // 🔑 MUHIM
-                  children: [
-                    if (isSelected)
-                      Text('$quantity', style: TextStyle(fontSize: 16)),
-                    IconButton(
-                      icon:
-                          Icon(Icons.remove_circle_outline, color: Colors.red),
-                      onPressed: () {
-                        provider.decrementProduct(product.id);
-                      },
-                    ),
-                  ],
-                ),
-                onLongPress: () {
-                  _showQuantityDialog(context, product);
-                },
-                onTap: () => provider.incrementProduct(product.id),
+                  Divider(height: 1),
+                ],
               );
             },
           );

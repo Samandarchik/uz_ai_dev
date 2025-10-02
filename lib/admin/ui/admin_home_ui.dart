@@ -2,8 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
+import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
-import 'package:uz_ai_dev/admin/ui/dasdasd.dart';
+import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class AdminHomeUi extends StatefulWidget {
@@ -39,7 +40,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddProductPage(),
+                  builder: (context) => const CategoryManagementScreen(),
                 ),
               );
             },
@@ -54,7 +55,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         builder: (context, categoryProvider, child) {
           if (categoryProvider.isLoading &&
               categoryProvider.categories.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator.adaptive());
           }
 
           if (categoryProvider.error != null) {
@@ -157,23 +158,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddCategoryDialog(context),
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.category,
-          color: Colors.black,
-        ),
-      ),
     );
-  }
-
-  void _showAddCategoryDialog(BuildContext context) {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(
-    //       builder: (context) => const CategoryManagementPage(),
-    //     ),
-    //   ).then((_) => _loadCategories());
   }
 }

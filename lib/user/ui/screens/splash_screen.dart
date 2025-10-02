@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -36,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       // token bor -> endi adminligini tekshiramiz
       if (isAdmin == true) {
-        context.pushReplacement(UserManagementScreen());
+        context.pushReplacement(AdminHomeUi());
       } else {
         context.pushReplacement(UserHomeUi());
       }

@@ -73,63 +73,63 @@ class _UserHomeUiState extends State<UserHomeUi> {
                     return SizedBox.shrink();
                   }
 
-                  return Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProductsScreen(
-                              categoryName: category.name,
-                            ),
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductsScreen(
+                            categoryName: category.name,
                           ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.all(5),
-                        leading: ClipOval(
-                          child: GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => Dialog(
-                                  backgroundColor: Colors.transparent,
-                                  child: CachedNetworkImage(
-                                    imageUrl:
-                                        "${AppUrls.baseUrl}${category.imageUrl}",
-                                    fit: BoxFit.contain,
-                                    errorWidget: (context, url, error) =>
-                                        Icon(Icons.error, size: 40),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.all(5),
+                          leading: ClipOval(
+                            child: GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    child: CachedNetworkImage(
+                                      imageUrl:
+                                          "${AppUrls.baseUrl}${category.imageUrl}",
+                                      fit: BoxFit.contain,
+                                      errorWidget: (context, url, error) =>
+                                          Icon(Icons.error, size: 40),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: CachedNetworkImage(
-                              imageUrl:
-                                  "${AppUrls.baseUrl}${category.imageUrl}",
-                              width: 55,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorWidget: (context, url, error) =>
-                                  Icon(Icons.error),
+                                );
+                              },
+                              child: CachedNetworkImage(
+                                imageUrl:
+                                    "${AppUrls.baseUrl}${category.imageUrl}",
+                                width: 55,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) =>
+                                    Icon(Icons.error),
+                              ),
                             ),
                           ),
-                        ),
-                        title: Text(
-                          category.name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          title: Text(
+                            category.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            "$productCount ${"product".tr()}",
                           ),
                         ),
-                        subtitle: Text(
-                          "$productCount ${"product".tr()}",
-                        ),
-                      ),
+                        Divider()
+                      ],
                     ),
                   );
                 },

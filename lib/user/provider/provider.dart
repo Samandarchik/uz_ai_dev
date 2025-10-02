@@ -52,7 +52,6 @@ class CategoryModel {
     );
   }
 }
-
 // Order Item Model
 class OrderItem {
   final int productId;
