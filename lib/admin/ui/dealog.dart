@@ -120,7 +120,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  isEditing ? 'Edit Category' : 'Create Category',
+                  isEditing ? 'Редактировать категорию' : 'Создать категорию',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -159,7 +159,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                                       size: 48, color: Colors.grey[400]),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Tap to select image',
+                                    'Нажмите, чтобы выбрать изображение',
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                                 ],
@@ -170,13 +170,13 @@ class _CategoryDialogState extends State<CategoryDialog> {
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Category Name',
+                    labelText: 'Название категории',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.category),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter category name';
+                      return 'Пожалуйста, введите название категории';
                     }
                     return null;
                   },
@@ -185,17 +185,17 @@ class _CategoryDialogState extends State<CategoryDialog> {
                 TextFormField(
                   controller: _printController,
                   decoration: const InputDecoration(
-                    labelText: 'Print Value',
+                    labelText: 'Распечатать значение',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.print),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter print value';
+                      return 'Пожалуйста, введите значение для печати';
                     }
                     if (int.tryParse(value) == null) {
-                      return 'Please enter a valid number';
+                      return 'Пожалуйста, введите действительный номер';
                     }
                     return null;
                   },
@@ -211,7 +211,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Uploading image... ${(provider.uploadProgress * 100).toInt()}%',
+                            'Загрузка изображения... ${(provider.uploadProgress * 100).toInt()}%',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                           const SizedBox(height: 16),
@@ -227,7 +227,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                       child: OutlinedButton(
                         onPressed:
                             _isLoading ? null : () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: const Text('Отмена'),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -242,7 +242,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(isEditing ? 'Update' : 'Create'),
+                            : Text(isEditing ? 'Обновлять' : 'Создавать'),
                       ),
                     ),
                   ],

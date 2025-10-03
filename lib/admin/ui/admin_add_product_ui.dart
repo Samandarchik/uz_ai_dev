@@ -52,7 +52,7 @@ class _AddProductPageState extends State<AddProductPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rasm tanlashda Ошибка: $e')),
+          SnackBar(content: Text('Ошибка выбора изображения: $e')),
         );
       }
     }
@@ -75,7 +75,7 @@ class _AddProductPageState extends State<AddProductPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rasm olishda Ошибка: $e')),
+          SnackBar(content: Text('Ошибка при фотосъемке: $e')),
         );
       }
     }
@@ -86,13 +86,13 @@ class _AddProductPageState extends State<AddProductPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Rasm tanlash'),
+          title: const Text('Выбор изображения'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Galereyadan'),
+                title: const Text('Из галереи'),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage();
@@ -100,7 +100,7 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt),
-                title: const Text('Kameradan'),
+                title: const Text('Из камеры'),
                 onTap: () {
                   Navigator.pop(context);
                   _takePhoto();
@@ -117,7 +117,7 @@ class _AddProductPageState extends State<AddProductPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yangi mahsulot'),
+        title: const Text('Новый продукт'),
       ),
       body: Form(
         key: _formKey,
@@ -171,7 +171,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               size: 50, color: Colors.grey[600]),
                           const SizedBox(height: 8),
                           Text(
-                            'Rasm tanlash',
+                            'Выбор изображения',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                         ],
@@ -189,7 +189,7 @@ class _AddProductPageState extends State<AddProductPage> {
                       LinearProgressIndicator(value: provider.uploadProgress),
                       const SizedBox(height: 8),
                       Text(
-                        'Yuklanyapti: ${(provider.uploadProgress * 100).toStringAsFixed(0)}%',
+                        'Загрузка: ${(provider.uploadProgress * 100).toStringAsFixed(0)}%',
                         style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 16),
@@ -203,12 +203,12 @@ class _AddProductPageState extends State<AddProductPage> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Mahsulot nomi',
+                labelText: 'Название продукта',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Mahsulot nomini kiriting';
+                  return 'Введите название продукта';
                 }
                 return null;
               },
@@ -217,12 +217,12 @@ class _AddProductPageState extends State<AddProductPage> {
             TextFormField(
               controller: _typeController,
               decoration: const InputDecoration(
-                labelText: 'Turi (masalan: dona, litr, kg)',
+                labelText: 'Тип (например: шт., литры, кг)',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Turini kiriting';
+                  return 'Введите тип';
                 }
                 return null;
               },
@@ -259,7 +259,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   },
                   validator: (value) {
                     if (value == null) {
-                      return 'Kategoriyani tanlang';
+                      return 'Выберите категорию';
                     }
                     return null;
                   },
@@ -277,7 +277,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Filiallarni tanlang:',
+                      'Выберите филиалы:',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -361,7 +361,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Mahsulot qo\'shildi')),
+                                    content: Text('Продукт добавлен')),
                               );
                             }
                           }

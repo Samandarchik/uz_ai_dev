@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
+import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -36,6 +37,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+            onPressed: () => context.push(UserManagementScreen()),
+            icon: Icon(Icons.people)),
         title: const Text('Admin Panel'),
         actions: [
           IconButton(

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -10,6 +11,7 @@ import 'package:uz_ai_dev/user/provider/product_ui.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:uz_ai_dev/user/ui/order_ui.dart';
 import 'package:uz_ai_dev/user/ui/login_page.dart';
+import 'package:uz_ai_dev/user/ui/orders_page.dart';
 
 // Kategoriyalar ekrani
 class UserHomeUi extends StatefulWidget {
@@ -35,6 +37,9 @@ class _UserHomeUiState extends State<UserHomeUi> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+            onPressed: () => _showContactDialog(context),
+            icon: Icon(Icons.info_outline)),
         title: Text('categories'.tr(),
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
@@ -44,7 +49,10 @@ class _UserHomeUiState extends State<UserHomeUi> {
                 tokenStorage.removeRefreshToken();
                 context.push(LoginPage());
               },
-              icon: Icon(Icons.logout))
+              icon: Icon(Icons.logout)),
+          IconButton(
+              onPressed: () => context.push(OrdersPage()),
+              icon: Icon(Icons.receipt_long)),
         ],
       ),
       body: Consumer<ProductProvider>(
@@ -153,5 +161,43 @@ class _UserHomeUiState extends State<UserHomeUi> {
         },
       ),
     );
+  }
+
+  void _showContactDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Вопрос или проблема'),
+          content: Text(
+              'Если у вас возник вопрос или вам что-то непонятно, обратитесь к создателю программы.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _launchContactLink();
+              },
+              child: Text('Контакт'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _launchContactLink() async {
+    const urlString = 'https://t.me/uz_ai_dev';
+    final Uri url = Uri.parse(urlString);
+    // launchUrl funktsiyasidan foydalanamiz
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      // agar ochilmasa, xatolik ko‘rsating
+      throw 'Could not launch $url';
+    }
   }
 }

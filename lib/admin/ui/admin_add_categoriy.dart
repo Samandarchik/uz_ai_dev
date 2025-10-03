@@ -40,17 +40,17 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Category'),
-        content: Text('Are you sure you want to delete "${category.name}"?'),
+        title: const Text('Удалить категорию'),
+        content: Text('Вы уверены, что хотите удалить "${category.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Удалить'),
           ),
         ],
       ),
@@ -63,7 +63,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? 'Category deleted' : 'Failed to delete'),
+            content: Text(success ? 'Категория удалена' : 'Не удалось удалить'),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
         );
@@ -75,13 +75,13 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Category Management'),
+        title: const Text('Категорийный менеджмент'),
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateDialog,
         icon: const Icon(Icons.add),
-        label: const Text('Add Category'),
+        label: const Text('Добавить категорию'),
       ),
       body: Consumer<CategoryProviderAdminUpload>(
         builder: (context, provider, child) {
@@ -97,14 +97,14 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
-                    'Error: ${provider.error}',
+                    'Ошибка: ${provider.error}',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () => provider.getCategories(),
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
+                    label: const Text('Повторить попытку'),
                   ),
                 ],
               ),
@@ -120,7 +120,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                       size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    'No categories yet',
+                    'Категорий пока нет',
                     style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
@@ -199,7 +199,7 @@ class CategoryListTile extends StatelessWidget {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
-        'Printer: ${category.printerId}',
+        'Принтер: ${category.printerId}',
         style: TextStyle(color: Colors.grey[600]),
       ),
       trailing: Wrap(

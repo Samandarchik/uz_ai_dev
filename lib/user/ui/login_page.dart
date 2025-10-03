@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/user/ui/category_ui.dart';
 import 'dart:convert';
 import '../services/api_service.dart';
@@ -102,13 +103,9 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('user', jsonEncode(result['data']['user']));
       await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => result['data']['user']["is_admin"] == false
-                ? UserHomeUi()
-                : AdminHomeUi()),
-      );
+      context.pushAndRemove(result['data']['user']["is_admin"] == false
+          ? UserHomeUi()
+          : AdminHomeUi());
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
     }
@@ -283,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Avval kirgan akkauntlar:',
+                            'Ранее вошедшие в систему учетные записи:',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

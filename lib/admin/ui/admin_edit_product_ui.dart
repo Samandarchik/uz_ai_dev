@@ -203,7 +203,7 @@ class _EditProductPageState extends State<EditProductPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mahsulotni tahrirlash'),
+        title: const Text('Редактирование продукта'),
       ),
       body: Form(
         key: _formKey,
@@ -265,7 +265,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       LinearProgressIndicator(value: provider.uploadProgress),
                       const SizedBox(height: 8),
                       Text(
-                        'Yuklanyapti: ${(provider.uploadProgress * 100).toStringAsFixed(0)}%',
+                        'Загрузка: ${(provider.uploadProgress * 100).toStringAsFixed(0)}%',
                         style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 16),
@@ -279,12 +279,12 @@ class _EditProductPageState extends State<EditProductPage> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Mahsulot nomi',
+                labelText: 'Название продукта',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Mahsulot nomini kiriting';
+                  return 'Введите название продукта';
                 }
                 return null;
               },
@@ -293,12 +293,12 @@ class _EditProductPageState extends State<EditProductPage> {
             TextFormField(
               controller: _typeController,
               decoration: const InputDecoration(
-                labelText: 'Turi',
+                labelText: 'Тип',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Turini kiriting';
+                  return 'Введите тип';
                 }
                 return null;
               },
@@ -313,7 +313,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 return DropdownButtonFormField<int>(
                   value: _selectedCategoryId,
                   decoration: const InputDecoration(
-                    labelText: 'Kategoriya',
+                    labelText: 'Категория',
                     border: OutlineInputBorder(),
                   ),
                   items: provider.categories.map((category) {
@@ -348,7 +348,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Filiallar:',
+                      'Филиалы:',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -389,7 +389,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content:
-                                        Text('Kamida bitta filial tanlang')),
+                                        Text('Выберите хотя бы одну ветку')),
                               );
                               return;
                             }
@@ -406,7 +406,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         content: Text(
-                                            'Rasm yuklashda Ошибка yuz berdi')),
+                                            'Произошла ошибка при загрузке изображения.')),
                                   );
                                 }
                                 return;
@@ -434,7 +434,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Mahsulot yangilandi')),
+                                    content: Text('Продукт обновлен')),
                               );
                             }
                           }
@@ -447,7 +447,7 @@ class _EditProductPageState extends State<EditProductPage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Yangilash', style: TextStyle(fontSize: 16)),
+                      : const Text('Обновлять', style: TextStyle(fontSize: 16)),
                 );
               },
             ),

@@ -157,8 +157,8 @@ class _AdminProductUiState extends State<AdminProductUi> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('O\'chirish'),
-        content: Text('${product.name} mahsulotini o\'chirmoqchimisiz?'),
+        title: const Text('Удалить'),
+        content: Text('${product.name} Вы хотите удалить продукт?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -174,12 +174,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
               if (success && context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Mahsulot o\'chirildi')),
+                  const SnackBar(content: Text('Продукт удален')),
                 );
                 _loadProducts();
               }
             },
-            child: const Text('O\'chirish'),
+            child: const Text('Удалить'),
           ),
         ],
       ),

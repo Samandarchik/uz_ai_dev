@@ -18,12 +18,13 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
   talker_dio_logger: ^5.0.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  # flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -31,7 +32,7 @@ flutter:
   assets:
     - assets/translations/
 
-# flutter_icons:
-#   android: true
-#   ios: true
-#   image_path: "lib/ui/screens/image.png"
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/translations/telegram-cloud-photo-size-2-5397779662433809775-x.jpg"
