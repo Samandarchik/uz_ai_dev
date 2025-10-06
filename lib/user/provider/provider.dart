@@ -77,6 +77,7 @@ class ProductProvider extends ChangeNotifier {
   Map<int, int> selectedProducts = {}; // productId: quantity
   Map<int, int> productPrintMap = {}; // productId: print number
   bool isLoading = false;
+  bool isSubmitting = false; // Buyurtma yuborish uchun loading
   String? errorMessage;
 
   // Kategoriyalarni yuklash
@@ -161,6 +162,9 @@ class ProductProvider extends ChangeNotifier {
 
   // Buyurtmani print bo'yicha guruhlash va yuborish
   Future<void> submitOrder() async {
+    isSubmitting = true; // Loading boshlanadi
+    notifyListeners();
+
     try {
       // Print bo'yicha guruhlash
       Map<int, List<OrderItem>> ordersByPrint = {};
@@ -203,7 +207,10 @@ class ProductProvider extends ChangeNotifier {
       // Muvaffaqiyatli yuborilgandan keyin tozalash
       clearSelection();
     } catch (e) {
-      throw Exception('Buyurtma yuborishda Ошибка: $e');
+      throw Exception('Buyurtma yuborishda xatolik: $e');
+    } finally {
+      isSubmitting = false; // Loading tugadi
+      notifyListeners();
     }
   }
 }
@@ -230,7 +237,7 @@ class ProductService {
   // Mahsulotlarni olish
   Future<Map<String, dynamic>> fetchProducts() async {
     try {
-      final response = await dio.get(AppUrls.product);
+      final response = await dio.get(AppUrls.product1);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = response.data;
@@ -244,7 +251,7 @@ class ProductService {
         Map<String, int> categoryPrintMap = {};
 
         for (var category in categoriesResponse) {
-          categoryPrintMap[category.name ?? "null"] = category.print ?? 1;
+          categoryPrintMap[category.name] = category.print ?? 1;
         }
 
         data.forEach((category, products) {

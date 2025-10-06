@@ -157,15 +157,10 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   color: Colors.grey,
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AdminProductUi(
-                        categoryId: category.id,
-                        categoryName: category.name,
-                      ),
-                    ),
-                  );
+                  context.push(AdminProductUi(
+                    categoryId: category.id,
+                    categoryName: category.name,
+                  ));
                 },
               );
             },

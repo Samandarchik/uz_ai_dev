@@ -2,8 +2,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:uz_ai_dev/core/constants/urls.dart';
+
 class ApiService {
-  static const String baseUrl = 'http://localhost:1010';
+  static const String baseUrl = AppUrls.baseUrl;
 
   static Future<Map<String, String>> _getHeaders({String? token}) async {
     Map<String, String> headers = {

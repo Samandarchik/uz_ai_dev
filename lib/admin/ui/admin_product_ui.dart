@@ -42,7 +42,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
         title: Text(widget.categoryName),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_box),
+            icon: const Icon(Icons.add),
             onPressed: () {
               Navigator.push(
                 context,

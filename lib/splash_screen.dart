@@ -4,6 +4,7 @@ import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/check_version.dart'; // bunda VersionChecker mavjud
 import 'package:uz_ai_dev/user/ui/category_ui.dart';
 import 'package:uz_ai_dev/user/ui/login_page.dart';
 
@@ -15,29 +16,48 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  TokenStorage tokenStorage = sl<TokenStorage>();
-  @override
-  void initState() {
-    super.initState();
-    checkToken();
+  final TokenStorage tokenStorage = sl<TokenStorage>();
+
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    bool needsUpdate = await VersionChecker.checkVersion(context);
+
+    // Agar update kerak bo'lmasa, token tekshiradi
+    if (!needsUpdate) {
+      _checkToken();
+    }
+  });
+}
+
+
+  Future<void> _initFlow() async {
+    // 🔹 1. Versiyani tekshirish
+    await VersionChecker.checkVersion(context);
+
+    // 🔹 2. Keyin tokenni tekshirish
+    await _checkToken();
   }
 
-  checkToken() async {
+  Future<void> _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
     bool? isAdmin = prefs.getBool('is_admin');
 
-    await Future.delayed(Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 1));
 
-    if (token.isEmpty) {
+    if (!mounted) return;
+
+    if (token == null || token.isEmpty) {
       // token yo‘q -> login page
-      context.pushReplacement(LoginPage());
+      context.pushReplacement(const LoginPage());
     } else {
-      // token bor -> endi adminligini tekshiramiz
+      // token bor -> admin yoki user
       if (isAdmin == true) {
-        context.pushReplacement(AdminHomeUi());
+        context.pushReplacement(const AdminHomeUi());
       } else {
-        context.pushReplacement(UserHomeUi());
+        context.pushReplacement(const UserHomeUi());
       }
     }
   }
@@ -51,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -63,14 +83,13 @@ class _SplashScreenState extends State<SplashScreen> {
                   ),
                 ],
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.store,
                 size: 60,
                 color: Colors.blue,
               ),
             ),
-            SizedBox(height: 30),
-            SizedBox(height: 10),
+            const SizedBox(height: 30),
             Text(
               "загрузка",
               style: TextStyle(
@@ -78,8 +97,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: Colors.grey.shade600,
               ),
             ),
-            SizedBox(height: 30),
-            CircularProgressIndicator.adaptive(
+            const SizedBox(height: 30),
+            const CircularProgressIndicator.adaptive(
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
           ],

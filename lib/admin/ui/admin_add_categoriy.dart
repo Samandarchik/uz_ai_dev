@@ -77,11 +77,12 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       appBar: AppBar(
         title: const Text('Категорийный менеджмент'),
         elevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showCreateDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('Добавить категорию'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: _showCreateDialog,
+          )
+        ],
       ),
       body: Consumer<CategoryProviderAdminUpload>(
         builder: (context, provider, child) {

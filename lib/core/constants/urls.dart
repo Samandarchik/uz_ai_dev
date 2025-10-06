@@ -1,9 +1,10 @@
 abstract final class AppUrls {
-  static const String baseUrl = "http://localhost:1010";
+  static const String baseUrl = "https://api.uz-dev-ai.uz";
   static const String login = '$baseUrl/api/login';
   static const String register = '$baseUrl/api/register';
   static const String refresh = '$baseUrl/api/auth/refresh';
   static const String productAll = '$baseUrl/api/products/all';
+  static const String product1 = '$baseUrl/api/products1';
   static const String product = '$baseUrl/api/products';
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
@@ -16,3 +17,4 @@ abstract final class AppUrls {
 
 
 // https://imzo-ai.uzjoylar.uz/html-download?pdf_category_item_id=
+// https://api.uz-dev-ai.uz

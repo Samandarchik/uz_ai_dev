@@ -157,26 +157,27 @@ class CartPage extends StatelessWidget {
           if (provider.selectedProducts.isEmpty) return const SizedBox();
           return Padding(
             padding: const EdgeInsets.all(12.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(fontSize: 18),
-              ),
-              onPressed: () async {
-                try {
-                  await provider.submitOrder();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Заказ отправлен. ✅")),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Ошибка: $e")),
-                  );
-                }
-              },
-              child: Text(
-                  "Заказ (${provider.totalSelectedProducts} ta)"),
-            ),
+            child: provider.isSubmitting
+                ? const CircularProgressIndicator.adaptive()
+                : ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontSize: 18),
+                    ),
+                    onPressed: () async {
+                      try {
+                        await provider.submitOrder();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Заказ отправлен. ✅")),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Ошибка: $e")),
+                        );
+                      }
+                    },
+                    child: Text("Заказ (${provider.totalSelectedProducts})"),
+                  ),
           );
         },
       ),
