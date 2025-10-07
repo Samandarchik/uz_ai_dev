@@ -36,7 +36,7 @@ class CartPage extends StatelessWidget {
             const SizedBox(height: 16),
             TextField(
               controller: controller,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.numberWithOptions(),
               decoration: InputDecoration(
                 labelText: 'Miqdor',
                 border: OutlineInputBorder(),
@@ -53,7 +53,7 @@ class CartPage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final quantity = int.tryParse(controller.text) ?? 0;
+              final quantity = double.tryParse(controller.text) ?? 0;
               if (quantity > 0) {
                 provider.setProductQuantity(product!.id, quantity);
               }
@@ -130,7 +130,7 @@ class CartPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                title: Text("${product.name} (${product.type})"),
+                title: Text(product.name),
                 subtitle: Text("Miqdor: $quantity"),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -143,6 +143,7 @@ class CartPage extends StatelessWidget {
                         provider.decrementProduct(productId);
                       },
                     ),
+                    Text(product.type ?? "null")
                   ],
                 ),
                 onLongPress: () => _showQuantityDialog(context, product!.id),

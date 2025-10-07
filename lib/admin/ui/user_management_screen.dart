@@ -7,8 +7,6 @@ import 'package:uz_ai_dev/admin/model/user_model.dart';
 import 'package:uz_ai_dev/admin/services/user_management_service.dart';
 import 'package:uz_ai_dev/admin/ui/edit_user_list.dart';
 
-
-
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
 
@@ -194,16 +192,35 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     }
   }
 
-  void _showEditUserDialog(User? user) {
-    showDialog(
-      context: context,
-      builder: (context) => EditUserDialog(
-        user: user,
-        onUserSaved: () {
-          _loadUsers();
-        },
+// Yangi user yaratish uchun
+  void _navigateToCreateUser(User? user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditUserPage(
+          user: user,
+        ),
       ),
-    );
+    ).then((result) {
+      // Agar user yaratilgan yoki yangilangan bo'lsa (true qaytsa)
+      if (result == true) {
+        _loadUsers(); // Listni yangilash
+      }
+    });
+  }
+
+// Mavjud userni tahrirlash uchun
+  void _navigateToEditUser(User user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditUserPage(user: user),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadUsers();
+      }
+    });
   }
 
   void _showSuccessMessage(String message) {
@@ -247,7 +264,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _showEditUserDialog(user),
+        onTap: () => _navigateToCreateUser(user),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -316,7 +333,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     onSelected: (value) {
                       switch (value) {
                         case 'edit':
-                          _showEditUserDialog(user);
+                          _navigateToCreateUser(user);
                           break;
                         case 'toggle_admin':
                           _toggleAdminStatus(user);
@@ -458,7 +475,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showEditUserDialog(null),
+        onPressed: () => _navigateToCreateUser(null),
         backgroundColor: Colors.blue.shade600,
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('new'.tr(), style: TextStyle(color: Colors.white)),

@@ -189,7 +189,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.print),
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.numberWithOptions(),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Пожалуйста, введите значение для печати';

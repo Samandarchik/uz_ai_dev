@@ -6,6 +6,7 @@ class User {
   final int? filialId;
   final Filial? filial;
   final String? password;
+  
 
   User({
     required this.id,
@@ -104,6 +105,7 @@ class UpdateUserRequest {
   final bool? isAdmin;
   final int? filialId;
   final String? password;
+  final List<int>? categoryIds;
 
   UpdateUserRequest({
     this.name,
@@ -111,6 +113,7 @@ class UpdateUserRequest {
     this.isAdmin,
     this.filialId,
     this.password,
+    this.categoryIds,
   });
 
   Map<String, dynamic> toJson() {
@@ -120,6 +123,7 @@ class UpdateUserRequest {
     if (isAdmin != null) data['is_admin'] = isAdmin;
     if (filialId != null) data['filial_id'] = filialId;
     if (password != null && password!.isNotEmpty) data['password'] = password;
+    if (categoryIds != null) data['category_list'] = categoryIds;
     return data;
   }
 }
@@ -130,6 +134,7 @@ class CreateUserRequest {
   final String password;
   final bool isAdmin;
   final int? filialId;
+  final List<int>? categoryIds;
 
   CreateUserRequest({
     required this.name,
@@ -137,6 +142,7 @@ class CreateUserRequest {
     required this.password,
     this.isAdmin = false,
     this.filialId,
+    this.categoryIds,
   });
 
   Map<String, dynamic> toJson() {
@@ -146,6 +152,7 @@ class CreateUserRequest {
       'password': password,
       'is_admin': isAdmin,
       if (filialId != null) 'filial_id': filialId,
+      'category_list': categoryIds
     };
   }
 }

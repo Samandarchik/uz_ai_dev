@@ -8,13 +8,24 @@ import 'package:uz_ai_dev/user/provider/provider.dart';
 class ProductsScreen extends StatelessWidget {
   final String categoryName;
 
-  const ProductsScreen({Key? key, required this.categoryName})
-      : super(key: key);
+  const ProductsScreen({super.key, required this.categoryName});
+
+  // Quantity ni type bo'yicha formatlash
+  String _formatQuantity(double quantity, String? type) {
+    if (type != null && type.toLowerCase() == 'шт') {
+      return quantity.toInt().toString();
+    }
+    // Gram yoki Kg uchun
+    return quantity.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
+  }
 
   void _showQuantityDialog(BuildContext context, ProductModel product) {
     final provider = context.read<ProductProvider>();
     final controller = TextEditingController(
-      text: provider.getProductQuantity(product.id).toString(),
+      text: _formatQuantity(
+        provider.getProductQuantity(product.id),
+        product.type,
+      ),
     );
 
     showDialog(
@@ -28,7 +39,9 @@ class ProductsScreen extends StatelessWidget {
             SizedBox(height: 16),
             TextField(
               controller: controller,
-              keyboardType: TextInputType.number,
+              keyboardType: product.type == 'шт'
+                  ? TextInputType.number
+                  : TextInputType.numberWithOptions(signed: true),
               decoration: InputDecoration(
                 labelText: 'Количество',
                 border: OutlineInputBorder(),
@@ -45,7 +58,7 @@ class ProductsScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final quantity = int.tryParse(controller.text) ?? 0;
+              final quantity = double.tryParse(controller.text) ?? 0;
               if (quantity > 0) {
                 provider.setProductQuantity(product.id, quantity);
               }
@@ -84,6 +97,10 @@ class ProductsScreen extends StatelessWidget {
               return Column(
                 children: [
                   ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
                     selected: isSelected,
                     selectedTileColor: Colors.grey.shade300,
                     selectedColor: Colors.black,
@@ -114,12 +131,15 @@ class ProductsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    title: Text('${product.name} (${product.type})'),
+                    title: Text(product.name),
                     trailing: Row(
-                      mainAxisSize: MainAxisSize.min, // 🔑 MUHIM
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         if (isSelected)
-                          Text('$quantity', style: TextStyle(fontSize: 16)),
+                          Text(
+                            _formatQuantity(quantity, product.type),
+                            style: TextStyle(fontSize: 16),
+                          ),
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline,
                               color: Colors.red),
@@ -127,6 +147,7 @@ class ProductsScreen extends StatelessWidget {
                             provider.decrementProduct(product.id);
                           },
                         ),
+                        Text(product.type ?? "null")
                       ],
                     ),
                     onLongPress: () {

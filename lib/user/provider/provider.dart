@@ -8,7 +8,7 @@ class ProductModel {
   final String name;
   final String? type;
   final String? category;
-  final String? imageUrl; // Rasm URL qo'shildi
+  final String? imageUrl;
 
   ProductModel({
     required this.id,
@@ -24,7 +24,7 @@ class ProductModel {
       name: json['name'],
       type: json['type'],
       category: json['category'],
-      imageUrl: json['image_url'], // Rasm URL ni JSON dan olish
+      imageUrl: json['image_url'],
     );
   }
 }
@@ -56,7 +56,7 @@ class CategoryModel {
 // Order Item Model
 class OrderItem {
   final int productId;
-  final int count;
+  final double count; // int -> double
 
   OrderItem({
     required this.productId,
@@ -74,11 +74,12 @@ class OrderItem {
 class ProductProvider extends ChangeNotifier {
   Map<String, List<ProductModel>> productsByCategory = {};
   List<CategoryModel> categories = [];
-  Map<int, int> selectedProducts = {}; // productId: quantity
+  Map<int, double> selectedProducts = {}; // productId: quantity (double)
   Map<int, int> productPrintMap = {}; // productId: print number
   bool isLoading = false;
-  bool isSubmitting = false; // Buyurtma yuborish uchun loading
+  bool isSubmitting = false;
   String? errorMessage;
+  final service = ProductService();
 
   // Kategoriyalarni yuklash
   Future<void> fetchCategories() async {
@@ -87,7 +88,6 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final service = ProductService();
       categories = await service.fetchCategories();
       isLoading = false;
       notifyListeners();
@@ -122,19 +122,55 @@ class ProductProvider extends ChangeNotifier {
     return productsByCategory[category] ?? [];
   }
 
-  int getProductQuantity(int productId) {
-    return selectedProducts[productId] ?? 0;
+  double getProductQuantity(int productId) {
+    return selectedProducts[productId] ?? 0.0;
+  }
+
+  // Product type bo'yicha increment miqdorini aniqlash
+  double _getIncrementAmount(int productId) {
+    // Mahsulot type ni topish
+    ProductModel? product;
+    for (var products in productsByCategory.values) {
+      try {
+        product = products.firstWhere((p) => p.id == productId);
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+
+    if (product != null && product.type != null) {
+      String type = product.type!.toLowerCase();
+      if (type.contains('гр') || type.contains('gr') || type.contains('gram')) {
+        return 0.001; // 1 gram = 0.001 kg
+      }
+    }
+    return 1.0; // Default: Кг uchun
+  }
+
+  // Floating point precision muammosini hal qilish
+  double _roundToPrecision(double value, int decimals) {
+    double mod = 1.0;
+    for (int i = 0; i < decimals; i++) {
+      mod *= 10;
+    }
+    return (value * mod).round() / mod;
   }
 
   void incrementProduct(int productId) {
-    selectedProducts[productId] = (selectedProducts[productId] ?? 0) + 1;
+    double amount = _getIncrementAmount(productId);
+    double newValue = (selectedProducts[productId] ?? 0.0) + amount;
+    selectedProducts[productId] = _roundToPrecision(newValue, 3);
     notifyListeners();
   }
 
   void decrementProduct(int productId) {
     if (selectedProducts.containsKey(productId)) {
-      if (selectedProducts[productId]! > 1) {
-        selectedProducts[productId] = selectedProducts[productId]! - 1;
+      double amount = _getIncrementAmount(productId);
+      double newQuantity = selectedProducts[productId]! - amount;
+      newQuantity = _roundToPrecision(newQuantity, 3);
+      if (newQuantity > 0) {
+        selectedProducts[productId] = newQuantity;
       } else {
         selectedProducts.remove(productId);
       }
@@ -142,7 +178,7 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  void setProductQuantity(int productId, int quantity) {
+  void setProductQuantity(int productId, double quantity) {
     if (quantity > 0) {
       selectedProducts[productId] = quantity;
     } else {
@@ -151,8 +187,8 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  int get totalSelectedProducts {
-    return selectedProducts.values.fold(0, (sum, qty) => sum + qty);
+  double get totalSelectedProducts {
+    return selectedProducts.values.fold(0.0, (sum, qty) => sum + qty);
   }
 
   void clearSelection() {
@@ -162,7 +198,7 @@ class ProductProvider extends ChangeNotifier {
 
   // Buyurtmani print bo'yicha guruhlash va yuborish
   Future<void> submitOrder() async {
-    isSubmitting = true; // Loading boshlanadi
+    isSubmitting = true;
     notifyListeners();
 
     try {
@@ -198,7 +234,7 @@ class ProductProvider extends ChangeNotifier {
 
         await service.submitOrder(orderData);
 
-        // Keyingi printerga yuborishdan oldin biroz kutish (ixtiyoriy)
+        // Keyingi printerga yuborishdan oldin biroz kutish
         if (printNumber != sortedPrintNumbers.last) {
           await Future.delayed(Duration(milliseconds: 500));
         }
@@ -209,7 +245,7 @@ class ProductProvider extends ChangeNotifier {
     } catch (e) {
       throw Exception('Buyurtma yuborishda xatolik: $e');
     } finally {
-      isSubmitting = false; // Loading tugadi
+      isSubmitting = false;
       notifyListeners();
     }
   }
@@ -244,14 +280,14 @@ class ProductService {
         final Map<String, dynamic> data = responseData['data'];
 
         Map<String, List<ProductModel>> productsByCategory = {};
-        Map<int, int> productPrintMap = {}; // productId: print
+        Map<int, int> productPrintMap = {};
 
         // Kategoriyalarni olish va print raqamini aniqlash
         final categoriesResponse = await fetchCategories();
         Map<String, int> categoryPrintMap = {};
 
         for (var category in categoriesResponse) {
-          categoryPrintMap[category.name] = category.print ?? 1;
+          categoryPrintMap[category.name] = category.print;
         }
 
         data.forEach((category, products) {
@@ -263,7 +299,7 @@ class ProductService {
 
             productsByCategory[category] = productList;
 
-            // Har bir mahsulot uchun print raqamini Сохранять
+            // Har bir mahsulot uchun print raqamini saqlash
             for (var product in productList) {
               productPrintMap[product.id] = printNumber;
             }
@@ -286,7 +322,7 @@ class ProductService {
   Future<void> submitOrder(Map<String, dynamic> orderData) async {
     try {
       final response = await dio.post(
-        AppUrls.orders, // Bu URL ni o'zingizga moslashtiring
+        AppUrls.orders,
         data: orderData,
       );
 

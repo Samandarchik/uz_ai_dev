@@ -68,6 +68,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
           return LayoutBuilder(
             builder: (context, constraints) {
               return ListView.builder(
+                padding: EdgeInsets.zero,
                 itemCount: provider.categories.length,
                 itemBuilder: (context, index) {
                   final category = provider.categories[index];
@@ -96,7 +97,9 @@ class _UserHomeUiState extends State<UserHomeUi> {
                     child: Column(
                       children: [
                         ListTile(
-                          contentPadding: EdgeInsets.all(5),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                          ),
                           leading: ClipOval(
                             child: GestureDetector(
                               onTap: () {
@@ -154,7 +157,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
                 context.push(CartPage());
               },
               icon: Icon(Icons.shopping_basket_outlined),
-              label: Text('(${provider.totalSelectedProducts})'),
+              label: Text(provider.totalSelectedProducts.toStringAsFixed(3)),
             );
           }
           return SizedBox.shrink();

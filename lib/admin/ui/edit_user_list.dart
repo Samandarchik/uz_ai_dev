@@ -1,25 +1,25 @@
-// ================ EDIT USER DIALOG ================
-// widgets/edit_user_dialog.dart
+// ================ EDIT USER PAGE ================
+// pages/edit_user_page.dart
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';
 import 'package:uz_ai_dev/admin/services/user_management_service.dart';
+import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'package:provider/provider.dart';
 
-class EditUserDialog extends StatefulWidget {
+class EditUserPage extends StatefulWidget {
   final User? user;
-  final VoidCallback onUserSaved;
 
-  const EditUserDialog({
+  const EditUserPage({
     super.key,
     this.user,
-    required this.onUserSaved,
   });
 
   @override
-  State<EditUserDialog> createState() => _EditUserDialogState();
+  State<EditUserPage> createState() => _EditUserPageState();
 }
 
-class _EditUserDialogState extends State<EditUserDialog> {
+class _EditUserPageState extends State<EditUserPage> {
   final _formKey = GlobalKey<FormState>();
   final UserManagementService _userService = UserManagementService();
   final FilialService _filialService = FilialService();
@@ -35,6 +35,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
   bool _obscurePassword = true;
 
   List<Filial> _filials = [];
+  List<int> _categoryIds = [];
   String _filialError = '';
 
   @override
@@ -46,6 +47,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _isAdmin = widget.user?.isAdmin ?? false;
     _selectedFilialId = widget.user?.filialId;
     _loadFilials();
+    _loadCategories();
   }
 
   @override
@@ -76,11 +78,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
     }
   }
 
-  String _formatPhoneForRequest(String phone) {
-    // +998 prefixi bor bo'lsa olib tashlash
-    String cleanPhone = phone.replaceAll('+998', '').trim();
-    // +998 prefixi qo'shish
-    return '+998$cleanPhone';
+  Future<void> _loadCategories() async {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    if (provider.categories.isEmpty) {
+      await provider.fetchCategories();
+    }
   }
 
   Future<void> _saveUser() async {
@@ -93,34 +95,36 @@ class _EditUserDialogState extends State<EditUserDialog> {
         // Mavjud foydalanuvchini yangilash - PUT /api/users/{id}
         final request = UpdateUserRequest(
           name: _nameController.text.trim(),
-          phone: _formatPhoneForRequest(_phoneController.text.trim()),
+          phone: _phoneController.text.trim(),
           isAdmin: _isAdmin,
           filialId: _selectedFilialId,
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
               : null,
+          categoryIds: _categoryIds,
         );
 
-        print('Updating user with request: ${request.toJson()}'); // Debug log
+        print('Updating user with request: ${request.toJson()}');
         await _userService.updateUser(widget.user!.id, request);
       } else {
         // Yangi foydalanuvchi yaratish - POST /api/register
         final request = CreateUserRequest(
           name: _nameController.text.trim(),
-          phone: _formatPhoneForRequest(_phoneController.text.trim()),
+          phone: _phoneController.text.trim(),
           password: _passwordController.text,
           isAdmin: _isAdmin,
           filialId: _selectedFilialId!.toInt(),
+          categoryIds: _categoryIds,
         );
 
-        print('Creating user with request: ${request.toJson()}'); // Debug log
+        print('Creating user with request: ${request.toJson()}');
         await _userService.createUser(request);
       }
 
       // Muvaffaqiyat
-      widget.onUserSaved();
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context)
+            .pop(true); // true qaytarish - o'zgarishlar bo'lganini bildiradi
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -141,7 +145,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
         );
       }
     } catch (e) {
-      print('Error in _saveUser: $e'); // Debug log
+      print('Error in _saveUser: $e');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -313,285 +317,430 @@ class _EditUserDialogState extends State<EditUserDialog> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade600, Colors.blue.shade700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+  Widget _buildCategorySelector() {
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kategoriyalar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    child: Icon(
-                      widget.user != null ? Icons.edit : Icons.person_add,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    SizedBox(width: 12),
+                    Text('Kategoriyalar yuklanmoqda...'),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
+        if (provider.errorMessage != null) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kategoriyalar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
+                        Icon(Icons.error_outline,
+                            color: Colors.red.shade600, size: 20),
+                        const SizedBox(width: 8),
                         Text(
-                          widget.user != null
-                              ? 'edit_user'.tr()
-                              : 'new_user'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          widget.user != null
-                              ? 'update_data'.tr()
-                              : 'add_new_user'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
+                          'Xatolik yuz berdi',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Name Field
-                      Text(
-                        'full_name'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          hintText: 'enter_full_name'.tr(),
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                                color: Colors.blue.shade600, width: 2),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'full_name_required'.tr();
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Phone Field
-                      Text(
-                        'phone_number'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: InputDecoration(
-                          hintText: '+998901234567',
-                          prefixIcon: const Icon(Icons.phone_outlined),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                                color: Colors.blue.shade600, width: 2),
-                          ),
-                        ),
-                        keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'phone_number_required'.tr();
-                          }
-                          if (value.trim().isEmpty) {
-                            return 'phone_number_invalid'.tr();
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Password Field
-                      Text(
-                        widget.user != null
-                            ? 'new_password_optional'.tr()
-                            : 'password'.tr(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          hintText: widget.user != null
-                              ? 'new_password_hint'.tr()
-                              : 'enter_password'.tr(),
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                                color: Colors.blue.shade600, width: 2),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (widget.user == null &&
-                              (value == null || value.isEmpty)) {
-                            return 'password_required'.tr();
-                          }
-                          if (value != null &&
-                              value.isNotEmpty &&
-                              value.length < 6) {
-                            return 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Filial Selector
-                      _buildFilialSelector(),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Actions
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed:
-                          _isLoading ? null : () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Bekor qilish',
-                        style: TextStyle(fontSize: 16),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: _loadCategories,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: Text('Qayta urinish'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 32),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveUser,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Kategoriyalar',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: provider.categories.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Kategoriyalar topilmadi',
+                        style: TextStyle(color: Colors.grey),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
+                    )
+                  : Column(
+                      children: provider.categories.map((category) {
+                        final isSelected = _categoryIds.contains(category.id);
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _categoryIds.remove(category.id);
+                              } else {
+                                _categoryIds.add(category.id);
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey.shade200,
+                                  width: 1,
+                                ),
                               ),
-                            )
-                          : Text(
-                              widget.user != null ? 'Yangilash' : 'Yaratish',
+                            ),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: isSelected,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        _categoryIds.add(category.id);
+                                      } else {
+                                        _categoryIds.remove(category.id);
+                                      }
+                                    });
+                                  },
+                                  activeColor: Colors.blue.shade600,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    category.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? Colors.blue.shade700
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.user != null ? 'edit_user'.tr() : 'new_user'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Info Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.user != null
+                            ? 'update_data'.tr()
+                            : 'add_new_user'.tr(),
+                        style: TextStyle(
+                          color: Colors.blue.shade900,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Name Field
+              Text(
+                'full_name'.tr(),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: 'enter_full_name'.tr(),
+                  prefixIcon: const Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.blue.shade600, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'full_name_required'.tr();
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Phone Field
+              Text(
+                'phone_number'.tr(),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _phoneController,
+                decoration: InputDecoration(
+                  hintText: '+998901234567',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.blue.shade600, width: 2),
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'phone_number_required'.tr();
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Password Field
+              Text(
+                widget.user != null
+                    ? 'new_password_optional'.tr()
+                    : 'password'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  hintText: widget.user != null
+                      ? 'new_password_hint'.tr()
+                      : 'enter_password'.tr(),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.blue.shade600, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (widget.user == null && (value == null || value.isEmpty)) {
+                    return 'password_required'.tr();
+                  }
+                  if (value != null && value.isNotEmpty && value.length < 6) {
+                    return 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Filial Selector
+              _buildFilialSelector(),
+              const SizedBox(height: 20),
+
+              // Category Selector
+              _buildCategorySelector(),
+              const SizedBox(height: 32),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              widget.user != null ? Icons.update : Icons.add,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.user != null
+                                  ? 'Обновить'
+                                  : 'Создать пользователя',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                    ),
-                  ),
-                ],
+                          ],
+                        ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

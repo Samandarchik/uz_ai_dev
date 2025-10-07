@@ -18,19 +18,18 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   final TokenStorage tokenStorage = sl<TokenStorage>();
 
-@override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    bool needsUpdate = await VersionChecker.checkVersion(context);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      bool needsUpdate = await VersionChecker.checkVersion(context);
 
-    // Agar update kerak bo'lmasa, token tekshiradi
-    if (!needsUpdate) {
-      _checkToken();
-    }
-  });
-}
-
+      // Agar update kerak bo'lmasa, token tekshiradi
+      if (!needsUpdate) {
+        _checkToken();
+      }
+    });
+  }
 
   Future<void> _initFlow() async {
     // 🔹 1. Versiyani tekshirish

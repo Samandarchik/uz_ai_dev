@@ -7,7 +7,6 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
 import 'package:uz_ai_dev/admin/services/upload_image.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/check_version.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 
 import 'splash_screen.dart';
@@ -42,10 +41,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   VersionChecker.checkVersion(context); // ✅ versiya tekshiruvi
-    // });
-
     return MaterialApp(
       title: 'User Panel',
       theme: ThemeData(
