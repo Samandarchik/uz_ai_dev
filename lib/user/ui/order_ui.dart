@@ -38,7 +38,7 @@ class CartPage extends StatelessWidget {
               controller: controller,
               keyboardType: product.type == 'шт'
                   ? TextInputType.number
-                  : const TextInputType.numberWithOptions(decimal: true),
+                  : const TextInputType.numberWithOptions(signed: true),
               decoration: InputDecoration(
                 labelText: 'Количество',
                 border: const OutlineInputBorder(),

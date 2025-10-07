@@ -1,5 +1,5 @@
 abstract final class AppUrls {
-  static const String baseUrl = "http://localhost:1010";
+  static const String baseUrl = "https://api.uz-dev-ai.uz";
   static const String login = '$baseUrl/api/login';
   static const String register = '$baseUrl/api/register';
   static const String refresh = '$baseUrl/api/auth/refresh';
@@ -18,3 +18,4 @@ abstract final class AppUrls {
 
 // https://imzo-ai.uzjoylar.uz/html-download?pdf_category_item_id=
 // https://api.uz-dev-ai.uz
+//http://localhost:1010
