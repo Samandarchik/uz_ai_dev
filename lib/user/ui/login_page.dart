@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/user/ui/category_ui.dart';
+import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'dart:convert';
 import '../services/api_service.dart';
 

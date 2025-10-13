@@ -20,6 +20,7 @@ class _AddProductPageState extends State<AddProductPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _typeController = TextEditingController();
+  final ingredientsControlle = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   int? _selectedCategoryId;
@@ -227,6 +228,22 @@ class _AddProductPageState extends State<AddProductPage> {
                 return null;
               },
             ),
+            SizedBox(
+              height: 20,
+            ),
+            TextFormField(
+              controller: ingredientsControlle,
+              decoration: const InputDecoration(
+                labelText: 'Состав',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Писать Состав';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             Consumer<CategoryProviderAdmin>(
               builder: (context, provider, child) {
@@ -348,6 +365,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               categoryId: _selectedCategoryId!,
                               type: _typeController.text,
                               categoryName: '',
+                              ingredients: ingredientsControlle.text,
                               filials: _selectedFilials,
                               filialNames: [],
                               imageUrl: imageUrl ?? '',

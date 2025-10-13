@@ -161,11 +161,11 @@ class CategoryListTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   const CategoryListTile({
-    Key? key,
+    super.key,
     required this.category,
     required this.onEdit,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

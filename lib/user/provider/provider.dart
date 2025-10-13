@@ -8,11 +8,13 @@ class ProductModel {
   final String name;
   final String? type;
   final String? category;
+  final String? ingredients;
   final String? imageUrl;
 
   ProductModel({
     required this.id,
     required this.name,
+    this.ingredients,
     this.type,
     this.category,
     this.imageUrl,
@@ -23,6 +25,7 @@ class ProductModel {
       id: json['id'],
       name: json['name'],
       type: json['type'],
+      ingredients: json['ingredients'],
       category: json['category'],
       imageUrl: json['image_url'],
     );

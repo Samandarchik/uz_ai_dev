@@ -111,12 +111,22 @@ class ProductsScreen extends StatelessWidget {
                             context: context,
                             builder: (_) => Dialog(
                               backgroundColor: Colors.transparent,
-                              child: CachedNetworkImage(
-                                imageUrl:
-                                    "${AppUrls.baseUrl}${product.imageUrl}",
-                                fit: BoxFit.contain,
-                                errorWidget: (context, url, error) =>
-                                    Icon(Icons.error, size: 40),
+                              child: Container(
+                                decoration: BoxDecoration(color: Colors.white),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CachedNetworkImage(
+                                      imageUrl:
+                                          "${AppUrls.baseUrl}${product.imageUrl}",
+                                      fit: BoxFit.contain,
+                                      errorWidget: (context, url, error) =>
+                                          Icon(Icons.error, size: 40),
+                                    ),
+                                    Text(product.ingredients ??
+                                        "null ingredients"),
+                                  ],
+                                ),
                               ),
                             ),
                           );

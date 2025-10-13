@@ -7,11 +7,11 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/provider/product_ui.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:uz_ai_dev/user/ui/order_ui.dart';
 import 'package:uz_ai_dev/user/ui/login_page.dart';
 import 'package:uz_ai_dev/user/ui/orders_page.dart';
+import 'package:uz_ai_dev/user/ui/product_ui.dart';
 
 // Kategoriyalar ekrani
 class UserHomeUi extends StatefulWidget {

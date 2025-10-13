@@ -5,7 +5,7 @@ import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/check_version.dart'; // bunda VersionChecker mavjud
-import 'package:uz_ai_dev/user/ui/category_ui.dart';
+import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/user/ui/login_page.dart';
 
 class SplashScreen extends StatefulWidget {

@@ -25,6 +25,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
   late TextEditingController _nameController;
   late TextEditingController _typeController;
+  late TextEditingController ingredientsControlle;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
 
@@ -37,6 +38,8 @@ class _EditProductPageState extends State<EditProductPage> {
     super.initState();
     _nameController = TextEditingController(text: widget.product.name);
     _typeController = TextEditingController(text: widget.product.type);
+    ingredientsControlle =
+        TextEditingController(text: widget.product.ingredients);
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
     _currentImageUrl = widget.product.imageUrl;
@@ -303,6 +306,22 @@ class _EditProductPageState extends State<EditProductPage> {
                 return null;
               },
             ),
+            SizedBox(
+              height: 20,
+            ),
+            TextFormField(
+              controller: ingredientsControlle,
+              decoration: const InputDecoration(
+                labelText: 'Состав',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Писать Состав';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             Consumer<CategoryProviderAdmin>(
               builder: (context, provider, child) {
@@ -422,6 +441,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               name: _nameController.text,
                               categoryId: _selectedCategoryId,
                               type: _typeController.text,
+                              ingredients: ingredientsControlle.text,
                               filials: _selectedFilials,
                               imageUrl: imageUrl,
                             );
@@ -461,6 +481,7 @@ class _EditProductPageState extends State<EditProductPage> {
   void dispose() {
     _nameController.dispose();
     _typeController.dispose();
+    ingredientsControlle.dispose();
     super.dispose();
   }
 }

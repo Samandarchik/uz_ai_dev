@@ -98,7 +98,7 @@ class ApiProductService {
         '${AppUrls.product}/${product.id}',
         data: product.toUpdateJson(),
       );
-
+      print(response.data);
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
         return ProductModelAdmin.fromJson(responseData);

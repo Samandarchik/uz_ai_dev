@@ -5,6 +5,7 @@ class ProductModelAdmin {
   final String type;
   final String categoryName;
   final String? imageUrl;
+  final String? ingredients;
   final List<int> filials;
   final List<String> filialNames;
 
@@ -14,6 +15,7 @@ class ProductModelAdmin {
     required this.categoryId,
     required this.type,
     required this.categoryName,
+    this.ingredients,
     this.imageUrl,
     required this.filials,
     required this.filialNames,
@@ -25,6 +27,7 @@ class ProductModelAdmin {
       name: json['name'] ?? '',
       categoryId: json['category_id'] ?? 0,
       type: json['type'] ?? '',
+      ingredients: json['ingredients'],
       imageUrl: json['image_url'],
       categoryName: json['category_name'] ?? '',
       filials: List<int>.from(json['filials'] ?? []),
@@ -38,6 +41,7 @@ class ProductModelAdmin {
       'name': name,
       'category_id': categoryId,
       'type': type,
+      'ingredients': ingredients,
       'image_url': imageUrl,
       'category_name': categoryName,
       'filials': filials,
@@ -64,6 +68,7 @@ class ProductModelAdmin {
       'name': name,
       'category_id': categoryId,
       'type': type,
+      "ingredients": ingredients,
       "image_url": imageUrl,
       'filials': filials,
     };
@@ -75,6 +80,7 @@ class ProductModelAdmin {
     int? categoryId,
     String? type,
     String? categoryName,
+    String? ingredients,
     List<int>? filials,
     String? imageUrl,
     List<String>? filialNames,
@@ -84,6 +90,7 @@ class ProductModelAdmin {
       name: name ?? this.name,
       categoryId: categoryId ?? this.categoryId,
       type: type ?? this.type,
+      ingredients: ingredients ?? this.ingredients,
       categoryName: categoryName ?? this.categoryName,
       filials: filials ?? this.filials,
       imageUrl: imageUrl ?? this.imageUrl,
