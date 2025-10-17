@@ -2,18 +2,15 @@
 // pages/edit_user_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/admin/model/user_model.dart';
-import 'package:uz_ai_dev/admin/services/user_management_service.dart';
-import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
+import 'package:uz_ai_dev/admin_agent/services/user_management_service.dart';
+import 'package:uz_ai_dev/user_agent/provider/provider.dart';
 import 'package:provider/provider.dart';
 
 class EditUserPage extends StatefulWidget {
   final User? user;
 
-  const EditUserPage({
-    super.key,
-    this.user,
-  });
+  const EditUserPage({super.key, this.user});
 
   @override
   State<EditUserPage> createState() => _EditUserPageState();
@@ -79,7 +76,7 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   Future<void> _loadCategories() async {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final provider = Provider.of<ProductProviderAgent>(context, listen: false);
     if (provider.categories.isEmpty) {
       await provider.fetchCategories();
     }
@@ -123,8 +120,9 @@ class _EditUserPageState extends State<EditUserPage> {
 
       // Muvaffaqiyat
       if (mounted) {
-        Navigator.of(context)
-            .pop(true); // true qaytarish - o'zgarishlar bo'lganini bildiradi
+        Navigator.of(
+          context,
+        ).pop(true); // true qaytarish - o'zgarishlar bo'lganini bildiradi
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,15 +130,18 @@ class _EditUserPageState extends State<EditUserPage> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 12),
-                Text(widget.user != null
-                    ? 'user_updated_success'
-                    : 'new_user_created'),
+                Text(
+                  widget.user != null
+                      ? 'user_updated_success'
+                      : 'new_user_created',
+                ),
               ],
             ),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -159,8 +160,9 @@ class _EditUserPageState extends State<EditUserPage> {
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -213,8 +215,11 @@ class _EditUserPageState extends State<EditUserPage> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.error_outline,
-                                  color: Colors.red.shade600, size: 20),
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red.shade600,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'branches_loading_error',
@@ -254,7 +259,9 @@ class _EditUserPageState extends State<EditUserPage> {
                             value: null,
                             child: Padding(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               child: Row(
                                 children: [
                                   Icon(Icons.clear, color: Colors.grey),
@@ -273,7 +280,9 @@ class _EditUserPageState extends State<EditUserPage> {
                               child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
@@ -318,7 +327,7 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   Widget _buildCategorySelector() {
-    return Consumer<ProductProvider>(
+    return Consumer<ProductProviderAgent>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
           return Column(
@@ -379,8 +388,11 @@ class _EditUserPageState extends State<EditUserPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.error_outline,
-                            color: Colors.red.shade600, size: 20),
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red.shade600,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Xatolik yuz berdi',
@@ -449,7 +461,9 @@ class _EditUserPageState extends State<EditUserPage> {
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               border: Border(
                                 bottom: BorderSide(
@@ -572,8 +586,10 @@ class _EditUserPageState extends State<EditUserPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Colors.blue.shade600, width: 2),
+                    borderSide: BorderSide(
+                      color: Colors.blue.shade600,
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (value) {
@@ -612,8 +628,10 @@ class _EditUserPageState extends State<EditUserPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Colors.blue.shade600, width: 2),
+                    borderSide: BorderSide(
+                      color: Colors.blue.shade600,
+                      width: 2,
+                    ),
                   ),
                 ),
                 keyboardType: TextInputType.phone,
@@ -645,9 +663,11 @@ class _EditUserPageState extends State<EditUserPage> {
                       : 'enter_password',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                     onPressed: () {
                       setState(() {
                         _obscurePassword = !_obscurePassword;
@@ -666,8 +686,10 @@ class _EditUserPageState extends State<EditUserPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Colors.blue.shade600, width: 2),
+                    borderSide: BorderSide(
+                      color: Colors.blue.shade600,
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (value) {

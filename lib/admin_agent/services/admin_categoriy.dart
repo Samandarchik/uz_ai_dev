@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:uz_ai_dev/admin/model/category_model.dart';
+import 'package:uz_ai_dev/admin_agent/model/category_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
@@ -21,8 +21,10 @@ class ApiAdminService {
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception('server_error' +
-            ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        throw Exception(
+          'server_error' +
+              ': ${e.response!.statusCode} - ${e.response!.statusMessage}',
+        );
       } else {
         throw Exception('network_error' + ': ${e.message}');
       }
@@ -34,7 +36,8 @@ class ApiAdminService {
 
   // Create new category
   Future<CategoryProductAdmin> createCategory(
-      CategoryProductAdmin category) async {
+    CategoryProductAdmin category,
+  ) async {
     try {
       final response = await dio.post(
         AppUrls.category,
@@ -65,7 +68,8 @@ class ApiAdminService {
 
   // Update existing category
   Future<CategoryProductAdmin> updateCategory(
-      CategoryProductAdmin category) async {
+    CategoryProductAdmin category,
+  ) async {
     try {
       final response = await dio.put(
         '${AppUrls.category}/${category.id}',
@@ -98,11 +102,10 @@ class ApiAdminService {
 
   // Delete category
   Future<CategoryProductAdmin> deleteCategory(
-      CategoryProductAdmin category) async {
+    CategoryProductAdmin category,
+  ) async {
     try {
-      final response = await dio.delete(
-        '${AppUrls.category}/${category.id}',
-      );
+      final response = await dio.delete('${AppUrls.category}/${category.id}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // DELETE so'rovidan keyin server bo'sh javob yoki o'chirilgan obyektni qaytarishi mumkin

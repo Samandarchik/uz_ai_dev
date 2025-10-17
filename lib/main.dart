@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
+
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
 import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin_agent/provider/admin_categoriy_provider.dart';
+import 'package:uz_ai_dev/admin_agent/provider/admin_filial_provider.dart';
+import 'package:uz_ai_dev/admin_agent/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin_agent/provider/admin_user_provider.dart';
+import 'package:uz_ai_dev/admin_agent/services/upload_image.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'package:uz_ai_dev/user_agent/provider/provider.dart';
 
 import 'splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await EasyLocalization.ensureInitialized();
   await setupInit();
 
   runApp(
@@ -25,13 +30,15 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),
         ChangeNotifierProvider(create: (_) => UserProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdminUpload()),
+        ChangeNotifierProvider(create: (_) => ProductProviderAgent()),
+        ChangeNotifierProvider(create: (_) => ProductProviderAgentAdmin()),
+        ChangeNotifierProvider(create: (_) => CategoryProviderAdminAgent()),
+        ChangeNotifierProvider(create: (_) => FilialProviderAdminAgent()),
+        ChangeNotifierProvider(create: (_) => UserProviderAdminAgent()),
+        ChangeNotifierProvider(
+          create: (_) => CategoryProviderAdminAgentUpload(),
+        ),
       ],
-      child: EasyLocalization(
-        supportedLocales: const [Locale('ru')],
-        path: 'assets/translations',
-        fallbackLocale: const Locale('ru'),
-        child: const MyApp(),
-      ),
     ),
   );
 }
@@ -60,9 +67,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,
     );

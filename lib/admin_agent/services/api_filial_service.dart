@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
 
+import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/models/user_model.dart';
-
 class ApiFilialService {
   final Dio dio = sl<Dio>();
 
@@ -20,8 +19,10 @@ class ApiFilialService {
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception('server_error' +
-            ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        throw Exception(
+          'server_error' +
+              ': ${e.response!.statusCode} - ${e.response!.statusMessage}',
+        );
       } else {
         throw Exception('network_error' + ': ${e.message}');
       }

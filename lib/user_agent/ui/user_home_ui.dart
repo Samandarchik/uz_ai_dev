@@ -7,29 +7,29 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/provider/provider.dart';
-import 'package:uz_ai_dev/user/ui/order_ui.dart';
 import 'package:uz_ai_dev/login_page.dart';
-import 'package:uz_ai_dev/user/ui/orders_page.dart';
-import 'package:uz_ai_dev/user/ui/product_ui.dart';
+import 'package:uz_ai_dev/user_agent/provider/provider.dart';
+import 'package:uz_ai_dev/user_agent/ui/order_ui.dart';
+import 'package:uz_ai_dev/user_agent/ui/orders_page.dart';
+import 'package:uz_ai_dev/user_agent/ui/product_ui.dart';
 
 // Kategoriyalar ekrani
-class UserHomeUi extends StatefulWidget {
-  const UserHomeUi({super.key});
+class UserHomeUiAgent extends StatefulWidget {
+  const UserHomeUiAgent({super.key});
 
   @override
-  _UserHomeUiState createState() => _UserHomeUiState();
+  _UserHomeUiAgentState createState() => _UserHomeUiAgentState();
 }
 
-class _UserHomeUiState extends State<UserHomeUi> {
+class _UserHomeUiAgentState extends State<UserHomeUiAgent> {
   TokenStorage tokenStorage = sl<TokenStorage>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProductProvider>().fetchCategories();
-      context.read<ProductProvider>().fetchProducts();
+      context.read<ProductProviderAgent>().fetchCategories();
+      context.read<ProductProviderAgent>().fetchProducts();
     });
   }
 
@@ -38,24 +38,29 @@ class _UserHomeUiState extends State<UserHomeUi> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () => _showContactDialog(context),
-            icon: Icon(Icons.info_outline)),
-        title: Text('categories',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: () => _showContactDialog(context),
+          icon: Icon(Icons.info_outline),
+        ),
+        title: Text(
+          'categories',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-              onPressed: () {
-                tokenStorage.removeToken();
-                tokenStorage.removeRefreshToken();
-                context.push(LoginPage());
-              },
-              icon: Icon(Icons.logout)),
+            onPressed: () {
+              tokenStorage.removeToken();
+              tokenStorage.removeRefreshToken();
+              context.push(LoginPage());
+            },
+            icon: Icon(Icons.logout),
+          ),
           IconButton(
-              onPressed: () => context.push(OrdersPage()),
-              icon: Icon(Icons.receipt_long)),
+            onPressed: () => context.push(OrdersPage()),
+            icon: Icon(Icons.receipt_long),
+          ),
         ],
       ),
-      body: Consumer<ProductProvider>(
+      body: Consumer<ProductProviderAgent>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
             return Center(child: CircularProgressIndicator.adaptive());
@@ -87,17 +92,14 @@ class _UserHomeUiState extends State<UserHomeUi> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProductsScreen(
-                            categoryName: category.name,
-                          ),
+                          builder: (context) =>
+                              ProductsScreen(categoryName: category.name),
                         ),
                       );
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 6,
-                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 6),
                       leading: ClipOval(
                         child: GestureDetector(
                           onTap: () {
@@ -132,9 +134,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      subtitle: Text(
-                        "$productCount ${"product"}",
-                      ),
+                      subtitle: Text("$productCount ${"product"}"),
                     ),
                   );
                 },
@@ -143,7 +143,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
           );
         },
       ),
-      floatingActionButton: Consumer<ProductProvider>(
+      floatingActionButton: Consumer<ProductProviderAgent>(
         builder: (context, provider, child) {
           if (provider.totalSelectedProducts > 0) {
             return FloatingActionButton.extended(
@@ -167,7 +167,8 @@ class _UserHomeUiState extends State<UserHomeUi> {
         return AlertDialog(
           title: Text('Вопрос или проблема'),
           content: Text(
-              'Если у вас возник вопрос или вам что-то непонятно, обратитесь к создателю программы.'),
+            'Если у вас возник вопрос или вам что-то непонятно, обратитесь к создателю программы.',
+          ),
           actions: [
             TextButton(
               onPressed: () {

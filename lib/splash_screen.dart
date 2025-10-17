@@ -6,7 +6,7 @@ import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/check_version.dart'; // bunda VersionChecker mavjud
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
-import 'package:uz_ai_dev/user/ui/login_page.dart';
+import 'package:uz_ai_dev/login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,14 +31,6 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  Future<void> _initFlow() async {
-    // 🔹 1. Versiyani tekshirish
-    await VersionChecker.checkVersion(context);
-
-    // 🔹 2. Keyin tokenni tekshirish
-    await _checkToken();
-  }
-
   Future<void> _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
@@ -48,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (token == null || token.isEmpty) {
+    if (token.isEmpty) {
       // token yo‘q -> login page
       context.pushReplacement(const LoginPage());
     } else {

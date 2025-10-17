@@ -1,12 +1,14 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/admin_agent/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
+import 'package:uz_ai_dev/user_agent/services/api_service.dart';
+import 'package:uz_ai_dev/user_agent/ui/user_home_ui.dart';
 import 'dart:convert';
-import '../services/api_service.dart';
+import 'user/services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -78,42 +80,55 @@ class _LoginPageState extends State<LoginPage> {
       _passwordController.text = account['password']!;
     });
   }
+Future<void> _login() async {
+  if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+  setState(() {
+    _isLoading = true;
+  });
 
-    setState(() {
-      _isLoading = true;
-    });
+  // Telefon yoki text ekanligini tekshirish
+  final loginInput = _phoneController.text.trim();
+  final isPhoneNumber = loginInput.startsWith('+') && 
+                        loginInput.substring(1).replaceAll(RegExp(r'\s+'), '').length >= 10;
 
-    final result = await ApiService.login(
-      _phoneController.text,
-      _passwordController.text,
-    );
+  final result = isPhoneNumber
+      ? await ApiService.login(  // + raqam uchun ApiService
+          loginInput,
+          _passwordController.text,
+        )
+      : await ApiServiceAgent.login(  // oddiy text uchun ApiServiceAgent
+          loginInput,
+          _passwordController.text,
+        );
 
-    setState(() {
-      _isLoading = false;
-    });
+  setState(() {
+    _isLoading = false;
+  });
 
-    if (result['success'] == true) {
-      // AutoFill kontekstini yakunlash - bu iOS'ga parolni saqlashni taklif qiladi
-      TextInput.finishAutofillContext();
+  if (result['success'] == true) {
+    // AutoFill kontekstini yakunlash - bu iOS'ga parolni saqlashni taklif qiladi
+    TextInput.finishAutofillContext();
 
-      // Akkauntni saqlash
-      await _saveAccount(_phoneController.text, _passwordController.text);
+    // Akkauntni saqlash
+    await _saveAccount(_phoneController.text, _passwordController.text);
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', result['data']['token']);
-      await prefs.setString('user', jsonEncode(result['data']['user']));
-      await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
-
-      context.pushAndRemove(result['data']['user']["is_admin"] == false
-          ? UserHomeUi()
-          : AdminHomeUi());
-    } else {
-      _showErrorDialog(result['message'] ?? 'Login xatosi');
-    }
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', result['data']['token']);
+    await prefs.setString('user', jsonEncode(result['data']['user']));
+    await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
+    await prefs.setBool(
+        "is_adminAgent", result['data']['user']["is_adminAget"]);
+isPhoneNumber?
+    context.pushAndRemove(result['data']['user']["is_admin"] == false
+        ? UserHomeUiAgent()
+        : AdminHomeUiAgent()):context.pushAndRemove(result['data']['user']["is_adminAgent"] == false
+        ? UserHomeUi()
+        : AdminHomeUi());
+  } else {
+    _showErrorDialog(result['message'] ?? 'Login xatosi');
   }
+}
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -123,7 +138,7 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Icon(Icons.error, color: Colors.red),
             SizedBox(width: 10),
-            Text('error'.tr()),
+            Text('error'),
           ],
         ),
         content: Text(message),
@@ -231,7 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'enter_password'.tr();
+                              return 'enter_password';
                             }
                             return null;
                           },
@@ -263,11 +278,11 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                       ),
                                       SizedBox(width: 10),
-                                      Text('wait'.tr()),
+                                      Text('wait'),
                                     ],
                                   )
                                 : Text(
-                                    'login'.tr(),
+                                    'login',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
