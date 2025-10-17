@@ -114,6 +114,7 @@ class ProductsScreen extends StatelessWidget {
                               child: Container(
                                 decoration: BoxDecoration(color: Colors.white),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     CachedNetworkImage(
@@ -123,8 +124,11 @@ class ProductsScreen extends StatelessWidget {
                                       errorWidget: (context, url, error) =>
                                           Icon(Icons.error, size: 40),
                                     ),
-                                    Text(product.ingredients ??
-                                        "null ingredients"),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(product.ingredients ??
+                                          "null ingredients"),
+                                    ),
                                   ],
                                 ),
                               ),

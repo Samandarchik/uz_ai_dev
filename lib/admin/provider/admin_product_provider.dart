@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 
-// ==================== PRODUCT PROVIDER ====================
 class ProductProviderAdmin extends ChangeNotifier {
   final ApiProductService _service = ApiProductService();
 
   List<ProductModelAdmin> _products = [];
+
+  // Har bir kategoriya uchun mahsulotlarni saqlash
+  Map<int, List<ProductModelAdmin>> _productsByCategory = {};
+
+  // Qaysi kategoriyalar yuklangani kuzatish
+  Set<int> _loadedCategories = {};
+
   List<ProductModelAdmin> _filteredProducts = [];
   bool _isLoading = false;
   String? _error;
@@ -39,15 +45,30 @@ class ProductProviderAdmin extends ChangeNotifier {
     }
   }
 
-  // Get products by category ID
-  Future<void> getProductsByCategoryId(int categoryId) async {
+  // Get products by category ID (optimized with caching)
+  Future<void> getProductsByCategoryId(int categoryId,
+      {bool forceRefresh = false}) async {
+    // Agar bu kategoriya allaqachon yuklangan bo'lsa va force refresh yo'q bo'lsa
+    if (_loadedCategories.contains(categoryId) && !forceRefresh) {
+      _filteredProducts = _productsByCategory[categoryId] ?? [];
+      _selectedCategoryId = categoryId;
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     _selectedCategoryId = categoryId;
     notifyListeners();
 
     try {
-      _filteredProducts = await _service.getProductsByCategoryId(categoryId);
+      final products = await _service.getProductsByCategoryId(categoryId);
+
+      // Kategoriya mahsulotlarini saqlash
+      _productsByCategory[categoryId] = products;
+      _loadedCategories.add(categoryId);
+
+      _filteredProducts = products;
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -79,6 +100,11 @@ class ProductProviderAdmin extends ChangeNotifier {
     try {
       final newProduct = await _service.createProduct(product);
       _products.add(newProduct);
+
+      // Tegishli kategoriya keshini yangilash
+      if (_productsByCategory.containsKey(newProduct.categoryId)) {
+        _productsByCategory[newProduct.categoryId]!.add(newProduct);
+      }
 
       // Agar filter qo'llangan bo'lsa, yangi mahsulotni ham filter qilish
       if (_selectedCategoryId == null ||
@@ -112,6 +138,16 @@ class ProductProviderAdmin extends ChangeNotifier {
         _products[index] = updatedProduct;
       }
 
+      // Update in category cache
+      if (_productsByCategory.containsKey(updatedProduct.categoryId)) {
+        final categoryIndex = _productsByCategory[updatedProduct.categoryId]!
+            .indexWhere((p) => p.id == updatedProduct.id);
+        if (categoryIndex != -1) {
+          _productsByCategory[updatedProduct.categoryId]![categoryIndex] =
+              updatedProduct;
+        }
+      }
+
       // Update in filtered list
       final filteredIndex =
           _filteredProducts.indexWhere((p) => p.id == updatedProduct.id);
@@ -138,8 +174,16 @@ class ProductProviderAdmin extends ChangeNotifier {
 
     try {
       await _service.deleteProduct(product);
+
       _products.removeWhere((p) => p.id == product.id);
       _filteredProducts.removeWhere((p) => p.id == product.id);
+
+      // Kategoriya keshidan o'chirish
+      if (_productsByCategory.containsKey(product.categoryId)) {
+        _productsByCategory[product.categoryId]!
+            .removeWhere((p) => p.id == product.id);
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -190,10 +234,24 @@ class ProductProviderAdmin extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Kategoriya keshini tozalash (yangilash kerak bo'lganda)
+  void clearCategoryCache(int? categoryId) {
+    if (categoryId != null) {
+      _productsByCategory.remove(categoryId);
+      _loadedCategories.remove(categoryId);
+    } else {
+      _productsByCategory.clear();
+      _loadedCategories.clear();
+    }
+    notifyListeners();
+  }
+
   // Clear all data
   void clear() {
     _products = [];
     _filteredProducts = [];
+    _productsByCategory.clear();
+    _loadedCategories.clear();
     _selectedProduct = null;
     _selectedCategoryId = null;
     _error = null;

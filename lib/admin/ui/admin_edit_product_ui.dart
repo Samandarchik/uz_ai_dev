@@ -314,7 +314,12 @@ class _EditProductPageState extends State<EditProductPage> {
               decoration: const InputDecoration(
                 labelText: 'Состав',
                 border: OutlineInputBorder(),
+                alignLabelWithHint: true, // label pastga joylashsin
               ),
+              keyboardType: TextInputType.multiline, // ko‘p qatorli matn uchun
+              maxLines: null, // cheklanmagan qatorlar
+              textInputAction:
+                  TextInputAction.newline, // Enter yangi qator ochadi
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Писать Состав';

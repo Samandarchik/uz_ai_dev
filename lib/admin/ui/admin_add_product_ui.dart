@@ -235,7 +235,12 @@ class _AddProductPageState extends State<AddProductPage> {
               decoration: const InputDecoration(
                 labelText: 'Состав',
                 border: OutlineInputBorder(),
+                alignLabelWithHint: true, // label pastga joylashsin
               ),
+              keyboardType: TextInputType.multiline, // ko‘p qatorli matn uchun
+              maxLines: null, // cheklanmagan qatorlar
+              textInputAction:
+                  TextInputAction.newline, // Enter yangi qator ochadi
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Писать Состав';
@@ -243,6 +248,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 return null;
               },
             ),
+
             const SizedBox(height: 16),
             Consumer<CategoryProviderAdmin>(
               builder: (context, provider, child) {

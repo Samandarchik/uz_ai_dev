@@ -209,20 +209,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     });
   }
 
-// Mavjud userni tahrirlash uchun
-  void _navigateToEditUser(User user) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditUserPage(user: user),
-      ),
-    ).then((result) {
-      if (result == true) {
-        _loadUsers();
-      }
-    });
-  }
-
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -30,9 +30,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
     });
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool forceRefresh = false}) async {
     final productProvider = context.read<ProductProviderAdmin>();
-    await productProvider.getProductsByCategoryId(widget.categoryId);
+    await productProvider.getProductsByCategoryId(
+      widget.categoryId,
+      forceRefresh: forceRefresh,
+    );
   }
 
   @override
@@ -43,18 +46,24 @@ class _AdminProductUiState extends State<AdminProductUi> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const AddProductPage(),
                 ),
-              ).then((_) => _loadProducts());
+              );
+
+              // Agar yangi mahsulot qo'shilgan bo'lsa, kategoriya keshini yangilash
+              if (result == true) {
+                _loadProducts(forceRefresh: true);
+              }
             },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadProducts,
+            onPressed: () => _loadProducts(forceRefresh: true),
+            tooltip: 'Yangilash',
           ),
         ],
       ),
@@ -70,14 +79,17 @@ class _AdminProductUiState extends State<AdminProductUi> {
             );
           }
 
-          return ListView.separated(
-            separatorBuilder: (context, index) => const Divider(),
-            padding: const EdgeInsets.all(8),
-            itemCount: productProvider.filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = productProvider.filteredProducts[index];
-              return _buildProductListTile(context, product);
-            },
+          return RefreshIndicator(
+            onRefresh: () => _loadProducts(forceRefresh: true),
+            child: ListView.separated(
+              separatorBuilder: (context, index) => const Divider(),
+              padding: const EdgeInsets.all(8),
+              itemCount: productProvider.filteredProducts.length,
+              itemBuilder: (context, index) {
+                final product = productProvider.filteredProducts[index];
+                return _buildProductListTile(context, product);
+              },
+            ),
           );
         },
       ),
@@ -134,13 +146,18 @@ class _AdminProductUiState extends State<AdminProductUi> {
         children: [
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => EditProductPage(product: product),
                 ),
-              ).then((_) => _loadProducts());
+              );
+
+              // Agar mahsulot tahrirlangan bo'lsa, keshni yangilash
+              if (result == true) {
+                _loadProducts(forceRefresh: true);
+              }
             },
           ),
           IconButton(
@@ -176,7 +193,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Продукт удален')),
                 );
-                _loadProducts();
+                // O'chirilgandan keyin keshdan ham o'chiriladi
               }
             },
             child: const Text('Удалить'),
