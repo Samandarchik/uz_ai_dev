@@ -26,16 +26,20 @@ class _AdminProductUiState extends State<AdminProductUi> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProducts();
+      // Faqat filter qilamiz, yuklamaymiz
+      _filterProducts();
     });
   }
 
-  Future<void> _loadProducts({bool forceRefresh = false}) async {
+  void _filterProducts() {
     final productProvider = context.read<ProductProviderAdmin>();
-    await productProvider.getProductsByCategoryId(
-      widget.categoryId,
-      forceRefresh: forceRefresh,
-    );
+    productProvider.filterByCategory(widget.categoryId);
+  }
+
+  Future<void> _refreshProducts() async {
+    final productProvider = context.read<ProductProviderAdmin>();
+    await productProvider.initializeProducts(forceRefresh: true);
+    _filterProducts();
   }
 
   @override
@@ -53,34 +57,52 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => const AddProductPage(),
                 ),
               );
-
-              // Agar yangi mahsulot qo'shilgan bo'lsa, kategoriya keshini yangilash
+              
               if (result == true) {
-                _loadProducts(forceRefresh: true);
+                _refreshProducts();
               }
             },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _loadProducts(forceRefresh: true),
+            onPressed: _refreshProducts,
             tooltip: 'Yangilash',
           ),
         ],
       ),
       body: Consumer<ProductProviderAdmin>(
         builder: (context, productProvider, child) {
+          // Loading holati
           if (productProvider.isLoading) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
 
+          // Bo'sh holat
           if (productProvider.filteredProducts.isEmpty) {
-            return const Center(
-              child: Text('Bu kategoriyada mahsulotlar yo\'q'),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Bu kategoriyada mahsulotlar yo\'q',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
           return RefreshIndicator(
-            onRefresh: () => _loadProducts(forceRefresh: true),
+            onRefresh: _refreshProducts,
             child: ListView.separated(
               separatorBuilder: (context, index) => const Divider(),
               padding: const EdgeInsets.all(8),
@@ -153,10 +175,9 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => EditProductPage(product: product),
                 ),
               );
-
-              // Agar mahsulot tahrirlangan bo'lsa, keshni yangilash
+              
               if (result == true) {
-                _loadProducts(forceRefresh: true);
+                _refreshProducts();
               }
             },
           ),
@@ -193,7 +214,6 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Продукт удален')),
                 );
-                // O'chirilgandan keyin keshdan ham o'chiriladi
               }
             },
             child: const Text('Удалить'),

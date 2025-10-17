@@ -94,53 +94,47 @@ class _UserHomeUiState extends State<UserHomeUi> {
                       );
                     },
                     borderRadius: BorderRadius.circular(12),
-                    child: Column(
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                          ),
-                          leading: ClipOval(
-                            child: GestureDetector(
-                              onTap: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => Dialog(
-                                    backgroundColor: Colors.transparent,
-                                    child: CachedNetworkImage(
-                                      imageUrl:
-                                          "${AppUrls.baseUrl}${category.imageUrl}",
-                                      fit: BoxFit.contain,
-                                      errorWidget: (context, url, error) =>
-                                          Icon(Icons.error, size: 40),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: CachedNetworkImage(
-                                imageUrl:
-                                    "${AppUrls.baseUrl}${category.imageUrl}",
-                                width: 55,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) =>
-                                    Icon(Icons.error),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 6,
+                      ),
+                      leading: ClipOval(
+                        child: GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => Dialog(
+                                backgroundColor: Colors.transparent,
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      "${AppUrls.baseUrl}${category.imageUrl}",
+                                  fit: BoxFit.contain,
+                                  errorWidget: (context, url, error) =>
+                                      Icon(Icons.error, size: 40),
+                                ),
                               ),
-                            ),
-                          ),
-                          title: Text(
-                            category.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(
-                            "$productCount ${"product".tr()}",
+                            );
+                          },
+                          child: CachedNetworkImage(
+                            imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                            width: 55,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.error),
                           ),
                         ),
-                        Divider()
-                      ],
+                      ),
+                      title: Text(
+                        category.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "$productCount ${"product".tr()}",
+                      ),
                     ),
                   );
                 },
