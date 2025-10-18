@@ -1,6 +1,6 @@
 abstract final class AppUrlsAgent {
-  // static const String baseUrl = "https://agent.monebakeryuz.uz";
-  static const baseUrl = "http://localhost:1010";
+  static const String baseUrl = "https://agent.monebakeryuz.uz";
+  // static const baseUrl = "http://localhost:1010";
   static const String login = '$baseUrl/api/login';
   static const String register = '$baseUrl/api/register';
   static const String refresh = '$baseUrl/api/auth/refresh';
