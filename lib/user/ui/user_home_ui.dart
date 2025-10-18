@@ -40,7 +40,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
         leading: IconButton(
             onPressed: () => _showContactDialog(context),
             icon: Icon(Icons.info_outline)),
-        title: Text('categories',
+        title: Text('Категории',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
@@ -133,7 +133,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
                         ),
                       ),
                       subtitle: Text(
-                        "$productCount ${"product"}",
+                        "$productCount продукт",
                       ),
                     ),
                   );

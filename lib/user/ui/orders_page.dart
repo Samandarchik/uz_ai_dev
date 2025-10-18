@@ -192,7 +192,7 @@ class _OrdersPageState extends State<OrdersPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'my_orders',
+          'Мои заказы',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -255,7 +255,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 20),
                                   Text(
-                                    'no_orders_yet',
+                                    'Заказов пока нет',
                                     style: TextStyle(
                                       fontSize: 24,
                                       color: Colors.grey,
@@ -264,7 +264,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'place_first_order',
+                                    'Сделайте первый заказ!',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.grey,

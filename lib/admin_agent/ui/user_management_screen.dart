@@ -460,7 +460,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         onPressed: () => _navigateToCreateUser(null),
         backgroundColor: Colors.blue.shade600,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: Text('new', style: TextStyle(color: Colors.white)),
+        label: Text('Новый', style: TextStyle(color: Colors.white)),
       ),
     );
   }

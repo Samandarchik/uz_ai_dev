@@ -344,7 +344,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             if (_selectedFilials.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Kamida bitta filial tanlang'),
+                                  content: Text('Выберите хотя бы одну ветку'),
                                 ),
                               );
                               return;
@@ -363,7 +363,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Rasm yuklashda Ошибка yuz berdi',
+                                        'Произошла ошибка при загрузке изображения.',
                                       ),
                                     ),
                                   );

@@ -197,7 +197,8 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('my_orders', style: TextStyle(fontWeight: FontWeight.bold)),
+        title:
+            Text('Мои заказы', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [IconButton(icon: Icon(Icons.refresh), onPressed: _refresh)],
       ),
       body: _isLoading
@@ -246,7 +247,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 20),
                                   Text(
-                                    'no_orders_yet',
+                                    'Заказов пока нет',
                                     style: TextStyle(
                                       fontSize: 24,
                                       color: Colors.grey,
@@ -255,7 +256,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'place_first_order',
+                                    'Сделайте первый заказ!',
                                     style: TextStyle(
                                         fontSize: 16, color: Colors.grey),
                                   ),

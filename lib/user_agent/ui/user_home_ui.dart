@@ -42,7 +42,7 @@ class _UserHomeUiAgentState extends State<UserHomeUiAgent> {
           icon: Icon(Icons.info_outline),
         ),
         title: Text(
-          'categories',
+          'Категории',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -118,7 +118,8 @@ class _UserHomeUiAgentState extends State<UserHomeUiAgent> {
                             );
                           },
                           child: CachedNetworkImage(
-                            imageUrl: "${AppUrlsAgent.baseUrl}${category.imageUrl}",
+                            imageUrl:
+                                "${AppUrlsAgent.baseUrl}${category.imageUrl}",
                             width: 55,
                             height: 80,
                             fit: BoxFit.cover,

@@ -174,7 +174,7 @@ class _AdminHomeUiAgentState extends State<AdminHomeUiAgent> {
                     ),
                   ),
                   subtitle: Text(
-                    'ID: ${category.id} • $productCount mahsulot',
+                    'ID: ${category.id} • $productCount продукт',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   trailing: const Icon(

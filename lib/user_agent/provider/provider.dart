@@ -191,48 +191,31 @@ class ProductProviderAgent extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Buyurtmani print bo'yicha guruhlash va yuborish
-  Future<void> submitOrder() async {
+  Future<void> submitOrder(
+      String token, String comment, DateTime sentDataTime) async {
     isSubmitting = true;
     notifyListeners();
 
     try {
-      // Print bo'yicha guruhlash
-      Map<int, List<OrderItem>> ordersByPrint = {};
-
-      selectedProducts.forEach((productId, count) {
-        int printNumber = productPrintMap[productId] ?? 1;
-
-        if (!ordersByPrint.containsKey(printNumber)) {
-          ordersByPrint[printNumber] = [];
-        }
-
-        ordersByPrint[printNumber]!.add(
-          OrderItem(productId: productId, count: count),
-        );
-      });
-
-      // Print raqami bo'yicha tartiblash (1, 2, 3...)
-      List<int> sortedPrintNumbers = ordersByPrint.keys.toList()..sort();
-
-      // Har bir print uchun ketma-ket yuborish
+      // Tanlangan mahsulotlarni oddiy tarzda yuborish
       final service = ProductService();
-      for (int printNumber in sortedPrintNumbers) {
-        List<OrderItem> items = ordersByPrint[printNumber]!;
 
-        Map<String, dynamic> orderData = {
-          'items': items.map((item) => item.toJson()).toList(),
-        };
+      // Order uchun JSON ma'lumot tayyorlash
+      Map<String, dynamic> orderData = {
+        'items': selectedProducts.entries.map((entry) {
+          return {
+            'product_id': entry.key,
+            'count': entry.value,
+            "comment": comment,
+            "sent_data_time": sentDataTime.toIso8601String(),
+          };
+        }).toList(),
+      };
 
-        await service.submitOrder(orderData);
+      // Backendga yuborish
+      await service.submitOrder(orderData);
 
-        // Keyingi printerga yuborishdan oldin biroz kutish
-        if (printNumber != sortedPrintNumbers.last) {
-          await Future.delayed(Duration(milliseconds: 500));
-        }
-      }
-
-      // Muvaffaqiyatli yuborilgandan keyin tozalash
+      // Yuborilgandan so‘ng tozalash
       clearSelection();
     } catch (e) {
       throw Exception('Buyurtma yuborishda xatolik: $e');

@@ -32,7 +32,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
   Future<void> _loadInitialData({bool forceRefresh = false}) async {
     final categoryProvider = context.read<CategoryProviderAdmin>();
     final productProvider = context.read<ProductProviderAdmin>();
-    
+
     // Parallel ravishda yuklash
     await Future.wait([
       categoryProvider.getCategories(),
@@ -46,7 +46,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
   }
 
   TokenStorage tokenStorage = sl<TokenStorage>();
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,7 +85,8 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
       body: Consumer2<CategoryProviderAdmin, ProductProviderAdmin>(
         builder: (context, categoryProvider, productProvider, child) {
           // Loading holati
-          if ((categoryProvider.isLoading && categoryProvider.categories.isEmpty) ||
+          if ((categoryProvider.isLoading &&
+                  categoryProvider.categories.isEmpty) ||
               (productProvider.isLoading && !productProvider.isInitialized)) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
@@ -121,9 +122,10 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
               itemCount: categoryProvider.categories.length,
               itemBuilder: (context, index) {
                 final category = categoryProvider.categories[index];
-                
+
                 // Har bir kategoriya uchun mahsulotlar sonini hisoblash
-                final productCount = productProvider.getProductCountByCategory(category.id);
+                final productCount =
+                    productProvider.getProductCountByCategory(category.id);
 
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -136,9 +138,11 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                             builder: (_) => Dialog(
                               backgroundColor: Colors.transparent,
                               child: CachedNetworkImage(
-                                imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                                imageUrl:
+                                    "${AppUrls.baseUrl}${category.imageUrl}",
                                 fit: BoxFit.contain,
-                                errorWidget: (context, url, error) => const Icon(
+                                errorWidget: (context, url, error) =>
+                                    const Icon(
                                   Icons.error,
                                   size: 40,
                                   color: Colors.white,
@@ -150,7 +154,8 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                       },
                       child: category.imageUrl != null
                           ? CachedNetworkImage(
-                              imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                              imageUrl:
+                                  "${AppUrls.baseUrl}${category.imageUrl}",
                               width: 55,
                               height: 55,
                               fit: BoxFit.cover,
@@ -173,7 +178,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                     ),
                   ),
                   subtitle: Text(
-                    'ID: ${category.id} • $productCount mahsulot',
+                    'ID: ${category.id} • $productCount продукт',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,

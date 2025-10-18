@@ -2,7 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/user_agent/provider/provider.dart';
+import 'package:uz_ai_dev/user_agent/ui/user_list_ui.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -125,7 +127,8 @@ class CartPage extends StatelessWidget {
                           );
                         },
                         child: CachedNetworkImage(
-                          imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
+                          imageUrl:
+                              "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                           width: 55,
                           height: 80,
                           fit: BoxFit.cover,
@@ -176,18 +179,7 @@ class CartPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(fontSize: 18),
                     ),
-                    onPressed: () async {
-                      try {
-                        await provider.submitOrder();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Заказ отправлен ✅")),
-                        );
-                      } catch (e) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text("Ошибка: $e")));
-                      }
-                    },
+                    onPressed: () async => context.push(UserListUi()),
                     child: Text(
                       "Заказ (${provider.totalSelectedProducts % 1 == 0 ? provider.totalSelectedProducts.toInt() : provider.totalSelectedProducts.toStringAsFixed(3)})",
                     ),
