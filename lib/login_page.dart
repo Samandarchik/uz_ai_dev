@@ -80,55 +80,60 @@ class _LoginPageState extends State<LoginPage> {
       _passwordController.text = account['password']!;
     });
   }
-Future<void> _login() async {
-  if (!_formKey.currentState!.validate()) return;
 
-  setState(() {
-    _isLoading = true;
-  });
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  // Telefon yoki text ekanligini tekshirish
-  final loginInput = _phoneController.text.trim();
-  final isPhoneNumber = loginInput.startsWith('+') && 
-                        loginInput.substring(1).replaceAll(RegExp(r'\s+'), '').length >= 10;
+    setState(() {
+      _isLoading = true;
+    });
 
-  final result = isPhoneNumber
-      ? await ApiService.login(  // + raqam uchun ApiService
-          loginInput,
-          _passwordController.text,
-        )
-      : await ApiServiceAgent.login(  // oddiy text uchun ApiServiceAgent
-          loginInput,
-          _passwordController.text,
-        );
+    final loginInput = _phoneController.text.trim();
+    final isPhoneNumber = loginInput.startsWith('+') &&
+        loginInput.substring(1).replaceAll(RegExp(r'\s+'), '').length >= 10;
 
-  setState(() {
-    _isLoading = false;
-  });
+    // Login API tanlash
+    final result = isPhoneNumber
+        ? await ApiService.login(loginInput, _passwordController.text)
+        : await ApiServiceAgent.login(loginInput, _passwordController.text);
 
-  if (result['success'] == true) {
-    // AutoFill kontekstini yakunlash - bu iOS'ga parolni saqlashni taklif qiladi
-    TextInput.finishAutofillContext();
+    setState(() {
+      _isLoading = false;
+    });
 
-    // Akkauntni saqlash
-    await _saveAccount(_phoneController.text, _passwordController.text);
+    if (result['success'] == true) {
+      TextInput.finishAutofillContext();
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', result['data']['token']);
-    await prefs.setString('user', jsonEncode(result['data']['user']));
-    await prefs.setBool("is_admin", result['data']['user']["is_admin"]);
-    await prefs.setBool(
-        "is_adminAgent", result['data']['user']["is_adminAget"]);
-isPhoneNumber?
-    context.pushAndRemove(result['data']['user']["is_admin"] == false
-        ? UserHomeUiAgent()
-        : AdminHomeUiAgent()):context.pushAndRemove(result['data']['user']["is_adminAgent"] == false
-        ? UserHomeUi()
-        : AdminHomeUi());
-  } else {
-    _showErrorDialog(result['message'] ?? 'Login xatosi');
+      await _saveAccount(_phoneController.text, _passwordController.text);
+
+      final user = result['data']['user'];
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', result['data']['token']);
+      await prefs.setString('user', jsonEncode(user));
+      await prefs.setBool("is_admin", user["is_admin"] ?? false);
+      await prefs.setBool("is_agent", !isPhoneNumber);
+
+      // 🔹 To‘g‘ri yo‘naltirish logikasi:
+      if (isPhoneNumber) {
+        // Oddiy user tizimi
+        if (user["is_admin"] == true) {
+          context.pushAndRemove(AdminHomeUi());
+        } else {
+          context.pushAndRemove(UserHomeUi());
+        }
+      } else {
+        // Agent tizimi
+        if (user["is_admin"] == true) {
+          context.pushAndRemove(AdminHomeUiAgent());
+        } else {
+          context.pushAndRemove(UserHomeUiAgent());
+        }
+      }
+    } else {
+      _showErrorDialog(result['message'] ?? 'Login xatosi');
+    }
   }
-}
 
   void _showErrorDialog(String message) {
     showDialog(

@@ -2,10 +2,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 
 class ApiServiceAgent {
-  static const String baseUrl = AppUrls.baseUrl;
+  static const String baseUrl = AppUrlsAgent.baseUrl;
 
   static Future<Map<String, String>> _getHeaders({String? token}) async {
     Map<String, String> headers = {

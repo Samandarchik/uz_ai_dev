@@ -1,4 +1,4 @@
-abstract final class AppUrls {
+abstract final class AppUrlsAgent {
   // static const String baseUrl = "https://api.uz-dev-ai.uz";
   static const baseUrl = "http://localhost:1010";
   static const String login = '$baseUrl/api/login';

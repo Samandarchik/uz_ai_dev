@@ -4,7 +4,7 @@
 import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
 class UserManagementService {
@@ -13,7 +13,7 @@ class UserManagementService {
   // Get all users - GET /api/users
   Future<List<User>> getAllUsers() async {
     try {
-      final response = await dio.get(AppUrls.users);
+      final response = await dio.get(AppUrlsAgent.users);
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -44,7 +44,7 @@ class UserManagementService {
   // Get single user by ID - GET /api/users/{id}
   Future<User?> getUserById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.users}/$id');
+      final response = await dio.get('${AppUrlsAgent.users}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -71,7 +71,7 @@ class UserManagementService {
   // Create new user - POST /api/users
   Future<User> createUser(CreateUserRequest request) async {
     try {
-      final response = await dio.post(AppUrls.register, data: request.toJson());
+      final response = await dio.post(AppUrlsAgent.register, data: request.toJson());
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = response.data;
@@ -103,7 +103,7 @@ class UserManagementService {
   Future<User> updateUser(int id, UpdateUserRequest request) async {
     try {
       final response = await dio.put(
-        '${AppUrls.users}/$id',
+        '${AppUrlsAgent.users}/$id',
         data: request.toJson(),
       );
 
@@ -139,7 +139,7 @@ class UserManagementService {
   // Delete user - DELETE /api/users/{id}
   Future<bool> deleteUser(int id) async {
     try {
-      final response = await dio.delete('${AppUrls.users}/$id');
+      final response = await dio.delete('${AppUrlsAgent.users}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -169,7 +169,7 @@ class UserManagementService {
   Future<User> assignFilialToUser(int userId, int filialId) async {
     try {
       final response = await dio.put(
-        '${AppUrls.users}/$userId/assign-filial',
+        '${AppUrlsAgent.users}/$userId/assign-filial',
         data: AssignFilialRequest(filialId: filialId).toJson(),
       );
 
@@ -271,7 +271,7 @@ class FilialService {
 
   Future<List<Filial>> getAllFilials() async {
     try {
-      final response = await dio.get(AppUrls.filials);
+      final response = await dio.get(AppUrlsAgent.filials);
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -301,7 +301,7 @@ class FilialService {
 
   Future<Filial?> getFilialById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.filials}/$id');
+      final response = await dio.get('${AppUrlsAgent.filials}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data;

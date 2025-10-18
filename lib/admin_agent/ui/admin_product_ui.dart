@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:uz_ai_dev/admin_agent/model/product_model.dart';
@@ -127,7 +127,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 builder: (_) => Dialog(
                   backgroundColor: Colors.transparent,
                   child: CachedNetworkImage(
-                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                    imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                     fit: BoxFit.contain,
                     errorWidget: (context, url, error) =>
                         const Icon(Icons.error, size: 40, color: Colors.white),
@@ -138,7 +138,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
           },
           child: product.imageUrl != null
               ? CachedNetworkImage(
-                  imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                  imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                   width: 55,
                   height: 55,
                   fit: BoxFit.cover,

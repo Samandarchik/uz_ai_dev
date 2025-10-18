@@ -4,7 +4,7 @@ import 'package:uz_ai_dev/admin_agent/ui/dealog.dart';
 import 'package:provider/provider.dart';
 
 import 'package:uz_ai_dev/admin_agent/model/category_model.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 
 class CategoryManagementScreen extends StatefulWidget {
   const CategoryManagementScreen({super.key});
@@ -173,7 +173,7 @@ class CategoryListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: category.imageUrl != null
             ? Image.network(
-                "${AppUrls.baseUrl}${category.imageUrl!}",
+                "${AppUrlsAgent.baseUrl}${category.imageUrl!}",
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,

@@ -4,13 +4,13 @@ import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/admin_agent/model/category_model.dart';
 import 'package:uz_ai_dev/admin_agent/services/admin_categoriy.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
 
+import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 class CategoryProviderAdminAgentUpload extends ChangeNotifier {
   final ApiAdminService _service = ApiAdminService();
   final Dio _dio = sl<Dio>(); // Dio();
-  final String baseUrl = AppUrls.baseUrl; // Replace with your base URL
+  final String baseUrl = AppUrlsAgent.baseUrl; // Replace with your base URL
 
   List<CategoryProductAdmin> _categories = [];
   bool _isLoading = false;

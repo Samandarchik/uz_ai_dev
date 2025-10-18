@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 
 import 'package:uz_ai_dev/user_agent/provider/provider.dart';
 
@@ -109,7 +109,7 @@ class CartPage extends StatelessWidget {
                         builder: (_) => Dialog(
                           backgroundColor: Colors.transparent,
                           child: CachedNetworkImage(
-                            imageUrl: "${AppUrls.baseUrl}${product!.imageUrl}",
+                            imageUrl: "${AppUrlsAgent.baseUrl}${product!.imageUrl}",
                             fit: BoxFit.contain,
                             errorWidget: (context, url, error) =>
                                 const Icon(Icons.error, size: 40),
@@ -118,7 +118,7 @@ class CartPage extends StatelessWidget {
                       );
                     },
                     child: CachedNetworkImage(
-                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                      imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                       width: 55,
                       height: 80,
                       fit: BoxFit.cover,

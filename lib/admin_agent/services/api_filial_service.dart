@@ -1,15 +1,16 @@
 import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+
 class ApiFilialService {
   final Dio dio = sl<Dio>();
 
   // Get all filials
   Future<List<Filial>> getFilials() async {
     try {
-      final response = await dio.get(AppUrls.filials);
+      final response = await dio.get(AppUrlsAgent.filials);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? response.data;
@@ -35,7 +36,7 @@ class ApiFilialService {
   // Get single filial by ID
   Future<Filial?> getFilialById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.filials}/$id');
+      final response = await dio.get('${AppUrlsAgent.filials}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;

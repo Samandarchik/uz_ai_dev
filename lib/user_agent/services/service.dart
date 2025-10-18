@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/user_agent/models/user_model.dart';
 
@@ -9,7 +9,7 @@ class UserManagementService {
   // Get all users - GET /api/users
   Future<List<User>> getAllUsers() async {
     try {
-      final response = await dio.get(AppUrls.users);
+      final response = await dio.get(AppUrlsAgent.users);
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -42,7 +42,7 @@ class UserManagementService {
   // Get single user by ID - GET /api/users/{id}
   Future<User?> getUserById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.users}/$id');
+      final response = await dio.get('${AppUrlsAgent.users}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -72,7 +72,7 @@ class UserManagementService {
       print('Creating user with data: ${request.toJson()}'); // Debug log
 
       final response = await dio.post(
-        AppUrls.register, // POST /api/register endpoint
+        AppUrlsAgent.register, // POST /api/register endpoint
         data: request.toJson(),
       );
 
@@ -135,7 +135,7 @@ class UserManagementService {
       print('Updating user $id with data: ${request.toJson()}'); // Debug log
 
       final response = await dio.put(
-        '${AppUrls.users}/$id',
+        '${AppUrlsAgent.users}/$id',
         data: request.toJson(),
       );
 
@@ -198,7 +198,7 @@ class UserManagementService {
     try {
       print('Deleting user with id: $id'); // Debug log
 
-      final response = await dio.delete('${AppUrls.users}/$id');
+      final response = await dio.delete('${AppUrlsAgent.users}/$id');
 
       print('Delete response status: ${response.statusCode}'); // Debug log
       print('Delete response data: ${response.data}'); // Debug log
@@ -248,7 +248,7 @@ class UserManagementService {
       print('Assigning filial $filialId to user $userId'); // Debug log
 
       final response = await dio.put(
-        '${AppUrls.users}/$userId/assign-filial',
+        '${AppUrlsAgent.users}/$userId/assign-filial',
         data: AssignFilialRequest(filialId: filialId).toJson(),
       );
 

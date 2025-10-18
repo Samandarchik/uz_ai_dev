@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/admin_agent/model/category_model.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
 class ApiAdminService {
@@ -10,7 +10,7 @@ class ApiAdminService {
   // Get all categories
   Future<List<CategoryProductAdmin>> getCategories() async {
     try {
-      final response = await dio.get(AppUrls.category);
+      final response = await dio.get(AppUrlsAgent.category);
 
       if (response.statusCode == 200) {
         // 'data' maydonini olish
@@ -40,7 +40,7 @@ class ApiAdminService {
   ) async {
     try {
       final response = await dio.post(
-        AppUrls.category,
+        AppUrlsAgent.category,
         data: category.toJson(),
       );
 
@@ -72,7 +72,7 @@ class ApiAdminService {
   ) async {
     try {
       final response = await dio.put(
-        '${AppUrls.category}/${category.id}',
+        '${AppUrlsAgent.category}/${category.id}',
         data: category.toJson(),
       );
 
@@ -105,7 +105,7 @@ class ApiAdminService {
     CategoryProductAdmin category,
   ) async {
     try {
-      final response = await dio.delete('${AppUrls.category}/${category.id}');
+      final response = await dio.delete('${AppUrlsAgent.category}/${category.id}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // DELETE so'rovidan keyin server bo'sh javob yoki o'chirilgan obyektni qaytarishi mumkin
@@ -142,7 +142,7 @@ class ApiAdminService {
   // Get single category by ID (optional method)
   Future<CategoryProductAdmin?> getCategoryById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.category}/$id');
+      final response = await dio.get('${AppUrlsAgent.category}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;

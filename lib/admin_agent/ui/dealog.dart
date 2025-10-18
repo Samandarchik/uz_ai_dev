@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin_agent/model/category_model.dart';
 import 'package:uz_ai_dev/admin_agent/services/upload_image.dart';
@@ -148,7 +148,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
-                                  "${AppUrls.baseUrl}${widget.category!.imageUrl!}",
+                                  "${AppUrlsAgent.baseUrl}${widget.category!.imageUrl!}",
                                   fit: BoxFit.cover,
                                 ),
                               )

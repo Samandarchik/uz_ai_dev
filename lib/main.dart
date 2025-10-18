@@ -27,18 +27,18 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ProductProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdmin()),
+        ChangeNotifierProvider(create: (_) => CategoryProviderAdminAgent()),
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),
         ChangeNotifierProvider(create: (_) => UserProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdminUpload()),
         ChangeNotifierProvider(create: (_) => ProductProviderAgent()),
         ChangeNotifierProvider(create: (_) => ProductProviderAgentAdmin()),
-        ChangeNotifierProvider(create: (_) => CategoryProviderAdminAgent()),
         ChangeNotifierProvider(create: (_) => FilialProviderAdminAgent()),
         ChangeNotifierProvider(create: (_) => UserProviderAdminAgent()),
         ChangeNotifierProvider(
-          create: (_) => CategoryProviderAdminAgentUpload(),
-        ),
+            create: (_) => CategoryProviderAdminAgentUpload()),
       ],
+      child: const MyApp(), // 🟢 MUHIM: shu joy qo‘shilishi kerak
     ),
   );
 }

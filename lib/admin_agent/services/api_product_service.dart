@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin_agent/model/product_model.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
 class ApiProductService {
@@ -10,7 +10,7 @@ class ApiProductService {
   Future<List<ProductModelAdmin>> getAllProducts() async {
     try {
       final response = await dio.get(
-        AppUrls.productAll,
+        AppUrlsAgent.productAll,
       ); // product/all endpoint
 
       if (response.statusCode == 200) {
@@ -38,7 +38,7 @@ class ApiProductService {
     int categoryId,
   ) async {
     try {
-      final response = await dio.get(AppUrls.productAll);
+      final response = await dio.get(AppUrlsAgent.productAll);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? response.data;
@@ -70,7 +70,7 @@ class ApiProductService {
   Future<ProductModelAdmin> createProduct(ProductModelAdmin product) async {
     try {
       final response = await dio.post(
-        AppUrls.product, // product endpoint
+        AppUrlsAgent.product, // product endpoint
         data: product.toCreateJson(),
       );
 
@@ -99,7 +99,7 @@ class ApiProductService {
   Future<ProductModelAdmin> updateProduct(ProductModelAdmin product) async {
     try {
       final response = await dio.put(
-        '${AppUrls.product}/${product.id}',
+        '${AppUrlsAgent.product}/${product.id}',
         data: product.toUpdateJson(),
       );
       print(response.data);
@@ -130,7 +130,7 @@ class ApiProductService {
   // Delete product
   Future<ProductModelAdmin> deleteProduct(ProductModelAdmin product) async {
     try {
-      final response = await dio.delete('${AppUrls.product}/${product.id}');
+      final response = await dio.delete('${AppUrlsAgent.product}/${product.id}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (response.statusCode == 204 || response.data == null) {
@@ -165,7 +165,7 @@ class ApiProductService {
   // Get single product by ID
   Future<ProductModelAdmin?> getProductById(int id) async {
     try {
-      final response = await dio.get('${AppUrls.product}/$id');
+      final response = await dio.get('${AppUrlsAgent.product}/$id');
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;

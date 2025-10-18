@@ -398,7 +398,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text('user_management'),
+        title: Text('Управление пользователями'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -430,7 +430,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'search_hint',
+                      hintText: 'Поисковая подсказка',
                       prefixIcon: Icon(
                         Icons.search,
                         color: Colors.grey.shade600,

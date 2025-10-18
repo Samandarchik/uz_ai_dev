@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/user_agent/provider/provider.dart';
 
@@ -9,7 +9,7 @@ class ProductService {
   // Kategoriyalarni olish
   Future<List<CategoryModel>> fetchCategories() async {
     try {
-      final response = await dio.get(AppUrls.category);
+      final response = await dio.get(AppUrlsAgent.category);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
@@ -25,7 +25,7 @@ class ProductService {
   // Mahsulotlarni olish
   Future<Map<String, dynamic>> fetchProducts() async {
     try {
-      final response = await dio.get(AppUrls.product1);
+      final response = await dio.get(AppUrlsAgent.product1);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = response.data;
@@ -70,7 +70,7 @@ class ProductService {
   // Buyurtma yuborish
   Future<void> submitOrder(Map<String, dynamic> orderData) async {
     try {
-      final response = await dio.post(AppUrls.orders, data: orderData);
+      final response = await dio.post(AppUrlsAgent.orders, data: orderData);
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to submit order: ${response.statusCode}');

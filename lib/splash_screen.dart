@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/admin_agent/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/check_version.dart'; // bunda VersionChecker mavjud
-import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
+import 'package:uz_ai_dev/check_version.dart';
 import 'package:uz_ai_dev/login_page.dart';
+import 'package:uz_ai_dev/user_agent/ui/user_home_ui.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       bool needsUpdate = await VersionChecker.checkVersion(context);
 
-      // Agar update kerak bo'lmasa, token tekshiradi
+      // Agar update kerak bo‘lmasa, tokenni tekshiramiz
       if (!needsUpdate) {
         _checkToken();
       }
@@ -35,16 +37,28 @@ class _SplashScreenState extends State<SplashScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
     bool? isAdmin = prefs.getBool('is_admin');
+    bool? isAgent = prefs.getBool('is_agent'); // login paytida saqlangan
 
     await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
 
-    if (token.isEmpty) {
-      // token yo‘q -> login page
+    if (token == null || token.isEmpty) {
+      // 🔹 Token yo‘q — Login sahifasiga o‘tish
       context.pushReplacement(const LoginPage());
+      return;
+    }
+
+    // 🔹 Token bor — foydalanuvchini tegishli sahifaga o‘tkazamiz
+    if (isAgent == true) {
+      // Agent tizimi
+      if (isAdmin == true) {
+        context.pushReplacement(const AdminHomeUiAgent());
+      } else {
+        context.pushReplacement(const UserHomeUiAgent());
+      }
     } else {
-      // token bor -> admin yoki user
+      // Oddiy user tizimi
       if (isAdmin == true) {
         context.pushReplacement(const AdminHomeUi());
       } else {

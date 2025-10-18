@@ -2,7 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin_agent/model/product_model.dart';
 import 'package:uz_ai_dev/admin_agent/provider/admin_categoriy_provider.dart';
@@ -158,7 +158,7 @@ class _EditProductPageState extends State<EditProductPage> {
       // Base URL qo'shish
       final String fullImageUrl = _currentImageUrl!.startsWith('http')
           ? _currentImageUrl!
-          : '${AppUrls.baseUrl}$_currentImageUrl';
+          : '${AppUrlsAgent.baseUrl}$_currentImageUrl';
 
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),

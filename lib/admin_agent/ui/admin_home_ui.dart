@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -135,7 +135,7 @@ class _AdminHomeUiAgentState extends State<AdminHomeUiAgent> {
                               backgroundColor: Colors.transparent,
                               child: CachedNetworkImage(
                                 imageUrl:
-                                    "${AppUrls.baseUrl}${category.imageUrl}",
+                                    "${AppUrlsAgent.baseUrl}${category.imageUrl}",
                                 fit: BoxFit.contain,
                                 errorWidget: (context, url, error) =>
                                     const Icon(
@@ -151,7 +151,7 @@ class _AdminHomeUiAgentState extends State<AdminHomeUiAgent> {
                       child: category.imageUrl != null
                           ? CachedNetworkImage(
                               imageUrl:
-                                  "${AppUrls.baseUrl}${category.imageUrl}",
+                                  "${AppUrlsAgent.baseUrl}${category.imageUrl}",
                               width: 55,
                               height: 55,
                               fit: BoxFit.cover,
