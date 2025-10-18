@@ -165,9 +165,9 @@ class _OrdersPageState extends State<OrdersPage> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
-        return 'status_sent_to_printer';
+        return 'Отправлено на принтер';
       case 'preparing':
-        return 'status_preparing';
+        return 'eror';
       case 'ready':
         return 'status_ready';
       case 'delivered':
@@ -369,9 +369,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                             children: [
                                               Expanded(
                                                 child: Text(
-                                                  'order_number'.replaceAll(
-                                                      '{id}',
-                                                      '${order['order_id'] ?? order['id']}'),
+                                                  'Номер заказа: ${order['order_id'] ?? order['id']})',
                                                   style: TextStyle(
                                                     fontSize: 18,
                                                     fontWeight: FontWeight.bold,

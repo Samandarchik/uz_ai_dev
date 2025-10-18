@@ -291,44 +291,7 @@ class _AddProductPageState extends State<AddProductPage> {
               },
             ),
             const SizedBox(height: 16),
-            Consumer<FilialProviderAdminAgent>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator.adaptive(),
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Выберите филиалы:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...provider.filials.map((filial) {
-                      return CheckboxListTile(
-                        title: Text(filial.name),
-                        value: _selectedFilials.contains(filial.id),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedFilials.add(filial.id);
-                            } else {
-                              _selectedFilials.remove(filial.id);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
+
             Consumer<CategoryProviderAdminAgentUpload>(
               builder: (context, uploadProvider, child) {
                 return ElevatedButton(
@@ -341,15 +304,6 @@ class _AddProductPageState extends State<AddProductPage> {
                       ? null
                       : () async {
                           if (_formKey.currentState!.validate()) {
-                            if (_selectedFilials.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Выберите хотя бы одну ветку'),
-                                ),
-                              );
-                              return;
-                            }
-
                             String? imageUrl;
 
                             // Upload image if selected

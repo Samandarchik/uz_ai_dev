@@ -134,49 +134,6 @@ class UserProviderAdminAgent extends ChangeNotifier {
     }
   }
 
-  // Assign filial to user
-  Future<bool> assignFilialToUser(int userId, int filialId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final updatedUser = await _service.assignFilialToUser(userId, filialId);
-
-      final index = _users.indexWhere((u) => u.id == userId);
-      if (index != -1) {
-        _users[index] = updatedUser;
-      }
-
-      _applyFilters();
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Get users by filial
-  Future<void> getUsersByFilial(int filialId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _filteredUsers = await _service.getUsersByFilial(filialId);
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   // Get admin users
   Future<void> getAdminUsers() async {
     _isLoading = true;
@@ -284,13 +241,6 @@ class UserProviderAdminAgent extends ChangeNotifier {
           .toList();
     }
 
-    // Apply filial filter
-    if (_filterFilialId != null) {
-      _filteredUsers = _filteredUsers
-          .where((user) => user.filialId == _filterFilialId)
-          .toList();
-    }
-
     // Apply search query
     if (_searchQuery.isNotEmpty) {
       _filteredUsers = _filteredUsers.where((user) {
@@ -343,8 +293,4 @@ class UserProviderAdminAgent extends ChangeNotifier {
   int get totalUsers => _users.length;
   int get adminCount => _users.where((u) => u.isAdmin).length;
   int get regularUserCount => _users.where((u) => !u.isAdmin).length;
-  int get usersWithFilialCount =>
-      _users.where((u) => u.filialId != null).length;
-  int get usersWithoutFilialCount =>
-      _users.where((u) => u.filialId == null).length;
 }

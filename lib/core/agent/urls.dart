@@ -1,6 +1,6 @@
 abstract final class AppUrlsAgent {
   static const String baseUrl = "https://agent.monebakeryuz.uz";
-  // static const baseUrl = "http://localhost:1010";
+  // static const baseUrl = "http://localhost:1313";
   static const String login = '$baseUrl/api/login';
   static const String register = '$baseUrl/api/register';
   static const String refresh = '$baseUrl/api/auth/refresh';
@@ -15,8 +15,3 @@ abstract final class AppUrlsAgent {
   static const String category = '$baseUrl/api/categories';
   static String categoryById(String id) => '$baseUrl/api/categories/$id';
 }
-
-
-// https://imzo-ai.uzjoylar.uz/html-download?pdf_category_item_id=
-// https://api.uz-dev-ai.uz
-//http://localhost:1010

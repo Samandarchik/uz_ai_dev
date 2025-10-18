@@ -4,8 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
 import 'package:uz_ai_dev/admin_agent/services/user_management_service.dart';
-import 'package:uz_ai_dev/user_agent/provider/provider.dart';
-import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/admin_agent/widgets/password_widget.dart';
+import 'package:uz_ai_dev/admin_agent/widgets/save_button.dart';
+import 'package:uz_ai_dev/admin_agent/widgets/text_filent.dart';
 
 class EditUserPage extends StatefulWidget {
   final User? user;
@@ -19,32 +20,28 @@ class EditUserPage extends StatefulWidget {
 class _EditUserPageState extends State<EditUserPage> {
   final _formKey = GlobalKey<FormState>();
   final UserManagementService _userService = UserManagementService();
-  final FilialService _filialService = FilialService();
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _passwordController;
+  late TextEditingController _longController;
+  late TextEditingController _latController;
+  late TextEditingController _locationController;
 
   bool _isAdmin = false;
-  int? _selectedFilialId;
   bool _isLoading = false;
-  bool _isLoadingFilials = false;
   bool _obscurePassword = true;
-
-  List<Filial> _filials = [];
-  List<int> _categoryIds = [];
-  String _filialError = '';
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.name ?? '');
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
+    _longController = TextEditingController(text: widget.user?.long.toString() ?? '');
+    _latController = TextEditingController(text: widget.user?.lat.toString() ?? '');
+    _locationController = TextEditingController(text: widget.user?.location?? '');
     _passwordController = TextEditingController();
     _isAdmin = widget.user?.isAdmin ?? false;
-    _selectedFilialId = widget.user?.filialId;
-    _loadFilials();
-    _loadCategories();
   }
 
   @override
@@ -52,34 +49,10 @@ class _EditUserPageState extends State<EditUserPage> {
     _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _longController.dispose();
+    _latController.dispose();
+    _locationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadFilials() async {
-    setState(() {
-      _isLoadingFilials = true;
-      _filialError = '';
-    });
-
-    try {
-      final filials = await _filialService.getAllFilials();
-      setState(() {
-        _filials = filials;
-        _isLoadingFilials = false;
-      });
-    } catch (e) {
-      setState(() {
-        _filialError = e.toString();
-        _isLoadingFilials = false;
-      });
-    }
-  }
-
-  Future<void> _loadCategories() async {
-    final provider = Provider.of<ProductProviderAgent>(context, listen: false);
-    if (provider.categories.isEmpty) {
-      await provider.fetchCategories();
-    }
   }
 
   Future<void> _saveUser() async {
@@ -89,40 +62,35 @@ class _EditUserPageState extends State<EditUserPage> {
 
     try {
       if (widget.user != null) {
-        // Mavjud foydalanuvchini yangilash - PUT /api/users/{id}
         final request = UpdateUserRequest(
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
           isAdmin: _isAdmin,
-          filialId: _selectedFilialId,
+          
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
               : null,
-          categoryIds: _categoryIds,
         );
 
         print('Updating user with request: ${request.toJson()}');
         await _userService.updateUser(widget.user!.id, request);
       } else {
-        // Yangi foydalanuvchi yaratish - POST /api/register
         final request = CreateUserRequest(
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
           password: _passwordController.text,
           isAdmin: _isAdmin,
-          filialId: _selectedFilialId!.toInt(),
-          categoryIds: _categoryIds,
+          long:  double.parse(_longController.text) ,
+          lat:  double.parse(_latController.text),
+          location: _locationController.text
         );
 
         print('Creating user with request: ${request.toJson()}');
         await _userService.createUser(request);
       }
 
-      // Muvaffaqiyat
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pop(true); // true qaytarish - o'zgarishlar bo'lganini bildiradi
+        Navigator.of(context).pop(true);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -173,354 +141,12 @@ class _EditUserPageState extends State<EditUserPage> {
     }
   }
 
-  Widget _buildFilialSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'branch',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: _isLoadingFilials
-              ? Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 12),
-                      Text('branches_loading'),
-                    ],
-                  ),
-                )
-              : _filialError.isNotEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red.shade600,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'branches_loading_error',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: _loadFilials,
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: Text('retry'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade600,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(0, 32),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : DropdownButtonHideUnderline(
-                      child: DropdownButton<int?>(
-                        value: _selectedFilialId,
-                        hint: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text('select_branch'),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 400,
-                        itemHeight: null,
-                        items: [
-                          DropdownMenuItem<int?>(
-                            value: null,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.clear, color: Colors.grey),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'no_branch_selected',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          ..._filials.map((filial) {
-                            return DropdownMenuItem<int?>(
-                              value: filial.id,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      filial.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14,
-                                      ),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (filial.location != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        filial.location!,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedFilialId = value;
-                          });
-                        },
-                      ),
-                    ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategorySelector() {
-    return Consumer<ProductProviderAgent>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Kategoriyalar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 12),
-                    Text('Kategoriyalar yuklanmoqda...'),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }
-
-        if (provider.errorMessage != null) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Kategoriyalar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.red.shade300),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red.shade600,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Xatolik yuz berdi',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: _loadCategories,
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: Text('Qayta urinish'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(0, 32),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Kategoriyalar',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: provider.categories.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Kategoriyalar topilmadi',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    )
-                  : Column(
-                      children: provider.categories.map((category) {
-                        final isSelected = _categoryIds.contains(category.id);
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _categoryIds.remove(category.id);
-                              } else {
-                                _categoryIds.add(category.id);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Colors.grey.shade200,
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: isSelected,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        _categoryIds.add(category.id);
-                                      } else {
-                                        _categoryIds.remove(category.id);
-                                      }
-                                    });
-                                  },
-                                  activeColor: Colors.blue.shade600,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    category.name,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                      color: isSelected
-                                          ? Colors.blue.shade700
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.user != null ? 'edit_user' : 'new_user',
+          widget.user != null ? widget.user?.name ?? "" : 'new_user',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -533,68 +159,17 @@ class _EditUserPageState extends State<EditUserPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.user != null ? 'update_data' : 'add_new_user',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 24),
 
               // Name Field
-              Text(
-                'full_name',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              CustomTextField(
+                label: 'Полное имя',
+                hint: 'enter_Полное имя',
+                icon: Icons.person_outline,
                 controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: 'enter_full_name',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.blue.shade600,
-                      width: 2,
-                    ),
-                  ),
-                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'full_name_required';
+                    return 'Полное имя_required';
                   }
                   return null;
                 },
@@ -602,38 +177,11 @@ class _EditUserPageState extends State<EditUserPage> {
               const SizedBox(height: 20),
 
               // Phone Field
-              Text(
-                'phone_number',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              CustomTextField(
+                label: 'Login',
+                hint: '+998901234567',
+                icon: Icons.phone_outlined,
                 controller: _phoneController,
-                decoration: InputDecoration(
-                  hintText: '+998901234567',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.blue.shade600,
-                      width: 2,
-                    ),
-                  ),
-                ),
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -645,116 +193,37 @@ class _EditUserPageState extends State<EditUserPage> {
               const SizedBox(height: 20),
 
               // Password Field
-              Text(
-                widget.user != null ? 'new_password_optional' : 'password',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              PasswordTextField(
+                label: widget.user != null
+                    ? 'Новый пароль необязательно'
+                    : 'пароль',
+                hint: widget.user != null
+                    ? 'Новая подсказка для пароля'
+                    : 'Введите пароль',
                 controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: widget.user != null
-                      ? 'new_password_hint'
-                      : 'enter_password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.blue.shade600,
-                      width: 2,
-                    ),
-                  ),
-                ),
+                obscurePassword: _obscurePassword,
+                onToggleVisibility: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
                 validator: (value) {
                   if (widget.user == null && (value == null || value.isEmpty)) {
                     return 'password_required';
                   }
-                  if (value != null && value.isNotEmpty && value.length < 6) {
-                    return 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak';
+                  if (value != null && value.isNotEmpty && value.length < 2) {
+                    return 'Parol kamida 2 ta belgidan iborat bo\'lishi kerak';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
 
-              // Filial Selector
-              _buildFilialSelector(),
-              const SizedBox(height: 20),
-
-              // Category Selector
-              _buildCategorySelector(),
-              const SizedBox(height: 32),
-
               // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              widget.user != null ? Icons.update : Icons.add,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              widget.user != null
-                                  ? 'Обновить'
-                                  : 'Создать пользователя',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
+              SaveButton(
+                isLoading: _isLoading,
+                isEditMode: widget.user != null,
+                onPressed: _saveUser,
               ),
               const SizedBox(height: 16),
             ],

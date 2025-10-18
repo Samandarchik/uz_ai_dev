@@ -364,10 +364,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                             children: [
                                               Expanded(
                                                 child: Text(
-                                                  'order_number'.replaceAll(
-                                                    '{id}',
-                                                    '${order['order_id'] ?? order['id']}',
-                                                  ),
+                                                  'Номер заказа: ${order['order_id'] ?? order['id']})',
                                                   style: TextStyle(
                                                     fontSize: 18,
                                                     fontWeight: FontWeight.bold,

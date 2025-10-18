@@ -15,8 +15,3 @@ abstract final class AppUrls {
   static const String category = '$baseUrl/api/categories';
   static String categoryById(String id) => '$baseUrl/api/categories/$id';
 }
-
-
-// https://imzo-ai.uzjoylar.uz/html-download?pdf_category_item_id=
-// https://api.uz-dev-ai.uz
-//http://localhost:1010

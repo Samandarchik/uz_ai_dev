@@ -202,12 +202,13 @@ class ProductProviderAgent extends ChangeNotifier {
 
       // Order uchun JSON ma'lumot tayyorlash
       Map<String, dynamic> orderData = {
+        "comment": comment,
+        "sent_data_time": sentDataTime.toString(),
         'items': selectedProducts.entries.map((entry) {
           return {
             'product_id': entry.key,
             'count': entry.value,
             "comment": comment,
-            "sent_data_time": sentDataTime.toIso8601String(),
           };
         }).toList(),
       };

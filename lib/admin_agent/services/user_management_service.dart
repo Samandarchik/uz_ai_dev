@@ -71,7 +71,8 @@ class UserManagementService {
   // Create new user - POST /api/users
   Future<User> createUser(CreateUserRequest request) async {
     try {
-      final response = await dio.post(AppUrlsAgent.register, data: request.toJson());
+      final response =
+          await dio.post(AppUrlsAgent.register, data: request.toJson());
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = response.data;
@@ -165,58 +166,7 @@ class UserManagementService {
     }
   }
 
-  // Assign filial to user - PUT /api/users/{id}/assign-filial
-  Future<User> assignFilialToUser(int userId, int filialId) async {
-    try {
-      final response = await dio.put(
-        '${AppUrlsAgent.users}/$userId/assign-filial',
-        data: AssignFilialRequest(filialId: filialId).toJson(),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          final user = await getUserById(userId);
-          if (user != null) {
-            return user;
-          } else {
-            throw Exception('updated_user_fetch_error');
-          }
-        } else {
-          throw Exception(responseData['message'] ?? 'assign_filial_error');
-        }
-      } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        if (e.response!.statusCode == 404) {
-          throw Exception('user_or_filial_not_found');
-        }
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'unknown_server_error';
-        throw Exception('assign_filial_error' + ': $errorMessage');
-      } else {
-        throw Exception('network_error' + ': ${e.message}');
-      }
-    } catch (e) {
-      print('Xatolik assignFilialToUser: $e');
-      throw Exception('unexpected_error_assign' + ': $e');
-    }
-  }
-
   // Helper methods
-  Future<List<User>> getUsersByFilial(int filialId) async {
-    try {
-      final allUsers = await getAllUsers();
-      return allUsers.where((user) => user.filialId == filialId).toList();
-    } catch (e) {
-      throw Exception('users_by_filial_error' + ': $e');
-    }
-  }
-
   Future<List<User>> getAdminUsers() async {
     try {
       final allUsers = await getAllUsers();

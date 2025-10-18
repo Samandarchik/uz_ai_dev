@@ -3,18 +3,19 @@ class User {
   final String name;
   final String phone;
   final bool isAdmin;
-  final int? filialId;
-  final Filial? filial;
   final String? password;
-  
+  final String location;
+  final double long;
+  final double lat;
 
   User({
     required this.id,
     required this.name,
     required this.phone,
     required this.isAdmin,
-    this.filialId,
-    this.filial,
+    required this.location,
+    required this.long,
+    required this.lat,
     this.password,
   });
 
@@ -24,8 +25,9 @@ class User {
       name: json['name'] ?? '',
       phone: json['phone'] ?? '',
       isAdmin: json['is_admin'] ?? false,
-      filialId: json['filial_id'],
-      filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
+      location: json['location'] ?? '',
+      long: json['long'] ?? 0.0,
+      lat: json['lat'] ?? 0.0,
     );
   }
 
@@ -35,8 +37,10 @@ class User {
       'name': name,
       'phone': phone,
       'is_admin': isAdmin,
-      'filial_id': filialId,
       if (password != null) 'password': password,
+      'location': location,
+      'long': long,
+      'lat': lat
     };
   }
 
@@ -54,8 +58,9 @@ class User {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       isAdmin: isAdmin ?? this.isAdmin,
-      filialId: filialId ?? this.filialId,
-      filial: filial ?? this.filial,
+      location: location,
+      long: long,
+      lat: lat,
       password: password ?? this.password,
     );
   }
@@ -103,17 +108,19 @@ class UpdateUserRequest {
   final String? name;
   final String? phone;
   final bool? isAdmin;
-  final int? filialId;
   final String? password;
-  final List<int>? categoryIds;
+  final double? long;
+  final double? lat;
+  final String? location;
 
   UpdateUserRequest({
     this.name,
     this.phone,
     this.isAdmin,
-    this.filialId,
+    this.location,
+    this.long,
+    this.lat,
     this.password,
-    this.categoryIds,
   });
 
   Map<String, dynamic> toJson() {
@@ -121,9 +128,10 @@ class UpdateUserRequest {
     if (name != null) data['name'] = name;
     if (phone != null) data['phone'] = phone;
     if (isAdmin != null) data['is_admin'] = isAdmin;
-    if (filialId != null) data['filial_id'] = filialId;
+    if (location != null) data['location'] = location;
     if (password != null && password!.isNotEmpty) data['password'] = password;
-    if (categoryIds != null) data['category_list'] = categoryIds;
+    if (long != null) data['long'] = long;
+    if (lat != null) data['lat'] = lat;
     return data;
   }
 }
@@ -133,16 +141,18 @@ class CreateUserRequest {
   final String phone;
   final String password;
   final bool isAdmin;
-  final int? filialId;
-  final List<int>? categoryIds;
+  final double long;
+  final double lat;
+  final String location;
 
   CreateUserRequest({
     required this.name,
     required this.phone,
     required this.password,
     this.isAdmin = false,
-    this.filialId,
-    this.categoryIds,
+    required this.long,
+    required this.lat,
+    required this.location,
   });
 
   Map<String, dynamic> toJson() {
@@ -151,20 +161,9 @@ class CreateUserRequest {
       'phone': phone,
       'password': password,
       'is_admin': isAdmin,
-      if (filialId != null) 'filial_id': filialId,
-      'category_list': categoryIds
-    };
-  }
-}
-
-class AssignFilialRequest {
-  final int filialId;
-
-  AssignFilialRequest({required this.filialId});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'filial_id': filialId,
+      'location': location,
+      'long': long,
+      'lat': lat
     };
   }
 }

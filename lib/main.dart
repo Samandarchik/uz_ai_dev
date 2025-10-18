@@ -12,11 +12,9 @@ import 'package:uz_ai_dev/admin_agent/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin_agent/provider/admin_user_provider.dart';
 import 'package:uz_ai_dev/admin_agent/services/upload_image.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/splash_screen.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:uz_ai_dev/user_agent/provider/provider.dart';
-import 'package:uz_ai_dev/user_agent/ui/user_home_ui.dart';
-
-import 'splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +66,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: UserHomeUiAgent(),
+      home: SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

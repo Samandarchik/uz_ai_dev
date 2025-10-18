@@ -1,7 +1,7 @@
 name: uz_ai_dev
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.6+16
+version: 0.1.8+18
 
 environment:
   sdk: ^3.6.1
@@ -30,10 +30,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # assets:
-  #   - assets/translations/
+  assets:
+    - assets/
 
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/translations/telegram-cloud-photo-size-2-5397779662433809775-x.jpg"
+  image_path: "assets/2025-10-18 2.07.16 PM.jpg"

@@ -348,44 +348,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   ),
                 ],
               ),
-              if (user.filial != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.filial!.name,
-                              style: TextStyle(
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            if (user.filial!.location != null)
-                              Text(
-                                user.filial!.location!,
-                                style: TextStyle(
-                                  color: Colors.green.shade600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+             
             ],
           ),
         ),
