@@ -72,7 +72,6 @@ class _UserHomeUiState extends State<UserHomeUi> {
                 itemCount: provider.categories.length,
                 itemBuilder: (context, index) {
                   final category = provider.categories[index];
-
                   // product sonini tekshiramiz
                   final productCount =
                       provider.getProductsByCategory(category.name).length;

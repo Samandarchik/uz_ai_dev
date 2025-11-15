@@ -114,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setBool("is_agent", !isPhoneNumber);
 
-      // 🔹 To‘g‘ri yo‘naltirish logikasi:
+      // 🔹 To'g'ri yo'naltirish logikasi:
       if (isPhoneNumber) {
         // Oddiy user tizimi
         if (user["is_admin"] == true) {
@@ -135,6 +135,44 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _createAccount() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await ApiService.login("+998770451117", "293");
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success'] == true) {
+      TextInput.finishAutofillContext();
+
+      await _saveAccount(_phoneController.text, _passwordController.text);
+
+      final user = result['data']['user'];
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', result['data']['token']);
+      await prefs.setString('user', jsonEncode(user));
+      await prefs.setBool("is_admin", user["is_admin"] ?? false);
+
+      // 🔹 To'g'ri yo'naltirish logikasi:
+
+      // Oddiy user tizimi
+      if (user["is_admin"] == true) {
+        context.pushAndRemove(AdminHomeUi());
+      } else {
+        context.pushAndRemove(UserHomeUi());
+      }
+    } else {
+      _showErrorDialog(result['message'] ?? 'Login xatosi');
+    }
+  }
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -144,6 +182,28 @@ class _LoginPageState extends State<LoginPage> {
             Icon(Icons.error, color: Colors.red),
             SizedBox(width: 10),
             Text('error'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 10),
+            Text('Muvaffaq'),
           ],
         ),
         content: Text(message),
@@ -287,7 +347,48 @@ class _LoginPageState extends State<LoginPage> {
                                     ],
                                   )
                                 : Text(
-                                    'login',
+                                    'Login',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _createAccount,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 5,
+                            ),
+                            child: _isLoading
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text('wait'),
+                                    ],
+                                  )
+                                : Text(
+                                    'Create account',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,

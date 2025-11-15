@@ -72,74 +72,83 @@ class _UserHomeUiAgentState extends State<UserHomeUiAgent> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              return ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: provider.categories.length,
-                itemBuilder: (context, index) {
-                  final category = provider.categories[index];
+              print(
+                  "provider.categories.length ${provider.categories.length == 0 ? "1" : "2"}");
+              return provider.categories.isNotEmpty ||
+                      provider.categories.length == 0
+                  ? ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: provider.categories.length,
+                      itemBuilder: (context, index) {
+                        final category = provider.categories[index];
 
-                  // product sonini tekshiramiz
-                  final productCount =
-                      provider.getProductsByCategory(category.name).length;
+                        // product sonini tekshiramiz
+                        final productCount = provider
+                            .getProductsByCategory(category.name)
+                            .length;
 
-                  if (productCount == 0) {
-                    // Hech qanday product bo‘lmasa, kategoriya chiqmasin
-                    return SizedBox.shrink();
-                  }
+                        if (productCount == 0) {
+                          // Hech qanday product bo‘lmasa, kategoriya chiqmasin
+                          return SizedBox.shrink();
+                        }
 
-                  return InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ProductsScreen(categoryName: category.name),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 6),
-                      leading: ClipOval(
-                        child: GestureDetector(
+                        return InkWell(
                           onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) => Dialog(
-                                backgroundColor: Colors.transparent,
-                                child: CachedNetworkImage(
-                                  imageUrl:
-                                      "${AppUrlsAgent.baseUrl}${category.imageUrl}",
-                                  fit: BoxFit.contain,
-                                  errorWidget: (context, url, error) =>
-                                      Icon(Icons.error, size: 40),
-                                ),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ProductsScreen(categoryName: category.name),
                               ),
                             );
                           },
-                          child: CachedNetworkImage(
-                            imageUrl:
-                                "${AppUrlsAgent.baseUrl}${category.imageUrl}",
-                            width: 55,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) =>
-                                Icon(Icons.error),
+                          borderRadius: BorderRadius.circular(12),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 6),
+                            leading: ClipOval(
+                              child: GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => Dialog(
+                                      backgroundColor: Colors.transparent,
+                                      child: CachedNetworkImage(
+                                        imageUrl:
+                                            "${AppUrlsAgent.baseUrl}${category.imageUrl}",
+                                        fit: BoxFit.contain,
+                                        errorWidget: (context, url, error) =>
+                                            Icon(Icons.error, size: 40),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      "${AppUrlsAgent.baseUrl}${category.imageUrl}",
+                                  width: 55,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) =>
+                                      Icon(Icons.error),
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              category.name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text("$productCount ${"product"}"),
                           ),
-                        ),
-                      ),
-                      title: Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text("$productCount ${"product"}"),
-                    ),
-                  );
-                },
-              );
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      itemBuilder: (context, index) =>
+                          Text("Hech narsa topilmadi"),
+                      itemCount: 1);
             },
           );
         },
