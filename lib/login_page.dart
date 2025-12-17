@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
-import 'package:uz_ai_dev/admin_agent/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
-import 'package:uz_ai_dev/user_agent/services/api_service.dart';
-import 'package:uz_ai_dev/user_agent/ui/user_home_ui.dart';
 import 'dart:convert';
 import 'user/services/api_service.dart';
 
@@ -89,13 +86,8 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final loginInput = _phoneController.text.trim();
-    final isPhoneNumber = loginInput.startsWith('+') &&
-        loginInput.substring(1).replaceAll(RegExp(r'\s+'), '').length >= 10;
-
     // Login API tanlash
-    final result = isPhoneNumber
-        ? await ApiService.login(loginInput, _passwordController.text)
-        : await ApiServiceAgent.login(loginInput, _passwordController.text);
+    final result = await ApiService.login(loginInput, _passwordController.text);
 
     setState(() {
       _isLoading = false;
@@ -110,25 +102,14 @@ class _LoginPageState extends State<LoginPage> {
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
-      await prefs.setString('user', jsonEncode(user));
+      await prefs.setString('name', jsonEncode(user["name"]));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
-      await prefs.setBool("is_agent", !isPhoneNumber);
 
-      // 🔹 To'g'ri yo'naltirish logikasi:
-      if (isPhoneNumber) {
-        // Oddiy user tizimi
-        if (user["is_admin"] == true) {
-          context.pushAndRemove(AdminHomeUi());
-        } else {
-          context.pushAndRemove(UserHomeUi());
-        }
+      // Oddiy user tizimi
+      if (user["is_admin"] == true) {
+        context.pushAndRemove(AdminHomeUi());
       } else {
-        // Agent tizimi
-        if (user["is_admin"] == true) {
-          context.pushAndRemove(AdminHomeUiAgent());
-        } else {
-          context.pushAndRemove(UserHomeUiAgent());
-        }
+        context.pushAndRemove(UserHomeUi());
       }
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
@@ -445,6 +426,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           SizedBox(height: 20),
+                          Text("Version: 0.2.0"),
                         ],
                       ],
                     ),

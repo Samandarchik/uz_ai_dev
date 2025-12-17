@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
@@ -23,6 +24,17 @@ class UserHomeUi extends StatefulWidget {
 
 class _UserHomeUiState extends State<UserHomeUi> {
   TokenStorage tokenStorage = sl<TokenStorage>();
+  String name = '';
+  Future<void> getMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString('name') ?? '';
+
+    if (!mounted) return;
+
+    setState(() {
+      name = savedName;
+    });
+  }
 
   @override
   void initState() {
@@ -31,6 +43,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
       context.read<ProductProvider>().fetchCategories();
       context.read<ProductProvider>().fetchProducts();
     });
+    getMe();
   }
 
   @override
@@ -40,7 +53,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
         leading: IconButton(
             onPressed: () => _showContactDialog(context),
             icon: Icon(Icons.info_outline)),
-        title: Text('Категории',
+        title: Text(name,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
@@ -188,7 +201,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
   }
 
   Future<void> _launchContactLink() async {
-    const urlString = 'https://t.me/uz_ai_dev';
+    const urlString = 'https://t.me/uzaidev';
     final Uri url = Uri.parse(urlString);
     // launchUrl funktsiyasidan foydalanamiz
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
