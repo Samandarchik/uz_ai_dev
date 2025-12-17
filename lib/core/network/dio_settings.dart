@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_dio_logger/talker_dio_logger_interceptor.dart';
 import 'package:talker_dio_logger/talker_dio_logger_settings.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -6,41 +7,45 @@ import 'package:uz_ai_dev/core/network/print.dart';
 import '../data/local/token_storage.dart';
 
 class AppDioClient {
-  final TokenStorage tokenStorage;
-
-  AppDioClient({required this.tokenStorage});
-
   Dio createDio() {
-    final dio = Dio(BaseOptions(
-      baseUrl: AppUrls.baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-            'Authorization'
-            'Bearer ${tokenStorage.getToken()}'
-      },
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-    ));
-
-    // Logger interceptor qo'shish
-    dio.interceptors.add(TalkerDioLogger(
-      settings: const TalkerDioLoggerSettings(
-        enabled: true,
-        printErrorHeaders: true,
-        printRequestData: true,
-        printErrorData: true,
-        printErrorMessage: true,
-        printRequestHeaders: true,
-        printResponseData: true,
-        printResponseHeaders: true,
-        printResponseMessage: true,
-        printResponseRedirects: true,
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppUrls.baseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
       ),
-    ));
+    );
 
-    // Auth token interceptor qo'shish
-    dio.interceptors.add(AppInterceptors(dio, tokenStorage));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString("token");
+
+          options.headers['Content-Type'] = 'application/json';
+          options.headers['Accept'] = 'application/json';
+
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+
+          return handler.next(options);
+        },
+      ),
+    );
+
+    dio.interceptors.add(
+      TalkerDioLogger(
+        settings: const TalkerDioLoggerSettings(
+          enabled: true,
+          printRequestHeaders: true,
+          printRequestData: true,
+          printResponseData: true,
+          printErrorData: true,
+          printErrorMessage: true,
+        ),
+      ),
+    );
 
     return dio;
   }

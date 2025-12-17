@@ -45,7 +45,8 @@ class _EditUserPageState extends State<EditUserPage> {
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
     _passwordController = TextEditingController();
     _isAdmin = widget.user?.isAdmin ?? false;
-    _selectedFilialId = widget.user?.filialId;
+    _selectedFilialId = widget.user?.filial?.id;
+    // _categoryIds = widget.user?.categoryIds ?? [];
     _loadFilials();
     _loadCategories();
   }
@@ -63,7 +64,6 @@ class _EditUserPageState extends State<EditUserPage> {
       _isLoadingFilials = true;
       _filialError = '';
     });
-
     try {
       final filials = await _filialService.getAllFilials();
       setState(() {
@@ -176,7 +176,7 @@ class _EditUserPageState extends State<EditUserPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'branch',
+          'Ветвь',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -260,7 +260,7 @@ class _EditUserPageState extends State<EditUserPage> {
                                   Icon(Icons.clear, color: Colors.grey),
                                   SizedBox(width: 12),
                                   Text(
-                                    'no_branch_selected',
+                                    'Ветка не выбрана',
                                     style: TextStyle(color: Colors.grey),
                                   ),
                                 ],
@@ -519,32 +519,6 @@ class _EditUserPageState extends State<EditUserPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.user != null ? 'update_data' : 'add_new_user',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
               // Name Field
               Text(
                 'Полное имя',
