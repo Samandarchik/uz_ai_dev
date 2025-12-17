@@ -46,7 +46,7 @@ class _EditUserPageState extends State<EditUserPage> {
     _passwordController = TextEditingController();
     _isAdmin = widget.user?.isAdmin ?? false;
     _selectedFilialId = widget.user?.filial?.id;
-    // _categoryIds = widget.user?.categoryIds ?? [];
+    _categoryIds = widget.user?.categoryIds ?? [];
     _loadFilials();
     _loadCategories();
   }

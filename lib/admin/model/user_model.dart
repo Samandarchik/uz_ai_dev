@@ -6,17 +6,17 @@ class User {
   final int? filialId;
   final Filial? filial;
   final String? password;
-  
+  final List<int>? categoryIds;
 
-  User({
-    required this.id,
-    required this.name,
-    required this.phone,
-    required this.isAdmin,
-    this.filialId,
-    this.filial,
-    this.password,
-  });
+  User(
+      {required this.id,
+      required this.name,
+      required this.phone,
+      required this.isAdmin,
+      this.filialId,
+      this.filial,
+      this.password,
+      this.categoryIds});
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -26,6 +26,9 @@ class User {
       isAdmin: json['is_admin'] ?? false,
       filialId: json['filial_id'],
       filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
+      categoryIds: (json['category_list'] as List<dynamic>?)
+          ?.map((e) => e as int)
+          .toList(),
     );
   }
 

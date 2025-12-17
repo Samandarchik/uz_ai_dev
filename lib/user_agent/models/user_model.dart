@@ -6,7 +6,6 @@ class User {
   final int? filialId;
   final Filial? filial;
   final String? password;
-  // final List<int>? categoryIds;
 
   User({
     required this.id,
@@ -16,7 +15,6 @@ class User {
     this.filialId,
     this.filial,
     this.password,
-    // this.categoryIds,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -27,7 +25,6 @@ class User {
       isAdmin: json['is_admin'] ?? false,
       filialId: json['filial']["id"],
       filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
-      // categoryIds: json['category_list'] ?? [1],
     );
   }
 
