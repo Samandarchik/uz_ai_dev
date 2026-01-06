@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/admin_agent/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
+import 'package:uz_ai_dev/user_agent/services/api_service.dart';
+import 'package:uz_ai_dev/user_agent/ui/user_home_ui.dart';
 import 'dart:convert';
 import 'user/services/api_service.dart';
 
@@ -86,44 +89,13 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final loginInput = _phoneController.text.trim();
+    final isPhoneNumber = loginInput.startsWith('+') &&
+        loginInput.substring(1).replaceAll(RegExp(r'\s+'), '').length >= 10;
+
     // Login API tanlash
-    final result = await ApiService.login(loginInput, _passwordController.text);
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result['success'] == true) {
-      TextInput.finishAutofillContext();
-
-      await _saveAccount(_phoneController.text, _passwordController.text);
-
-      final user = result['data']['user'];
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', result['data']['token']);
-      await prefs.setString('name', jsonEncode(user["name"]));
-      await prefs.setBool("is_admin", user["is_admin"] ?? false);
-
-      // Oddiy user tizimi
-      if (user["is_admin"] == true) {
-        context.pushAndRemove(AdminHomeUi());
-      } else {
-        context.pushAndRemove(UserHomeUi());
-      }
-    } else {
-      _showErrorDialog(result['message'] ?? 'Login xatosi');
-    }
-  }
-
-  Future<void> _createAccount() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result = await ApiService.login("+998770451117", "293");
+    final result = isPhoneNumber
+        ? await ApiService.login(loginInput, _passwordController.text)
+        : await ApiServiceAgent.login(loginInput, _passwordController.text);
 
     setState(() {
       _isLoading = false;
@@ -140,14 +112,23 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(user));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
+      await prefs.setBool("is_agent", !isPhoneNumber);
 
-      // 🔹 To'g'ri yo'naltirish logikasi:
-
-      // Oddiy user tizimi
-      if (user["is_admin"] == true) {
-        context.pushAndRemove(AdminHomeUi());
+      // 🔹 To‘g‘ri yo‘naltirish logikasi:
+      if (isPhoneNumber) {
+        // Oddiy user tizimi
+        if (user["is_admin"] == true) {
+          context.pushAndRemove(AdminHomeUi());
+        } else {
+          context.pushAndRemove(UserHomeUi());
+        }
       } else {
-        context.pushAndRemove(UserHomeUi());
+        // Agent tizimi
+        if (user["is_admin"] == true) {
+          context.pushAndRemove(AdminHomeUiAgent());
+        } else {
+          context.pushAndRemove(UserHomeUiAgent());
+        }
       }
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
@@ -163,28 +144,6 @@ class _LoginPageState extends State<LoginPage> {
             Icon(Icons.error, color: Colors.red),
             SizedBox(width: 10),
             Text('error'),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 10),
-            Text('Muvaffaq'),
           ],
         ),
         content: Text(message),
@@ -328,48 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ],
                                   )
                                 : Text(
-                                    'Login',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _createAccount,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 5,
-                            ),
-                            child: _isLoading
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text('wait'),
-                                    ],
-                                  )
-                                : Text(
-                                    'Create account',
+                                    'login',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -426,7 +344,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           SizedBox(height: 20),
-                          Text("Version: 0.2.0"),
                         ],
                       ],
                     ),

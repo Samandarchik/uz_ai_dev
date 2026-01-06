@@ -2,10 +2,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 
-class ApiService {
-  static const String baseUrl = AppUrls.baseUrl;
+class ApiServiceAgent {
+  static const String baseUrl = AppUrlsAgent.baseUrl;
 
   static Future<Map<String, String>> _getHeaders({String? token}) async {
     Map<String, String> headers = {
@@ -21,15 +21,14 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> login(
-      String phone, String password) async {
+    String phone,
+    String password,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/login'),
         headers: await _getHeaders(),
-        body: jsonEncode({
-          'phone': phone,
-          'password': password,
-        }),
+        body: jsonEncode({'phone': phone, 'password': password}),
       );
 
       if (response.statusCode == 200) {
@@ -41,10 +40,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Internetga ulanishda xato: $e',
-      };
+      return {'success': false, 'message': 'Internetga ulanishda xato: $e'};
     }
   }
 
@@ -71,15 +67,14 @@ class ApiService {
       }
     } catch (e) {
       print('Products Error: $e');
-      return {
-        'success': false,
-        'message': 'Internetga ulanishda xato: $e',
-      };
+      return {'success': false, 'message': 'Internetga ulanishda xato: $e'};
     }
   }
 
   static Future<Map<String, dynamic>> createOrder(
-      String token, Map<String, dynamic> orderData) async {
+    String token,
+    Map<String, dynamic> orderData,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/orders'),
@@ -106,16 +101,16 @@ class ApiService {
       }
     } catch (e) {
       print('Order Error: $e');
-      return {
-        'success': false,
-        'message': 'Internetga ulanishda xato: $e',
-      };
+      return {'success': false, 'message': 'Internetga ulanishda xato: $e'};
     }
   }
 
   // Pagination bilan buyurtmalarni olish
-  static Future<Map<String, dynamic>> getOrders(String token,
-      {int page = 1, int limit = 30}) async {
+  static Future<Map<String, dynamic>> getOrders(
+    String token, {
+    int page = 1,
+    int limit = 30,
+  }) async {
     try {
       // URL ga pagination parametrlarini qo'shamiz
       String url = '$baseUrl/api/orders?page=$page&limit=$limit';
@@ -181,10 +176,7 @@ class ApiService {
       }
     } catch (e) {
       print('Get Orders Error: $e');
-      return {
-        'success': false,
-        'message': 'Internetga ulanishda xato: $e',
-      };
+      return {'success': false, 'message': 'Internetga ulanishda xato: $e'};
     }
   }
 
@@ -195,9 +187,7 @@ class ApiService {
 
   static Future<bool> deleteUser(String token) async {
     try {
-      await http.delete(
-        Uri.parse('$baseUrl/api/delete-user'),
-      );
+      await http.delete(Uri.parse('$baseUrl/api/delete-user'));
       return true;
     } catch (e) {
       return true;

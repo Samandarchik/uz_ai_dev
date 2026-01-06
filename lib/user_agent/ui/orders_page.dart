@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uz_ai_dev/user/services/api_service.dart';
-import '../../login_page.dart';
+import 'package:uz_ai_dev/login_page.dart';
+import 'package:uz_ai_dev/user_agent/services/api_service.dart';
 
 class OrdersPage extends StatefulWidget {
   @override
@@ -70,8 +70,11 @@ class _OrdersPageState extends State<OrdersPage> {
       return;
     }
 
-    final result =
-        await ApiService.getOrders(token, page: _currentPage, limit: _limit);
+    final result = await ApiServiceAgent.getOrders(
+      token,
+      page: _currentPage,
+      limit: _limit,
+    );
 
     setState(() {
       _isLoading = false;
@@ -122,8 +125,11 @@ class _OrdersPageState extends State<OrdersPage> {
       return;
     }
 
-    final result = await ApiService.getOrders(token,
-        page: _currentPage + 1, limit: _limit);
+    final result = await ApiServiceAgent.getOrders(
+      token,
+      page: _currentPage + 1,
+      limit: _limit,
+    );
 
     setState(() {
       _isLoadingMore = false;
@@ -165,7 +171,7 @@ class _OrdersPageState extends State<OrdersPage> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
-        return 'Статус отправлен на принтер';
+        return 'status_sent_to_printer';
       case 'preparing':
         return 'status_preparing';
       case 'ready':
@@ -191,16 +197,9 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Мои заказы',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-        ],
+        title:
+            Text('Мои заказы', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [IconButton(icon: Icon(Icons.refresh), onPressed: _refresh)],
       ),
       body: _isLoading
           ? Center(
@@ -218,11 +217,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 60,
-                        color: Colors.red,
-                      ),
+                      Icon(Icons.error_outline, size: 60, color: Colors.red),
                       SizedBox(height: 16),
                       Text(
                         _errorMessage!,
@@ -230,10 +225,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _refresh,
-                        child: Text('retry'),
-                      ),
+                      ElevatedButton(onPressed: _refresh, child: Text('retry')),
                     ],
                   ),
                 )
@@ -266,9 +258,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   Text(
                                     'Сделайте первый заказ!',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
+                                        fontSize: 16, color: Colors.grey),
                                   ),
                                 ],
                               ),
@@ -287,7 +277,9 @@ class _OrdersPageState extends State<OrdersPage> {
                             if (_totalPages > 1)
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 margin: EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(
                                   color: Colors.blue[50],
@@ -297,8 +289,11 @@ class _OrdersPageState extends State<OrdersPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.info_outline,
-                                        size: 16, color: Colors.blue[700]),
+                                    Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: Colors.blue[700],
+                                    ),
                                     SizedBox(width: 8),
                                     Text(
                                       'page_info'
@@ -369,7 +364,10 @@ class _OrdersPageState extends State<OrdersPage> {
                                             children: [
                                               Expanded(
                                                 child: Text(
-                                                  '${orderId.substring(6)}',
+                                                  'order_number'.replaceAll(
+                                                    '{id}',
+                                                    '${order['order_id'] ?? order['id']}',
+                                                  ),
                                                   style: TextStyle(
                                                     fontSize: 18,
                                                     fontWeight: FontWeight.bold,
@@ -382,31 +380,35 @@ class _OrdersPageState extends State<OrdersPage> {
                                                   Container(
                                                     padding:
                                                         EdgeInsets.symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 6),
+                                                      horizontal: 12,
+                                                      vertical: 6,
+                                                    ),
                                                     decoration: BoxDecoration(
                                                       color: _getStatusColor(
-                                                              order['status'] ??
-                                                                  'unknown')
-                                                          .withOpacity(0.1),
+                                                        order['status'] ??
+                                                            'unknown',
+                                                      ).withOpacity(0.1),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               20),
                                                       border: Border.all(
                                                         color: _getStatusColor(
-                                                            order['status'] ??
-                                                                'unknown'),
+                                                          order['status'] ??
+                                                              'unknown',
+                                                        ),
                                                         width: 1,
                                                       ),
                                                     ),
                                                     child: Text(
                                                       _getStatusText(
-                                                          order['status'] ??
-                                                              'unknown'),
+                                                        order['status'] ??
+                                                            'unknown',
+                                                      ),
                                                       style: TextStyle(
                                                         color: _getStatusColor(
-                                                            order['status'] ??
-                                                                'unknown'),
+                                                          order['status'] ??
+                                                              'unknown',
+                                                        ),
                                                         fontSize: 12,
                                                         fontWeight:
                                                             FontWeight.bold,
@@ -417,7 +419,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                                   AnimatedRotation(
                                                     turns: isExpanded ? 0.5 : 0,
                                                     duration: Duration(
-                                                        milliseconds: 200),
+                                                      milliseconds: 200,
+                                                    ),
                                                     child: Icon(
                                                       Icons.keyboard_arrow_down,
                                                       color: Colors.grey[600],
@@ -433,18 +436,14 @@ class _OrdersPageState extends State<OrdersPage> {
                                             SizedBox(height: 8),
                                             Row(
                                               children: [
-                                                Icon(Icons.access_time,
-                                                    size: 14,
-                                                    color: Colors.grey),
+                                                Icon(
+                                                  Icons.access_time,
+                                                  size: 14,
+                                                  color: Colors.grey,
+                                                ),
                                                 SizedBox(width: 4),
                                                 Text(
-                                                  order['created'] != null
-                                                      ? DateTime.parse(
-                                                              order['created'])
-                                                          .toLocal()
-                                                          .toString()
-                                                          .split(' ')[0]
-                                                      : 'N/A',
+                                                  '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split(' ')[0] : 'N/A'}',
                                                   style: TextStyle(
                                                     color: Colors.grey[600],
                                                     fontSize: 12,
@@ -454,7 +453,10 @@ class _OrdersPageState extends State<OrdersPage> {
                                                 if (order['items'] != null &&
                                                     order['items'].isNotEmpty)
                                                   Text(
-                                                    "${order['items'].length}",
+                                                    'products_count'.replaceAll(
+                                                      '{count}',
+                                                      '${order['items'].length}',
+                                                    ),
                                                     style: TextStyle(
                                                       color: Colors.grey[600],
                                                       fontSize: 12,
@@ -487,8 +489,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                                           BorderRadius.circular(
                                                               8),
                                                       border: Border.all(
-                                                          color: Colors
-                                                              .grey[200]!),
+                                                        color:
+                                                            Colors.grey[200]!,
+                                                      ),
                                                     ),
                                                     child: Column(
                                                       crossAxisAlignment:
@@ -498,11 +501,12 @@ class _OrdersPageState extends State<OrdersPage> {
                                                         Row(
                                                           children: [
                                                             Icon(
-                                                                Icons
-                                                                    .shopping_bag,
-                                                                size: 16,
-                                                                color: Colors
-                                                                    .grey),
+                                                              Icons
+                                                                  .shopping_bag,
+                                                              size: 16,
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
                                                             SizedBox(width: 6),
                                                             Text(
                                                               'products',
@@ -517,15 +521,13 @@ class _OrdersPageState extends State<OrdersPage> {
                                                         ),
                                                         SizedBox(height: 8),
                                                         ...List.generate(
-                                                            order['items']
-                                                                .length,
-                                                            (itemIndex) {
-                                                          print(
-                                                              'itemIndex: ${order['items'][itemIndex]}');
-                                                          return Padding(
+                                                          order['items'].length,
+                                                          (itemIndex) =>
+                                                              Padding(
                                                             padding:
                                                                 EdgeInsets.only(
-                                                                    bottom: 4),
+                                                              bottom: 4,
+                                                            ),
                                                             child: Row(
                                                               mainAxisAlignment:
                                                                   MainAxisAlignment
@@ -534,28 +536,37 @@ class _OrdersPageState extends State<OrdersPage> {
                                                                 Expanded(
                                                                   child: Text(
                                                                     '• ${order['items'][itemIndex]['name'] ?? 'N/A'}',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            13),
+                                                                    style:
+                                                                        TextStyle(
+                                                                      fontSize:
+                                                                          13,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                                 Container(
-                                                                  padding: EdgeInsets
-                                                                      .symmetric(
-                                                                          horizontal:
-                                                                              8,
-                                                                          vertical:
-                                                                              2),
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .symmetric(
+                                                                    horizontal:
+                                                                        8,
+                                                                    vertical: 2,
+                                                                  ),
                                                                   decoration:
                                                                       BoxDecoration(
                                                                     color: Colors
                                                                         .blue[50],
                                                                     borderRadius:
-                                                                        BorderRadius.circular(
-                                                                            12),
+                                                                        BorderRadius
+                                                                            .circular(
+                                                                      12,
+                                                                    ),
                                                                   ),
                                                                   child: Text(
-                                                                    '${order['items'][itemIndex]['count']}',
+                                                                    'count_unit'
+                                                                        .replaceAll(
+                                                                      '{count}',
+                                                                      '${order['items'][itemIndex]['count']}',
+                                                                    ),
                                                                     style:
                                                                         TextStyle(
                                                                       fontSize:
@@ -571,8 +582,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                                                 ),
                                                               ],
                                                             ),
-                                                          );
-                                                        }),
+                                                          ),
+                                                        ),
                                                       ],
                                                     ),
                                                   ),
@@ -583,16 +594,19 @@ class _OrdersPageState extends State<OrdersPage> {
                                                 /// To'liq vaqt ma'lumoti
                                                 Row(
                                                   children: [
-                                                    Icon(Icons.access_time,
-                                                        size: 16,
-                                                        color: Colors.grey),
+                                                    Icon(
+                                                      Icons.access_time,
+                                                      size: 16,
+                                                      color: Colors.grey,
+                                                    ),
                                                     SizedBox(width: 6),
                                                     Text(
-                                                      'Время заказа',
+                                                      'order_time',
                                                       style: TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight:
-                                                              FontWeight.w600),
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),

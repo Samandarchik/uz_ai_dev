@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/agent/urls.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:uz_ai_dev/admin/model/product_model.dart';
-import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
-import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
-import 'package:uz_ai_dev/admin/ui/admin_edit_product_ui.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/admin_agent/model/product_model.dart';
+import 'package:uz_ai_dev/admin_agent/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin_agent/ui/admin_add_product_ui.dart';
+import 'package:uz_ai_dev/admin_agent/ui/admin_edit_product_ui.dart';
 
 class AdminProductUi extends StatefulWidget {
   final int categoryId;
@@ -32,13 +32,13 @@ class _AdminProductUiState extends State<AdminProductUi> {
   }
 
   void _filterProducts() {
-    final productProvider = context.read<ProductProviderAdmin>();
-    productProvider.filterByCategory(widget.categoryId);
+    final ProductProviderAgent = context.read<ProductProviderAgentAdmin>();
+    ProductProviderAgent.filterByCategory(widget.categoryId);
   }
 
   Future<void> _refreshProducts() async {
-    final productProvider = context.read<ProductProviderAdmin>();
-    await productProvider.initializeProducts(forceRefresh: true);
+    final ProductProviderAgent = context.read<ProductProviderAgentAdmin>();
+    await ProductProviderAgent.initializeProducts(forceRefresh: true);
     _filterProducts();
   }
 
@@ -53,9 +53,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const AddProductPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const AddProductPage()),
               );
 
               if (result == true) {
@@ -70,15 +68,15 @@ class _AdminProductUiState extends State<AdminProductUi> {
           ),
         ],
       ),
-      body: Consumer<ProductProviderAdmin>(
-        builder: (context, productProvider, child) {
+      body: Consumer<ProductProviderAgentAdmin>(
+        builder: (context, ProductProviderAgent, child) {
           // Loading holati
-          if (productProvider.isLoading) {
+          if (ProductProviderAgent.isLoading) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
 
           // Bo'sh holat
-          if (productProvider.filteredProducts.isEmpty) {
+          if (ProductProviderAgent.filteredProducts.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -91,10 +89,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   const SizedBox(height: 16),
                   Text(
                     'Bu kategoriyada mahsulotlar yo\'q',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -106,9 +101,9 @@ class _AdminProductUiState extends State<AdminProductUi> {
             child: ListView.separated(
               separatorBuilder: (context, index) => const Divider(),
               padding: const EdgeInsets.all(8),
-              itemCount: productProvider.filteredProducts.length,
+              itemCount: ProductProviderAgent.filteredProducts.length,
               itemBuilder: (context, index) {
-                final product = productProvider.filteredProducts[index];
+                final product = ProductProviderAgent.filteredProducts[index];
                 return _buildProductListTile(context, product);
               },
             ),
@@ -119,7 +114,9 @@ class _AdminProductUiState extends State<AdminProductUi> {
   }
 
   Widget _buildProductListTile(
-      BuildContext context, ProductModelAdmin product) {
+    BuildContext context,
+    ProductModelAdmin product,
+  ) {
     return ListTile(
       leading: ClipOval(
         child: GestureDetector(
@@ -130,7 +127,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 builder: (_) => Dialog(
                   backgroundColor: Colors.transparent,
                   child: CachedNetworkImage(
-                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                    imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                     fit: BoxFit.contain,
                     errorWidget: (context, url, error) =>
                         const Icon(Icons.error, size: 40, color: Colors.white),
@@ -141,7 +138,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
           },
           child: product.imageUrl != null
               ? CachedNetworkImage(
-                  imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                  imageUrl: "${AppUrlsAgent.baseUrl}${product.imageUrl}",
                   width: 55,
                   height: 55,
                   fit: BoxFit.cover,
@@ -158,10 +155,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
       ),
       title: Text(
         '${product.name} (${product.type})',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -191,7 +185,9 @@ class _AdminProductUiState extends State<AdminProductUi> {
   }
 
   void _showDeleteConfirmDialog(
-      BuildContext context, ProductModelAdmin product) {
+    BuildContext context,
+    ProductModelAdmin product,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -206,14 +202,14 @@ class _AdminProductUiState extends State<AdminProductUi> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final success = await context
-                  .read<ProductProviderAdmin>()
+                  .read<ProductProviderAgentAdmin>()
                   .deleteProduct(product);
 
               if (success && context.mounted) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Продукт удален')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Продукт удален')));
               }
             },
             child: const Text('Удалить'),

@@ -2,9 +2,9 @@
 // screens/user_management_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/admin/model/user_model.dart';
-import 'package:uz_ai_dev/admin/services/user_management_service.dart';
-import 'package:uz_ai_dev/admin/ui/edit_user_list.dart';
+import 'package:uz_ai_dev/admin_agent/model/user_model.dart';
+import 'package:uz_ai_dev/admin_agent/services/user_management_service.dart';
+import 'package:uz_ai_dev/admin_agent/ui/edit_user_list.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -95,8 +95,9 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         _filteredUsers = _users;
       } else {
         _filteredUsers = _users.where((user) {
-          final nameMatch =
-              user.name.toLowerCase().contains(query.toLowerCase());
+          final nameMatch = user.name.toLowerCase().contains(
+                query.toLowerCase(),
+              );
           final phoneMatch = user.phone.contains(query);
           return nameMatch || phoneMatch;
         }).toList();
@@ -152,10 +153,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 Icon(Icons.info_outline, color: Colors.red.shade600, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'cannot_undo',
-                    style: TextStyle(fontSize: 14),
-                  ),
+                  child: Text('cannot_undo', style: TextStyle(fontSize: 14)),
                 ),
               ],
             ),
@@ -190,15 +188,11 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     }
   }
 
-// Yangi user yaratish uchun
+  // Yangi user yaratish uchun
   void _navigateToCreateUser(User? user) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => EditUserPage(
-          user: user,
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => EditUserPage(user: user)),
     ).then((result) {
       // Agar user yaratilgan yoki yangilangan bo'lsa (true qaytsa)
       if (result == true) {
@@ -290,8 +284,11 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.phone,
-                                size: 16, color: Colors.grey.shade600),
+                            Icon(
+                              Icons.phone,
+                              size: 16,
+                              color: Colors.grey.shade600,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               user.phone,
@@ -407,10 +404,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         elevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.grey.shade200,
-          ),
+          child: Container(height: 1, color: Colors.grey.shade200),
         ),
         actions: [
           IconButton(
@@ -437,11 +431,15 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'Поисковая подсказка',
-                      prefixIcon:
-                          Icon(Icons.search, color: Colors.grey.shade600),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.grey.shade600,
+                      ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -513,10 +511,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               Text(
                 _errorMessage,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.red.shade600,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.red.shade600, fontSize: 16),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -526,8 +521,10 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.shade600,
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -567,10 +564,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               const SizedBox(height: 8),
               Text(
                 'no_results_for_query',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
               ),
             ],
           ),
