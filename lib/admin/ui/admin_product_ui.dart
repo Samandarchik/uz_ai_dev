@@ -57,7 +57,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => const AddProductPage(),
                 ),
               );
-
+              
               if (result == true) {
                 _refreshProducts();
               }
@@ -175,7 +175,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => EditProductPage(product: product),
                 ),
               );
-
+              
               if (result == true) {
                 _refreshProducts();
               }

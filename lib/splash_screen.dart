@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/login_page.dart';
-import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/check_version.dart'; // bunda VersionChecker mavjud
+import 'package:uz_ai_dev/check_version.dart';
+import 'package:uz_ai_dev/login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       bool needsUpdate = await VersionChecker.checkVersion(context);
 
-      // Agar update kerak bo'lmasa, token tekshiradi
+      // Agar update kerak bo‘lmasa, tokenni tekshiramiz
       if (!needsUpdate) {
         _checkToken();
       }
@@ -40,16 +40,17 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (token == null || token.isEmpty) {
-      // token yo‘q -> login page
+    if (token.isEmpty) {
+      // 🔹 Token yo‘q — Login sahifasiga o‘tish
       context.pushReplacement(const LoginPage());
+      return;
+    }
+
+    // Oddiy user tizimi
+    if (isAdmin == true) {
+      context.pushReplacement(const AdminHomeUi());
     } else {
-      // token bor -> admin yoki user
-      if (isAdmin == true) {
-        context.pushReplacement(const AdminHomeUi());
-      } else {
-        context.pushReplacement(const UserHomeUi());
-      }
+      context.pushReplacement(const UserHomeUi());
     }
   }
 

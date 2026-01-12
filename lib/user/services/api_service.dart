@@ -33,6 +33,34 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
+        print(response.body);
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'success': false,
+          'message': 'Server xatosi: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Internetga ulanishda xato: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> register() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/login'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'phone': "+998770451117",
+          'password': "293",
+        }),
+      );
+
+      if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
         return {

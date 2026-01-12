@@ -151,12 +151,12 @@ class _OrdersPageState extends State<OrdersPage> {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
         return Colors.blue;
-      case 'preparing':
-        return Colors.orange;
+      case 'print_error':
+        return Colors.red;
       case 'ready':
         return Colors.green;
       case 'delivered':
-        return Colors.purple;
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -165,13 +165,10 @@ class _OrdersPageState extends State<OrdersPage> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'sent_to_printer':
-        return 'Статус отправлен на принтер';
-      case 'preparing':
-        return 'status_preparing';
-      case 'ready':
-        return 'status_ready';
-      case 'delivered':
-        return 'status_delivered';
+        return 'Отправлено на принтер';
+      case 'print_error':
+        return 'Ошибка печати';
+
       default:
         return status;
     }
@@ -369,7 +366,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                             children: [
                                               Expanded(
                                                 child: Text(
-                                                  '${orderId.substring(6)}',
+                                                  'ID: ${order['order_id'].substring(
+                                                    9,
+                                                  )}',
                                                   style: TextStyle(
                                                     fontSize: 18,
                                                     fontWeight: FontWeight.bold,
@@ -438,13 +437,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                                     color: Colors.grey),
                                                 SizedBox(width: 4),
                                                 Text(
-                                                  order['created'] != null
-                                                      ? DateTime.parse(
-                                                              order['created'])
-                                                          .toLocal()
-                                                          .toString()
-                                                          .split(' ')[0]
-                                                      : 'N/A',
+                                                  '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split(' ')[0] : 'N/A'}',
                                                   style: TextStyle(
                                                     color: Colors.grey[600],
                                                     fontSize: 12,
@@ -454,7 +447,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                                 if (order['items'] != null &&
                                                     order['items'].isNotEmpty)
                                                   Text(
-                                                    "${order['items'].length}",
+                                                    order['items']
+                                                        .length
+                                                        .toString(),
                                                     style: TextStyle(
                                                       color: Colors.grey[600],
                                                       fontSize: 12,
@@ -517,12 +512,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                                         ),
                                                         SizedBox(height: 8),
                                                         ...List.generate(
-                                                            order['items']
-                                                                .length,
-                                                            (itemIndex) {
-                                                          print(
-                                                              'itemIndex: ${order['items'][itemIndex]}');
-                                                          return Padding(
+                                                          order['items'].length,
+                                                          (itemIndex) =>
+                                                              Padding(
                                                             padding:
                                                                 EdgeInsets.only(
                                                                     bottom: 4),
@@ -555,7 +547,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                                                             12),
                                                                   ),
                                                                   child: Text(
-                                                                    '${order['items'][itemIndex]['count']}',
+                                                                    "${order['items'][itemIndex]['count']} ${order['items'][itemIndex]['type']}",
                                                                     style:
                                                                         TextStyle(
                                                                       fontSize:
@@ -571,8 +563,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                                                 ),
                                                               ],
                                                             ),
-                                                          );
-                                                        }),
+                                                          ),
+                                                        ),
                                                       ],
                                                     ),
                                                   ),

@@ -184,6 +184,9 @@ class CartPage extends StatelessWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text("Заказ отправлен ✅")),
                         );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Ошибка: $e")),

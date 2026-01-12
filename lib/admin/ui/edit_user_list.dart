@@ -45,7 +45,8 @@ class _EditUserPageState extends State<EditUserPage> {
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
     _passwordController = TextEditingController();
     _isAdmin = widget.user?.isAdmin ?? false;
-    _selectedFilialId = widget.user?.filialId;
+    _selectedFilialId = widget.user?.filial?.id;
+    _categoryIds = widget.user?.categoryIds ?? [];
     _loadFilials();
     _loadCategories();
   }
@@ -63,7 +64,6 @@ class _EditUserPageState extends State<EditUserPage> {
       _isLoadingFilials = true;
       _filialError = '';
     });
-
     try {
       final filials = await _filialService.getAllFilials();
       setState(() {
@@ -176,7 +176,7 @@ class _EditUserPageState extends State<EditUserPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'branch',
+          'Ветвь',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -260,7 +260,7 @@ class _EditUserPageState extends State<EditUserPage> {
                                   Icon(Icons.clear, color: Colors.grey),
                                   SizedBox(width: 12),
                                   Text(
-                                    'no_branch_selected',
+                                    'Ветка не выбрана',
                                     style: TextStyle(color: Colors.grey),
                                   ),
                                 ],
@@ -519,35 +519,9 @@ class _EditUserPageState extends State<EditUserPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.user != null ? 'update_data' : 'add_new_user',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
               // Name Field
               Text(
-                'full_name',
+                'Полное имя',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -558,7 +532,7 @@ class _EditUserPageState extends State<EditUserPage> {
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  hintText: 'enter_full_name',
+                  hintText: 'enter_Полное имя',
                   prefixIcon: const Icon(Icons.person_outline),
                   filled: true,
                   fillColor: Colors.white,
@@ -578,7 +552,7 @@ class _EditUserPageState extends State<EditUserPage> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'full_name_required';
+                    return 'Полное имя_required';
                   }
                   return null;
                 },
@@ -587,7 +561,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
               // Phone Field
               Text(
-                'phone_number',
+                'Номер телефона',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -619,7 +593,7 @@ class _EditUserPageState extends State<EditUserPage> {
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'phone_number_required';
+                    return 'Требуется вход в систему';
                   }
                   return null;
                 },
@@ -628,7 +602,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
               // Password Field
               Text(
-                widget.user != null ? 'new_password_optional' : 'password',
+                widget.user != null ? 'Новый пароль необязательно' : 'пароль',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -641,8 +615,8 @@ class _EditUserPageState extends State<EditUserPage> {
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   hintText: widget.user != null
-                      ? 'new_password_hint'
-                      : 'enter_password',
+                      ? 'Новая подсказка для пароля'
+                      : 'Введите пароль',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(_obscurePassword
@@ -672,10 +646,10 @@ class _EditUserPageState extends State<EditUserPage> {
                 ),
                 validator: (value) {
                   if (widget.user == null && (value == null || value.isEmpty)) {
-                    return 'password_required';
+                    return 'Пароль требуется';
                   }
-                  if (value != null && value.isNotEmpty && value.length < 6) {
-                    return 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak';
+                  if (value != null && value.isNotEmpty && value.length < 2) {
+                    return 'Пароль должен быть длиной не менее 2 символов.';
                   }
                   return null;
                 },

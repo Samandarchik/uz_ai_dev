@@ -62,6 +62,7 @@ class ProductModelAdmin {
   }
 
   // Update uchun faqat kerakli maydonlar
+
   Map<String, dynamic> toUpdateJson() {
     return {
       'id': id,
@@ -98,3 +99,10 @@ class ProductModelAdmin {
     );
   }
 }
+
+
+
+
+
+
+

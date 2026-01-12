@@ -113,7 +113,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     if (result == true) {
       try {
         await _userService.deleteUser(user.id);
-        _showSuccessMessage('user_deleted_success');
+        _showSuccessMessage('Пользователь успешно удалён');
         _loadUsers();
       } catch (e) {
         _showErrorMessage(e.toString());
@@ -136,7 +136,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            user.name + 'confirm_delete_user',
+            '${user.name}Подтверждение удаления',
             style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 12),
@@ -153,7 +153,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'cannot_undo',
+                    'Невозможно отменить',
                     style: TextStyle(fontSize: 14),
                   ),
                 ),
@@ -165,7 +165,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text('cancel'),
+          child: Text('Отмена'),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -174,7 +174,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             elevation: 0,
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text('delete'),
+          child: Text('Удалить'),
         ),
       ],
     );
@@ -183,7 +183,8 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   Future<void> _toggleAdminStatus(User user) async {
     try {
       await _userService.toggleAdminStatus(user.id);
-      _showSuccessMessage(user.isAdmin ? 'admin_removed' : 'admin_granted');
+      _showSuccessMessage(
+          user.isAdmin ? 'Администратор удален' : 'Администратор предоставил');
       _loadUsers();
     } catch (e) {
       _showErrorMessage(e.toString());
@@ -316,7 +317,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       switch (value) {
-                        case 'edit':
+                        case 'редактировать':
                           _navigateToCreateUser(user);
                           break;
                         case 'toggle_admin':
@@ -329,10 +330,10 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     },
                     itemBuilder: (context) => [
                       PopupMenuItem(
-                        value: 'edit',
+                        value: 'редактировать',
                         child: ListTile(
                           leading: Icon(Icons.edit, color: Colors.blue),
-                          title: Text('edit'),
+                          title: Text('редактировать'),
                           dense: true,
                         ),
                       ),
