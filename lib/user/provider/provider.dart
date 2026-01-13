@@ -7,6 +7,7 @@ class ProductModel {
   final int id;
   final String name;
   final String? type;
+  final num? grams;
   final String? category;
   final String? ingredients;
   final String? imageUrl;
@@ -16,6 +17,7 @@ class ProductModel {
     required this.name,
     this.ingredients,
     this.type,
+    this.grams,
     this.category,
     this.imageUrl,
   });
@@ -25,6 +27,7 @@ class ProductModel {
       id: json['id'],
       name: json['name'],
       type: json['type'],
+      grams: json['grams'],
       ingredients: json['ingredients'],
       category: json['category'],
       imageUrl: json['image_url'],
@@ -144,8 +147,9 @@ class ProductProvider extends ChangeNotifier {
 
     if (product != null && product.type != null) {
       String type = product.type!.toLowerCase();
-      if (type.contains('гр') || type.contains('gr') || type.contains('gram')) {
-        return 0.001; // 1 gram = 0.001 kg
+      if (type.contains('кг') || type.contains('КГ') || type.contains('Кг')) {
+        num? grams = product.grams;
+        return grams?.toDouble() ?? 0.001; // 1 gram = 0.001 kg
       }
     }
     return 1.0; // Default: Кг uchun

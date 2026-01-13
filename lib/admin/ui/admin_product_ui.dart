@@ -57,7 +57,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => const AddProductPage(),
                 ),
               );
-              
+
               if (result == true) {
                 _refreshProducts();
               }
@@ -121,6 +121,19 @@ class _AdminProductUiState extends State<AdminProductUi> {
   Widget _buildProductListTile(
       BuildContext context, ProductModelAdmin product) {
     return ListTile(
+      onLongPress: () => _showDeleteConfirmDialog(context, product),
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EditProductPage(product: product),
+          ),
+        );
+
+        if (result == true) {
+          _refreshProducts();
+        }
+      },
       leading: ClipOval(
         child: GestureDetector(
           onTap: () {
@@ -162,30 +175,6 @@ class _AdminProductUiState extends State<AdminProductUi> {
           fontWeight: FontWeight.bold,
           fontSize: 16,
         ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.black),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditProductPage(product: product),
-                ),
-              );
-              
-              if (result == true) {
-                _refreshProducts();
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () => _showDeleteConfirmDialog(context, product),
-          ),
-        ],
       ),
     );
   }

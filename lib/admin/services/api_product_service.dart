@@ -98,7 +98,6 @@ class ApiProductService {
         '${AppUrls.product}/${product.id}',
         data: product.toUpdateJson(),
       );
-      print(response.data);
       if (response.statusCode == 200) {
         final responseData = response.data['data'] ?? response.data;
         return ProductModelAdmin.fromJson(responseData);
@@ -118,7 +117,6 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка updateProduct: $e');
       throw Exception('Mahsulot yangilashda kutilmagan Ошибка: $e');
     }
   }

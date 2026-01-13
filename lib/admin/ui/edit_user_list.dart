@@ -506,7 +506,9 @@ class _EditUserPageState extends State<EditUserPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.user != null ? 'edit_user' : 'new_user',
+          widget.user != null
+              ? 'Редактировать пользователя'
+              : 'Новый пользователь',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,

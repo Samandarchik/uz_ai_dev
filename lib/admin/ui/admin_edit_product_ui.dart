@@ -26,6 +26,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _nameController;
   late TextEditingController _typeController;
   late TextEditingController ingredientsControlle;
+  late TextEditingController grassControlle;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
 
@@ -40,6 +41,8 @@ class _EditProductPageState extends State<EditProductPage> {
     _typeController = TextEditingController(text: widget.product.type);
     ingredientsControlle =
         TextEditingController(text: widget.product.ingredients);
+    grassControlle =
+        TextEditingController(text: widget.product.grams.toString());
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
     _currentImageUrl = widget.product.imageUrl;
@@ -320,10 +323,30 @@ class _EditProductPageState extends State<EditProductPage> {
               maxLines: null, // cheklanmagan qatorlar
               textInputAction:
                   TextInputAction.newline, // Enter yangi qator ochadi
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            TextFormField(
+              controller: grassControlle,
+              decoration: const InputDecoration(
+                labelText: 'Грамм',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Писать Состав';
+                  return null; // bo‘sh bo‘lsa ruxsat
                 }
+
+                final number = double.tryParse(value);
+                if (number == null) {
+                  return "Принимаются только цифры.";
+                }
+
                 return null;
               },
             ),
@@ -444,6 +467,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
                             final updatedProduct = widget.product.copyWith(
                               name: _nameController.text,
+                              grams: double.parse(grassControlle.text),
                               categoryId: _selectedCategoryId,
                               type: _typeController.text,
                               ingredients: ingredientsControlle.text,
@@ -487,6 +511,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _nameController.dispose();
     _typeController.dispose();
     ingredientsControlle.dispose();
+    grassControlle.dispose();
     super.dispose();
   }
 }

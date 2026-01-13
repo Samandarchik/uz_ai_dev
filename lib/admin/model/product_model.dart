@@ -3,9 +3,11 @@ class ProductModelAdmin {
   final String name;
   final int categoryId;
   final String type;
+  final num? grams;
   final String categoryName;
   final String? imageUrl;
   final String? ingredients;
+
   final List<int> filials;
   final List<String> filialNames;
 
@@ -14,6 +16,7 @@ class ProductModelAdmin {
     required this.name,
     required this.categoryId,
     required this.type,
+    this.grams,
     required this.categoryName,
     this.ingredients,
     this.imageUrl,
@@ -26,6 +29,7 @@ class ProductModelAdmin {
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
       categoryId: json['category_id'] ?? 0,
+      grams: json['grams'],
       type: json['type'] ?? '',
       ingredients: json['ingredients'],
       imageUrl: json['image_url'],
@@ -46,6 +50,7 @@ class ProductModelAdmin {
       'category_name': categoryName,
       'filials': filials,
       'filial_names': filialNames,
+      'grams': grams
     };
   }
 
@@ -55,6 +60,7 @@ class ProductModelAdmin {
       'id': id,
       'name': name,
       'category_id': categoryId,
+      'grams': grams,
       'type': type,
       "image_url": imageUrl,
       'filials': filials,
@@ -67,6 +73,7 @@ class ProductModelAdmin {
     return {
       'id': id,
       'name': name,
+      'grams': grams,
       'category_id': categoryId,
       'type': type,
       "ingredients": ingredients,
@@ -80,6 +87,7 @@ class ProductModelAdmin {
     String? name,
     int? categoryId,
     String? type,
+    num? grams,
     String? categoryName,
     String? ingredients,
     List<int>? filials,
@@ -89,6 +97,7 @@ class ProductModelAdmin {
     return ProductModelAdmin(
       id: id ?? this.id,
       name: name ?? this.name,
+      grams: grams ?? this.grams,
       categoryId: categoryId ?? this.categoryId,
       type: type ?? this.type,
       ingredients: ingredients ?? this.ingredients,
@@ -99,10 +108,3 @@ class ProductModelAdmin {
     );
   }
 }
-
-
-
-
-
-
-
