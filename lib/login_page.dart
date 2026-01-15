@@ -117,13 +117,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _createAccount() async {
-    if (!_formKey.currentState!.validate()) return;
-
     setState(() {
       _isLoading = true;
     });
 
-    final result = await ApiService.login("+998770451117", "293");
+    final result = await ApiService.login("+998770451117", "112233");
 
     setState(() {
       _isLoading = false;
@@ -163,28 +161,6 @@ class _LoginPageState extends State<LoginPage> {
             Icon(Icons.error, color: Colors.red),
             SizedBox(width: 10),
             Text('error'),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 10),
-            Text('Muvaffaq'),
           ],
         ),
         content: Text(message),
@@ -365,11 +341,11 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                       ),
                                       SizedBox(width: 10),
-                                      Text('wait'),
+                                      Text('Loading...'),
                                     ],
                                   )
                                 : Text(
-                                    'Create account',
+                                    'Try using',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -426,7 +402,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           SizedBox(height: 20),
-                          Text("Version: 0.2.2"),
+                          Text("Version: 0.2.3"),
                         ],
                       ],
                     ),
