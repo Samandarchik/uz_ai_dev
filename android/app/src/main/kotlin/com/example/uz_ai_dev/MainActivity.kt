@@ -1,4 +1,4 @@
-package com.example.uz_ai_dev
+package com.uzaidev.mone_app
 
 import io.flutter.embedding.android.FlutterActivity
 

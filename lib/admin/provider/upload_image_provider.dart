@@ -34,9 +34,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('📤 Starting image upload...');
-      print('📁 File path: ${imageFile.path}');
-      print('📊 File size: ${await imageFile.length()} bytes');
 
       // Create FormData
       String fileName = imageFile.path.split('/').last;
@@ -47,7 +44,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         ),
       });
 
-      print('🌐 Upload URL: $baseUrl/api/upload');
 
       // Send request with progress tracking
       final response = await _dio.post(
@@ -55,8 +51,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         data: formData,
         onSendProgress: (sent, total) {
           _uploadProgress = sent / total;
-          print(
-              '📈 Upload progress: ${(_uploadProgress * 100).toStringAsFixed(1)}%');
           notifyListeners();
         },
         options: Options(
@@ -69,9 +63,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         ),
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📦 Response data: ${response.data}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final imageUrl = response.data['url'] ??
             response.data['image_url'] ??
@@ -79,12 +70,8 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
             response.data['data']?['image_url'];
 
         if (imageUrl == null) {
-          print('❌ Image URL not found in response');
-          print('📦 Full response: ${response.data}');
           throw Exception('Image URL not found in response');
         }
-
-        print('✅ Upload successful! Image URL: $imageUrl');
 
         _isUploading = false;
         _uploadProgress = 1.0;
@@ -92,27 +79,16 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
 
         return imageUrl;
       } else {
-        print('❌ Upload failed with status: ${response.statusCode}');
-        print('📦 Response: ${response.data}');
         throw Exception(
             'Upload failed: ${response.statusCode} - ${response.data}');
       }
     } on DioException catch (e) {
-      print('❌ DioException occurred:');
-      print('Type: ${e.type}');
-      print('Message: ${e.message}');
-      print('Response: ${e.response?.data}');
-      print('Status Code: ${e.response?.statusCode}');
-
       _error = 'Upload failed: ${e.message}';
       _isUploading = false;
       _uploadProgress = 0.0;
       notifyListeners();
       return null;
-    } catch (e, stackTrace) {
-      print('❌ Unexpected error during upload:');
-      print('Error: $e');
-      print('StackTrace: $stackTrace');
+    } catch (e, _) {
 
       _error = 'Upload failed: ${e.toString()}';
       _isUploading = false;
