@@ -5,7 +5,7 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
-import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/splash_screen.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';

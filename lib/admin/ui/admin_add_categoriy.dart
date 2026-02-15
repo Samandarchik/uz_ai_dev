@@ -1,9 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/ui/dealog.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
-import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 
 class CategoryManagementScreen extends StatefulWidget {
   const CategoryManagementScreen({super.key});
@@ -174,12 +175,12 @@ class CategoryListTile extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: category.imageUrl != null
-            ? Image.network(
-                "${AppUrls.baseUrl}${category.imageUrl!}",
+            ? CachedNetworkImage(
+                imageUrl: "${AppUrls.baseUrl}${category.imageUrl!}",
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                errorWidget: (context, error, stackTrace) {
                   return Container(
                     width: 60,
                     height: 60,

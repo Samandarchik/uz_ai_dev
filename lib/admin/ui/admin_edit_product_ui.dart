@@ -1,5 +1,6 @@
 // ==================== EDIT PRODUCT PAGE WITH IMAGE UPLOAD ====================
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +8,7 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
-import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class EditProductPage extends StatefulWidget {
@@ -25,8 +26,9 @@ class _EditProductPageState extends State<EditProductPage> {
 
   late TextEditingController _nameController;
   late TextEditingController _typeController;
-  late TextEditingController ingredientsControlle;
-  late TextEditingController grassControlle;
+  late TextEditingController companyController;
+  late TextEditingController ingredientsController;
+  late TextEditingController grammControlle;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
 
@@ -39,10 +41,13 @@ class _EditProductPageState extends State<EditProductPage> {
     super.initState();
     _nameController = TextEditingController(text: widget.product.name);
     _typeController = TextEditingController(text: widget.product.type);
-    ingredientsControlle =
+    ingredientsController =
         TextEditingController(text: widget.product.ingredients);
-    grassControlle =
-        TextEditingController(text: widget.product.grams.toString());
+    companyController = TextEditingController(text: widget.product.companyName);
+    grammControlle = TextEditingController(
+      text: (widget.product.grams ?? 1).toString(),
+    );
+
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
     _currentImageUrl = widget.product.imageUrl;
@@ -164,24 +169,13 @@ class _EditProductPageState extends State<EditProductPage> {
 
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          fullImageUrl,
+        child: CachedNetworkImage(
+          imageUrl: fullImageUrl,
           width: double.infinity,
           height: 200,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
+          errorWidget: (context, error, stackTrace) {
             return _buildPlaceholder();
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Center(
-              child: CircularProgressIndicator.adaptive(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-              ),
-            );
           },
         ),
       );
@@ -313,7 +307,7 @@ class _EditProductPageState extends State<EditProductPage> {
               height: 20,
             ),
             TextFormField(
-              controller: ingredientsControlle,
+              controller: ingredientsController,
               decoration: const InputDecoration(
                 labelText: 'Состав',
                 border: OutlineInputBorder(),
@@ -328,7 +322,22 @@ class _EditProductPageState extends State<EditProductPage> {
               height: 20,
             ),
             TextFormField(
-              controller: grassControlle,
+              controller: companyController,
+              decoration: const InputDecoration(
+                labelText: 'Компания',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true, // label pastga joylashsin
+              ),
+              keyboardType: TextInputType.multiline, // ko‘p qatorli matn uchun
+              maxLines: null, // cheklanmagan qatorlar
+              textInputAction:
+                  TextInputAction.newline, // Enter yangi qator ochadi
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            TextFormField(
+              controller: grammControlle,
               decoration: const InputDecoration(
                 labelText: 'Грамм',
                 border: OutlineInputBorder(),
@@ -467,10 +476,12 @@ class _EditProductPageState extends State<EditProductPage> {
 
                             final updatedProduct = widget.product.copyWith(
                               name: _nameController.text,
-                              grams: double.parse(grassControlle.text),
+                              categoryName: companyController.text,
+                              grams: double.parse(grammControlle.text),
                               categoryId: _selectedCategoryId,
+                              companyName: companyController.text,
                               type: _typeController.text,
-                              ingredients: ingredientsControlle.text,
+                              ingredients: ingredientsController.text,
                               filials: _selectedFilials,
                               imageUrl: imageUrl,
                             );
@@ -510,8 +521,8 @@ class _EditProductPageState extends State<EditProductPage> {
   void dispose() {
     _nameController.dispose();
     _typeController.dispose();
-    ingredientsControlle.dispose();
-    grassControlle.dispose();
+    ingredientsController.dispose();
+    grammControlle.dispose();
     super.dispose();
   }
 }

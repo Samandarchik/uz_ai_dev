@@ -32,16 +32,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _filterProducts();
-      // Eski PDF fayllarni tozalash (optional)
-      pdfService.cleanupOldPdfs();
     });
   }
 
   @override
   void dispose() {
     _progressNotifier.dispose();
-    // Widget yopilganda PDF ni o'chirish (optional)
-    pdfService.deleteCategoryPdf(widget.categoryId);
     super.dispose();
   }
 
@@ -90,8 +86,8 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   const SizedBox(height: 20),
                   Text(
                     progress > 0
-                        ? 'Загрузка: ${progress.toStringAsFixed(0)}%'
-                        : 'Подготовка...',
+                        ? 'Yuklanmoqda: ${progress.toStringAsFixed(0)}%'
+                        : 'Tayyorlanmoqda...',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -191,6 +187,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
       appBar: AppBar(
         title: Text(widget.categoryName),
         actions: [
+          // Share button with loading indicator
           ValueListenableBuilder<double>(
             valueListenable: _progressNotifier,
             builder: (context, progress, child) {
@@ -239,39 +236,28 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   builder: (context) => const AddProductPage(),
                 ),
               );
-
-              if (result == true) {
-                _refreshProducts();
-              }
+              if (result == true) _refreshProducts();
             },
           ),
         ],
       ),
       body: Consumer<ProductProviderAdmin>(
         builder: (context, productProvider, child) {
-          // Loading holati
           if (productProvider.isLoading) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
 
-          // Bo'sh holat
           if (productProvider.filteredProducts.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.inventory_2_outlined,
-                    size: 80,
-                    color: Colors.grey,
-                  ),
+                  const Icon(Icons.inventory_2_outlined,
+                      size: 80, color: Colors.grey),
                   const SizedBox(height: 16),
                   Text(
                     'Bu kategoriyada mahsulotlar yo\'q',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -281,7 +267,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
           return RefreshIndicator(
             onRefresh: _refreshProducts,
             child: ListView.separated(
-              separatorBuilder: (context, index) => const Divider(),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               padding: const EdgeInsets.all(8),
               itemCount: productProvider.filteredProducts.length,
               itemBuilder: (context, index) {
@@ -306,52 +292,28 @@ class _AdminProductUiState extends State<AdminProductUi> {
             builder: (context) => EditProductPage(product: product),
           ),
         );
-
-        if (result == true) {
-          _refreshProducts();
-        }
+        if (result == true) _refreshProducts();
       },
       leading: ClipOval(
-        child: GestureDetector(
-          onTap: () {
-            if (product.imageUrl != null) {
-              showDialog(
-                context: context,
-                builder: (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: CachedNetworkImage(
-                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                    fit: BoxFit.contain,
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.error, size: 40, color: Colors.white),
-                  ),
-                ),
-              );
-            }
-          },
-          child: product.imageUrl != null
-              ? CachedNetworkImage(
-                  imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                  width: 55,
-                  height: 55,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, url, error) =>
-                      const Icon(Icons.image_not_supported),
-                )
-              : Container(
-                  width: 55,
-                  height: 55,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.image_not_supported),
-                ),
-        ),
+        child: product.imageUrl != null
+            ? CachedNetworkImage(
+                imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                width: 55,
+                height: 55,
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.image_not_supported),
+              )
+            : Container(
+                width: 55,
+                height: 55,
+                color: Colors.grey.shade300,
+                child: const Icon(Icons.image_not_supported),
+              ),
       ),
       title: Text(
         '${product.name} (${product.type})',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
       ),
     );
   }
@@ -361,28 +323,31 @@ class _AdminProductUiState extends State<AdminProductUi> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить'),
-        content: Text('${product.name} Вы хотите удалить продукт?'),
+        title: const Text('O\'chirish'),
+        content: Text('${product.name} mahsulotini o\'chirmoqchimisiz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: const Text('Bekor qilish'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               final success = await context
                   .read<ProductProviderAdmin>()
                   .deleteProduct(product);
-
               if (success && context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Продукт удален')),
+                  const SnackBar(content: Text('Mahsulot o\'chirildi')),
                 );
+                _refreshProducts();
               }
             },
-            child: const Text('Удалить'),
+            child: const Text('O\'chirish'),
           ),
         ],
       ),

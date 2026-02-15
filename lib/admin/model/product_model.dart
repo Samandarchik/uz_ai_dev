@@ -3,6 +3,7 @@ class ProductModelAdmin {
   final String name;
   final int categoryId;
   final String type;
+  final String? companyName;
   final num? grams;
   final String categoryName;
   final String? imageUrl;
@@ -16,6 +17,7 @@ class ProductModelAdmin {
     required this.name,
     required this.categoryId,
     required this.type,
+    this.companyName,
     this.grams,
     required this.categoryName,
     this.ingredients,
@@ -32,6 +34,7 @@ class ProductModelAdmin {
       grams: json['grams'],
       type: json['type'] ?? '',
       ingredients: json['ingredients'],
+      companyName: json['company_name'],
       imageUrl: json['image_url'],
       categoryName: json['category_name'] ?? '',
       filials: List<int>.from(json['filials'] ?? []),
@@ -45,6 +48,7 @@ class ProductModelAdmin {
       'name': name,
       'category_id': categoryId,
       'type': type,
+      'company_name': companyName,
       'ingredients': ingredients,
       'image_url': imageUrl,
       'category_name': categoryName,
@@ -60,6 +64,8 @@ class ProductModelAdmin {
       'id': id,
       'name': name,
       'category_id': categoryId,
+      'ingredients': ingredients,
+      "company_name": companyName,
       'grams': grams,
       'type': type,
       "image_url": imageUrl,
@@ -76,6 +82,7 @@ class ProductModelAdmin {
       'grams': grams,
       'category_id': categoryId,
       'type': type,
+      "company_name": companyName,
       "ingredients": ingredients,
       "image_url": imageUrl,
       'filials': filials,
@@ -88,6 +95,7 @@ class ProductModelAdmin {
     int? categoryId,
     String? type,
     num? grams,
+    String? companyName,
     String? categoryName,
     String? ingredients,
     List<int>? filials,
@@ -100,6 +108,7 @@ class ProductModelAdmin {
       grams: grams ?? this.grams,
       categoryId: categoryId ?? this.categoryId,
       type: type ?? this.type,
+      companyName: companyName ?? this.companyName,
       ingredients: ingredients ?? this.ingredients,
       categoryName: categoryName ?? this.categoryName,
       filials: filials ?? this.filials,

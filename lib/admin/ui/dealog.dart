@@ -1,10 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
-import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class CategoryDialog extends StatefulWidget {
@@ -147,8 +148,9 @@ class _CategoryDialogState extends State<CategoryDialog> {
                         : widget.category?.imageUrl != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  "${AppUrls.baseUrl}${widget.category!.imageUrl!}",
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      "${AppUrls.baseUrl}${widget.category!.imageUrl!}",
                                   fit: BoxFit.cover,
                                 ),
                               )

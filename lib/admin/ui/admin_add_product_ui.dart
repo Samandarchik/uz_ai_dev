@@ -6,7 +6,7 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
-import 'package:uz_ai_dev/admin/services/upload_image.dart';
+import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});

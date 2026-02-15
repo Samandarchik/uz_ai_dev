@@ -146,11 +146,8 @@ class ProductProvider extends ChangeNotifier {
     }
 
     if (product != null && product.type != null) {
-      String type = product.type!.toLowerCase();
-      if (type.contains('кг') || type.contains('КГ') || type.contains('Кг')) {
-        num? grams = product.grams;
-        return grams?.toDouble() ?? 0.001; // 1 gram = 0.001 kg
-      }
+      num? grams = product.grams;
+      return grams?.toDouble() ?? 1.0; // 1 gram = 0.001 kg
     }
     return 1.0; // Default: Кг uchun
   }

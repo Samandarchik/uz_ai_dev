@@ -8,7 +8,6 @@ class ProductProviderAdmin extends ChangeNotifier {
   // Barcha mahsulotlar bir marta yuklanadi
   List<ProductModelAdmin> _allProducts = [];
   List<ProductModelAdmin> _filteredProducts = [];
-
   bool _isLoading = false;
   bool _isInitialized = false; // Ma'lumotlar yuklangani
   String? _error;

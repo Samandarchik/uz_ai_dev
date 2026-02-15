@@ -22,16 +22,24 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      bool needsUpdate = await VersionChecker.checkVersion(context);
+      print('SplashScreen');
 
-      // Agar update kerak bo‘lmasa, tokenni tekshiramiz
+      // 🔹 Bitta request bilan ham version check ham isRelease ni olamiz
+      final result = await VersionChecker.checkVersionAndRelease(context);
+      bool needsUpdate = result['needsUpdate'] ?? false;
+      bool isRelease = result['isRelease'] ?? true;
+
+      print('needsUpdate: $needsUpdate');
+      print('isRelease: $isRelease');
+
+      // Agar update kerak bo'lmasa, tokenni tekshiramiz va LoginPage ga isRelease ni o'tkazamiz
       if (!needsUpdate) {
-        _checkToken();
+        _checkToken(isRelease);
       }
     });
   }
 
-  Future<void> _checkToken() async {
+  Future<void> _checkToken(bool isRelease) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
     bool? isAdmin = prefs.getBool('is_admin');
@@ -41,8 +49,8 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (token.isEmpty) {
-      // 🔹 Token yo‘q — Login sahifasiga o‘tish
-      context.pushReplacement(const LoginPage());
+      // 🔹 Token yo'q — Login sahifasiga o'tish (isRelease ni o'tkazamiz)
+      context.pushReplacement(LoginPage(isRelease: isRelease));
       return;
     }
 

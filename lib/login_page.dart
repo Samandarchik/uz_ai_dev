@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/user/services/info_piuls.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'dart:convert';
 import 'user/services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final bool isRelease;
+
+  const LoginPage({super.key, this.isRelease = true});
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -19,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? version;
   bool _obscurePassword = true;
   List<Map<String, String>> _savedAccounts = [];
 
@@ -26,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadSavedAccounts();
+    getAppVersion().then((v) => setState(() => version = v));
   }
 
   Future<void> _loadSavedAccounts() async {
@@ -121,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final result = await ApiService.login("+998770451117", "112233");
+    final result = await ApiService.login("770451117", "112233");
 
     setState(() {
       _isLoading = false;
@@ -312,47 +317,49 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                           ),
                         ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _createAccount,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        // 🔹 "Try using" buttoni - faqat isRelease false bo'lsa ko'rinadi
+                        if (!widget.isRelease) ...[
+                          SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _createAccount,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 5,
                               ),
-                              elevation: 5,
-                            ),
-                            child: _isLoading
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
+                              child: _isLoading
+                                  ? Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
                                         ),
+                                        SizedBox(width: 10),
+                                        Text('Loading...'),
+                                      ],
+                                    )
+                                  : Text(
+                                      'Try using',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      SizedBox(width: 10),
-                                      Text('Loading...'),
-                                    ],
-                                  )
-                                : Text(
-                                    'Try using',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
                                     ),
-                                  ),
+                            ),
                           ),
-                        ),
+                        ],
                         SizedBox(height: 20),
                         // Saqlangan akkauntlar ro'yxati
                         if (_savedAccounts.isNotEmpty) ...[
@@ -402,7 +409,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           SizedBox(height: 20),
-                          Text("Version: 0.2.3"),
+                          Text(version ?? ""),
                         ],
                       ],
                     ),

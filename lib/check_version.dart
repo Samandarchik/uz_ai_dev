@@ -4,38 +4,52 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class VersionChecker {
-  static const String _endpoint = "${AppUrls.baseUrl}/health";
+  static const String _endpoint =
+      "https://version.uzaidev.uz/health?appName=moneapp";
 
   static const String fallbackAppStoreUrl =
       "https://apps.apple.com/app/id6752371524";
   static const String fallbackPlayStoreUrl =
       "https://play.google.com/store/apps/details?id=com.example.app";
 
-  /// 🔹 Versiyani tekshiradi:
-  /// agar backend versiyasi katta bo‘lsa → update majburiy
-  static Future<bool> checkVersion(BuildContext context) async {
+  /// 🔹 Versiyani tekshiradi va isRelease qiymatini qaytaradi:
+  /// agar backend versiyasi katta bo'lsa → update majburiy
+  /// Returns: {needsUpdate: bool, isRelease: bool}
+  static Future<Map<String, bool>> checkVersionAndRelease(
+      BuildContext context) async {
     try {
       final response = await http.get(Uri.parse(_endpoint));
+      print(response.statusCode);
+      print(response.body);
+
       if (response.statusCode != 200) {
         debugPrint("⚠️ Server status: ${response.statusCode}");
-        return false;
+        return {'needsUpdate': false, 'isRelease': true};
       }
 
       final decoded = jsonDecode(response.body);
       final data = decoded['data'];
-      if (data == null) return false;
+      if (data == null) {
+        return {'needsUpdate': false, 'isRelease': true};
+      }
 
-      final iosVersion = data['iphoneVersion']?.toString();
+      // isRelease qiymatini olish
+      final isRelease = data['isRelease'] ?? true;
+      debugPrint("🔍 isRelease: $isRelease");
+
+      // Version check
+      final iosVersion = data['iosVersion']?.toString();
       final androidVersion = data['androidVersion']?.toString();
       final appStoreUrl =
           (data['appstoreUrl'] ?? fallbackAppStoreUrl).toString();
       final playStoreUrl =
           (data['playstoreUrl'] ?? fallbackPlayStoreUrl).toString();
 
-      if (iosVersion == null || androidVersion == null) return false;
+      if (iosVersion == null || androidVersion == null) {
+        return {'needsUpdate': false, 'isRelease': isRelease};
+      }
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
@@ -53,13 +67,13 @@ class VersionChecker {
 
       if (requiresUpdate) {
         _showUpdateDialog(context, storeUrl);
-        return true;
+        return {'needsUpdate': true, 'isRelease': isRelease};
       }
 
-      return false;
+      return {'needsUpdate': false, 'isRelease': isRelease};
     } catch (e) {
       debugPrint("❌ Version check error: $e");
-      return false;
+      return {'needsUpdate': false, 'isRelease': true};
     }
   }
 
@@ -84,7 +98,7 @@ class VersionChecker {
       if (latestPart < currentPart) return false; // eski emas
     }
 
-    return false; // teng bo‘lsa update kerak emas
+    return false; // teng bo'lsa update kerak emas
   }
 
   static void _showUpdateDialog(BuildContext context, String storeUrl) {

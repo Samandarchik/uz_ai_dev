@@ -40,11 +40,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
     ]);
   }
 
-  Future<void> _loadCategories() async {
-    final categoryProvider = context.read<CategoryProviderAdmin>();
-    await categoryProvider.getCategories();
-  }
-
   TokenStorage tokenStorage = sl<TokenStorage>();
 
   @override
@@ -67,11 +62,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               );
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _loadInitialData(forceRefresh: true),
-            tooltip: 'Yangilash',
           ),
           IconButton(
             onPressed: () {
