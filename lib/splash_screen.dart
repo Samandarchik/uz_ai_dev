@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/bringer/ui/bringer_home_ui.dart';
+import 'package:uz_ai_dev/customer/ui/customer_home_ui.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -42,6 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkToken(bool isRelease) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
+    String role = prefs.getString('role') ?? 'seller';
     bool? isAdmin = prefs.getBool('is_admin');
 
     await Future.delayed(const Duration(seconds: 1));
@@ -49,15 +52,20 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (token.isEmpty) {
-      // 🔹 Token yo'q — Login sahifasiga o'tish (isRelease ni o'tkazamiz)
       context.pushReplacement(LoginPage(isRelease: isRelease));
       return;
     }
 
-    // Oddiy user tizimi
-    if (isAdmin == true) {
+    // Role bo'yicha yo'naltirish
+    if (isAdmin == true || role == 'superadmin') {
       context.pushReplacement(const AdminHomeUi());
+    } else if (role == 'customer') {
+      context.pushReplacement(const CustomerHomeUi());
+    } else if (role == 'bringer') {
+      int bringerProfileId = prefs.getInt('bringer_profile_id') ?? 0;
+      context.pushReplacement(BringerHomeUi(bringerProfileId: bringerProfileId));
     } else {
+      // seller yoki default
       context.pushReplacement(const UserHomeUi());
     }
   }

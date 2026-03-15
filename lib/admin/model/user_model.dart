@@ -3,20 +3,23 @@ class User {
   final String name;
   final String phone;
   final bool isAdmin;
+  final String role; // superadmin, seller, customer, bringer
   final int? filialId;
   final Filial? filial;
   final String? password;
   final List<int>? categoryIds;
 
-  User(
-      {required this.id,
-      required this.name,
-      required this.phone,
-      required this.isAdmin,
-      this.filialId,
-      this.filial,
-      this.password,
-      this.categoryIds});
+  User({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.isAdmin,
+    this.role = 'seller',
+    this.filialId,
+    this.filial,
+    this.password,
+    this.categoryIds,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -24,6 +27,7 @@ class User {
       name: json['name'] ?? '',
       phone: json['phone'] ?? '',
       isAdmin: json['is_admin'] ?? false,
+      role: json['role'] ?? 'seller',
       filialId: json['filial_id'],
       filial: json['filial'] != null ? Filial.fromJson(json['filial']) : null,
       categoryIds: (json['category_list'] as List<dynamic>?)
@@ -38,6 +42,7 @@ class User {
       'name': name,
       'phone': phone,
       'is_admin': isAdmin,
+      'role': role,
       'filial_id': filialId,
       if (password != null) 'password': password,
     };
@@ -48,6 +53,7 @@ class User {
     String? name,
     String? phone,
     bool? isAdmin,
+    String? role,
     int? filialId,
     Filial? filial,
     String? password,
@@ -57,6 +63,7 @@ class User {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       isAdmin: isAdmin ?? this.isAdmin,
+      role: role ?? this.role,
       filialId: filialId ?? this.filialId,
       filial: filial ?? this.filial,
       password: password ?? this.password,
@@ -106,6 +113,7 @@ class UpdateUserRequest {
   final String? name;
   final String? phone;
   final bool? isAdmin;
+  final String? role;
   final int? filialId;
   final String? password;
   final List<int>? categoryIds;
@@ -114,6 +122,7 @@ class UpdateUserRequest {
     this.name,
     this.phone,
     this.isAdmin,
+    this.role,
     this.filialId,
     this.password,
     this.categoryIds,
@@ -124,6 +133,7 @@ class UpdateUserRequest {
     if (name != null) data['name'] = name;
     if (phone != null) data['phone'] = phone;
     if (isAdmin != null) data['is_admin'] = isAdmin;
+    if (role != null) data['role'] = role;
     if (filialId != null) data['filial_id'] = filialId;
     if (password != null && password!.isNotEmpty) data['password'] = password;
     if (categoryIds != null) data['category_list'] = categoryIds;
@@ -136,6 +146,7 @@ class CreateUserRequest {
   final String phone;
   final String password;
   final bool isAdmin;
+  final String role;
   final int? filialId;
   final List<int>? categoryIds;
 
@@ -144,6 +155,7 @@ class CreateUserRequest {
     required this.phone,
     required this.password,
     this.isAdmin = false,
+    this.role = 'seller',
     this.filialId,
     this.categoryIds,
   });
@@ -154,8 +166,9 @@ class CreateUserRequest {
       'phone': phone,
       'password': password,
       'is_admin': isAdmin,
+      'role': role,
       if (filialId != null) 'filial_id': filialId,
-      'category_list': categoryIds
+      'category_list': categoryIds,
     };
   }
 }

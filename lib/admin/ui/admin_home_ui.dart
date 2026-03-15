@@ -4,6 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
+import 'package:uz_ai_dev/admin/ui/admin_bringer_balance_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_bringer_orders_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_bringer_profiles_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_customer_orders_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -52,15 +56,68 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         ),
         title: const Text('Admin Panel'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CategoryManagementScreen(),
+          PopupMenuButton(
+            icon: const Icon(Icons.menu),
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'categories',
+                child: ListTile(
+                  leading: Icon(Icons.category),
+                  title: Text('Kategoriyalar'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
+              ),
+              const PopupMenuItem(
+                value: 'bringer_profiles',
+                child: ListTile(
+                  leading: Icon(Icons.store),
+                  title: Text('Bringer profillar'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'customer_orders',
+                child: ListTile(
+                  leading: Icon(Icons.shopping_bag),
+                  title: Text('Mijoz buyurtmalari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'bringer_orders',
+                child: ListTile(
+                  leading: Icon(Icons.local_shipping),
+                  title: Text('Bringer xaridlari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'bringer_balance',
+                child: ListTile(
+                  leading: Icon(Icons.account_balance_wallet),
+                  title: Text('Bringer balans'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              switch (value) {
+                case 'categories':
+                  context.push(const CategoryManagementScreen());
+                  break;
+                case 'bringer_profiles':
+                  context.push(const AdminBringerProfilesUi());
+                  break;
+                case 'customer_orders':
+                  context.push(const AdminCustomerOrdersUi());
+                  break;
+                case 'bringer_orders':
+                  context.push(const AdminBringerOrdersUi());
+                  break;
+                case 'bringer_balance':
+                  context.push(const AdminBringerBalanceUi());
+                  break;
+              }
             },
           ),
           IconButton(

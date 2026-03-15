@@ -1,0 +1,36 @@
+{
+        "ipAddress":    "192.168.0.141",
+        "portNo":       9090,
+        "protocol":     "HTTP",
+        "macAddress":   "a4:d5:c2:4a:2e:40",
+        "channelID":    1,
+        "dateTime":     "2026-02-03T17:12:39+08:00",
+        "activePostCount":      1,
+        "eventType":    "AccessControllerEvent",
+        "eventState":   "active",
+        "eventDescription":     "Access Controller Event",
+        "shortSerialNumber":    "FX6348848",
+        "AccessControllerEvent":        {
+                "deviceName":   "Access Controller",
+                "majorEventType":       5,
+                "subEventType": 75,
+                "name": "770451117",
+                "cardReaderNo": 1,
+                "employeeNoString":     "1",
+                "serialNo":     181,
+                "userType":     "normal",
+                "currentVerifyMode":    "face",
+                "frontSerialNo":        180,
+                "attendanceStatus":     "checkIn",
+                "label":        "KIRISH",
+                "mask": "no",
+                "picturesNumber":       1,
+                "purePwdVerifyEnable":  true,
+                "FaceRect":     {
+                        "height":       0.265,
+                        "width":        0.149,
+                        "x":    0.322,
+                        "y":    0.226
+                }
+        }
+}

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/bringer/ui/bringer_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/customer/ui/customer_home_ui.dart';
 import 'package:uz_ai_dev/user/services/info_piuls.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'dart:convert';
@@ -109,13 +111,11 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('name', jsonEncode(user["name"]));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
+      await prefs.setString("role", user["role"] ?? "seller");
+      await prefs.setInt("bringer_profile_id", user["bringer_profile_id"] ?? 0);
+      await prefs.setString('user', jsonEncode(user));
 
-      // Oddiy user tizimi
-      if (user["is_admin"] == true) {
-        context.pushAndRemove(AdminHomeUi());
-      } else {
-        context.pushAndRemove(UserHomeUi());
-      }
+      _navigateByRole(user);
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
     }
@@ -143,17 +143,27 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(user));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
+      await prefs.setString("role", user["role"] ?? "seller");
 
-      // 🔹 To'g'ri yo'naltirish logikasi:
-
-      // Oddiy user tizimi
-      if (user["is_admin"] == true) {
-        context.pushAndRemove(AdminHomeUi());
-      } else {
-        context.pushAndRemove(UserHomeUi());
-      }
+      _navigateByRole(user);
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
+    }
+  }
+
+  void _navigateByRole(Map<String, dynamic> user) {
+    final role = user["role"] ?? "seller";
+    final isAdmin = user["is_admin"] ?? false;
+
+    if (isAdmin == true || role == "superadmin") {
+      context.pushAndRemove(const AdminHomeUi());
+    } else if (role == "customer") {
+      context.pushAndRemove(const CustomerHomeUi());
+    } else if (role == "bringer") {
+      final bringerProfileId = user["bringer_profile_id"] ?? 0;
+      context.pushAndRemove(BringerHomeUi(bringerProfileId: bringerProfileId));
+    } else {
+      context.pushAndRemove(const UserHomeUi());
     }
   }
 

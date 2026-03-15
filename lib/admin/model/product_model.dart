@@ -8,6 +8,8 @@ class ProductModelAdmin {
   final String categoryName;
   final String? imageUrl;
   final String? ingredients;
+  final int? bringerId;
+  final String? bringerName;
 
   final List<int> filials;
   final List<String> filialNames;
@@ -22,6 +24,8 @@ class ProductModelAdmin {
     required this.categoryName,
     this.ingredients,
     this.imageUrl,
+    this.bringerId,
+    this.bringerName,
     required this.filials,
     required this.filialNames,
   });
@@ -37,6 +41,8 @@ class ProductModelAdmin {
       companyName: json['company_name'],
       imageUrl: json['image_url'],
       categoryName: json['category_name'] ?? '',
+      bringerId: json['bringer_id'],
+      bringerName: json['bringer_name'],
       filials: List<int>.from(json['filials'] ?? []),
       filialNames: List<String>.from(json['filial_names'] ?? []),
     );
@@ -52,13 +58,13 @@ class ProductModelAdmin {
       'ingredients': ingredients,
       'image_url': imageUrl,
       'category_name': categoryName,
+      'bringer_id': bringerId,
       'filials': filials,
       'filial_names': filialNames,
       'grams': grams
     };
   }
 
-  // Create uchun faqat kerakli maydonlar
   Map<String, dynamic> toCreateJson() {
     return {
       'id': id,
@@ -70,10 +76,9 @@ class ProductModelAdmin {
       'type': type,
       "image_url": imageUrl,
       'filials': filials,
+      'bringer_id': bringerId,
     };
   }
-
-  // Update uchun faqat kerakli maydonlar
 
   Map<String, dynamic> toUpdateJson() {
     return {
@@ -86,6 +91,7 @@ class ProductModelAdmin {
       "ingredients": ingredients,
       "image_url": imageUrl,
       'filials': filials,
+      'bringer_id': bringerId,
     };
   }
 
@@ -100,6 +106,8 @@ class ProductModelAdmin {
     String? ingredients,
     List<int>? filials,
     String? imageUrl,
+    int? bringerId,
+    String? bringerName,
     List<String>? filialNames,
   }) {
     return ProductModelAdmin(
@@ -113,6 +121,8 @@ class ProductModelAdmin {
       categoryName: categoryName ?? this.categoryName,
       filials: filials ?? this.filials,
       imageUrl: imageUrl ?? this.imageUrl,
+      bringerId: bringerId ?? this.bringerId,
+      bringerName: bringerName ?? this.bringerName,
       filialNames: filialNames ?? this.filialNames,
     );
   }

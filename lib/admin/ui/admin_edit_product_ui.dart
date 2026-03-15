@@ -9,6 +9,8 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/bringer/models/bringer_models.dart';
+import 'package:uz_ai_dev/bringer/provider/bringer_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class EditProductPage extends StatefulWidget {
@@ -31,6 +33,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController grammControlle;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
+  int? _selectedBringerId;
 
   File? _selectedImage;
   bool _imageChanged = false;
@@ -50,11 +53,13 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
+    _selectedBringerId = widget.product.bringerId;
     _currentImageUrl = widget.product.imageUrl;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
+      context.read<BringerProvider>().loadProfiles();
     });
   }
 
@@ -196,6 +201,103 @@ class _EditProductPageState extends State<EditProductPage> {
           style: TextStyle(color: Colors.grey[600]),
         ),
       ],
+    );
+  }
+
+  void _showBringerSelectionDialog(List<BringerProfile> profiles) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Bringerni tanlang',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(height: 1),
+            // "Tanlanmagan" option
+            ListTile(
+              leading: Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.grey),
+              ),
+              title: const Text('Tanlanmagan'),
+              trailing: _selectedBringerId == null
+                  ? const Icon(Icons.check, color: Colors.blue)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedBringerId = null;
+                });
+                Navigator.pop(ctx);
+              },
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: profiles.length,
+                itemBuilder: (_, index) {
+                  final profile = profiles[index];
+                  final isSelected = _selectedBringerId == profile.id;
+                  return ListTile(
+                    leading: ClipOval(
+                      child: profile.imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: "${AppUrls.baseUrl}${profile.imageUrl}",
+                              width: 45,
+                              height: 45,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Container(
+                                width: 45,
+                                height: 45,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.person),
+                              ),
+                            )
+                          : Container(
+                              width: 45,
+                              height: 45,
+                              color: Colors.blue.shade100,
+                              child: const Icon(Icons.person, color: Colors.blue),
+                            ),
+                    ),
+                    title: Text(
+                      profile.name,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(profile.phone),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: Colors.blue)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedBringerId = profile.id;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
     );
   }
 
@@ -428,6 +530,70 @@ class _EditProductPageState extends State<EditProductPage> {
                 );
               },
             ),
+            // Bringer tanlash
+            const SizedBox(height: 16),
+            Consumer<BringerProvider>(
+              builder: (context, bringerProvider, child) {
+                if (bringerProvider.isLoading && bringerProvider.profiles.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bringer (olib keluvchi):',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () => _showBringerSelectionDialog(bringerProvider.profiles),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedBringerId != null
+                                    ? bringerProvider.profiles
+                                        .where((p) => p.id == _selectedBringerId)
+                                        .map((p) => p.name)
+                                        .firstOrNull ?? 'Tanlang'
+                                    : 'Tanlanmagan',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _selectedBringerId != null
+                                      ? Colors.black
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            if (_selectedBringerId != null)
+                              IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedBringerId = null;
+                                  });
+                                },
+                              ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_drop_down),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
@@ -483,6 +649,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               type: _typeController.text,
                               ingredients: ingredientsController.text,
                               filials: _selectedFilials,
+                              bringerId: _selectedBringerId,
                               imageUrl: imageUrl,
                             );
 

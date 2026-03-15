@@ -6,7 +6,9 @@ import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_user_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/bringer/provider/bringer_provider.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/customer/provider/customer_provider.dart';
 import 'package:uz_ai_dev/splash_screen.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 
@@ -23,8 +25,10 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),
         ChangeNotifierProvider(create: (_) => UserProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdminUpload()),
+        ChangeNotifierProvider(create: (_) => BringerProvider()),
+        ChangeNotifierProvider(create: (_) => CustomerProvider()),
       ],
-      child: const MyApp(), // 🟢 MUHIM: shu joy qo‘shilishi kerak
+      child: const MyApp(),
     ),
   );
 }
