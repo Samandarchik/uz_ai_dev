@@ -1,7 +1,13 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uz_ai_dev/bringer/models/bringer_models.dart';
 import 'package:uz_ai_dev/bringer/provider/bringer_provider.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:intl/intl.dart';
 
 class BringerOrdersUi extends StatefulWidget {
@@ -48,6 +54,30 @@ class _BringerOrdersUiState extends State<BringerOrdersUi> {
     }
   }
 
+  Future<void> _exportOrderPDF(BringerOrder order) async {
+    try {
+      final dio = sl<Dio>();
+      final response = await dio.get(
+        '${AppUrls.bringerOrders}/${order.id}/pdf',
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/xarid_${order.orderID}.pdf');
+      await file.writeAsBytes(response.data);
+
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)]),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export xatosi: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,6 +103,7 @@ class _BringerOrdersUiState extends State<BringerOrdersUi> {
                   order: order,
                   statusColor: _statusColor(order.status),
                   statusText: _statusText(order.status),
+                  onExport: () => _exportOrderPDF(order),
                 );
               },
             ),
@@ -87,11 +118,13 @@ class _OrderCard extends StatelessWidget {
   final BringerOrder order;
   final Color statusColor;
   final String statusText;
+  final VoidCallback onExport;
 
   const _OrderCard({
     required this.order,
     required this.statusColor,
     required this.statusText,
+    required this.onExport,
   });
 
   @override
@@ -99,16 +132,30 @@ class _OrderCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ExpansionTile(
-        title: Text(
-          order.orderID,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                order.orderID,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            // Export icon
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+              onPressed: onExport,
+              tooltip: 'PDF export',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ),
         subtitle: Row(
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: statusColor),
               ),

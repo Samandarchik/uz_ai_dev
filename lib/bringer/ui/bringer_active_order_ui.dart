@@ -37,7 +37,7 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
     super.dispose();
   }
 
-  // Sotib olish dialogi — Miqdor, 1 dona narx, To'liq summa (auto-sync)
+  // Sotib olish dialogi — miqdor, 1 dona narx, to'liq summa (auto-sync)
   void _showPurchaseDialog({
     required String name,
     required int productId,
@@ -192,7 +192,6 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
       appBar: AppBar(
         title: const Text('Aktiv xarid'),
         actions: [
-          // Sotib olinganlar sahifasiga o'tish
           Consumer<BringerProvider>(
             builder: (context, provider, _) {
               final order = provider.activeOrder;
@@ -208,7 +207,7 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
                             const Icon(Icons.shopping_bag, color: Colors.green),
                       ),
                       label: Text(
-                        '${_formatMoney(order.total)}',
+                        _formatMoney(order.total),
                         style: const TextStyle(
                             color: Colors.green, fontWeight: FontWeight.bold),
                       ),
@@ -248,7 +247,6 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
 
           return Column(
             children: [
-              // Tab bar: Vazifalar | Mahsulotlar
               TabBar(
                 controller: _tabController,
                 labelColor: Colors.blue,
@@ -274,6 +272,7 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
     );
   }
 
+  // ==================== OLISH KERAK (TASKS) ====================
   Widget _buildTaskList(BringerProvider provider) {
     if (provider.tasks.isEmpty) {
       return const Center(child: Text('Vazifalar yo\'q'));
@@ -285,10 +284,7 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
         itemCount: provider.tasks.length,
         itemBuilder: (context, index) {
           final task = provider.tasks[index];
-          final isComplete = task.remainingCount <= 0;
-
           return Card(
-            color: isComplete ? Colors.green.shade50 : null,
             child: ListTile(
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -304,37 +300,21 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
                     : const SizedBox(
                         width: 45, height: 45, child: Icon(Icons.shopping_bag)),
               ),
-              title: Text(
-                task.name,
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  decoration: isComplete ? TextDecoration.lineThrough : null,
-                ),
-              ),
+              title: Text(task.name,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
               subtitle: Text(
                 'Kerak: ${task.remainingCount.toStringAsFixed(1)} ${task.type}',
-                style: TextStyle(
-                    color: isComplete ? Colors.green : Colors.red.shade700),
+                style: TextStyle(color: Colors.red.shade700),
               ),
-              trailing: isComplete
-                  ? const Icon(Icons.check_circle, color: Colors.green)
-                  : ElevatedButton(
-                      onPressed: () => _showPurchaseDialog(
-                        name: task.name,
-                        productId: task.productID,
-                        imageUrl: task.imageUrl,
-                        type: task.type,
-                        initialCount: task.remainingCount,
-                        subtitle:
-                            'Kerak: ${task.requiredCount.toStringAsFixed(1)} ${task.type} | Qolgan: ${task.remainingCount.toStringAsFixed(1)} ${task.type}',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: const Text('Sotib oldim'),
-                    ),
+              onTap: () => _showPurchaseDialog(
+                name: task.name,
+                productId: task.productID,
+                imageUrl: task.imageUrl,
+                type: task.type,
+                initialCount: task.remainingCount,
+                subtitle:
+                    'Kerak: ${task.requiredCount.toStringAsFixed(1)} ${task.type} | Qolgan: ${task.remainingCount.toStringAsFixed(1)} ${task.type}',
+              ),
             ),
           );
         },
@@ -342,6 +322,7 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
     );
   }
 
+  // ==================== BARCHA MAHSULOTLAR (seller UI kabi) ====================
   Widget _buildProductList(BringerProvider provider) {
     final categories = provider.productsByCategory;
     if (categories.isEmpty) {
@@ -350,58 +331,51 @@ class _BringerActiveOrderUiState extends State<BringerActiveOrderUi>
     return RefreshIndicator(
       onRefresh: () => provider.loadProducts(widget.bringerProfileId),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: EdgeInsets.zero,
         children: categories.entries.map((entry) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                child: Text(entry.key,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-              ...entry.value.map((product) {
-                return Card(
-                  child: ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: product.imageUrl != null &&
-                              product.imageUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl:
-                                  "${AppUrls.baseUrl}${product.imageUrl}",
-                              width: 45,
-                              height: 45,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) =>
-                                  const Icon(Icons.image),
-                            )
-                          : const SizedBox(
-                              width: 45, height: 45, child: Icon(Icons.image)),
-                    ),
-                    title: Text(product.name),
-                    subtitle: Text(product.type ?? ''),
-                    trailing: ElevatedButton(
-                      onPressed: () => _showPurchaseDialog(
-                        name: product.name,
-                        productId: product.id,
-                        imageUrl: product.imageUrl,
-                        type: product.type,
-                        subtitle: product.category,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: const Text('Sotib oldim'),
-                    ),
-                  ),
-                );
-              }),
-            ],
+          final categoryName = entry.key;
+          final products = entry.value;
+          // Kategoriya — bosganda mahsulotlar listini ochadi
+          return ExpansionTile(
+            title: Text(
+              categoryName,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text('${products.length} ta mahsulot'),
+            children: products.map((product) {
+              return ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                leading: ClipOval(
+                  child: product.imageUrl != null &&
+                          product.imageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                          width: 45,
+                          height: 45,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) =>
+                              const Icon(Icons.image),
+                        )
+                      : Container(
+                          width: 45,
+                          height: 45,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image)),
+                ),
+                title: Text(product.name),
+                trailing: Text(product.type ?? '',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                onTap: () => _showPurchaseDialog(
+                  name: product.name,
+                  productId: product.id,
+                  imageUrl: product.imageUrl,
+                  type: product.type,
+                  subtitle: product.category,
+                ),
+              );
+            }).toList(),
           );
         }).toList(),
       ),

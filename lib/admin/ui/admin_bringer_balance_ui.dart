@@ -30,22 +30,28 @@ class _AdminBringerBalanceUiState extends State<AdminBringerBalanceUi> {
   Future<void> _loadBringerData(int bringerId) async {
     setState(() => _isLoadingData = true);
 
-    // Admin sifatida bringer_profile_id query param bilan so'rov
     try {
       final dio = _service.dio;
+
+      // Balance olish (admin — bringer_profile_id query param bilan)
       final balanceResp = await dio.get(
-        '${_service.dio.options.baseUrl}/api/bringer/balance?bringer_profile_id=$bringerId',
+        '/api/bringer/balance',
+        queryParameters: {'bringer_profile_id': bringerId},
       );
-      if (balanceResp.statusCode == 200 && balanceResp.data['success'] == true) {
+      if (balanceResp.statusCode == 200 &&
+          balanceResp.data['success'] == true) {
         _balance = BringerBalance.fromJson(balanceResp.data['data']);
       }
 
+      // Tranzaksiyalar
       final txResp = await dio.get(
-        '${_service.dio.options.baseUrl}/api/bringer/balance/transactions?bringer_profile_id=$bringerId',
+        '/api/bringer/balance/transactions',
+        queryParameters: {'bringer_profile_id': bringerId},
       );
       if (txResp.statusCode == 200 && txResp.data['success'] == true) {
         final List<dynamic> data = txResp.data['data'] ?? [];
-        _transactions = data.map((e) => BringerTransaction.fromJson(e)).toList();
+        _transactions =
+            data.map((e) => BringerTransaction.fromJson(e)).toList();
       }
     } catch (_) {}
 
