@@ -26,18 +26,14 @@ class VersionChecker {
 
       if (response.statusCode != 200) {
         debugPrint("⚠️ Server status: ${response.statusCode}");
-        return {'needsUpdate': false, 'isRelease': true};
+        return {'needsUpdate': false, 'versionsMatch': true};
       }
 
       final decoded = jsonDecode(response.body);
       final data = decoded['data'];
       if (data == null) {
-        return {'needsUpdate': false, 'isRelease': true};
+        return {'needsUpdate': false, 'versionsMatch': true};
       }
-
-      // isRelease qiymatini olish
-      final isRelease = data['isRelease'] ?? true;
-      debugPrint("🔍 isRelease: $isRelease");
 
       // Version check
       final iosVersion = data['iosVersion']?.toString();
@@ -48,7 +44,7 @@ class VersionChecker {
           (data['playstoreUrl'] ?? fallbackPlayStoreUrl).toString();
 
       if (iosVersion == null || androidVersion == null) {
-        return {'needsUpdate': false, 'isRelease': isRelease};
+        return {'needsUpdate': false, 'versionsMatch': true};
       }
 
       final packageInfo = await PackageInfo.fromPlatform();
@@ -62,18 +58,20 @@ class VersionChecker {
       debugPrint("🆕 Backend version: $latestVersion");
 
       final requiresUpdate = _isNewerVersion(latestVersion, currentVersion);
+      final versionsMatch = currentVersion == latestVersion;
 
       debugPrint("🔍 Update needed: $requiresUpdate");
+      debugPrint("🔍 Versions match: $versionsMatch");
 
       if (requiresUpdate) {
         _showUpdateDialog(context, storeUrl);
-        return {'needsUpdate': true, 'isRelease': isRelease};
+        return {'needsUpdate': true, 'versionsMatch': false};
       }
 
-      return {'needsUpdate': false, 'isRelease': isRelease};
+      return {'needsUpdate': false, 'versionsMatch': versionsMatch};
     } catch (e) {
       debugPrint("❌ Version check error: $e");
-      return {'needsUpdate': false, 'isRelease': true};
+      return {'needsUpdate': false, 'versionsMatch': true};
     }
   }
 

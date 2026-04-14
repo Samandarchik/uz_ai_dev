@@ -94,8 +94,14 @@ class ProductsScreen extends StatelessWidget {
             return Center(child: Text('Mahsulotlar topilmadi'));
           }
 
-          return ListView.builder(
+          return GridView.builder(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 300,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.75,
+            ),
             itemCount: products.length,
             itemBuilder: (context, index) {
               final product = products[index];
@@ -108,163 +114,125 @@ class ProductsScreen extends StatelessWidget {
                 ),
                 onLongPress: () => _showQuantityDialog(context, product),
                 child: Container(
-                  margin: EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Rasm
-                        ClipRRect(
-                            borderRadius: BorderRadius.horizontal(
-                                left: Radius.circular(16)),
-                            child: CachedNetworkImage(
-                              imageUrl:
-                                  "${AppUrls.baseUrl}${product.imageUrl}",
-                              width: 140,
-                              height: 150,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                width: 140,
-                                height: 150,
-                                color: Colors.grey.shade200,
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: _buttonColor,
-                                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Rasm
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(12)),
+                          child: CachedNetworkImage(
+                            imageUrl:
+                                "${AppUrls.baseUrl}${product.imageUrl}",
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _buttonColor,
                                 ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                width: 140,
-                                height: 150,
-                                color: Colors.grey.shade200,
-                                child: Icon(Icons.image_not_supported,
-                                    color: Colors.grey, size: 40),
                               ),
                             ),
-                        ),
-                        // Ma'lumotlar
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  product.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                if (product.ingredients != null &&
-                                    product.ingredients!.isNotEmpty) ...[
-                                  SizedBox(height: 4),
-                                  Text(
-                                    product.ingredients!,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade600,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ],
-                                Spacer(),
-                                // Tugma
-                                Row(
-                                  children: [
-                                    Spacer(),
-                                    isSelected
-                                        ? Container(
-                                            decoration: BoxDecoration(
-                                              color: _buttonColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                IconButton(
-                                                  onPressed: () => provider
-                                                      .decrementProduct(
-                                                          product.id),
-                                                  icon: Icon(Icons.remove,
-                                                      color: Colors.white,
-                                                      size: 18),
-                                                  constraints: BoxConstraints(
-                                                      minWidth: 36,
-                                                      minHeight: 36),
-                                                  padding: EdgeInsets.zero,
-                                                ),
-                                                Padding(
-                                                  padding: EdgeInsets
-                                                      .symmetric(
-                                                          horizontal: 4),
-                                                  child: Text(
-                                                    _formatQuantity(quantity,
-                                                        product.type),
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  onPressed: () => provider
-                                                      .incrementProduct(
-                                                          product.id),
-                                                  icon: Icon(Icons.add,
-                                                      color: Colors.white,
-                                                      size: 18),
-                                                  constraints: BoxConstraints(
-                                                      minWidth: 36,
-                                                      minHeight: 36),
-                                                  padding: EdgeInsets.zero,
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        : ElevatedButton(
-                                            onPressed: () => provider
-                                                .incrementProduct(
-                                                    product.id),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: _buttonColor,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        12),
-                                              ),
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 24,
-                                                  vertical: 10),
-                                              elevation: 0,
-                                            ),
-                                            child: Icon(
-                                              Icons.shopping_bag_outlined,
-                                              size: 22,
-                                            ),
-                                          ),
-                                  ],
-                                ),
-                              ],
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(Icons.image_not_supported,
+                                  color: Colors.grey, size: 30),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Nom
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(6, 6, 6, 4),
+                        child: Text(
+                          product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      // Tugma
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(6, 0, 6, 6),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 32,
+                          child: isSelected
+                              ? Container(
+                                  decoration: BoxDecoration(
+                                    color: _buttonColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => provider
+                                            .decrementProduct(product.id),
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8),
+                                          child: Icon(Icons.remove,
+                                              color: Colors.white, size: 16),
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatQuantity(
+                                            quantity, product.type),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => provider
+                                            .incrementProduct(product.id),
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8),
+                                          child: Icon(Icons.add,
+                                              color: Colors.white, size: 16),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ElevatedButton(
+                                  onPressed: () =>
+                                      provider.incrementProduct(product.id),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _buttonColor,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    'Qo\'shish',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );

@@ -29,14 +29,16 @@ class _SplashScreenState extends State<SplashScreen> {
       // 🔹 Bitta request bilan ham version check ham isRelease ni olamiz
       final result = await VersionChecker.checkVersionAndRelease(context);
       bool needsUpdate = result['needsUpdate'] ?? false;
-      bool isRelease = result['isRelease'] ?? true;
+      bool versionsMatch = result['versionsMatch'] ?? true;
 
       print('needsUpdate: $needsUpdate');
-      print('isRelease: $isRelease');
+      print('versionsMatch: $versionsMatch');
 
-      // Agar update kerak bo'lmasa, tokenni tekshiramiz va LoginPage ga isRelease ni o'tkazamiz
+      // Agar update kerak bo'lmasa, tokenni tekshiramiz
+      // versionsMatch = true → isRelease = true (Try login ko'rinmaydi)
+      // versionsMatch = false → isRelease = false (Try login ko'rinadi)
       if (!needsUpdate) {
-        _checkToken(isRelease);
+        _checkToken(versionsMatch);
       }
     });
   }
