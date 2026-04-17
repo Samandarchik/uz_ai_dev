@@ -14,7 +14,7 @@ class ApiAdminService {
 
       if (response.statusCode == 200) {
         // 'data' maydonini olish
-        final List<dynamic> data = response.data['data'] ?? response.data;
+        final List<dynamic> data = response.data['data'] ?? [];
         return data.map((e) => CategoryProductAdmin.fromJson(e)).toList();
       } else {
         throw Exception('server_error' + ': ${response.statusCode}');
@@ -133,6 +133,20 @@ class ApiAdminService {
     } catch (e) {
       print('Ошибка deleteCategory: $e');
       throw Exception('category_delete_unexpected' + ': $e');
+    }
+  }
+
+  // Reorder categories
+  Future<bool> reorderCategories(List<int> ids) async {
+    try {
+      final response = await dio.put(
+        AppUrls.categoryReorder,
+        data: {'ids': ids},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Ошибка reorderCategories: $e');
+      return false;
     }
   }
 

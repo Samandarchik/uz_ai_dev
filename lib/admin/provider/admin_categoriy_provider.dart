@@ -116,6 +116,22 @@ class CategoryProviderAdmin extends ChangeNotifier {
     }
   }
 
+  // Reorder categories
+  Future<bool> reorderCategories(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex--;
+    final item = _categories.removeAt(oldIndex);
+    _categories.insert(newIndex, item);
+    notifyListeners();
+
+    final ids = _categories.map((c) => c.id).toList();
+    final success = await _service.reorderCategories(ids);
+    if (!success) {
+      // Qaytarish
+      await getCategories();
+    }
+    return success;
+  }
+
   // Set selected category
   void setSelectedCategory(CategoryProductAdmin? category) {
     _selectedCategory = category;

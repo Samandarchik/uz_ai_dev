@@ -26,6 +26,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
   final ApiPdfService pdfService = ApiPdfService();
   final ValueNotifier<double> _progressNotifier = ValueNotifier<double>(0);
   bool _isDownloading = false;
+  bool _isEditMode = false;
 
   @override
   void initState() {
@@ -191,6 +192,10 @@ class _AdminProductUiState extends State<AdminProductUi> {
       appBar: AppBar(
         title: Text(widget.categoryName),
         actions: [
+          IconButton(
+            onPressed: () => setState(() => _isEditMode = !_isEditMode),
+            icon: Icon(_isEditMode ? Icons.check : Icons.edit),
+          ),
           ValueListenableBuilder<double>(
             valueListenable: _progressNotifier,
             builder: (context, progress, child) {
@@ -275,6 +280,52 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   ),
                 ],
               ),
+            );
+          }
+
+          if (_isEditMode) {
+            return ReorderableListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: productProvider.filteredProducts.length,
+              onReorder: (oldIndex, newIndex) {
+                productProvider.reorderProducts(
+                    widget.categoryId, oldIndex, newIndex);
+              },
+              itemBuilder: (context, index) {
+                final product = productProvider.filteredProducts[index];
+                return ListTile(
+                  key: ValueKey(product.id),
+                  leading: ClipOval(
+                    child: product.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.image_not_supported),
+                          )
+                        : Container(
+                            width: 55,
+                            height: 55,
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                  ),
+                  title: Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.drag_handle,
+                    size: 24,
+                    color: Colors.grey,
+                  ),
+                );
+              },
             );
           }
 

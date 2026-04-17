@@ -196,6 +196,22 @@ class ProductProviderAdmin extends ChangeNotifier {
     }
   }
 
+  // Reorder products within category
+  Future<bool> reorderProducts(int categoryId, int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex--;
+    final item = _filteredProducts.removeAt(oldIndex);
+    _filteredProducts.insert(newIndex, item);
+    notifyListeners();
+
+    final ids = _filteredProducts.map((p) => p.id).toList();
+    final success = await _service.reorderProducts(categoryId, ids);
+    if (!success) {
+      await initializeProducts(forceRefresh: true);
+      filterByCategory(categoryId);
+    }
+    return success;
+  }
+
   // Set selected product
   void setSelectedProduct(ProductModelAdmin? product) {
     _selectedProduct = product;

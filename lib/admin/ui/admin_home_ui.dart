@@ -24,6 +24,8 @@ class AdminHomeUi extends StatefulWidget {
 }
 
 class _AdminHomeUiState extends State<AdminHomeUi> {
+  bool _isEditMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +58,10 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         ),
         title: const Text('Admin Panel'),
         actions: [
+          IconButton(
+            onPressed: () => setState(() => _isEditMode = !_isEditMode),
+            icon: Icon(_isEditMode ? Icons.check : Icons.edit),
+          ),
           PopupMenuButton(
             icon: const Icon(Icons.menu),
             itemBuilder: (_) => [
@@ -162,6 +168,53 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
             return const Center(child: Text('Kategoriyalar topilmadi'));
           }
 
+          if (_isEditMode) {
+            return ReorderableListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: categoryProvider.categories.length,
+              onReorder: (oldIndex, newIndex) {
+                categoryProvider.reorderCategories(oldIndex, newIndex);
+              },
+              itemBuilder: (context, index) {
+                final category = categoryProvider.categories[index];
+                return ListTile(
+                  key: ValueKey(category.id),
+                  contentPadding: EdgeInsets.zero,
+                  leading: ClipOval(
+                    child: category.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl:
+                                "${AppUrls.baseUrl}${category.imageUrl}",
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.image_not_supported),
+                          )
+                        : Container(
+                            width: 55,
+                            height: 55,
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                  ),
+                  title: Text(
+                    category.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.drag_handle,
+                    size: 24,
+                    color: Colors.grey,
+                  ),
+                );
+              },
+            );
+          }
+
           return RefreshIndicator(
             onRefresh: () => _loadInitialData(forceRefresh: true),
             child: ListView.builder(
@@ -170,7 +223,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
               itemBuilder: (context, index) {
                 final category = categoryProvider.categories[index];
 
-                // Har bir kategoriya uchun mahsulotlar sonini hisoblash
                 final productCount =
                     productProvider.getProductCountByCategory(category.id);
 

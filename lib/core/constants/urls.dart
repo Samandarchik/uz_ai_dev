@@ -17,6 +17,8 @@ abstract final class AppUrls {
   //Category
   static const String category = '$baseUrl/api/categories';
   static String categoryById(String id) => '$baseUrl/api/categories/$id';
+  static const String categoryReorder = '$baseUrl/api/categories/reorder';
+  static const String productReorder = '$baseUrl/api/products/reorder';
   //Category Items
   static const String categoryItems = '$baseUrl/api/category-items';
   static String categoryItemsByCategory(int id) =>

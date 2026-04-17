@@ -158,6 +158,20 @@ class ApiProductService {
     }
   }
 
+  // Reorder products by category
+  Future<bool> reorderProducts(int categoryId, List<int> ids) async {
+    try {
+      final response = await dio.put(
+        AppUrls.productReorder,
+        data: {'category_id': categoryId, 'ids': ids},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Ошибка reorderProducts: $e');
+      return false;
+    }
+  }
+
   // Get single product by ID
   Future<ProductModelAdmin?> getProductById(int id) async {
     try {
