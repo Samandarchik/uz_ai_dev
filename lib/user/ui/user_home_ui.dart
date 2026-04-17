@@ -174,7 +174,9 @@ class _UserHomeUiState extends State<UserHomeUi> {
                             quantityText:
                                 _formatQuantity(quantity, product.type),
                             buttonColor: _buttonColor,
-                            onTap: () => context.push(
+                            onTap: () =>
+                                provider.incrementProduct(product.id),
+                            onLongPress: () => context.push(
                               UserProductDetailUi(productId: product.id),
                             ),
                             onAdd: () =>
@@ -257,6 +259,7 @@ class _ProductCard extends StatelessWidget {
   final String quantityText;
   final Color buttonColor;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
 
@@ -267,6 +270,7 @@ class _ProductCard extends StatelessWidget {
     required this.quantityText,
     required this.buttonColor,
     required this.onTap,
+    required this.onLongPress,
     required this.onAdd,
     required this.onRemove,
   });
@@ -277,6 +281,7 @@ class _ProductCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
       width: 180,
       margin: EdgeInsets.symmetric(horizontal: 4),
@@ -329,39 +334,54 @@ class _ProductCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: SizedBox(
               width: double.infinity,
+              height: 48,
               child: isSelected
                   ? Container(
                       decoration: BoxDecoration(
                         color: buttonColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Stack(
                         children: [
-                          IconButton(
-                            onPressed: onRemove,
-                            icon: Icon(Icons.remove, color: Colors.white),
-                            constraints: BoxConstraints(
-                                minWidth: 36, minHeight: 36),
-                            padding: EdgeInsets.zero,
-                            iconSize: 20,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: onRemove,
+                                  child: Container(
+                                    alignment: Alignment.centerLeft,
+                                    padding: EdgeInsets.only(left: 14),
+                                    child: Icon(Icons.remove,
+                                        color: Colors.white, size: 22),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: onAdd,
+                                  child: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: EdgeInsets.only(right: 14),
+                                    child: Icon(Icons.add,
+                                        color: Colors.white, size: 22),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            quantityText,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          IgnorePointer(
+                            child: Center(
+                              child: Text(
+                                quantityText,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            onPressed: onAdd,
-                            icon: Icon(Icons.add, color: Colors.white),
-                            constraints: BoxConstraints(
-                                minWidth: 36, minHeight: 36),
-                            padding: EdgeInsets.zero,
-                            iconSize: 20,
                           ),
                         ],
                       ),

@@ -21,62 +21,6 @@ class ProductsScreen extends StatelessWidget {
     return quantity.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
   }
 
-  void _showQuantityDialog(BuildContext context, ProductModel product) {
-    final provider = context.read<ProductProvider>();
-    final controller = TextEditingController(
-      text: _formatQuantity(
-        provider.getProductQuantity(product.id),
-        product.type,
-      ),
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(product.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Qancha kerak?'),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: product.type == 'шт'
-                  ? TextInputType.number
-                  : TextInputType.numberWithOptions(signed: true),
-              decoration: InputDecoration(
-                labelText: 'Miqdor',
-                border: OutlineInputBorder(),
-                suffixText: product.type,
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Bekor'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _buttonColor,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              final quantity = double.tryParse(controller.text) ?? 0;
-              if (quantity > 0) {
-                provider.setProductQuantity(product.id, quantity);
-              }
-              Navigator.pop(context);
-            },
-            child: Text('Qo\'shish'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,10 +53,10 @@ class ProductsScreen extends StatelessWidget {
               final isSelected = quantity > 0;
 
               return GestureDetector(
-                onTap: () => context.push(
+                onTap: () => provider.incrementProduct(product.id),
+                onLongPress: () => context.push(
                   UserProductDetailUi(productId: product.id),
                 ),
-                onLongPress: () => _showQuantityDialog(context, product),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -164,47 +108,69 @@ class ProductsScreen extends StatelessWidget {
                       ),
                       // Tugma
                       Padding(
-                        padding: EdgeInsets.fromLTRB(6, 0, 6, 6),
+                        padding: EdgeInsets.fromLTRB(6, 0, 6, 8),
                         child: SizedBox(
                           width: double.infinity,
-                          height: 32,
+                          height: 44,
                           child: isSelected
                               ? Container(
                                   decoration: BoxDecoration(
                                     color: _buttonColor,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                  child: Stack(
                                     children: [
-                                      GestureDetector(
-                                        onTap: () => provider
-                                            .decrementProduct(product.id),
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 8),
-                                          child: Icon(Icons.remove,
-                                              color: Colors.white, size: 16),
-                                        ),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.opaque,
+                                              onTap: () => provider
+                                                  .decrementProduct(
+                                                      product.id),
+                                              child: Container(
+                                                alignment:
+                                                    Alignment.centerLeft,
+                                                padding: EdgeInsets.only(
+                                                    left: 12),
+                                                child: Icon(Icons.remove,
+                                                    color: Colors.white,
+                                                    size: 20),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.opaque,
+                                              onTap: () => provider
+                                                  .incrementProduct(
+                                                      product.id),
+                                              child: Container(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                padding: EdgeInsets.only(
+                                                    right: 12),
+                                                child: Icon(Icons.add,
+                                                    color: Colors.white,
+                                                    size: 20),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      Text(
-                                        _formatQuantity(
-                                            quantity, product.type),
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => provider
-                                            .incrementProduct(product.id),
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 8),
-                                          child: Icon(Icons.add,
-                                              color: Colors.white, size: 16),
+                                      IgnorePointer(
+                                        child: Center(
+                                          child: Text(
+                                            _formatQuantity(
+                                                quantity, product.type),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -217,7 +183,7 @@ class ProductsScreen extends StatelessWidget {
                                     backgroundColor: _buttonColor,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                     padding: EdgeInsets.zero,
                                     elevation: 0,
@@ -225,7 +191,7 @@ class ProductsScreen extends StatelessWidget {
                                   child: Text(
                                     'Qo\'shish',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
