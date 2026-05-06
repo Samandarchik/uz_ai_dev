@@ -173,6 +173,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
                             quantity: quantity,
                             quantityText:
                                 _formatQuantity(quantity, product.type),
+                            type: product.type,
                             buttonColor: _buttonColor,
                             onTap: () =>
                                 provider.incrementProduct(product.id),
@@ -257,6 +258,7 @@ class _ProductCard extends StatelessWidget {
   final String name;
   final double quantity;
   final String quantityText;
+  final String? type;
   final Color buttonColor;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
@@ -268,6 +270,7 @@ class _ProductCard extends StatelessWidget {
     required this.name,
     required this.quantity,
     required this.quantityText,
+    this.type,
     required this.buttonColor,
     required this.onTap,
     required this.onLongPress,
@@ -374,7 +377,7 @@ class _ProductCard extends StatelessWidget {
                           IgnorePointer(
                             child: Center(
                               child: Text(
-                                quantityText,
+                                type != null ? '$quantityText $type' : quantityText,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,

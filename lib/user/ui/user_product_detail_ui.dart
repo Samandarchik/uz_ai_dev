@@ -42,13 +42,17 @@ class UserProductDetailUi extends StatelessWidget {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: MediaQuery.of(context).size.width * 0.85,
+                expandedHeight: MediaQuery.of(context).size.shortestSide > 600
+                    ? MediaQuery.of(context).size.height * 0.35
+                    : MediaQuery.of(context).size.width * 0.85,
                 pinned: true,
                 backgroundColor: _bgColor,
                 flexibleSpace: FlexibleSpaceBar(
                   background: CachedNetworkImage(
                     imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                    fit: BoxFit.cover,
+                    fit: MediaQuery.of(context).size.shortestSide > 600
+                        ? BoxFit.contain
+                        : BoxFit.cover,
                     width: double.infinity,
                     placeholder: (context, url) => Container(
                       color: Colors.grey.shade200,

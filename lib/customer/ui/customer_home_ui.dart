@@ -171,6 +171,7 @@ class _CustomerHomeUiState extends State<CustomerHomeUi> {
                             quantity: quantity,
                             quantityText:
                                 _formatQuantity(quantity, product.type),
+                            type: product.type,
                             buttonColor: _buttonColor,
                             onTap: () => context.push(
                               CustomerProductDetailUi(productId: product.id),
@@ -252,6 +253,7 @@ class _ProductCard extends StatelessWidget {
   final String name;
   final double quantity;
   final String quantityText;
+  final String? type;
   final Color buttonColor;
   final VoidCallback onTap;
   final VoidCallback onAdd;
@@ -262,6 +264,7 @@ class _ProductCard extends StatelessWidget {
     required this.name,
     required this.quantity,
     required this.quantityText,
+    this.type,
     required this.buttonColor,
     required this.onTap,
     required this.onAdd,
@@ -345,7 +348,7 @@ class _ProductCard extends StatelessWidget {
                               iconSize: 20,
                             ),
                             Text(
-                              quantityText,
+                              type != null ? '$quantityText $type' : quantityText,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
