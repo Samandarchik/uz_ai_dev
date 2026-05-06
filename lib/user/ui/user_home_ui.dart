@@ -322,7 +322,7 @@ class _ProductCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
             child: Text(
-              name,
+              type != null && type!.isNotEmpty ? '$name ($type)' : name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
