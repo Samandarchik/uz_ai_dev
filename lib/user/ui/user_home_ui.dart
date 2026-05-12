@@ -69,6 +69,15 @@ class _UserHomeUiState extends State<UserHomeUi> {
         actions: [
           IconButton(
               onPressed: () {
+                final provider = context.read<ProductProvider>();
+                showSearch(
+                  context: context,
+                  delegate: _UserProductSearchDelegate(provider),
+                );
+              },
+              icon: Icon(Icons.search)),
+          IconButton(
+              onPressed: () {
                 tokenStorage.removeToken();
                 tokenStorage.removeRefreshToken();
                 context.push(LoginPage());
@@ -413,6 +422,143 @@ class _ProductCard extends StatelessWidget {
         ],
       ),
       ),
+    );
+  }
+}
+
+class _UserProductSearchDelegate extends SearchDelegate<String> {
+  final ProductProvider provider;
+
+  _UserProductSearchDelegate(this.provider)
+      : super(searchFieldLabel: 'Mahsulot qidirish...');
+
+  static const Color _buttonColor = Color(0xFFC5A97B);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          onPressed: () => query = '',
+          icon: const Icon(Icons.clear),
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      onPressed: () => close(context, ''),
+      icon: const Icon(Icons.arrow_back),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildSearchList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildSearchList(context);
+
+  List<ProductModel> _getAllProducts() {
+    final all = <ProductModel>[];
+    for (var products in provider.productsByCategory.values) {
+      all.addAll(products);
+    }
+    return all;
+  }
+
+  Widget _buildSearchList(BuildContext context) {
+    final allProducts = _getAllProducts();
+    final results = query.isEmpty
+        ? <ProductModel>[]
+        : allProducts.where((p) {
+            final q = query.toLowerCase();
+            return p.name.toLowerCase().contains(q) ||
+                (p.category?.toLowerCase().contains(q) ?? false);
+          }).toList();
+
+    if (query.isEmpty) {
+      return const Center(
+        child: Text(
+          'Mahsulot nomini kiriting',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    if (results.isEmpty) {
+      return const Center(
+        child: Text(
+          'Hech narsa topilmadi',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final product = results[index];
+        final quantity = provider.getProductQuantity(product.id);
+        return ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: product.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.image_not_supported),
+                  )
+                : Container(
+                    width: 50,
+                    height: 50,
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.image_not_supported),
+                  ),
+          ),
+          title: Text(
+            product.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            product.category ?? '',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          trailing: quantity > 0
+              ? Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _buttonColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    quantity % 1 == 0
+                        ? quantity.toInt().toString()
+                        : quantity.toStringAsFixed(3),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                )
+              : null,
+          onTap: () {
+            provider.incrementProduct(product.id);
+            // Rebuild the search results
+            query = query;
+          },
+          onLongPress: () {
+            close(context, '');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => UserProductDetailUi(productId: product.id),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

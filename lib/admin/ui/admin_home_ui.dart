@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
+import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_bringer_balance_ui.dart';
@@ -58,6 +59,16 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         ),
         title: const Text('Admin Panel'),
         actions: [
+          IconButton(
+            onPressed: () {
+              final productProvider = context.read<ProductProviderAdmin>();
+              showSearch(
+                context: context,
+                delegate: _AdminProductSearchDelegate(productProvider),
+              );
+            },
+            icon: const Icon(Icons.search),
+          ),
           IconButton(
             onPressed: () => setState(() => _isEditMode = !_isEditMode),
             icon: Icon(_isEditMode ? Icons.check : Icons.edit),
@@ -300,6 +311,114 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
           );
         },
       ),
+    );
+  }
+}
+
+class _AdminProductSearchDelegate extends SearchDelegate<String> {
+  final ProductProviderAdmin productProvider;
+
+  _AdminProductSearchDelegate(this.productProvider)
+      : super(searchFieldLabel: 'Mahsulot qidirish...');
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          onPressed: () => query = '',
+          icon: const Icon(Icons.clear),
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      onPressed: () => close(context, ''),
+      icon: const Icon(Icons.arrow_back),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildSearchList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildSearchList(context);
+
+  Widget _buildSearchList(BuildContext context) {
+    final results = query.isEmpty
+        ? <ProductModelAdmin>[]
+        : productProvider.products.where((p) {
+            final q = query.toLowerCase();
+            return p.name.toLowerCase().contains(q) ||
+                p.categoryName.toLowerCase().contains(q) ||
+                (p.companyName?.toLowerCase().contains(q) ?? false);
+          }).toList();
+
+    if (query.isEmpty) {
+      return const Center(
+        child: Text(
+          'Mahsulot nomini kiriting',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    if (results.isEmpty) {
+      return const Center(
+        child: Text(
+          'Hech narsa topilmadi',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final product = results[index];
+        return ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: product.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.image_not_supported),
+                  )
+                : Container(
+                    width: 50,
+                    height: 50,
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.image_not_supported),
+                  ),
+          ),
+          title: Text(
+            product.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            '${product.categoryName} • ${product.type}',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            close(context, '');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AdminProductUi(
+                  categoryId: product.categoryId,
+                  categoryName: product.categoryName,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
