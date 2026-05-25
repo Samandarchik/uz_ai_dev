@@ -24,6 +24,8 @@ class UserHomeUi extends StatefulWidget {
 class _UserHomeUiState extends State<UserHomeUi> {
   TokenStorage tokenStorage = sl<TokenStorage>();
   String name = '';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   static const Color _buttonColor = Color(0xFFC5A97B);
   static const Color _bgColor = Color(0xFFFAF6F1);
@@ -45,6 +47,12 @@ class _UserHomeUiState extends State<UserHomeUi> {
       context.read<ProductProvider>().fetchProducts();
     });
     getMe();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String _formatQuantity(double quantity, String? type) {
@@ -69,15 +77,6 @@ class _UserHomeUiState extends State<UserHomeUi> {
         actions: [
           IconButton(
               onPressed: () {
-                final provider = context.read<ProductProvider>();
-                showSearch(
-                  context: context,
-                  delegate: _UserProductSearchDelegate(provider),
-                );
-              },
-              icon: Icon(Icons.search)),
-          IconButton(
-              onPressed: () {
                 tokenStorage.removeToken();
                 tokenStorage.removeRefreshToken();
                 context.push(LoginPage());
@@ -98,109 +97,157 @@ class _UserHomeUiState extends State<UserHomeUi> {
             return Center(child: Text('Xatolik: ${provider.errorMessage}'));
           }
 
-          return ListView.builder(
-            padding: EdgeInsets.only(bottom: 80),
-            itemCount: provider.categories.length,
-            itemBuilder: (context, index) {
-              final category = provider.categories[index];
-              final products =
-                  provider.getProductsByCategory(category.name);
+          final query = _searchQuery.toLowerCase();
 
-              if (products.isEmpty) {
-                return SizedBox.shrink();
-              }
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              category.name,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          TextButton(
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Mahsulot qidirish...',
+                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
                             onPressed: () {
-                              context.push(ProductsScreen(
-                                categoryName: category.name,
-                              ));
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
                             },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(
-                                    color: Colors.grey.shade400, width: 1),
-                              ),
-                            ),
+                            icon: Icon(Icons.clear, color: Colors.grey),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.only(bottom: 80),
+                  itemCount: provider.categories.length,
+                  itemBuilder: (context, index) {
+                    final category = provider.categories[index];
+                    final allProducts =
+                        provider.getProductsByCategory(category.name);
+
+                    final products = query.isEmpty
+                        ? allProducts
+                        : allProducts.where((p) {
+                            return p.name.toLowerCase().contains(query) ||
+                                (p.category?.toLowerCase().contains(query) ?? false);
+                          }).toList();
+
+                    if (products.isEmpty) {
+                      return SizedBox.shrink();
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'barchasi',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 14,
+                                Expanded(
+                                  child: Text(
+                                    category.name,
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 ),
-                                SizedBox(width: 4),
-                                Icon(Icons.chevron_right,
-                                    color: Colors.black54, size: 18),
+                                TextButton(
+                                  onPressed: () {
+                                    context.push(ProductsScreen(
+                                      categoryName: category.name,
+                                    ));
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                          color: Colors.grey.shade400, width: 1),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'barchasi',
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.chevron_right,
+                                          color: Colors.black54, size: 18),
+                                    ],
+                                  ),
+                                ),
                               ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 280,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: products.length,
+                              itemBuilder: (context, pIndex) {
+                                final product = products[pIndex];
+                                final quantity =
+                                    provider.getProductQuantity(product.id);
+                                return _ProductCard(
+                                  imageUrl:
+                                      "${AppUrls.baseUrl}${product.imageUrl}",
+                                  name: product.name,
+                                  quantity: quantity,
+                                  quantityText:
+                                      _formatQuantity(quantity, product.type),
+                                  type: product.type,
+                                  buttonColor: _buttonColor,
+                                  onTap: () =>
+                                      provider.incrementProduct(product.id),
+                                  onLongPress: () => context.push(
+                                    UserProductDetailUi(productId: product.id),
+                                  ),
+                                  onAdd: () =>
+                                      provider.incrementProduct(product.id),
+                                  onRemove: () =>
+                                      provider.decrementProduct(product.id),
+                                );
+                              },
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(
-                      height: 280,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: products.length,
-                        itemBuilder: (context, pIndex) {
-                          final product = products[pIndex];
-                          final quantity =
-                              provider.getProductQuantity(product.id);
-                          return _ProductCard(
-                            imageUrl:
-                                "${AppUrls.baseUrl}${product.imageUrl}",
-                            name: product.name,
-                            quantity: quantity,
-                            quantityText:
-                                _formatQuantity(quantity, product.type),
-                            type: product.type,
-                            buttonColor: _buttonColor,
-                            onTap: () =>
-                                provider.incrementProduct(product.id),
-                            onLongPress: () => context.push(
-                              UserProductDetailUi(productId: product.id),
-                            ),
-                            onAdd: () =>
-                                provider.incrementProduct(product.id),
-                            onRemove: () =>
-                                provider.decrementProduct(product.id),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),
@@ -426,139 +473,3 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-class _UserProductSearchDelegate extends SearchDelegate<String> {
-  final ProductProvider provider;
-
-  _UserProductSearchDelegate(this.provider)
-      : super(searchFieldLabel: 'Mahsulot qidirish...');
-
-  static const Color _buttonColor = Color(0xFFC5A97B);
-
-  @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      if (query.isNotEmpty)
-        IconButton(
-          onPressed: () => query = '',
-          icon: const Icon(Icons.clear),
-        ),
-    ];
-  }
-
-  @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      onPressed: () => close(context, ''),
-      icon: const Icon(Icons.arrow_back),
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) => _buildSearchList(context);
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildSearchList(context);
-
-  List<ProductModel> _getAllProducts() {
-    final all = <ProductModel>[];
-    for (var products in provider.productsByCategory.values) {
-      all.addAll(products);
-    }
-    return all;
-  }
-
-  Widget _buildSearchList(BuildContext context) {
-    final allProducts = _getAllProducts();
-    final results = query.isEmpty
-        ? <ProductModel>[]
-        : allProducts.where((p) {
-            final q = query.toLowerCase();
-            return p.name.toLowerCase().contains(q) ||
-                (p.category?.toLowerCase().contains(q) ?? false);
-          }).toList();
-
-    if (query.isEmpty) {
-      return const Center(
-        child: Text(
-          'Mahsulot nomini kiriting',
-          style: TextStyle(color: Colors.grey, fontSize: 16),
-        ),
-      );
-    }
-
-    if (results.isEmpty) {
-      return const Center(
-        child: Text(
-          'Hech narsa topilmadi',
-          style: TextStyle(color: Colors.grey, fontSize: 16),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final product = results[index];
-        final quantity = provider.getProductQuantity(product.id);
-        return ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: product.imageUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) =>
-                        const Icon(Icons.image_not_supported),
-                  )
-                : Container(
-                    width: 50,
-                    height: 50,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.image_not_supported),
-                  ),
-          ),
-          title: Text(
-            product.name,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(
-            product.category ?? '',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
-          trailing: quantity > 0
-              ? Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _buttonColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    quantity % 1 == 0
-                        ? quantity.toInt().toString()
-                        : quantity.toStringAsFixed(3),
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                )
-              : null,
-          onTap: () {
-            provider.incrementProduct(product.id);
-            // Rebuild the search results
-            query = query;
-          },
-          onLongPress: () {
-            close(context, '');
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => UserProductDetailUi(productId: product.id),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
