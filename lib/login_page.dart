@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
-import 'package:uz_ai_dev/bringer/ui/bringer_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/customer/ui/customer_home_ui.dart';
 import 'package:uz_ai_dev/user/services/info_piuls.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'dart:convert';
@@ -112,7 +110,6 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('name', jsonEncode(user["name"]));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setString("role", user["role"] ?? "seller");
-      await prefs.setInt("bringer_profile_id", user["bringer_profile_id"] ?? 0);
       await prefs.setString('user', jsonEncode(user));
 
       _navigateByRole(user);
@@ -151,17 +148,18 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateByRole(Map<String, dynamic> user) {
+  Future<void> _navigateByRole(Map<String, dynamic> user) async {
     final role = user["role"] ?? "seller";
     final isAdmin = user["is_admin"] ?? false;
 
     if (isAdmin == true || role == "superadmin") {
       context.pushAndRemove(const AdminHomeUi());
-    } else if (role == "customer") {
-      context.pushAndRemove(const CustomerHomeUi());
-    } else if (role == "bringer") {
-      final bringerProfileId = user["bringer_profile_id"] ?? 0;
-      context.pushAndRemove(BringerHomeUi(bringerProfileId: bringerProfileId));
+    } else if (role == "customer" || role == "bringer") {
+      // Bu rollar hozircha qo'llab-quvvatlanmaydi
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      if (!mounted) return;
+      _showErrorDialog('Bu rol qo\'llab-quvvatlanmaydi');
     } else {
       context.pushAndRemove(const UserHomeUi());
     }

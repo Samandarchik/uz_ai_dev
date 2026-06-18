@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
-import 'package:uz_ai_dev/bringer/ui/bringer_home_ui.dart';
-import 'package:uz_ai_dev/customer/ui/customer_home_ui.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -61,15 +59,41 @@ class _SplashScreenState extends State<SplashScreen> {
     // Role bo'yicha yo'naltirish
     if (isAdmin == true || role == 'superadmin') {
       context.pushReplacement(const AdminHomeUi());
-    } else if (role == 'customer') {
-      context.pushReplacement(const CustomerHomeUi());
-    } else if (role == 'bringer') {
-      int bringerProfileId = prefs.getInt('bringer_profile_id') ?? 0;
-      context.pushReplacement(BringerHomeUi(bringerProfileId: bringerProfileId));
+    } else if (role == 'customer' || role == 'bringer') {
+      // Bu rollar hozircha qo'llab-quvvatlanmaydi
+      await prefs.remove('token');
+      if (!mounted) return;
+      _showUnsupportedRoleDialog(isRelease);
     } else {
       // seller yoki default
       context.pushReplacement(const UserHomeUi());
     }
+  }
+
+  void _showUnsupportedRoleDialog(bool isRelease) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.error, color: Colors.red),
+            SizedBox(width: 10),
+            Text('error'),
+          ],
+        ),
+        content: const Text('Bu rol qo\'llab-quvvatlanmaydi'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.pushReplacement(LoginPage(isRelease: isRelease));
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -24,28 +24,6 @@ abstract final class AppUrls {
   static String categoryItemsByCategory(int id) =>
       '$baseUrl/api/categories/$id/items';
 
-  // Bringer Profiles
-  static const String bringerProfiles = '$baseUrl/api/bringer-profiles';
-
-  // Customer Orders
-  static const String customerOrders = '$baseUrl/api/customer/orders';
-
-  // Bringer Orders
-  static const String bringerOrders = '$baseUrl/api/bringer/orders';
-  static const String bringerOrdersActive =
-      '$baseUrl/api/bringer/orders/active';
-  static const String bringerOrderItems = '$baseUrl/api/bringer/orders/items';
-  static const String bringerOrderPush = '$baseUrl/api/bringer/orders/push';
-
-  // Bringer Tasks
-  static const String bringerTasks = '$baseUrl/api/bringer/tasks';
-
-  // Bringer Balance
-  static const String bringerBalance = '$baseUrl/api/bringer/balance';
-  static const String bringerBalanceAdd = '$baseUrl/api/bringer/balance/add';
-  static const String bringerTransactions =
-      '$baseUrl/api/bringer/balance/transactions';
-
   // Upload
   static const String upload = '$baseUrl/api/upload';
   static const String uploadVideo = '$baseUrl/api/upload-video';
