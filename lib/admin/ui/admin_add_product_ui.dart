@@ -26,6 +26,17 @@ class _AddProductPageState extends State<AddProductPage> {
   List<int> _selectedFilials = [];
   File? _selectedImage;
 
+  // Ombor → yuk keltiruvchi oqimi uchun yangi maydonlar
+  bool _moneApp = true;
+  bool _bozor = false;
+  String _source = 'samarqand';
+
+  static const Map<String, String> _sourceOptions = {
+    'samarqand': 'Samarqand',
+    'toshkent': 'Toshkent',
+    'zagranitsa': 'Zagranitsa',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -323,6 +334,47 @@ class _AddProductPageState extends State<AddProductPage> {
                 );
               },
             ),
+            const SizedBox(height: 16),
+            // Mone app / Bozor / Yuk manbai
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Mone app'),
+              value: _moneApp,
+              onChanged: (value) {
+                setState(() {
+                  _moneApp = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Bozor'),
+              value: _bozor,
+              onChanged: (value) {
+                setState(() {
+                  _bozor = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _source,
+              decoration: const InputDecoration(
+                labelText: 'Yuk qayerdan keladi',
+                border: OutlineInputBorder(),
+              ),
+              items: _sourceOptions.entries.map((entry) {
+                return DropdownMenuItem<String>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _source = value ?? 'samarqand';
+                });
+              },
+            ),
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
@@ -374,6 +426,9 @@ class _AddProductPageState extends State<AddProductPage> {
                               filials: _selectedFilials,
                               filialNames: [],
                               imageUrl: imageUrl ?? '',
+                              moneApp: _moneApp,
+                              bozor: _bozor,
+                              source: _source,
                             );
 
                             final success = await context

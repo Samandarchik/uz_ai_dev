@@ -36,6 +36,17 @@ class _EditProductPageState extends State<EditProductPage> {
   bool _imageChanged = false;
   String? _currentImageUrl;
 
+  // Ombor → yuk keltiruvchi oqimi uchun yangi maydonlar
+  late bool _moneApp;
+  late bool _bozor;
+  late String _source;
+
+  static const Map<String, String> _sourceOptions = {
+    'samarqand': 'Samarqand',
+    'toshkent': 'Toshkent',
+    'zagranitsa': 'Zagranitsa',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +62,12 @@ class _EditProductPageState extends State<EditProductPage> {
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
     _currentImageUrl = widget.product.imageUrl;
+
+    _moneApp = widget.product.moneApp;
+    _bozor = widget.product.bozor;
+    _source = _sourceOptions.containsKey(widget.product.source)
+        ? widget.product.source
+        : 'samarqand';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryProviderAdmin>().getCategories();
@@ -428,6 +445,47 @@ class _EditProductPageState extends State<EditProductPage> {
                 );
               },
             ),
+            const SizedBox(height: 16),
+            // Mone app / Bozor / Yuk manbai
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Mone app'),
+              value: _moneApp,
+              onChanged: (value) {
+                setState(() {
+                  _moneApp = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Bozor'),
+              value: _bozor,
+              onChanged: (value) {
+                setState(() {
+                  _bozor = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _source,
+              decoration: const InputDecoration(
+                labelText: 'Yuk qayerdan keladi',
+                border: OutlineInputBorder(),
+              ),
+              items: _sourceOptions.entries.map((entry) {
+                return DropdownMenuItem<String>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _source = value ?? 'samarqand';
+                });
+              },
+            ),
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
@@ -484,6 +542,9 @@ class _EditProductPageState extends State<EditProductPage> {
                               ingredients: ingredientsController.text,
                               filials: _selectedFilials,
                               imageUrl: imageUrl,
+                              moneApp: _moneApp,
+                              bozor: _bozor,
+                              source: _source,
                             );
 
                             final success = await context

@@ -12,6 +12,11 @@ class ProductModelAdmin {
   final List<int> filials;
   final List<String> filialNames;
 
+  // Ombor → yuk keltiruvchi oqimi uchun yangi maydonlar
+  final bool moneApp;
+  final bool bozor;
+  final String source;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -24,6 +29,9 @@ class ProductModelAdmin {
     this.imageUrl,
     required this.filials,
     required this.filialNames,
+    this.moneApp = true,
+    this.bozor = false,
+    this.source = 'samarqand',
   });
 
   factory ProductModelAdmin.fromJson(Map<String, dynamic> json) {
@@ -39,6 +47,12 @@ class ProductModelAdmin {
       categoryName: json['category_name'] ?? '',
       filials: List<int>.from(json['filials'] ?? []),
       filialNames: List<String>.from(json['filial_names'] ?? []),
+      moneApp: json['mone_app'] ?? true,
+      bozor: json['bozor'] ?? false,
+      source: (json['source'] == null ||
+              (json['source'] as String).isEmpty)
+          ? 'samarqand'
+          : json['source'],
     );
   }
 
@@ -54,7 +68,10 @@ class ProductModelAdmin {
       'category_name': categoryName,
       'filials': filials,
       'filial_names': filialNames,
-      'grams': grams
+      'grams': grams,
+      'mone_app': moneApp,
+      'bozor': bozor,
+      'source': source,
     };
   }
 
@@ -69,6 +86,9 @@ class ProductModelAdmin {
       'type': type,
       "image_url": imageUrl,
       'filials': filials,
+      'mone_app': moneApp,
+      'bozor': bozor,
+      'source': source,
     };
   }
 
@@ -83,6 +103,9 @@ class ProductModelAdmin {
       "ingredients": ingredients,
       "image_url": imageUrl,
       'filials': filials,
+      'mone_app': moneApp,
+      'bozor': bozor,
+      'source': source,
     };
   }
 
@@ -98,6 +121,9 @@ class ProductModelAdmin {
     List<int>? filials,
     String? imageUrl,
     List<String>? filialNames,
+    bool? moneApp,
+    bool? bozor,
+    String? source,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -111,6 +137,9 @@ class ProductModelAdmin {
       filials: filials ?? this.filials,
       imageUrl: imageUrl ?? this.imageUrl,
       filialNames: filialNames ?? this.filialNames,
+      moneApp: moneApp ?? this.moneApp,
+      bozor: bozor ?? this.bozor,
+      source: source ?? this.source,
     );
   }
 }
