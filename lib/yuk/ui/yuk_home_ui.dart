@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,36 @@ const Map<int, String> kSkladNames = {
   2: 'Sardor Sklat',
   3: 'Fresco Sklat',
 };
+
+// Raqam maydonida ming ajratuvchi sifatida har 3 xonadan keyin oddiy probel
+// qo'yadigan formatter: 3000 -> "3 000", 1500000 -> "1 500 000".
+// Faqat butun son (raqamlar). Kursor doim oxirida turadi.
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Faqat raqamlarni qoldiramiz (probel va boshqa belgilarni olib tashlaymiz).
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return const TextEditingValue(text: '');
+    }
+
+    // O'ngdan 3 xonadan guruhlab oddiy probel qo'shamiz.
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(' ');
+      buf.write(digits[i]);
+    }
+    final formatted = buf.toString();
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 // Yuk keltiruvchi roli uchun bosh ekran.
 // Foydalanuvchiga biriktirilgan skladlar bo'yicha tablar; har tabда
@@ -261,9 +292,11 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   YukOrder get order => widget.order;
 
+  // Mavjud qiymatni controllerga ming ajratuvchili probel bilan to'ldirish:
+  // 3000 -> "3 000". Bo'sh/0 bo'lsa bo'sh string.
   String _fmt(double v) {
     if (v == 0) return '';
-    return v.toStringAsFixed(0);
+    return _formatMoney(v);
   }
 
   @override
@@ -341,6 +374,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
+      inputFormatters: [ThousandsSeparatorInputFormatter()],
       onChanged: onChanged,
       style: const TextStyle(fontSize: 13, color: Colors.black87),
       decoration: InputDecoration(
