@@ -140,13 +140,14 @@ class OmborProvider extends ChangeNotifier {
   // Muvaffaqiyatda ro'yxat yangilanadi. Xato bo'lsa Exception otadi.
   Future<void> acceptOrder(
     int orderId,
+    Map<int, double> received,
     Map<int, String> images,
     Map<int, String> videos,
   ) async {
     acceptingOrderId = orderId;
     notifyListeners();
     try {
-      await _service.acceptOrder(orderId, images, videos);
+      await _service.acceptOrder(orderId, received, images, videos);
       await fetchMyOrders();
     } finally {
       acceptingOrderId = null;

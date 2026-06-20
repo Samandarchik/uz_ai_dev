@@ -196,8 +196,38 @@ class _OrderCardState extends State<_OrderCard> {
   // Har bir mahsulot (product_id) uchun olingan rasm/video lokal fayl yo'li.
   final Map<int, String> _images = {};
   final Map<int, String> _videos = {};
+  // Har bir mahsulot uchun "Kelgan soni" (haqiqatda kelgan miqdor) controlleri.
+  final Map<int, TextEditingController> _received = {};
 
   final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    // Narxlangan buyurtmada "Kelgan soni" maydonini yuk keltiruvchi aytgan
+    // miqdor (taken) bilan oldindan to'ldiramiz; omborchi kam bo'lsa o'zgartiradi.
+    if (order.isPriced) {
+      for (final item in order.items) {
+        _received[item.productId] =
+            TextEditingController(text: _fmtQty(item.taken));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _received.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  // "Kelgan soni" matnini songa aylantirish (vergul -> nuqta).
+  double _parseQty(String raw) {
+    final cleaned = raw.trim().replaceAll(',', '.');
+    if (cleaned.isEmpty) return 0;
+    return double.tryParse(cleaned) ?? 0;
+  }
 
   // Mahsulot uchun rasm olish (kamera).
   Future<void> _captureImage(int productId) async {
@@ -236,8 +266,13 @@ class _OrderCardState extends State<_OrderCard> {
       return;
     }
 
+    final receivedMap = <int, double>{};
+    _received.forEach((pid, c) {
+      receivedMap[pid] = _parseQty(c.text);
+    });
+
     try {
-      await provider.acceptOrder(order.id, _images, _videos);
+      await provider.acceptOrder(order.id, receivedMap, _images, _videos);
       messenger.showSnackBar(
         const SnackBar(content: Text('Qabul qilindi')),
       );
@@ -323,8 +358,10 @@ class _OrderCardState extends State<_OrderCard> {
               (item) => _MediaItemRow(
                 item: item,
                 editable: order.isPriced,
+                receivedController: _received[item.productId],
                 localImagePath: _images[item.productId],
                 localVideoPath: _videos[item.productId],
+                onReceivedChanged: () => setState(() {}),
                 onTapImage: () => _captureImage(item.productId),
                 onTapVideo: () => _captureVideo(item.productId),
               ),
@@ -479,7 +516,7 @@ class _OrderItemRow extends StatelessWidget {
   }
 }
 
-// Jadval sarlavhasi: Mahsulot | Rasm | Video.
+// Jadval sarlavhasi: Mahsulot | Kelgan soni | Rasm/Video.
 class _MediaTableHeader extends StatelessWidget {
   const _MediaTableHeader();
 
@@ -498,12 +535,14 @@ class _MediaTableHeader extends StatelessWidget {
           SizedBox(width: 6),
           Expanded(
             flex: 3,
-            child: Text('Rasm', textAlign: TextAlign.center, style: style),
+            child: Text('Kelgan soni',
+                textAlign: TextAlign.center, style: style),
           ),
           SizedBox(width: 6),
           Expanded(
             flex: 4,
-            child: Text('Video', textAlign: TextAlign.center, style: style),
+            child: Text('Rasm / Video',
+                textAlign: TextAlign.center, style: style),
           ),
         ],
       ),
@@ -511,26 +550,38 @@ class _MediaTableHeader extends StatelessWidget {
   }
 }
 
-// Mahsulot qatori: nom + olingan/buyurtma farqi + birlik narxi,
-// o'ngda "Rasm" va "Video" tugmalari (yoki yuborilgan media ko'rinishi).
+// Mahsulot qatori: nom + farq + birlik narxi | "Kelgan soni" maydoni |
+// rasm va video yonma-yon.
 class _MediaItemRow extends StatelessWidget {
   final OmborOrderItem item;
-  final bool editable; // narxlangan (qabul qilinmagan) -> media olish mumkin
+  final bool editable; // narxlangan (qabul qilinmagan) -> media/son kiritiladi
+  final TextEditingController? receivedController;
   final String? localImagePath;
   final String? localVideoPath;
+  final VoidCallback onReceivedChanged;
   final VoidCallback onTapImage;
   final VoidCallback onTapVideo;
 
   const _MediaItemRow({
     required this.item,
     required this.editable,
+    required this.receivedController,
     required this.localImagePath,
     required this.localVideoPath,
+    required this.onReceivedChanged,
     required this.onTapImage,
     required this.onTapVideo,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
+  static const Color _red = Color(0xFFC62828);
+  static const Color _green = Color(0xFF2E7D32);
+
+  double _parse(String raw) {
+    final c = raw.trim().replaceAll(',', '.');
+    if (c.isEmpty) return 0;
+    return double.tryParse(c) ?? 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -543,16 +594,25 @@ class _MediaItemRow extends StatelessWidget {
     final showDiff = taken > 0 && diff.abs() > 0.0001;
     final diffText =
         diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
-    final diffColor =
-        diff > 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final diffColor = diff > 0 ? _green : _red;
     final qtyLabel =
         '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
+
+    // Kelgan soni (haqiqatda kelgan) va taken (yuk keltiruvchi aytgan) farqi.
+    final received =
+        editable ? _parse(receivedController?.text ?? '') : item.received;
+    final shortage = taken - received; // >0 = kam kelgan (kamomad)
+    final showShort = taken > 0 && received > 0 && shortage.abs() > 0.0001;
+    final shortText =
+        shortage > 0 ? '-${_fmtQty(shortage)}' : '+${_fmtQty(shortage.abs())}';
+    final shortColor = shortage > 0 ? _red : _green;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Nom + ma'lumot.
           Expanded(
             flex: 5,
             child: Column(
@@ -603,18 +663,79 @@ class _MediaItemRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          // Rasm ustuni.
-          Expanded(flex: 3, child: _imageCell()),
+          // Kelgan soni + kamomad belgisi.
+          Expanded(
+            flex: 3,
+            child: Column(
+              children: [
+                editable ? _receivedField() : _receivedView(),
+                if (showShort) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    shortText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: shortColor,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(width: 6),
-          // Video ustuni.
-          Expanded(flex: 4, child: _videoCell()),
+          // Rasm va Video yonma-yon.
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                Expanded(child: _imageCell()),
+                const SizedBox(width: 4),
+                Expanded(child: _videoCell()),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
+  Widget _receivedField() {
+    return TextField(
+      controller: receivedController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.center,
+      onChanged: (_) => onReceivedChanged(),
+      style: const TextStyle(fontSize: 13, color: Colors.black87),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _accent),
+        ),
+      ),
+    );
+  }
+
+  Widget _receivedView() {
+    return Container(
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1EA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        _fmtQty(item.received),
+        style: const TextStyle(fontSize: 13, color: Colors.black54),
+      ),
+    );
+  }
+
   Widget _imageCell() {
-    // Tahrirlanadigan: olingan rasm bo'lsa thumbnail, aks holda "Rasm" tugma.
     if (editable) {
       if (localImagePath != null) {
         return _MediaThumb(
@@ -622,13 +743,8 @@ class _MediaItemRow extends StatelessWidget {
           child: Image.file(File(localImagePath!), fit: BoxFit.cover),
         );
       }
-      return _MediaButton(
-        icon: Icons.photo_camera_outlined,
-        label: 'Rasm',
-        onTap: onTapImage,
-      );
+      return _MediaButton(icon: Icons.photo_camera_outlined, onTap: onTapImage);
     }
-    // Qabul qilingan: yuborilgan rasm (network) yoki bo'sh.
     if (item.imageUrl.isNotEmpty) {
       return _MediaThumb(
         child: Image.network(
@@ -647,31 +763,24 @@ class _MediaItemRow extends StatelessWidget {
       final has = localVideoPath != null;
       return _MediaButton(
         icon: has ? Icons.check_circle : Icons.videocam_outlined,
-        label: has ? 'Yozildi' : 'Video',
         filled: has,
         onTap: onTapVideo,
       );
     }
     if (item.videoUrl.isNotEmpty) {
-      return const _MediaButton(
-        icon: Icons.play_circle_fill,
-        label: 'Video',
-        filled: true,
-      );
+      return const _MediaButton(icon: Icons.play_circle_fill, filled: true);
     }
     return const _MediaEmpty();
   }
 }
 
-// Rasm/Video olish tugmasi (quti ko'rinishida).
+// Rasm/Video olish tugmasi — faqat ikonka (quti ko'rinishida).
 class _MediaButton extends StatelessWidget {
   final IconData icon;
-  final String label;
   final bool filled;
   final VoidCallback? onTap;
   const _MediaButton({
     required this.icon,
-    required this.label,
     this.filled = false,
     this.onTap,
   });
@@ -698,24 +807,7 @@ class _MediaButton extends StatelessWidget {
               color: filled ? _green.withValues(alpha: 0.4) : Colors.grey.shade300,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: Icon(icon, size: 20, color: color),
         ),
       ),
     );

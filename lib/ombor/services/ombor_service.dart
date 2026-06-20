@@ -108,11 +108,15 @@ class OmborService {
   // Javob: {"success": true, "message": "...", "data": {order}}
   Future<void> acceptOrder(
     int orderId,
+    Map<int, double> received,
     Map<int, String> images,
     Map<int, String> videos,
   ) async {
     try {
       final form = FormData();
+      for (final entry in received.entries) {
+        form.fields.add(MapEntry('received_${entry.key}', '${entry.value}'));
+      }
       for (final entry in images.entries) {
         form.files.add(MapEntry(
           'image_${entry.key}',
