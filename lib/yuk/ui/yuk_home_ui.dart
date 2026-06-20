@@ -605,6 +605,16 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 final unitLabel = unitPrice != null
                     ? '${_fmtQty(takenVal)} * ${_formatMoney(unitPrice)}'
                     : '';
+                // Buyurtma soniga nisbatan farq: ortiq olinsa +yashil,
+                // kam olinsa -qizil. Masalan 3 so'ralib 5 olinsa "+2".
+                final diff = takenVal - item.count;
+                final showDiff = takenVal > 0 && diff.abs() > 0.0001;
+                final diffText = diff > 0
+                    ? '+${_fmtQty(diff)}'
+                    : '-${_fmtQty(diff.abs())}';
+                final diffColor = diff > 0
+                    ? const Color(0xFF2E7D32)
+                    : const Color(0xFFC62828);
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
@@ -627,13 +637,31 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              '${_formatCount(item.count)}'
-                              '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  '${_formatCount(item.count)}'
+                                  '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                // Buyurtmaga nisbatan ortiq/kam olingan farqi.
+                                if (showDiff) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    diffText,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: diffColor,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             // Bittasining narxi (jami / miqdor) — kiritilganda.
                             if (unitPrice != null) ...[
