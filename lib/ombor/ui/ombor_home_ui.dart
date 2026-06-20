@@ -183,11 +183,6 @@ class _OmborCartBar extends StatelessWidget {
 
   static const Color _accentColor = Color(0xFFC5A97B);
 
-  String _formatQty(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
-  }
-
   Future<void> _submit(BuildContext context, OmborProvider provider) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -245,7 +240,7 @@ class _OmborCartBar extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Jami: ${_formatQty(provider.cartTotalQty)}',
+                        'Jami: ${provider.cartTotalQty} ta',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -408,30 +403,20 @@ class _OmborProductTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _QtyStepper(
-            productId: product.id,
-            // Bozor gramm = 1 pachka qancha; bo'lmasa oddiy +1 qadam.
-            step: (product.bozorGrams ?? 1).toDouble(),
-          ),
+          _QtyStepper(productId: product.id),
         ],
       ),
     );
   }
 }
 
-// Mahsulot uchun miqdor tanlash (+/-). 0 bo'lsa faqat "+" tugmasi ko'rinadi.
+// Mahsulot uchun miqdor tanlash (+/-). Butun son (nechta dona/pachka).
+// 0 bo'lsa faqat "+" tugmasi ko'rinadi.
 class _QtyStepper extends StatelessWidget {
   final int productId;
-  // Har bir +/- bosishda o'zgaradigan miqdor (bozor grammi = 1 pachka).
-  final double step;
-  const _QtyStepper({required this.productId, this.step = 1});
+  const _QtyStepper({required this.productId});
 
   static const Color _accentColor = Color(0xFFC5A97B);
-
-  String _formatQty(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -444,7 +429,7 @@ class _QtyStepper extends StatelessWidget {
             icon: Icons.add,
             background: _accentColor,
             foreground: Colors.white,
-            onTap: () => provider.addToCart(productId, step: step),
+            onTap: () => provider.addToCart(productId),
           );
         }
 
@@ -455,14 +440,14 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.remove,
               background: Colors.grey.shade200,
               foreground: Colors.black87,
-              onTap: () => provider.decrement(productId, step: step),
+              onTap: () => provider.decrement(productId),
             ),
             Container(
               constraints: const BoxConstraints(minWidth: 32),
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                _formatQty(count),
+                '$count',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -474,7 +459,7 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.add,
               background: _accentColor,
               foreground: Colors.white,
-              onTap: () => provider.addToCart(productId, step: step),
+              onTap: () => provider.addToCart(productId),
             ),
           ],
         );

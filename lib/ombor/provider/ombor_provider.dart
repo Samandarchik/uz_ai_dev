@@ -14,32 +14,31 @@ class OmborProvider extends ChangeNotifier {
   List<String> get categories => productsByCategory.keys.toList();
 
   // ─────────────────────── Savatcha holati ───────────────────────
-  // product_id -> count (count float bo'lishi mumkin).
-  final Map<int, double> _cart = {};
+  // product_id -> count (butun son — nechta dona/pachka). Float emas, chunki
+  // float yig'indisida xatolik chiqadi (0.4+0.4+0.4 = 1.2000...02).
+  final Map<int, int> _cart = {};
 
-  Map<int, double> get cart => Map.unmodifiable(_cart);
+  Map<int, int> get cart => Map.unmodifiable(_cart);
 
   // Savatdagi har xil mahsulotlar soni.
   int get cartItemCount => _cart.length;
 
   // Savatdagi umumiy miqdor (countlar yig'indisi).
-  double get cartTotalQty =>
-      _cart.values.fold(0.0, (sum, count) => sum + count);
+  int get cartTotalQty => _cart.values.fold(0, (sum, count) => sum + count);
 
   bool isSubmitting = false;
 
-  double countOf(int productId) => _cart[productId] ?? 0;
+  int countOf(int productId) => _cart[productId] ?? 0;
 
   // Mahsulotni 1 taga oshirish (yo'q bo'lsa qo'shadi).
-  void addToCart(int productId, {double step = 1}) {
-    _cart[productId] = (_cart[productId] ?? 0) + step;
+  void addToCart(int productId) {
+    _cart[productId] = (_cart[productId] ?? 0) + 1;
     notifyListeners();
   }
 
   // Mahsulotni 1 taga kamaytirish; 0 ga tushsa savatdan olib tashlanadi.
-  void decrement(int productId, {double step = 1}) {
-    final current = _cart[productId] ?? 0;
-    final next = current - step;
+  void decrement(int productId) {
+    final next = (_cart[productId] ?? 0) - 1;
     if (next <= 0) {
       _cart.remove(productId);
     } else {
@@ -55,7 +54,7 @@ class OmborProvider extends ChangeNotifier {
   }
 
   // Aniq miqdorni o'rnatish; <=0 bo'lsa olib tashlanadi.
-  void setCount(int productId, double count) {
+  void setCount(int productId, int count) {
     if (count <= 0) {
       _cart.remove(productId);
     } else {
