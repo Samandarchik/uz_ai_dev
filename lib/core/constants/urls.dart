@@ -12,6 +12,9 @@ abstract final class AppUrls {
   // Ombor (bozor mahsulotlari)
   static String omborProducts = '$baseUrl/api/ombor/products';
 
+  // Yuk keltiruvchi (sklad buyurtmalari)
+  static String yukOrders = '$baseUrl/api/yuk/orders';
+
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
   static const String orderslist = '$baseUrl/api/orderslist';

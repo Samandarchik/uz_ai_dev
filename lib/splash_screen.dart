@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_home_ui.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -62,6 +63,8 @@ class _SplashScreenState extends State<SplashScreen> {
       context.pushReplacement(const AdminHomeUi());
     } else if (role == 'ombor') {
       context.pushReplacement(const OmborHomeUi());
+    } else if (role == 'yuk_keltiruvchi') {
+      context.pushReplacement(const YukHomeUi());
     } else if (role == 'customer' || role == 'bringer') {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi
       await prefs.remove('token');
