@@ -326,12 +326,15 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     return _formatMoney(v);
   }
 
-  // "Nechta olgani" maydoni uchun: o'nlik qismni saqlab format qiladi
-  // (8.5 -> "8.5"), butun bo'lsa nuqtasiz (8 -> "8").
+  // "Nechta olgani" / miqdor uchun: 3 xonagacha yaxlitlab, ortiqcha nollarni
+  // olib tashlaydi (8.5 -> "8.5", 8 -> "8", 0.2999999 -> "0.3").
   String _fmtQty(double v) {
     if (v == 0) return '';
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
+    var s = v.toStringAsFixed(3);
+    if (s.contains('.')) {
+      s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    return s;
   }
 
   // Mahsulot kg (vazn) bilan o'lchanadimi — 'type' maydoniga qarab.
