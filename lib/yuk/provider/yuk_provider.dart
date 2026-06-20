@@ -21,8 +21,13 @@ class YukProvider extends ChangeNotifier {
   int? submittingOrderId;
 
   // Berilgan sklad_id ga tegishli buyurtmalar.
-  List<YukOrder> ordersForSklad(int skladId) =>
-      orders.where((o) => o.skladId == skladId).toList();
+  // Hali yuborilmagan (kutilayotgan) buyurtmalar tepada, yuborilganlar pastda.
+  List<YukOrder> ordersForSklad(int skladId) {
+    final list = orders.where((o) => o.skladId == skladId).toList();
+    final pending = list.where((o) => o.status != 'narxlandi').toList();
+    final done = list.where((o) => o.status == 'narxlandi').toList();
+    return [...pending, ...done];
+  }
 
   Future<void> fetchOrders() async {
     isLoading = true;

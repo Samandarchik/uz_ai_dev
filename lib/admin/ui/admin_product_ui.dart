@@ -11,6 +11,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 class AdminProductUi extends StatefulWidget {
   final int categoryId;
   final String categoryName;
+  
 
   const AdminProductUi({
     super.key,

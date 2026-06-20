@@ -315,6 +315,10 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   YukOrder get order => widget.order;
 
+  // Buyurtma yuk keltiruvchi tomonidan narxlanib yuborilganmi.
+  // Yuborilgan bo'lsa maydonlar faqat ko'rish uchun (read-only) bo'ladi.
+  bool get _isDone => order.status == 'narxlandi';
+
   // Mavjud qiymatni controllerga ming ajratuvchili probel bilan to'ldirish:
   // 3000 -> "3 000". Bo'sh/0 bo'lsa bo'sh string.
   String _fmt(double v) {
@@ -343,11 +347,15 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     super.initState();
     final provider = context.read<YukProvider>();
     for (final item in order.items) {
+      // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
+      // (yuborilgan) qiymat ko'rsatiladi.
       final existing = provider.getItemPrice(order.id, item.productId);
+      final taken0 = existing?.taken ?? item.taken;
+      final subtotal0 = existing?.subtotal ?? item.subtotal;
       _takenControllers[item.productId] =
-          TextEditingController(text: existing != null ? _fmtQty(existing.taken) : '');
-      _subtotalControllers[item.productId] = TextEditingController(
-          text: existing != null ? _fmt(existing.subtotal) : '');
+          TextEditingController(text: _fmtQty(taken0));
+      _subtotalControllers[item.productId] =
+          TextEditingController(text: _fmt(subtotal0));
       _takenFocusNodes[item.productId] = FocusNode();
     }
   }
@@ -401,10 +409,12 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     FocusNode? focusNode,
     String? hint,
     bool decimal = false,
+    bool enabled = true,
   }) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      enabled: enabled,
       keyboardType:
           TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: [
@@ -414,15 +424,24 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       ],
       onChanged: onChanged,
       textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 13, color: Colors.black87),
+      style: TextStyle(
+        fontSize: 13,
+        color: enabled ? Colors.black87 : Colors.black54,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
         isDense: true,
+        filled: !enabled,
+        fillColor: const Color(0xFFF5F1EA),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -441,8 +460,11 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   Widget build(BuildContext context) {
     return Consumer<YukProvider>(
       builder: (context, provider, child) {
+        final done = _isDone;
         final hasAnyPrice = provider.hasAnyPrice(order.id);
-        final orderTotal = provider.orderTotal(order.id);
+        // Yuborilgan buyurtmada jami backenddan keladi; aks holda lokal hisob.
+        final orderTotal =
+            done ? order.total.toDouble() : provider.orderTotal(order.id);
         final submitting = provider.submittingOrderId == order.id;
 
         return Container(
@@ -451,6 +473,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
+            border: done
+                ? Border.all(color: const Color(0xFF4CAF50), width: 1)
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,6 +517,32 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                       ),
                     ),
                   ),
+                  // Yuborilgan buyurtma uchun yashil belgi.
+                  if (done)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 14, color: Color(0xFF4CAF50)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Yuborilgan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               const Divider(height: 18),
@@ -543,11 +594,13 @@ class _YukOrderCardState extends State<_YukOrderCard> {
               // Jadval qatorlari — har bir mahsulot uchun nom + ikkita maydon.
               ...order.items.map((item) {
                 // Bittasining narxi = jami summa / olingan miqdor.
+                // Lokal kiritma bo'lmasa, yuborilgan (backend) qiymatlardan olinadi.
                 final priced = provider.getItemPrice(order.id, item.productId);
-                final unitPrice =
-                    (priced != null && priced.taken > 0 && priced.subtotal > 0)
-                        ? priced.subtotal / priced.taken
-                        : null;
+                final takenVal = priced?.taken ?? item.taken;
+                final subtotalVal = priced?.subtotal ?? item.subtotal;
+                final unitPrice = (takenVal > 0 && subtotalVal > 0)
+                    ? subtotalVal / takenVal
+                    : null;
                 final unitLabel = (item.type != null && item.type!.isNotEmpty)
                     ? '1 ${item.type}'
                     : '1 dona';
@@ -606,6 +659,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                           hint: '0',
                           // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
                           decimal: _isKg(item.type),
+                          enabled: !done,
                           onChanged: (_) => _onItemChanged(item.productId),
                         ),
                       ),
@@ -615,6 +669,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                         child: _inlineField(
                           controller: _subtotalControllers[item.productId]!,
                           hint: '0',
+                          enabled: !done,
                           onChanged: (_) => _onItemChanged(item.productId),
                         ),
                       ),
@@ -644,51 +699,78 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 ],
               ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: (!hasAnyPrice || submitting)
-                      ? null
-                      : () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final ok = await provider.submitPrices(order.id);
-                          if (ok) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Omborga yuborildi'),
-                              ),
-                            );
-                          } else if (provider.errorMessage != null) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(provider.errorMessage!),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  icon: submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.receipt_long, size: 18),
-                  label: Text(submitting ? 'Yuborilmoqda...' : 'Chek bilan yuborish'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _accentColor,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              // Yuborilgan buyurtmada tugma o'rniga "Yuborilgan" belgisi.
+              if (done)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle,
+                          size: 18, color: Color(0xFF2E7D32)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Yuborilgan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: (!hasAnyPrice || submitting)
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final ok = await provider.submitPrices(order.id);
+                            if (ok) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Yuborildi'),
+                                ),
+                              );
+                            } else if (provider.errorMessage != null) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(provider.errorMessage!),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                    icon: submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send, size: 18),
+                    label: Text(submitting ? 'Yuborilmoqda...' : 'Yuborish'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         );
