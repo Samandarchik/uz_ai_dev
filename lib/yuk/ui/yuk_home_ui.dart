@@ -287,6 +287,10 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   final Map<int, TextEditingController> _takenControllers = {};
   final Map<int, TextEditingController> _subtotalControllers = {};
 
+  // Har bir item (product_id) uchun "Nechta olgani" maydonining FocusNode'i.
+  // Item "+" bilan ochilganda shu maydonga avtomatik fokus berish uchun.
+  final Map<int, FocusNode> _takenFocusNodes = {};
+
   // Ochiq (narx maydonlari ko'rinadigan) itemlarning product_id lari.
   final Set<int> _expanded = {};
 
@@ -309,6 +313,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
           TextEditingController(text: existing != null ? _fmt(existing.taken) : '');
       _subtotalControllers[item.productId] = TextEditingController(
           text: existing != null ? _fmt(existing.subtotal) : '');
+      _takenFocusNodes[item.productId] = FocusNode();
       // Allaqachon to'ldirilgan item default OCHIQ ko'rsatiladi.
       if (existing != null && existing.taken > 0) {
         _expanded.add(item.productId);
@@ -317,13 +322,21 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   }
 
   void _toggleExpanded(int productId) {
+    final willOpen = !_expanded.contains(productId);
     setState(() {
-      if (_expanded.contains(productId)) {
-        _expanded.remove(productId);
-      } else {
+      if (willOpen) {
         _expanded.add(productId);
+      } else {
+        _expanded.remove(productId);
       }
     });
+    // Item endi OCHILSA, frame chizilgach "Nechta olgani" maydoniga
+    // avtomatik fokus berib klaviaturani ochamiz. Yopilganda fokus so'ralmaydi.
+    if (willOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _takenFocusNodes[productId]?.requestFocus();
+      });
+    }
   }
 
   @override
@@ -333,6 +346,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     }
     for (final c in _subtotalControllers.values) {
       c.dispose();
+    }
+    for (final f in _takenFocusNodes.values) {
+      f.dispose();
     }
     super.dispose();
   }
@@ -370,9 +386,11 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     required TextEditingController controller,
     required String label,
     required ValueChanged<String> onChanged,
+    FocusNode? focusNode,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: TextInputType.number,
       inputFormatters: [ThousandsSeparatorInputFormatter()],
       onChanged: onChanged,
@@ -540,6 +558,8 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                                       child: _inlineField(
                                         controller:
                                             _takenControllers[item.productId]!,
+                                        focusNode: _takenFocusNodes[
+                                            item.productId],
                                         label: 'Nechta olgani',
                                         onChanged: (_) =>
                                             _onItemChanged(item.productId),
