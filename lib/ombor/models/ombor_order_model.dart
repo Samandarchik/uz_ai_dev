@@ -5,7 +5,7 @@
 // { "id":1, "order_id":"26-06-20-1", "sklad_id":1, "sklad_name":"...",
 //   "status":"created"|"narxlandi", "total":3000, "created":"...",
 //   "items":[ {"product_id":5,"name":"Un","count":3,"type":"kg",
-//              "price":1000,"subtotal":3000} ] }
+//              "taken":6,"subtotal":3000} ] }
 
 class OmborOrder {
   final int id;
@@ -54,7 +54,7 @@ class OmborOrderItem {
   final String name;
   final double count;
   final String type;
-  final double price;
+  final double taken;
   final double subtotal;
 
   OmborOrderItem({
@@ -62,7 +62,7 @@ class OmborOrderItem {
     required this.name,
     required this.count,
     required this.type,
-    required this.price,
+    required this.taken,
     required this.subtotal,
   });
 
@@ -72,7 +72,7 @@ class OmborOrderItem {
       name: json['name']?.toString() ?? '',
       count: _toDouble(json['count']),
       type: json['type']?.toString() ?? '',
-      price: _toDouble(json['price']),
+      taken: _toDouble(json['taken']),
       subtotal: _toDouble(json['subtotal']),
     );
   }

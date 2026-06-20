@@ -275,7 +275,7 @@ class _OrderItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final qtyLabel =
         '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
-    final priced = item.price > 0;
+    final priced = item.taken > 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -297,7 +297,7 @@ class _OrderItemRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   priced
-                      ? '$qtyLabel  •  ${_formatSum(item.price)} so\'mdan'
+                      ? '$qtyLabel  •  ${_formatSum(item.taken)} olindi'
                       : qtyLabel,
                   style: TextStyle(
                     fontSize: 12,

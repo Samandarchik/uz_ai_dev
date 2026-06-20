@@ -239,7 +239,7 @@ String _formatMoney(num v) {
 }
 
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.
-// Har item qatorida INLINE narx maydonlari (Nechpuldan / Jami summa),
+// Har item qatorida INLINE maydonlar (Nechta olgani / Jami summa),
 // pastida "Chek bilan yuborish" tugmasi.
 class _YukOrderCard extends StatefulWidget {
   final YukOrder order;
@@ -252,8 +252,8 @@ class _YukOrderCard extends StatefulWidget {
 class _YukOrderCardState extends State<_YukOrderCard> {
   static const Color _accentColor = Color(0xFFC5A97B);
 
-  // Har bir item (product_id) uchun narx va jami controllerlari.
-  final Map<int, TextEditingController> _priceControllers = {};
+  // Har bir item (product_id) uchun olingan miqdor va jami controllerlari.
+  final Map<int, TextEditingController> _takenControllers = {};
   final Map<int, TextEditingController> _subtotalControllers = {};
 
   // Ochiq (narx maydonlari ko'rinadigan) itemlarning product_id lari.
@@ -272,12 +272,12 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     final provider = context.read<YukProvider>();
     for (final item in order.items) {
       final existing = provider.getItemPrice(order.id, item.productId);
-      _priceControllers[item.productId] =
-          TextEditingController(text: existing != null ? _fmt(existing.price) : '');
+      _takenControllers[item.productId] =
+          TextEditingController(text: existing != null ? _fmt(existing.taken) : '');
       _subtotalControllers[item.productId] = TextEditingController(
           text: existing != null ? _fmt(existing.subtotal) : '');
-      // Allaqachon narxlangan item default OCHIQ ko'rsatiladi.
-      if (existing != null && existing.price > 0) {
+      // Allaqachon to'ldirilgan item default OCHIQ ko'rsatiladi.
+      if (existing != null && existing.taken > 0) {
         _expanded.add(item.productId);
       }
     }
@@ -295,7 +295,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   @override
   void dispose() {
-    for (final c in _priceControllers.values) {
+    for (final c in _takenControllers.values) {
       c.dispose();
     }
     for (final c in _subtotalControllers.values) {
@@ -315,9 +315,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   void _onItemChanged(int productId) {
     final provider = context.read<YukProvider>();
-    final price = _parse(_priceControllers[productId]?.text ?? '');
+    final taken = _parse(_takenControllers[productId]?.text ?? '');
     final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
-    provider.setItemPrice(order.id, productId, price, subtotal);
+    provider.setItemPrice(order.id, productId, taken, subtotal);
   }
 
   String _formatCount(num v) {
@@ -422,7 +422,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 final isOpen = _expanded.contains(item.productId);
                 final priced =
                     provider.getItemPrice(order.id, item.productId);
-                final hasPrice = priced != null && priced.price > 0;
+                final hasPrice = priced != null && priced.taken > 0;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Column(
@@ -455,7 +455,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                                 if (!isOpen && hasPrice) ...[
                                   const SizedBox(height: 2),
                                   Text(
-                                    '${_formatMoney(priced.price)} so\'mdan • '
+                                    '${_formatMoney(priced.taken)} olindi • '
                                     '${_formatMoney(priced.subtotal)} so\'m',
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -505,8 +505,8 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                                     Expanded(
                                       child: _inlineField(
                                         controller:
-                                            _priceControllers[item.productId]!,
-                                        label: 'Nechpuldan',
+                                            _takenControllers[item.productId]!,
+                                        label: 'Nechta olgani',
                                         onChanged: (_) =>
                                             _onItemChanged(item.productId),
                                       ),

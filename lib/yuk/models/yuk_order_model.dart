@@ -12,8 +12,8 @@ class YukOrderItem {
   final String name;
   final num count;
   final String? type;
-  // Narxlangan buyurtmada: birlik narxi va shu item jami summasi.
-  final double price;
+  // Narxlangan buyurtmada: olingan miqdor va shu item jami summasi.
+  final double taken;
   final double subtotal;
 
   YukOrderItem({
@@ -21,7 +21,7 @@ class YukOrderItem {
     required this.name,
     required this.count,
     this.type,
-    this.price = 0,
+    this.taken = 0,
     this.subtotal = 0,
   });
 
@@ -31,7 +31,7 @@ class YukOrderItem {
       name: json['name'] ?? '',
       count: json['count'] ?? 0,
       type: json['type'],
-      price: (json['price'] ?? 0).toDouble(),
+      taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
     );
   }

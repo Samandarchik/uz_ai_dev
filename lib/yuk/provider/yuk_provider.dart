@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
-// Bitta item uchun lokal narx holati.
-typedef ItemPrice = ({double price, double subtotal});
+// Bitta item uchun lokal holat: olingan miqdor va jami summa.
+typedef ItemPrice = ({double taken, double subtotal});
 
 // Yuk keltiruvchi bosh ekrani uchun holat boshqaruvchi.
 class YukProvider extends ChangeNotifier {
@@ -13,7 +13,7 @@ class YukProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  // Lokal narxlar: orderId -> productId -> {price, subtotal}.
+  // Lokal narxlar: orderId -> productId -> {taken, subtotal}.
   // Buyurtma yuborilguncha shu yerda turadi.
   final Map<int, Map<int, ItemPrice>> _prices = {};
 
@@ -39,14 +39,14 @@ class YukProvider extends ChangeNotifier {
     }
   }
 
-  // Bitta item narxini saqlash.
-  void setItemPrice(int orderId, int productId, double price, double subtotal) {
+  // Bitta item holatini saqlash (olingan miqdor + jami summa).
+  void setItemPrice(int orderId, int productId, double taken, double subtotal) {
     final map = _prices.putIfAbsent(orderId, () => {});
-    map[productId] = (price: price, subtotal: subtotal);
+    map[productId] = (taken: taken, subtotal: subtotal);
     notifyListeners();
   }
 
-  // Bitta item narxini olish (yo'q bo'lsa null).
+  // Bitta item holatini olish (yo'q bo'lsa null).
   ItemPrice? getItemPrice(int orderId, int productId) {
     return _prices[orderId]?[productId];
   }
@@ -95,7 +95,7 @@ class YukProvider extends ChangeNotifier {
       final items = map.entries
           .map((e) => <String, dynamic>{
                 'product_id': e.key,
-                'price': e.value.price,
+                'taken': e.value.taken,
                 'subtotal': e.value.subtotal,
               })
           .toList();
