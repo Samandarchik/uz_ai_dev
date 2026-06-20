@@ -14,15 +14,6 @@ class OmborOrdersUi extends StatefulWidget {
 
 class _OmborOrdersUiState extends State<OmborOrdersUi> {
   static const Color _bgColor = Color(0xFFFAF6F1);
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OmborProvider>().fetchMyOrders();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,83 +27,110 @@ class _OmborOrdersUiState extends State<OmborOrdersUi> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Consumer<OmborProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoadingOrders) {
-            return const Center(child: CircularProgressIndicator.adaptive());
-          }
+      body: const OmborOrdersView(),
+    );
+  }
+}
 
-          if (provider.ordersError != null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 48),
-                    const SizedBox(height: 12),
-                    Text(
-                      provider.ordersError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => provider.fetchMyOrders(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _accentColor,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Qayta urinish'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+// Ombor buyurtmalari ro'yxati (mazmuni) — ham eski ekran, ham bosh ekrandagi
+// "Buyurtmalarim" tabи shuni ishlatadi. Tab/ekran ochilganda buyurtmalar
+// yuklanadi; loading/error/bo'sh/pull-to-refresh holatlari shu yerda.
+class OmborOrdersView extends StatefulWidget {
+  const OmborOrdersView({super.key});
 
-          final orders = provider.myOrders;
-          if (orders.isEmpty) {
-            return RefreshIndicator(
-              color: _accentColor,
-              onRefresh: () => provider.fetchMyOrders(),
-              child: ListView(
+  @override
+  State<OmborOrdersView> createState() => _OmborOrdersViewState();
+}
+
+class _OmborOrdersViewState extends State<OmborOrdersView> {
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<OmborProvider>().fetchMyOrders();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OmborProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoadingOrders) {
+          return const Center(child: CircularProgressIndicator.adaptive());
+        }
+
+        if (provider.ordersError != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.receipt_long,
-                              size: 56, color: Colors.grey),
-                          SizedBox(height: 12),
-                          Text(
-                            'Hozircha buyurtmalar yo\'q',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ],
-                      ),
+                  const Icon(Icons.error_outline,
+                      color: Colors.red, size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    provider.ordersError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.fetchMyOrders(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentColor,
+                      foregroundColor: Colors.white,
                     ),
+                    child: const Text('Qayta urinish'),
                   ),
                 ],
               ),
-            );
-          }
+            ),
+          );
+        }
 
+        final orders = provider.myOrders;
+        if (orders.isEmpty) {
           return RefreshIndicator(
             color: _accentColor,
             onRefresh: () => provider.fetchMyOrders(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: orders.length,
-              itemBuilder: (context, index) =>
-                  _OrderCard(order: orders[index]),
+            child: ListView(
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.receipt_long,
+                            size: 56, color: Colors.grey),
+                        SizedBox(height: 12),
+                        Text(
+                          'Hozircha buyurtmalar yo\'q',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
-        },
-      ),
+        }
+
+        return RefreshIndicator(
+          color: _accentColor,
+          onRefresh: () => provider.fetchMyOrders(),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: orders.length,
+            itemBuilder: (context, index) =>
+                _OrderCard(order: orders[index]),
+          ),
+        );
+      },
     );
   }
 }

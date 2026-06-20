@@ -19,18 +19,28 @@ class OmborHomeUi extends StatefulWidget {
   State<OmborHomeUi> createState() => _OmborHomeUiState();
 }
 
-class _OmborHomeUiState extends State<OmborHomeUi> {
+class _OmborHomeUiState extends State<OmborHomeUi>
+    with SingleTickerProviderStateMixin {
   final TokenStorage tokenStorage = sl<TokenStorage>();
 
   static const Color _bgColor = Color(0xFFFAF6F1);
   static const Color _accentColor = Color(0xFFC5A97B);
 
+  late final TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OmborProvider>().fetchProducts();
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -46,11 +56,6 @@ class _OmborHomeUiState extends State<OmborHomeUi> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Mening buyurtmalarim',
-            onPressed: () => context.push(const OmborOrdersUi()),
-            icon: const Icon(Icons.receipt_long),
-          ),
-          IconButton(
             onPressed: () {
               tokenStorage.removeToken();
               tokenStorage.removeRefreshToken();
@@ -59,80 +64,115 @@ class _OmborHomeUiState extends State<OmborHomeUi> {
             icon: const Icon(Icons.logout),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: _accentColor,
+          labelColor: _accentColor,
+          unselectedLabelColor: Colors.black54,
+          tabs: const [
+            Tab(text: 'Mahsulotlar'),
+            Tab(text: 'Buyurtmalarim'),
+          ],
+        ),
       ),
-      body: Consumer<OmborProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator.adaptive());
-          }
-
-          if (provider.errorMessage != null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 48),
-                    const SizedBox(height: 12),
-                    Text(
-                      provider.errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => provider.fetchProducts(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _accentColor,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Qayta urinish'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final categories = provider.categories;
-          if (categories.isEmpty) {
-            return const Center(child: Text('Mahsulotlar topilmadi'));
-          }
-
-          return ListView.builder(
-            // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
-            padding: const EdgeInsets.only(bottom: 96),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              final products = provider.productsByCategory[category] ?? [];
-              if (products.isEmpty) return const SizedBox.shrink();
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      category,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  ...products.map((p) => _OmborProductTile(product: p)),
-                ],
-              );
-            },
-          );
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          _OmborProductsTab(),
+          OmborOrdersView(),
+        ],
+      ),
+      // Savatcha bar faqat "Mahsulotlar" tabида (index 0) ko'rinadi.
+      bottomNavigationBar: AnimatedBuilder(
+        animation: _tabController.animation!,
+        builder: (context, child) {
+          final isProductsTab = (_tabController.animation!.value).round() == 0;
+          if (!isProductsTab) return const SizedBox.shrink();
+          return const _OmborCartBar();
         },
       ),
-      bottomNavigationBar: const _OmborCartBar(),
+    );
+  }
+}
+
+// "Mahsulotlar" tabи mazmuni: kategoriyalar bo'yicha mahsulotlar ro'yxati.
+class _OmborProductsTab extends StatelessWidget {
+  const _OmborProductsTab();
+
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OmborProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator.adaptive());
+        }
+
+        if (provider.errorMessage != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: Colors.red, size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    provider.errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.fetchProducts(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Qayta urinish'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final categories = provider.categories;
+        if (categories.isEmpty) {
+          return const Center(child: Text('Mahsulotlar topilmadi'));
+        }
+
+        return ListView.builder(
+          // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
+          padding: const EdgeInsets.only(bottom: 96),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            final products = provider.productsByCategory[category] ?? [];
+            if (products.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    category,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                ...products.map((p) => _OmborProductTile(product: p)),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
