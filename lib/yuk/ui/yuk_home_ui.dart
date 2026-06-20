@@ -542,6 +542,15 @@ class _YukOrderCardState extends State<_YukOrderCard> {
               ),
               // Jadval qatorlari — har bir mahsulot uchun nom + ikkita maydon.
               ...order.items.map((item) {
+                // Bittasining narxi = jami summa / olingan miqdor.
+                final priced = provider.getItemPrice(order.id, item.productId);
+                final unitPrice =
+                    (priced != null && priced.taken > 0 && priced.subtotal > 0)
+                        ? priced.subtotal / priced.taken
+                        : null;
+                final unitLabel = (item.type != null && item.type!.isNotEmpty)
+                    ? '1 ${item.type}'
+                    : '1 dona';
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
@@ -572,6 +581,18 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                                 color: Colors.grey.shade600,
                               ),
                             ),
+                            // Bittasining narxi (jami / miqdor) — kiritilganda.
+                            if (unitPrice != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                '$unitLabel = ${_formatMoney(unitPrice)} so\'m',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _accentColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ],
                           ),
                         ),
