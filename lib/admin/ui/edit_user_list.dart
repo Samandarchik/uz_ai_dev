@@ -32,6 +32,12 @@ class _EditUserPageState extends State<EditUserPage> {
   int? _selectedFilialId;
   String _selectedRole = 'seller';
   late List<String> _roleOptions;
+  // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar (hozircha hardcode).
+  static const Map<int, String> _skladOptions = {
+    1: 'Marxabo Sklat',
+    2: 'Sardor Sklat',
+    3: 'Fresco Sklat',
+  };
   bool _isLoading = false;
   bool _isLoadingFilials = false;
   bool _obscurePassword = true;
@@ -106,7 +112,12 @@ class _EditUserPageState extends State<EditUserPage> {
             groupValue: _selectedRole,
             onChanged: (value) {
               if (value != null) {
-                setState(() => _selectedRole = value);
+                setState(() {
+                  _selectedRole = value;
+                  // Rol o'zgarsa filial/sklad tanlovi boshqa ro'yxatga o'tadi,
+                  // eski qiymat mos kelmasligi mumkin — tozalaymiz.
+                  _selectedFilialId = null;
+                });
               }
             },
             child: Column(
@@ -255,11 +266,20 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   Widget _buildFilialSelector() {
+    // Ombor roli uchun haqiqiy filiallar emas, skladlar ro'yxati ko'rsatiladi.
+    final isOmbor = _selectedRole == 'ombor';
+    final List<int> validIds = isOmbor
+        ? _skladOptions.keys.toList()
+        : _filials.map((f) => f.id).toList();
+    final int? dropdownValue =
+        (_selectedFilialId != null && validIds.contains(_selectedFilialId))
+            ? _selectedFilialId
+            : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ветвь',
+          isOmbor ? 'Sklad' : 'Ветвь',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -273,7 +293,7 @@ class _EditUserPageState extends State<EditUserPage> {
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: _isLoadingFilials
+          child: (!isOmbor && _isLoadingFilials)
               ? Padding(
                   padding: EdgeInsets.all(16),
                   child: Row(
@@ -288,7 +308,7 @@ class _EditUserPageState extends State<EditUserPage> {
                     ],
                   ),
                 )
-              : _filialError.isNotEmpty
+              : (!isOmbor && _filialError.isNotEmpty)
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -324,7 +344,7 @@ class _EditUserPageState extends State<EditUserPage> {
                     )
                   : DropdownButtonHideUnderline(
                       child: DropdownButton<int?>(
-                        value: _selectedFilialId,
+                        value: dropdownValue,
                         hint: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           child: Text('select_branch'),
@@ -350,7 +370,25 @@ class _EditUserPageState extends State<EditUserPage> {
                               ),
                             ),
                           ),
-                          ..._filials.map((filial) {
+                          if (isOmbor)
+                            ..._skladOptions.entries.map((entry) {
+                              return DropdownMenuItem<int?>(
+                                value: entry.key,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  child: Text(
+                                    entry.value,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          if (!isOmbor)
+                            ..._filials.map((filial) {
                             return DropdownMenuItem<int?>(
                               value: filial.id,
                               child: Container(
