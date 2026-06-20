@@ -51,6 +51,7 @@ class _EditProductPageState extends State<EditProductPage> {
   static const Map<int, String> _skladOptions = {
     1: 'Marxabo Sklat',
     2: 'Sardor Sklat',
+    3: 'Fresco Sklat',
   };
 
   @override
