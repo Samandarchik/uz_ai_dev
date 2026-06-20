@@ -305,8 +305,10 @@ class _OmborProductTile extends StatelessWidget {
     final unit = (product.type != null && product.type!.isNotEmpty)
         ? product.type!
         : '';
-    if (product.grams != null) {
-      return unit.isNotEmpty ? '${product.grams} $unit' : '${product.grams}';
+    // Bozor oqimida 1 pachkaga bozor grammi ko'rsatiladi, bo'lmasa oddiy gramm.
+    final qty = product.bozorGrams ?? product.grams;
+    if (qty != null) {
+      return unit.isNotEmpty ? '$qty $unit' : '$qty';
     }
     return unit;
   }

@@ -29,6 +29,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController companyController;
   late TextEditingController ingredientsController;
   late TextEditingController grammControlle;
+  late TextEditingController bozorGrammController;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
 
@@ -64,6 +65,9 @@ class _EditProductPageState extends State<EditProductPage> {
     companyController = TextEditingController(text: widget.product.companyName);
     grammControlle = TextEditingController(
       text: (widget.product.grams ?? 1).toString(),
+    );
+    bozorGrammController = TextEditingController(
+      text: widget.product.bozorGrams?.toString() ?? '',
     );
 
     _selectedCategoryId = widget.product.categoryId;
@@ -364,7 +368,7 @@ class _EditProductPageState extends State<EditProductPage> {
             TextFormField(
               controller: grammControlle,
               decoration: const InputDecoration(
-                labelText: 'Грамм',
+                labelText: 'Mone gramm',
                 border: OutlineInputBorder(),
               ),
               keyboardType: const TextInputType.numberWithOptions(
@@ -477,8 +481,29 @@ class _EditProductPageState extends State<EditProductPage> {
                 });
               },
             ),
-            // Bozor yoqilganda: yuk manbai (radio) va sklad tanlovi (checkbox)
+            // Bozor yoqilganda: bozor grammi, yuk manbai (radio) va sklad tanlovi (checkbox)
             if (_bozor) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: bozorGrammController,
+                decoration: const InputDecoration(
+                  labelText: 'Bozor gramm',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return null; // bo‘sh bo‘lsa ruxsat
+                  }
+                  if (double.tryParse(value) == null) {
+                    return "Принимаются только цифры.";
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Yuk qayerdan keladi',
@@ -582,6 +607,9 @@ class _EditProductPageState extends State<EditProductPage> {
                               name: _nameController.text,
                               categoryName: companyController.text,
                               grams: double.parse(grammControlle.text),
+                              bozorGrams: bozorGrammController.text.isEmpty
+                                  ? null
+                                  : double.parse(bozorGrammController.text),
                               categoryId: _selectedCategoryId,
                               companyName: companyController.text,
                               type: _typeController.text,
@@ -631,6 +659,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _typeController.dispose();
     ingredientsController.dispose();
     grammControlle.dispose();
+    bozorGrammController.dispose();
     super.dispose();
   }
 }

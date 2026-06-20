@@ -5,6 +5,8 @@ class ProductModelAdmin {
   final String type;
   final String? companyName;
   final num? grams;
+  // Bozor (yuk keltiruvchi) oqimi uchun: 1 pachkaga qancha gramm
+  final num? bozorGrams;
   final String categoryName;
   final String? imageUrl;
   final String? ingredients;
@@ -25,6 +27,7 @@ class ProductModelAdmin {
     required this.type,
     this.companyName,
     this.grams,
+    this.bozorGrams,
     required this.categoryName,
     this.ingredients,
     this.imageUrl,
@@ -42,6 +45,7 @@ class ProductModelAdmin {
       name: json['name'] ?? '',
       categoryId: json['category_id'] ?? 0,
       grams: json['grams'],
+      bozorGrams: json['bozor_grams'],
       type: json['type'] ?? '',
       ingredients: json['ingredients'],
       companyName: json['company_name'],
@@ -72,6 +76,7 @@ class ProductModelAdmin {
       'filials': filials,
       'filial_names': filialNames,
       'grams': grams,
+      'bozor_grams': bozorGrams,
       'mone_app': moneApp,
       'bozor': bozor,
       'source': source,
@@ -86,6 +91,7 @@ class ProductModelAdmin {
       'ingredients': ingredients,
       "company_name": companyName,
       'grams': grams,
+      'bozor_grams': bozorGrams,
       'type': type,
       "image_url": imageUrl,
       'filials': filials,
@@ -101,6 +107,7 @@ class ProductModelAdmin {
       'id': id,
       'name': name,
       'grams': grams,
+      'bozor_grams': bozorGrams,
       'category_id': categoryId,
       'type': type,
       "company_name": companyName,
@@ -120,6 +127,7 @@ class ProductModelAdmin {
     int? categoryId,
     String? type,
     num? grams,
+    num? bozorGrams,
     String? companyName,
     String? categoryName,
     String? ingredients,
@@ -135,6 +143,7 @@ class ProductModelAdmin {
       id: id ?? this.id,
       name: name ?? this.name,
       grams: grams ?? this.grams,
+      bozorGrams: bozorGrams ?? this.bozorGrams,
       categoryId: categoryId ?? this.categoryId,
       type: type ?? this.type,
       companyName: companyName ?? this.companyName,

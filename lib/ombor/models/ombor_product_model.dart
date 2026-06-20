@@ -7,6 +7,8 @@ class OmborProduct {
   final String name;
   final String? type;
   final num? grams;
+  // Bozor (yuk keltiruvchi) oqimi uchun: 1 pachkaga qancha gramm
+  final num? bozorGrams;
   final String? ingredients;
   final String? companyName;
   final String? imageUrl;
@@ -17,6 +19,7 @@ class OmborProduct {
     required this.name,
     this.type,
     this.grams,
+    this.bozorGrams,
     this.ingredients,
     this.companyName,
     this.imageUrl,
@@ -29,6 +32,7 @@ class OmborProduct {
       name: json['name'] ?? '',
       type: json['type'],
       grams: json['grams'],
+      bozorGrams: json['bozor_grams'],
       ingredients: json['ingredients'],
       companyName: json['company_name'],
       imageUrl: json['image_url'],

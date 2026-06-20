@@ -20,6 +20,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _nameController = TextEditingController();
   final _typeController = TextEditingController();
   final ingredientsControlle = TextEditingController();
+  final grammController = TextEditingController(text: '1');
+  final bozorGrammController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   int? _selectedCategoryId;
@@ -266,7 +268,27 @@ class _AddProductPageState extends State<AddProductPage> {
                 return null;
               },
             ),
-
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: grammController,
+              decoration: const InputDecoration(
+                labelText: 'Mone gramm',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return null; // bo‘sh bo‘lsa ruxsat
+                }
+                if (double.tryParse(value) == null) {
+                  return "Принимаются только цифры.";
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             Consumer<CategoryProviderAdmin>(
               builder: (context, provider, child) {
@@ -365,8 +387,29 @@ class _AddProductPageState extends State<AddProductPage> {
                 });
               },
             ),
-            // Bozor yoqilganda: yuk manbai (radio) va sklad tanlovi (checkbox)
+            // Bozor yoqilganda: bozor grammi, yuk manbai (radio) va sklad tanlovi (checkbox)
             if (_bozor) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: bozorGrammController,
+                decoration: const InputDecoration(
+                  labelText: 'Bozor gramm',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return null; // bo‘sh bo‘lsa ruxsat
+                  }
+                  if (double.tryParse(value) == null) {
+                    return "Принимаются только цифры.";
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Yuk qayerdan keladi',
@@ -467,6 +510,12 @@ class _AddProductPageState extends State<AddProductPage> {
                               categoryId: _selectedCategoryId!,
                               type: _typeController.text,
                               categoryName: '',
+                              grams: grammController.text.isEmpty
+                                  ? null
+                                  : double.parse(grammController.text),
+                              bozorGrams: bozorGrammController.text.isEmpty
+                                  ? null
+                                  : double.parse(bozorGrammController.text),
                               ingredients: ingredientsControlle.text,
                               filials: _selectedFilials,
                               filialNames: [],
@@ -512,6 +561,9 @@ class _AddProductPageState extends State<AddProductPage> {
   void dispose() {
     _nameController.dispose();
     _typeController.dispose();
+    ingredientsControlle.dispose();
+    grammController.dispose();
+    bozorGrammController.dispose();
     super.dispose();
   }
 }
