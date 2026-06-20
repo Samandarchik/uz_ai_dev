@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
 
@@ -79,6 +80,30 @@ class OmborProvider extends ChangeNotifier {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ─────────────────────── Mening buyurtmalarim ───────────────────────
+  List<OmborOrder> myOrders = [];
+  bool isLoadingOrders = false;
+  String? ordersError;
+
+  // GET /api/orders -> ombor userning o'z buyurtmalari.
+  // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
+  Future<void> fetchMyOrders() async {
+    isLoadingOrders = true;
+    ordersError = null;
+    notifyListeners();
+
+    try {
+      final orders = await _service.fetchMyOrders();
+      orders.sort((a, b) => b.id.compareTo(a.id));
+      myOrders = orders;
+    } catch (e) {
+      ordersError = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isLoadingOrders = false;
       notifyListeners();
     }
   }

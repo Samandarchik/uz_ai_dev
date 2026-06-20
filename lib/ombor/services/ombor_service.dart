@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 
 // Ombor (bozor) mahsulotlari uchun Dio servis.
@@ -68,6 +69,35 @@ class OmborService {
       throw Exception('Tarmoq xatosi: ${e.message}');
     } catch (e) {
       throw Exception('Mahsulotlarni yuklashda kutilmagan xato: $e');
+    }
+  }
+
+  // GET /api/orders -> ombor userning O'Z buyurtmalari ro'yxati.
+  // Javob: {"success": true, "message": "...", "data": [ {order}, ... ]}
+  Future<List<OmborOrder>> fetchMyOrders() async {
+    try {
+      final response = await dio.get(AppUrls.orders);
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) {
+          return parseOmborOrders(body['data']);
+        }
+        return <OmborOrder>[];
+      } else {
+        throw Exception('Buyurtmalarni yuklab bo\'lmadi: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Buyurtmalarni yuklashda kutilmagan xato: $e');
     }
   }
 }

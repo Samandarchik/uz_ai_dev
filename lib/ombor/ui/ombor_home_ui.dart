@@ -8,6 +8,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
 
 // Ombor roli uchun bosh ekran — bozor mahsulotlari ro'yxati.
 // Hozircha faqat ro'yxat (savatcha/buyurtma keyingi qadamda).
@@ -44,6 +45,11 @@ class _OmborHomeUiState extends State<OmborHomeUi> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Mening buyurtmalarim',
+            onPressed: () => context.push(const OmborOrdersUi()),
+            icon: const Icon(Icons.receipt_long),
+          ),
           IconButton(
             onPressed: () {
               tokenStorage.removeToken();
