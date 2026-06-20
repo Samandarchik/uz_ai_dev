@@ -33,6 +33,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Kameradan foydalanish uchun ruxsat kerak</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Videoga ovoz yozish va ovozli izoh uchun mikrofon kerak</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Rasmni Сохранять uchun galereyaga yozishga ruxsat kerak</string>
 	<key>NSPhotoLibraryUsageDescription</key>
