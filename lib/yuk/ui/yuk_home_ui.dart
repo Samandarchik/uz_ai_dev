@@ -256,6 +256,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   final Map<int, TextEditingController> _priceControllers = {};
   final Map<int, TextEditingController> _subtotalControllers = {};
 
+  // Ochiq (narx maydonlari ko'rinadigan) itemlarning product_id lari.
+  final Set<int> _expanded = {};
+
   YukOrder get order => widget.order;
 
   String _fmt(double v) {
@@ -273,7 +276,21 @@ class _YukOrderCardState extends State<_YukOrderCard> {
           TextEditingController(text: existing != null ? _fmt(existing.price) : '');
       _subtotalControllers[item.productId] = TextEditingController(
           text: existing != null ? _fmt(existing.subtotal) : '');
+      // Allaqachon narxlangan item default OCHIQ ko'rsatiladi.
+      if (existing != null && existing.price > 0) {
+        _expanded.add(item.productId);
+      }
     }
+  }
+
+  void _toggleExpanded(int productId) {
+    setState(() {
+      if (_expanded.contains(productId)) {
+        _expanded.remove(productId);
+      } else {
+        _expanded.add(productId);
+      }
+    });
   }
 
   @override
@@ -402,48 +419,112 @@ class _YukOrderCardState extends State<_YukOrderCard> {
               ),
               const Divider(height: 18),
               ...order.items.map((item) {
+                final isOpen = _expanded.contains(item.productId);
+                final priced =
+                    provider.getItemPrice(order.id, item.productId);
+                final hasPrice = priced != null && priced.price > 0;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_formatCount(item.count)}'
-                        '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _inlineField(
-                              controller: _priceControllers[item.productId]!,
-                              label: 'Nechpuldan',
-                              onChanged: (_) => _onItemChanged(item.productId),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${_formatCount(item.count)}'
+                                  '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                // Yopiq bo'lsa va narx kiritilgan bo'lsa qisqa ko'rinish.
+                                if (!isOpen && hasPrice) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${_formatMoney(priced.price)} so\'mdan • '
+                                    '${_formatMoney(priced.subtotal)} so\'m',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: _accentColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: _inlineField(
-                              controller:
-                                  _subtotalControllers[item.productId]!,
-                              label: 'Jami summa',
-                              onChanged: (_) => _onItemChanged(item.productId),
+                          // Toggle tugma: ochish/yopish.
+                          Material(
+                            color: isOpen
+                                ? _accentColor
+                                : _accentColor.withValues(alpha: 0.12),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => _toggleExpanded(item.productId),
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Icon(
+                                  isOpen ? Icons.close : Icons.add,
+                                  size: 18,
+                                  color:
+                                      isOpen ? Colors.white : _accentColor,
+                                ),
+                              ),
                             ),
                           ),
                         ],
+                      ),
+                      // Narx maydonlari FAQAT ochiq bo'lganda.
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeInOut,
+                        alignment: Alignment.topCenter,
+                        child: isOpen
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: _inlineField(
+                                        controller:
+                                            _priceControllers[item.productId]!,
+                                        label: 'Nechpuldan',
+                                        onChanged: (_) =>
+                                            _onItemChanged(item.productId),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _inlineField(
+                                        controller: _subtotalControllers[
+                                            item.productId]!,
+                                        label: 'Jami summa',
+                                        onChanged: (_) =>
+                                            _onItemChanged(item.productId),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox(width: double.infinity),
                       ),
                     ],
                   ),
