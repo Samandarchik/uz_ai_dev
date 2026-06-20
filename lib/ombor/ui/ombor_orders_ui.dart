@@ -1,5 +1,7 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
@@ -236,8 +238,8 @@ class _OrderCard extends StatelessWidget {
           const Divider(height: 20),
           // Itemlar.
           ...order.items.map((item) => _OrderItemRow(item: item)),
-          // Jami (faqat narxlangan bo'lsa).
-          if (order.isPriced) ...[
+          // Jami (narxlangan yoki qabul qilingan bo'lsa).
+          if (order.isPriced || order.isAccepted) ...[
             const Divider(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -261,9 +263,106 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ],
+          // Narxlangan buyurtma -> "Qabul qiling" (video yozib yuboriladi).
+          if (order.isPriced) ...[
+            const SizedBox(height: 12),
+            Consumer<OmborProvider>(
+              builder: (ctx, p, _) {
+                final loading = p.acceptingOrderId == order.id;
+                return SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: loading ? null : () => _acceptWithVideo(context),
+                    icon: loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.videocam, size: 20),
+                    label: Text(loading ? 'Yuborilmoqda...' : 'Qabul qiling'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          // Qabul qilingan buyurtma -> belgi va video soni.
+          if (order.isAccepted) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle,
+                      size: 18, color: Color(0xFF2E7D32)),
+                  const SizedBox(width: 6),
+                  Text(
+                    order.videoUrls.isNotEmpty
+                        ? 'Qabul qilindi • ${order.videoUrls.length} video'
+                        : 'Qabul qilindi',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  // "Qabul qiling" bosilganda: aylana video rekorderni ochadi, yozilgan
+  // video(lar)ni backendga yuboradi va buyurtmani qabul qiladi.
+  Future<void> _acceptWithVideo(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final provider = context.read<OmborProvider>();
+
+    final segments = await Navigator.of(context).push<List<XFile>>(
+      MaterialPageRoute(
+        builder: (_) => const TelegramStyleVideoRecorder(),
+      ),
+    );
+    // Foydalanuvchi bekor qilgan bo'lsa (orqaga) — hech narsa qilinmaydi.
+    if (segments == null || segments.isEmpty) return;
+
+    try {
+      await provider.acceptOrder(
+        order.id,
+        segments.map((e) => e.path).toList(),
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Qabul qilindi')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
@@ -328,13 +427,17 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool priced = status == 'narxlandi';
-    final Color bg = priced
+    // narxlandi holatida badge ko'rsatilmaydi — uning o'rniga pastda
+    // "Qabul qiling" tugmasi chiqadi.
+    if (status == 'narxlandi') return const SizedBox.shrink();
+
+    final bool accepted = status == 'qabul_qilindi';
+    final Color bg = accepted
         ? const Color(0xFF2E7D32).withValues(alpha: 0.12)
         : const Color(0xFF1565C0).withValues(alpha: 0.12);
     final Color fg =
-        priced ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
-    final String label = priced ? 'Narxlandi' : 'Yuborildi';
+        accepted ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
+    final String label = accepted ? 'Qabul qilindi' : 'Yuborildi';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

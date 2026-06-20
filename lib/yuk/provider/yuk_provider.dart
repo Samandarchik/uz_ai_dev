@@ -41,8 +41,11 @@ class YukProvider extends ChangeNotifier {
   // Hali yuborilmagan (kutilayotgan) buyurtmalar tepada, yuborilganlar pastda.
   List<YukOrder> ordersForSklad(int skladId) {
     final list = orders.where((o) => o.skladId == skladId).toList();
-    final pending = list.where((o) => o.status != 'narxlandi').toList();
-    final done = list.where((o) => o.status == 'narxlandi').toList();
+    // Narxlangan yoki omborchi qabul qilgan buyurtmalar — "tugagan" (pastda).
+    bool isDone(YukOrder o) =>
+        o.status == 'narxlandi' || o.status == 'qabul_qilindi';
+    final pending = list.where((o) => !isDone(o)).toList();
+    final done = list.where(isDone).toList();
     return [...pending, ...done];
   }
 

@@ -100,4 +100,39 @@ class OmborService {
       throw Exception('Buyurtmalarni yuklashda kutilmagan xato: $e');
     }
   }
+
+  // POST /api/orders/{id}/accept -> narxlangan buyurtmani qabul qilish va
+  // video(lar)ni yuborish (multipart, "videos" maydoni).
+  // Javob: {"success": true, "message": "...", "data": {order}}
+  Future<void> acceptOrder(int orderId, List<String> videoPaths) async {
+    try {
+      final form = FormData();
+      for (final path in videoPaths) {
+        form.files.add(MapEntry(
+          'videos',
+          await MultipartFile.fromFile(path),
+        ));
+      }
+      final response = await dio.post(
+        '${AppUrls.orders}/$orderId/accept',
+        data: form,
+      );
+      final status = response.statusCode ?? 0;
+      if (status >= 200 && status < 300) {
+        return;
+      }
+      throw Exception('Qabul qilib bo\'lmadi: $status');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Qabul qilishda kutilmagan xato: $e');
+    }
+  }
 }

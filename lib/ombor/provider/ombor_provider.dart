@@ -89,6 +89,9 @@ class OmborProvider extends ChangeNotifier {
   bool isLoadingOrders = false;
   String? ordersError;
 
+  // Hozir qabul qilinayotgan buyurtma id (spinner uchun).
+  int? acceptingOrderId;
+
   // GET /api/orders -> ombor userning o'z buyurtmalari.
   // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
   Future<void> fetchMyOrders() async {
@@ -128,6 +131,20 @@ class OmborProvider extends ChangeNotifier {
       return message;
     } finally {
       isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Narxlangan buyurtmani qabul qilish va video(lar)ni yuborish.
+  // Muvaffaqiyatda ro'yxat yangilanadi. Xato bo'lsa Exception otadi.
+  Future<void> acceptOrder(int orderId, List<String> videoPaths) async {
+    acceptingOrderId = orderId;
+    notifyListeners();
+    try {
+      await _service.acceptOrder(orderId, videoPaths);
+      await fetchMyOrders();
+    } finally {
+      acceptingOrderId = null;
       notifyListeners();
     }
   }

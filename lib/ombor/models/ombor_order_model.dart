@@ -11,10 +11,12 @@ class OmborOrder {
   final int id;
   final String orderId;
   final String skladName;
-  final String status; // "created" yoki "narxlandi"
+  final String status; // "created" | "narxlandi" | "qabul_qilindi"
   final double total;
   final String created;
   final List<OmborOrderItem> items;
+  // Omborchi qabul qilganda yuborilgan video(lar) (relativ /static/...).
+  final List<String> videoUrls;
 
   OmborOrder({
     required this.id,
@@ -24,10 +26,14 @@ class OmborOrder {
     required this.total,
     required this.created,
     required this.items,
+    this.videoUrls = const [],
   });
 
-  // Yuk keltiruvchi narx qo'yganmi.
+  // Yuk keltiruvchi narx qo'yganmi (omborchi endi qabul qila oladi).
   bool get isPriced => status == 'narxlandi';
+
+  // Omborchi qabul qilib videoni yuborganmi.
+  bool get isAccepted => status == 'qabul_qilindi';
 
   factory OmborOrder.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
@@ -37,6 +43,11 @@ class OmborOrder {
             .toList()
         : <OmborOrderItem>[];
 
+    final rawVideos = json['video_urls'];
+    final List<String> videos = (rawVideos is List)
+        ? rawVideos.map((e) => e.toString()).toList()
+        : <String>[];
+
     return OmborOrder(
       id: json['id'] ?? 0,
       orderId: json['order_id']?.toString() ?? '',
@@ -45,6 +56,7 @@ class OmborOrder {
       total: _toDouble(json['total']),
       created: json['created']?.toString() ?? '',
       items: parsedItems,
+      videoUrls: videos,
     );
   }
 }

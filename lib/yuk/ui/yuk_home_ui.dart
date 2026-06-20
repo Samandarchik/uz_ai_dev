@@ -319,9 +319,10 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   YukOrder get order => widget.order;
 
-  // Buyurtma yuk keltiruvchi tomonidan narxlanib yuborilganmi.
-  // Yuborilgan bo'lsa maydonlar faqat ko'rish uchun (read-only) bo'ladi.
-  bool get _isDone => order.status == 'narxlandi';
+  // Buyurtma yuk keltiruvchi tomonidan narxlanib yuborilganmi (yoki omborchi
+  // qabul qilganmi). Bunda maydonlar faqat ko'rish uchun (read-only) bo'ladi.
+  bool get _isDone =>
+      order.status == 'narxlandi' || order.status == 'qabul_qilindi';
 
   // Mavjud qiymatni controllerga ming ajratuvchili probel bilan to'ldirish:
   // 3000 -> "3 000". Bo'sh/0 bo'lsa bo'sh string.
