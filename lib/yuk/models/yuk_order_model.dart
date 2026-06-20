@@ -12,12 +12,17 @@ class YukOrderItem {
   final String name;
   final num count;
   final String? type;
+  // Narxlangan buyurtmada: birlik narxi va shu item jami summasi.
+  final double price;
+  final double subtotal;
 
   YukOrderItem({
     required this.productId,
     required this.name,
     required this.count,
     this.type,
+    this.price = 0,
+    this.subtotal = 0,
   });
 
   factory YukOrderItem.fromJson(Map<String, dynamic> json) {
@@ -26,6 +31,8 @@ class YukOrderItem {
       name: json['name'] ?? '',
       count: json['count'] ?? 0,
       type: json['type'],
+      price: (json['price'] ?? 0).toDouble(),
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
     );
   }
 }

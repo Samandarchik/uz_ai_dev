@@ -227,7 +227,19 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
+// Summalarni chiroyli ko'rsatish: 1000 -> "1 000".
+String _formatMoney(num v) {
+  final s = v.toStringAsFixed(0);
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
+    buf.write(s[i]);
+  }
+  return buf.toString();
+}
+
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.
+// Har item yonida narx kiritish "+" tugmasi va pastida "Chek bilan yuborish".
 class _YukOrderCard extends StatelessWidget {
   final YukOrder order;
   const _YukOrderCard({required this.order});
@@ -246,86 +258,378 @@ class _YukOrderCard extends StatelessWidget {
     return DateFormat('dd.MM.yyyy HH:mm').format(dt.toLocal());
   }
 
+  // Pastdan chiqadigan narx kiritish oynasi.
+  Future<void> _openPriceSheet(BuildContext context, YukOrderItem item) async {
+    final provider = context.read<YukProvider>();
+    final existing = provider.getItemPrice(order.id, item.productId);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) => _PriceSheet(
+        item: item,
+        initialPrice: existing?.price,
+        initialSubtotal: existing?.subtotal,
+        onSave: (price, subtotal) {
+          provider.setItemPrice(order.id, item.productId, price, subtotal);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '#${order.orderId}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Text(
-                _formatDate(order.created),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
+    return Consumer<YukProvider>(
+      builder: (context, provider, child) {
+        final hasAnyPrice = provider.hasAnyPrice(order.id);
+        final orderTotal = provider.orderTotal(order.id);
+        final submitting = provider.submittingOrderId == order.id;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 4),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.store_outlined,
-                  size: 16, color: _accentColor),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  order.username,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 18),
-          ...order.items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
+              Row(
                 children: [
                   Expanded(
                     child: Text(
-                      item.name,
+                      '#${order.orderId}',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
                   ),
                   Text(
-                    '${_formatCount(item.count)}'
-                    '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
-                    style: const TextStyle(
+                    _formatDate(order.created),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.store_outlined,
+                      size: 16, color: _accentColor),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order.username,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 18),
+              ...order.items.map((item) {
+                final p = provider.getItemPrice(order.id, item.productId);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_formatCount(item.count)}'
+                              '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            if (p != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                '${_formatMoney(p.price)} so\'mdan • '
+                                'Jami: ${_formatMoney(p.subtotal)} so\'m',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: _accentColor,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _circleButton(
+                        icon: p != null ? Icons.edit : Icons.add,
+                        background:
+                            p != null ? Colors.grey.shade200 : _accentColor,
+                        foreground: p != null ? Colors.black87 : Colors.white,
+                        onTap: () => _openPriceSheet(context, item),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const Divider(height: 18),
+              Row(
+                children: [
+                  const Text(
+                    'Jami:',
+                    style: TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_formatMoney(orderTotal)} so\'m',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: (!hasAnyPrice || submitting)
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final ok = await provider.submitPrices(order.id);
+                          if (ok) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Omborga yuborildi'),
+                              ),
+                            );
+                          } else if (provider.errorMessage != null) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(provider.errorMessage!),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  icon: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.receipt_long, size: 18),
+                  label: Text(submitting ? 'Yuborilmoqda...' : 'Chek bilan yuborish'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accentColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _circleButton({
+    required IconData icon,
+    required Color background,
+    required Color foreground,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: background,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 20, color: foreground),
+        ),
+      ),
+    );
+  }
+}
+
+// Narx kiritish oynasi: birlik narxi va jami summa.
+class _PriceSheet extends StatefulWidget {
+  final YukOrderItem item;
+  final double? initialPrice;
+  final double? initialSubtotal;
+  final void Function(double price, double subtotal) onSave;
+
+  const _PriceSheet({
+    required this.item,
+    required this.initialPrice,
+    required this.initialSubtotal,
+    required this.onSave,
+  });
+
+  @override
+  State<_PriceSheet> createState() => _PriceSheetState();
+}
+
+class _PriceSheetState extends State<_PriceSheet> {
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _priceController;
+  late final TextEditingController _subtotalController;
+
+  String _fmt(double? v) {
+    if (v == null || v == 0) return '';
+    return v.toStringAsFixed(0);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _priceController = TextEditingController(text: _fmt(widget.initialPrice));
+    _subtotalController =
+        TextEditingController(text: _fmt(widget.initialSubtotal));
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    _subtotalController.dispose();
+    super.dispose();
+  }
+
+  String? _validateNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Maydonni to\'ldiring';
+    }
+    final parsed = double.tryParse(value.trim().replaceAll(' ', ''));
+    if (parsed == null) return 'Faqat son kiriting';
+    if (parsed < 0) return 'Manfiy bo\'lmasin';
+    return null;
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final price =
+        double.parse(_priceController.text.trim().replaceAll(' ', ''));
+    final subtotal =
+        double.parse(_subtotalController.text.trim().replaceAll(' ', ''));
+    widget.onSave(price, subtotal);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              widget.item.name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _priceController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: _validateNumber,
+              decoration: InputDecoration(
+                labelText: 'Nechpuldan',
+                suffixText: 'so\'m',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _subtotalController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: _validateNumber,
+              decoration: InputDecoration(
+                labelText: 'Jami summa',
+                suffixText: 'so\'m',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Saqlash'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

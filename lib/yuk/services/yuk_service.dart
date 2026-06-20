@@ -36,4 +36,40 @@ class YukService {
       throw Exception('Buyurtmalarni yuklashda kutilmagan xato: $e');
     }
   }
+
+  // PUT /api/yuk/orders/{id} -> buyurtmaga narx kiritib omborga qaytarish.
+  // Body: { "items":[{"product_id":5,"price":1000,"subtotal":3000}, ...],
+  //         "total":3000 }
+  // Javob: { "success": true, "message": "...", "data": {order} }
+  Future<void> priceOrder(
+    int orderId,
+    List<Map<String, dynamic>> items,
+    double total,
+  ) async {
+    try {
+      final response = await dio.put(
+        '${AppUrls.yukOrders}/$orderId',
+        data: {
+          'items': items,
+          'total': total,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      }
+      throw Exception('Buyurtmani yuborib bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Buyurtmani yuborishda kutilmagan xato: $e');
+    }
+  }
 }
