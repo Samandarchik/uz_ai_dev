@@ -49,6 +49,24 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   }
 }
 
+// kg bilan o'lchanadigan mahsulotlar uchun: raqamlar va bitta o'nlik
+// ajratuvchi (nuqta yoki vergul) ga ruxsat. Masalan "8.500", "8,5".
+class DecimalInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+    // Faqat raqamlar va eng ko'pi bilan bitta nuqta/vergul.
+    if (!RegExp(r'^[0-9]*[.,]?[0-9]*$').hasMatch(text)) {
+      return oldValue;
+    }
+    return newValue;
+  }
+}
+
 // Yuk keltiruvchi roli uchun bosh ekran.
 // Foydalanuvchiga biriktirilgan skladlar bo'yicha tablar; har tabда
 // o'sha skladning buyurtmalari (FAQAT ko'rish).
@@ -299,6 +317,22 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     return _formatMoney(v);
   }
 
+  // "Nechta olgani" maydoni uchun: o'nlik qismni saqlab format qiladi
+  // (8.5 -> "8.5"), butun bo'lsa nuqtasiz (8 -> "8").
+  String _fmtQty(double v) {
+    if (v == 0) return '';
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
+  }
+
+  // Mahsulot kg (vazn) bilan o'lchanadimi — 'type' maydoniga qarab.
+  // "kg", "кг" (lotin/kirill) ni qamrab oladi.
+  bool _isKg(String? type) {
+    if (type == null) return false;
+    final t = type.toLowerCase();
+    return t.contains('kg') || t.contains('кг');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -306,7 +340,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     for (final item in order.items) {
       final existing = provider.getItemPrice(order.id, item.productId);
       _takenControllers[item.productId] =
-          TextEditingController(text: existing != null ? _fmt(existing.taken) : '');
+          TextEditingController(text: existing != null ? _fmtQty(existing.taken) : '');
       _subtotalControllers[item.productId] = TextEditingController(
           text: existing != null ? _fmt(existing.subtotal) : '');
       _takenFocusNodes[item.productId] = FocusNode();
@@ -329,7 +363,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
 
   // Bo'sh yoki noto'g'ri bo'lsa 0 qaytaradi.
   double _parse(String raw) {
-    final cleaned = raw.trim().replaceAll(' ', '');
+    final cleaned = raw.trim().replaceAll(' ', '').replaceAll(',', '.');
     if (cleaned.isEmpty) return 0;
     final v = double.tryParse(cleaned);
     if (v == null || v < 0) return 0;
@@ -361,12 +395,18 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     required ValueChanged<String> onChanged,
     FocusNode? focusNode,
     String? hint,
+    bool decimal = false,
   }) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      keyboardType: TextInputType.number,
-      inputFormatters: [ThousandsSeparatorInputFormatter()],
+      keyboardType:
+          TextInputType.numberWithOptions(decimal: decimal),
+      inputFormatters: [
+        decimal
+            ? DecimalInputFormatter()
+            : ThousandsSeparatorInputFormatter(),
+      ],
       onChanged: onChanged,
       textAlign: TextAlign.center,
       style: const TextStyle(fontSize: 13, color: Colors.black87),
@@ -533,6 +573,8 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                           controller: _takenControllers[item.productId]!,
                           focusNode: _takenFocusNodes[item.productId],
                           hint: '0',
+                          // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
+                          decimal: _isKg(item.type),
                           onChanged: (_) => _onItemChanged(item.productId),
                         ),
                       ),
