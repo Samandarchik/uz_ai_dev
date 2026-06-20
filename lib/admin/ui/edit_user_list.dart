@@ -30,6 +30,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
   bool _isAdmin = false;
   int? _selectedFilialId;
+  List<int> _selectedSklads = [];
   String _selectedRole = 'seller';
   late List<String> _roleOptions;
   // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar (hozircha hardcode).
@@ -57,6 +58,7 @@ class _EditUserPageState extends State<EditUserPage> {
     // aks holda DropdownButton mos element topolmay crash bo'ladi.
     final fid = widget.user?.filial?.id ?? widget.user?.filialId;
     _selectedFilialId = (fid == null || fid == 0) ? null : fid;
+    _selectedSklads = List.from(widget.user?.sklads ?? []);
     _categoryIds = widget.user?.categoryIds ?? [];
 
     // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
@@ -117,6 +119,7 @@ class _EditUserPageState extends State<EditUserPage> {
                   // Rol o'zgarsa filial/sklad tanlovi boshqa ro'yxatga o'tadi,
                   // eski qiymat mos kelmasligi mumkin — tozalaymiz.
                   _selectedFilialId = null;
+                  _selectedSklads = [];
                 });
               }
             },
@@ -177,8 +180,44 @@ class _EditUserPageState extends State<EditUserPage> {
     }
   }
 
+  // Rolga qarab filial/sklad tanlovini tekshiradi.
+  // Xato bo'lsa snackbar chiqarib true qaytaradi (saqlashni to'xtatish uchun).
+  bool _hasFilialSkladError() {
+    String? message;
+    if (_selectedRole == 'seller') {
+      if (_selectedFilialId == null) {
+        message = 'Выберите ветку';
+      }
+    } else if (_selectedRole == 'ombor') {
+      if (_selectedSklads.length != 1) {
+        message = 'Выберите один склад';
+      }
+    } else if (_selectedRole == 'yuk_keltiruvchi') {
+      if (_selectedSklads.isEmpty) {
+        message = 'Выберите хотя бы один склад';
+      }
+    }
+    if (message != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return true;
+    }
+    return false;
+  }
+
   Future<void> _saveUser() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_hasFilialSkladError()) return;
+
+    // filial_id faqat seller uchun yuboriladi; ombor/yuk uchun null.
+    final int? filialId = _selectedRole == 'seller' ? _selectedFilialId : null;
 
     setState(() => _isLoading = true);
 
@@ -190,11 +229,12 @@ class _EditUserPageState extends State<EditUserPage> {
           phone: _phoneController.text.trim(),
           isAdmin: _isAdmin,
           role: _selectedRole,
-          filialId: _selectedFilialId,
+          filialId: filialId,
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
               : null,
           categoryIds: _categoryIds,
+          sklads: _selectedSklads,
         );
 
         print('Updating user with request: ${request.toJson()}');
@@ -207,8 +247,9 @@ class _EditUserPageState extends State<EditUserPage> {
           password: _passwordController.text,
           isAdmin: _isAdmin,
           role: _selectedRole,
-          filialId: _selectedFilialId,
+          filialId: filialId,
           categoryIds: _categoryIds,
+          sklads: _selectedSklads,
         );
 
         print('Creating user with request: ${request.toJson()}');
@@ -265,21 +306,16 @@ class _EditUserPageState extends State<EditUserPage> {
     }
   }
 
-  Widget _buildFilialSelector() {
-    // Ombor roli uchun haqiqiy filiallar emas, skladlar ro'yxati ko'rsatiladi.
-    final isOmbor = _selectedRole == 'ombor';
-    final List<int> validIds = isOmbor
-        ? _skladOptions.keys.toList()
-        : _filials.map((f) => f.id).toList();
-    final int? dropdownValue =
-        (_selectedFilialId != null && validIds.contains(_selectedFilialId))
-            ? _selectedFilialId
-            : null;
+  // Rolga qarab sklad tanlovi:
+  // - ombor          → bitta sklad (radio)
+  // - yuk_keltiruvchi → bir nechta sklad (checkbox)
+  Widget _buildSkladSelector() {
+    final bool isOmbor = _selectedRole == 'ombor';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isOmbor ? 'Sklad' : 'Ветвь',
+          isOmbor ? 'Sklad' : 'Skladlar',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -293,7 +329,83 @@ class _EditUserPageState extends State<EditUserPage> {
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: (!isOmbor && _isLoadingFilials)
+          child: isOmbor
+              ? RadioGroup<int>(
+                  groupValue:
+                      _selectedSklads.isNotEmpty ? _selectedSklads.first : null,
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedSklads = [value];
+                      });
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      for (final entry in _skladOptions.entries)
+                        RadioListTile<int>(
+                          value: entry.key,
+                          title: Text(entry.value),
+                          activeColor: Colors.blue.shade600,
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (final entry in _skladOptions.entries)
+                      CheckboxListTile(
+                        value: _selectedSklads.contains(entry.key),
+                        title: Text(entry.value),
+                        activeColor: Colors.blue.shade600,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              if (!_selectedSklads.contains(entry.key)) {
+                                _selectedSklads.add(entry.key);
+                              }
+                            } else {
+                              _selectedSklads.remove(entry.key);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilialSelector() {
+    final int? dropdownValue = (_selectedFilialId != null &&
+            _filials.any((f) => f.id == _selectedFilialId))
+        ? _selectedFilialId
+        : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Ветвь',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: (_isLoadingFilials)
               ? Padding(
                   padding: EdgeInsets.all(16),
                   child: Row(
@@ -308,7 +420,7 @@ class _EditUserPageState extends State<EditUserPage> {
                     ],
                   ),
                 )
-              : (!isOmbor && _filialError.isNotEmpty)
+              : (_filialError.isNotEmpty)
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -370,25 +482,7 @@ class _EditUserPageState extends State<EditUserPage> {
                               ),
                             ),
                           ),
-                          if (isOmbor)
-                            ..._skladOptions.entries.map((entry) {
-                              return DropdownMenuItem<int?>(
-                                value: entry.key,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  child: Text(
-                                    entry.value,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          if (!isOmbor)
-                            ..._filials.map((filial) {
+                          ..._filials.map((filial) {
                             return DropdownMenuItem<int?>(
                               value: filial.id,
                               child: Container(
@@ -783,8 +877,12 @@ class _EditUserPageState extends State<EditUserPage> {
               _buildRoleSelector(),
               const SizedBox(height: 20),
 
-              // Filial Selector
-              _buildFilialSelector(),
+              // Filial (seller) yoki Sklad (ombor / yuk_keltiruvchi) selektori
+              if (_selectedRole == 'seller')
+                _buildFilialSelector()
+              else if (_selectedRole == 'ombor' ||
+                  _selectedRole == 'yuk_keltiruvchi')
+                _buildSkladSelector(),
               const SizedBox(height: 20),
 
               // Category Selector

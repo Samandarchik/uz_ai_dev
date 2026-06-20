@@ -8,6 +8,7 @@ class User {
   final Filial? filial;
   final String? password;
   final List<int>? categoryIds;
+  final List<int> sklads;
 
   User({
     required this.id,
@@ -19,6 +20,7 @@ class User {
     this.filial,
     this.password,
     this.categoryIds,
+    this.sklads = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,7 @@ class User {
       categoryIds: (json['category_list'] as List<dynamic>?)
           ?.map((e) => e as int)
           .toList(),
+      sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
     );
   }
 
@@ -44,6 +47,7 @@ class User {
       'is_admin': isAdmin,
       'role': role,
       'filial_id': filialId,
+      'sklads': sklads,
       if (password != null) 'password': password,
     };
   }
@@ -57,6 +61,7 @@ class User {
     int? filialId,
     Filial? filial,
     String? password,
+    List<int>? sklads,
   }) {
     return User(
       id: id ?? this.id,
@@ -67,6 +72,7 @@ class User {
       filialId: filialId ?? this.filialId,
       filial: filial ?? this.filial,
       password: password ?? this.password,
+      sklads: sklads ?? this.sklads,
     );
   }
 }
@@ -117,6 +123,7 @@ class UpdateUserRequest {
   final int? filialId;
   final String? password;
   final List<int>? categoryIds;
+  final List<int>? sklads;
 
   UpdateUserRequest({
     this.name,
@@ -126,6 +133,7 @@ class UpdateUserRequest {
     this.filialId,
     this.password,
     this.categoryIds,
+    this.sklads,
   });
 
   Map<String, dynamic> toJson() {
@@ -137,6 +145,7 @@ class UpdateUserRequest {
     if (filialId != null) data['filial_id'] = filialId;
     if (password != null && password!.isNotEmpty) data['password'] = password;
     if (categoryIds != null) data['category_list'] = categoryIds;
+    if (sklads != null) data['sklads'] = sklads;
     return data;
   }
 }
@@ -149,6 +158,7 @@ class CreateUserRequest {
   final String role;
   final int? filialId;
   final List<int>? categoryIds;
+  final List<int> sklads;
 
   CreateUserRequest({
     required this.name,
@@ -158,6 +168,7 @@ class CreateUserRequest {
     this.role = 'seller',
     this.filialId,
     this.categoryIds,
+    this.sklads = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -169,6 +180,7 @@ class CreateUserRequest {
       'role': role,
       if (filialId != null) 'filial_id': filialId,
       'category_list': categoryIds,
+      'sklads': sklads,
     };
   }
 }
