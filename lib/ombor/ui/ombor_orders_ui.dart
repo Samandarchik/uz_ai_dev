@@ -156,6 +156,17 @@ String _formatCount(double v) {
   return v.toString();
 }
 
+// Miqdor: 3 xonagacha yaxlitlab, ortiqcha nollarni olib tashlaydi
+// (8.5 -> "8.5", 8 -> "8", 0.2999999 -> "0.3").
+String _fmtQty(double v) {
+  if (v == 0) return '0';
+  var s = v.toStringAsFixed(3);
+  if (s.contains('.')) {
+    s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+  return s;
+}
+
 // "2026-06-20T12:34:..." -> "2026-06-20 12:34".
 String _formatDate(String raw) {
   if (raw.isEmpty) return '';
@@ -236,8 +247,13 @@ class _OrderCard extends StatelessWidget {
             ),
           ],
           const Divider(height: 20),
-          // Itemlar.
-          ...order.items.map((item) => _OrderItemRow(item: item)),
+          // Itemlar. Narxlangan/qabul qilingan bo'lsa — yuk keltiruvchidagidek
+          // jadval (Nechta olgani / Jami summa), aks holda oddiy ro'yxat.
+          if (order.isPriced || order.isAccepted) ...[
+            const _PriceTableHeader(),
+            ...order.items.map((item) => _PricedItemRow(item: item)),
+          ] else
+            ...order.items.map((item) => _OrderItemRow(item: item)),
           // Jami (narxlangan yoki qabul qilingan bo'lsa).
           if (order.isPriced || order.isAccepted) ...[
             const Divider(height: 20),
@@ -416,6 +432,158 @@ class _OrderItemRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// Yuk keltiruvchidagidek jadval sarlavhasi.
+class _PriceTableHeader extends StatelessWidget {
+  const _PriceTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: Colors.black54,
+    );
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: Text('Mahsulot', style: style)),
+          SizedBox(width: 6),
+          Expanded(
+            flex: 3,
+            child: Text('Nechta olgani',
+                textAlign: TextAlign.center, style: style),
+          ),
+          SizedBox(width: 6),
+          Expanded(
+            flex: 4,
+            child: Text('Jami summa',
+                textAlign: TextAlign.center, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Narxlangan mahsulot qatori: nom + olingan/buyurtma farqi + birlik narxi,
+// o'ngda "Nechta olgani" va "Jami summa" (read-only) qutilar.
+class _PricedItemRow extends StatelessWidget {
+  final OmborOrderItem item;
+  const _PricedItemRow({required this.item});
+
+  static const Color _accent = Color(0xFFC5A97B);
+
+  @override
+  Widget build(BuildContext context) {
+    final taken = item.taken;
+    final subtotal = item.subtotal;
+    final unitPrice = (taken > 0 && subtotal > 0) ? subtotal / taken : null;
+    final unitLabel =
+        unitPrice != null ? '${_fmtQty(taken)} * ${_formatSum(unitPrice)}' : '';
+    final diff = taken - item.count;
+    final showDiff = taken > 0 && diff.abs() > 0.0001;
+    final diffText =
+        diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
+    final diffColor =
+        diff > 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final qtyLabel =
+        '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      qtyLabel,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    if (showDiff) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        diffText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: diffColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (unitPrice != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    unitLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 3,
+            child: _ReadOnlyBox(text: taken > 0 ? _fmtQty(taken) : '0'),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 4,
+            child: _ReadOnlyBox(text: subtotal > 0 ? _formatSum(subtotal) : '0'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Read-only (faqat ko'rish uchun) qiymat qutisi — yuk keltiruvchidagi
+// o'chirilgan maydon ko'rinishida.
+class _ReadOnlyBox extends StatelessWidget {
+  final String text;
+  const _ReadOnlyBox({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1EA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, color: Colors.black54),
       ),
     );
   }
