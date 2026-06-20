@@ -627,7 +627,9 @@ class _EditProductPageState extends State<EditProductPage> {
                                 .updateProduct(updatedProduct);
 
                             if (success && context.mounted) {
-                              Navigator.pop(context);
+                              // true qaytaramiz -> ro'yxat backenddan qayta
+                              // yuklanadi (bozor/mone_app toggle'lar yangilanadi).
+                              Navigator.pop(context, true);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content: Text('Продукт обновлен')),

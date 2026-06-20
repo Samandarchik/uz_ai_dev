@@ -305,10 +305,8 @@ class _OmborProductTile extends StatelessWidget {
     final unit = (product.type != null && product.type!.isNotEmpty)
         ? product.type!
         : '';
-    // Bozor oqimida 1 pachkaga bozor grammi ko'rsatiladi, bo'lmasa oddiy gramm.
-    final qty = product.bozorGrams ?? product.grams;
-    if (qty != null) {
-      return unit.isNotEmpty ? '$qty $unit' : '$qty';
+    if (product.grams != null) {
+      return unit.isNotEmpty ? '${product.grams} $unit' : '${product.grams}';
     }
     return unit;
   }
@@ -401,7 +399,11 @@ class _OmborProductTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _QtyStepper(productId: product.id),
+          _QtyStepper(
+            productId: product.id,
+            // Bozor gramm = 1 pachka qancha; bo'lmasa oddiy +1 qadam.
+            step: (product.bozorGrams ?? 1).toDouble(),
+          ),
         ],
       ),
     );
@@ -411,7 +413,9 @@ class _OmborProductTile extends StatelessWidget {
 // Mahsulot uchun miqdor tanlash (+/-). 0 bo'lsa faqat "+" tugmasi ko'rinadi.
 class _QtyStepper extends StatelessWidget {
   final int productId;
-  const _QtyStepper({required this.productId});
+  // Har bir +/- bosishda o'zgaradigan miqdor (bozor grammi = 1 pachka).
+  final double step;
+  const _QtyStepper({required this.productId, this.step = 1});
 
   static const Color _accentColor = Color(0xFFC5A97B);
 
@@ -431,7 +435,7 @@ class _QtyStepper extends StatelessWidget {
             icon: Icons.add,
             background: _accentColor,
             foreground: Colors.white,
-            onTap: () => provider.addToCart(productId),
+            onTap: () => provider.addToCart(productId, step: step),
           );
         }
 
@@ -442,7 +446,7 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.remove,
               background: Colors.grey.shade200,
               foreground: Colors.black87,
-              onTap: () => provider.decrement(productId),
+              onTap: () => provider.decrement(productId, step: step),
             ),
             Container(
               constraints: const BoxConstraints(minWidth: 32),
@@ -461,7 +465,7 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.add,
               background: _accentColor,
               foreground: Colors.white,
-              onTap: () => provider.addToCart(productId),
+              onTap: () => provider.addToCart(productId, step: step),
             ),
           ],
         );
