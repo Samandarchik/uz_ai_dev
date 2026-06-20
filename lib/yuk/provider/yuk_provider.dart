@@ -20,6 +20,23 @@ class YukProvider extends ChangeNotifier {
   // Hozir yuborilayotgan buyurtma id (spinner uchun). null bo'lsa hech nima.
   int? submittingOrderId;
 
+  // Hozir qaytarib olinayotgan buyurtma id (spinner uchun).
+  int? revertingOrderId;
+
+  // Buyurtma shu sessiyada qachon yuborilgani — "qaytarib olish" oynasi uchun.
+  final Map<int, DateTime> _submittedAt = {};
+
+  // Yuborilgandan keyin qaytarib olish mumkin bo'lgan vaqt oynasi.
+  static const Duration undoWindow = Duration(seconds: 30);
+
+  // Buyurtmani qaytarib olishgacha qolgan vaqt (0 bo'lsa muddat o'tgan).
+  Duration undoRemaining(int orderId) {
+    final t = _submittedAt[orderId];
+    if (t == null) return Duration.zero;
+    final left = undoWindow - DateTime.now().difference(t);
+    return left.isNegative ? Duration.zero : left;
+  }
+
   // Berilgan sklad_id ga tegishli buyurtmalar.
   // Hali yuborilmagan (kutilayotgan) buyurtmalar tepada, yuborilganlar pastda.
   List<YukOrder> ordersForSklad(int skladId) {
@@ -49,6 +66,13 @@ class YukProvider extends ChangeNotifier {
     final map = _prices.putIfAbsent(orderId, () => {});
     map[productId] = (taken: taken, subtotal: subtotal);
     notifyListeners();
+  }
+
+  // Boshlang'ich qiymatni notify'siz o'rnatish (initState'da chaqirish uchun).
+  // Qaytarib olingan buyurtmaning oldingi qiymatlarini tiklash uchun ishlatiladi.
+  void seedItemPrice(int orderId, int productId, double taken, double subtotal) {
+    final map = _prices.putIfAbsent(orderId, () => {});
+    map[productId] = (taken: taken, subtotal: subtotal);
   }
 
   // Bitta item holatini olish (yo'q bo'lsa null).
@@ -108,14 +132,36 @@ class YukProvider extends ChangeNotifier {
 
       await _service.priceOrder(orderId, items, total);
 
-      // Yuborilgach lokal narxni tozala va ro'yxatni yangila.
+      // Yuborilgach lokal narxni tozala, "qaytarib olish" vaqtini belgila va
+      // ro'yxatni yangila.
       _prices.remove(orderId);
+      _submittedAt[orderId] = DateTime.now();
       submittingOrderId = null;
       await fetchOrders();
       return true;
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
       submittingOrderId = null;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Yuborilgan buyurtmani qaytarib olish (qayta tahrirlanadigan holatga).
+  Future<bool> revertOrder(int orderId) async {
+    revertingOrderId = orderId;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service.revertOrder(orderId);
+      _submittedAt.remove(orderId);
+      revertingOrderId = null;
+      await fetchOrders();
+      return true;
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      revertingOrderId = null;
       notifyListeners();
       return false;
     }

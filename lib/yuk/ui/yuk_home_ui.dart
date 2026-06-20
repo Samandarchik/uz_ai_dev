@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -313,6 +314,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   // Har bir item (product_id) uchun "Nechta olgani" maydonining FocusNode'i.
   final Map<int, FocusNode> _takenFocusNodes = {};
 
+  // "Qaytarib olish" oynasi sanog'ini har soniyada yangilab turuvchi timer.
+  Timer? _undoTicker;
+
   YukOrder get order => widget.order;
 
   // Buyurtma yuk keltiruvchi tomonidan narxlanib yuborilganmi.
@@ -360,11 +364,37 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       _subtotalControllers[item.productId] =
           TextEditingController(text: _fmt(subtotal0));
       _takenFocusNodes[item.productId] = FocusNode();
+      // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
+      // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz.
+      if (!_isDone && existing == null && (taken0 > 0 || subtotal0 > 0)) {
+        provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
+      }
     }
+    _maybeStartUndoTicker();
+  }
+
+  // Buyurtma hozir yuborilgan va qaytarib olish oynasi ochiq bo'lsa, sanoqni
+  // har soniyada yangilab turamiz; muddat tugashi bilan timer to'xtaydi.
+  void _maybeStartUndoTicker() {
+    final provider = context.read<YukProvider>();
+    if (!_isDone || provider.undoRemaining(order.id) == Duration.zero) return;
+    _undoTicker?.cancel();
+    _undoTicker = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {});
+      if (context.read<YukProvider>().undoRemaining(order.id) ==
+          Duration.zero) {
+        t.cancel();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _undoTicker?.cancel();
     for (final c in _takenControllers.values) {
       c.dispose();
     }
@@ -469,6 +499,10 @@ class _YukOrderCardState extends State<_YukOrderCard> {
         final orderTotal =
             done ? order.total.toDouble() : provider.orderTotal(order.id);
         final submitting = provider.submittingOrderId == order.id;
+        final reverting = provider.revertingOrderId == order.id;
+        // Yuborilgan buyurtmani qaytarib olishgacha qolgan soniyalar (0 = yo'q).
+        final undoLeft =
+            done ? provider.undoRemaining(order.id).inSeconds : 0;
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -731,31 +765,89 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 ],
               ),
               const SizedBox(height: 10),
-              // Yuborilgan buyurtmada tugma o'rniga "Yuborilgan" belgisi.
+              // Yuborilgan buyurtmada tugma o'rniga "Yuborilgan" belgisi va
+              // (30 soniya ichida) "Qaytarib olish" tugmasi.
               if (done)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle,
-                          size: 18, color: Color(0xFF2E7D32)),
-                      SizedBox(width: 6),
-                      Text(
-                        'Yuborilgan',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF2E7D32),
+                Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 18, color: Color(0xFF2E7D32)),
+                          SizedBox(width: 6),
+                          Text(
+                            'Yuborilgan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (undoLeft > 0) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: reverting
+                              ? null
+                              : () async {
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final ok =
+                                      await provider.revertOrder(order.id);
+                                  if (ok) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Qaytarib olindi'),
+                                      ),
+                                    );
+                                  } else if (provider.errorMessage != null) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(provider.errorMessage!),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: reverting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFC62828),
+                                  ),
+                                )
+                              : const Icon(Icons.undo, size: 18),
+                          label: Text(
+                            reverting
+                                ? 'Qaytarilmoqda...'
+                                : 'Qaytarib olish ($undoLeft s)',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFC62828),
+                            side: const BorderSide(color: Color(0xFFC62828)),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 )
               else
                 SizedBox(

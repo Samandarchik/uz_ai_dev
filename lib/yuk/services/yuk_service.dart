@@ -72,4 +72,27 @@ class YukService {
       throw Exception('Buyurtmani yuborishda kutilmagan xato: $e');
     }
   }
+
+  // POST /api/yuk/orders/{id}/revert -> yuborilgan buyurtmani qaytarib olish
+  // (narxlangan -> qayta tahrirlanadigan holatga). Faqat ~30 soniya ichida.
+  Future<void> revertOrder(int orderId) async {
+    try {
+      final response = await dio.post('${AppUrls.yukOrders}/$orderId/revert');
+      if (response.statusCode == 200) {
+        return;
+      }
+      throw Exception('Qaytarib olib bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Qaytarib olishda kutilmagan xato: $e');
+    }
+  }
 }
