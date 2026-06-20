@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
 import 'package:uz_ai_dev/user/services/info_piuls.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'dart:convert';
@@ -154,6 +155,8 @@ class _LoginPageState extends State<LoginPage> {
 
     if (isAdmin == true || role == "superadmin") {
       context.pushAndRemove(const AdminHomeUi());
+    } else if (role == "ombor") {
+      context.pushAndRemove(const OmborHomeUi());
     } else if (role == "customer" || role == "bringer") {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi
       final prefs = await SharedPreferences.getInstance();

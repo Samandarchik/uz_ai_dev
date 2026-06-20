@@ -9,6 +9,9 @@ abstract final class AppUrls {
   static const String product1 = '$baseUrl/api/products1';
   static const String product = '$baseUrl/api/products';
 
+  // Ombor (bozor mahsulotlari)
+  static String omborProducts = '$baseUrl/api/ombor/products';
+
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
   static const String orderslist = '$baseUrl/api/orderslist';
