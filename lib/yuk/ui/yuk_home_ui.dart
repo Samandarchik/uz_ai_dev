@@ -288,11 +288,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   final Map<int, TextEditingController> _subtotalControllers = {};
 
   // Har bir item (product_id) uchun "Nechta olgani" maydonining FocusNode'i.
-  // Item "+" bilan ochilganda shu maydonga avtomatik fokus berish uchun.
   final Map<int, FocusNode> _takenFocusNodes = {};
-
-  // Ochiq (narx maydonlari ko'rinadigan) itemlarning product_id lari.
-  final Set<int> _expanded = {};
 
   YukOrder get order => widget.order;
 
@@ -314,28 +310,6 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       _subtotalControllers[item.productId] = TextEditingController(
           text: existing != null ? _fmt(existing.subtotal) : '');
       _takenFocusNodes[item.productId] = FocusNode();
-      // Allaqachon to'ldirilgan item default OCHIQ ko'rsatiladi.
-      if (existing != null && existing.taken > 0) {
-        _expanded.add(item.productId);
-      }
-    }
-  }
-
-  void _toggleExpanded(int productId) {
-    final willOpen = !_expanded.contains(productId);
-    setState(() {
-      if (willOpen) {
-        _expanded.add(productId);
-      } else {
-        _expanded.remove(productId);
-      }
-    });
-    // Item endi OCHILSA, frame chizilgach "Nechta olgani" maydoniga
-    // avtomatik fokus berib klaviaturani ochamiz. Yopilganda fokus so'ralmaydi.
-    if (willOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _takenFocusNodes[productId]?.requestFocus();
-      });
     }
   }
 
@@ -381,12 +355,12 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     return DateFormat('dd.MM.yyyy HH:mm').format(dt.toLocal());
   }
 
-  // Inline kichik narx maydoni.
+  // Inline kichik narx maydoni (jadval ustuni ichida).
   Widget _inlineField({
     required TextEditingController controller,
-    required String label,
     required ValueChanged<String> onChanged,
     FocusNode? focusNode,
+    String? hint,
   }) {
     return TextField(
       controller: controller,
@@ -394,13 +368,14 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       keyboardType: TextInputType.number,
       inputFormatters: [ThousandsSeparatorInputFormatter()],
       onChanged: onChanged,
+      textAlign: TextAlign.center,
       style: const TextStyle(fontSize: 13, color: Colors.black87),
       decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 12, color: Colors.black54),
+        hintText: hint,
+        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -411,6 +386,11 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       ),
     );
   }
+
+  // Jadval ustunlari uchun nisbatlar — sarlavha va qatorlar bir xil ishlatadi.
+  static const int _nameFlex = 5;
+  static const int _qtyFlex = 3;
+  static const int _sumFlex = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -470,115 +450,100 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 ],
               ),
               const Divider(height: 18),
+              // Jadval sarlavhasi (ustun nomlari).
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      flex: _nameFlex,
+                      child: Text(
+                        'Mahsulot',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      flex: _qtyFlex,
+                      child: Text(
+                        'Nechta olgani',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      flex: _sumFlex,
+                      child: Text(
+                        'Jami summa',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Jadval qatorlari — har bir mahsulot uchun nom + ikkita maydon.
               ...order.items.map((item) {
-                final isOpen = _expanded.contains(item.productId);
-                final priced =
-                    provider.getItemPrice(order.id, item.productId);
-                final hasPrice = priced != null && priced.taken > 0;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.name,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${_formatCount(item.count)}'
-                                  '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                // Yopiq bo'lsa va narx kiritilgan bo'lsa qisqa ko'rinish.
-                                if (!isOpen && hasPrice) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${_formatMoney(priced.taken)} olindi • '
-                                    '${_formatMoney(priced.subtotal)} so\'m',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: _accentColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Toggle tugma: ochish/yopish.
-                          Material(
-                            color: isOpen
-                                ? _accentColor
-                                : _accentColor.withValues(alpha: 0.12),
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: () => _toggleExpanded(item.productId),
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Icon(
-                                  isOpen ? Icons.close : Icons.add,
-                                  size: 18,
-                                  color:
-                                      isOpen ? Colors.white : _accentColor,
-                                ),
+                      Expanded(
+                        flex: _nameFlex,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_formatCount(item.count)}'
+                              '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      // Narx maydonlari FAQAT ochiq bo'lganda.
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeInOut,
-                        alignment: Alignment.topCenter,
-                        child: isOpen
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: _inlineField(
-                                        controller:
-                                            _takenControllers[item.productId]!,
-                                        focusNode: _takenFocusNodes[
-                                            item.productId],
-                                        label: 'Nechta olgani',
-                                        onChanged: (_) =>
-                                            _onItemChanged(item.productId),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _inlineField(
-                                        controller: _subtotalControllers[
-                                            item.productId]!,
-                                        label: 'Jami summa',
-                                        onChanged: (_) =>
-                                            _onItemChanged(item.productId),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : const SizedBox(width: double.infinity),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: _qtyFlex,
+                        child: _inlineField(
+                          controller: _takenControllers[item.productId]!,
+                          focusNode: _takenFocusNodes[item.productId],
+                          hint: '0',
+                          onChanged: (_) => _onItemChanged(item.productId),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: _sumFlex,
+                        child: _inlineField(
+                          controller: _subtotalControllers[item.productId]!,
+                          hint: '0',
+                          onChanged: (_) => _onItemChanged(item.productId),
+                        ),
                       ),
                     ],
                   ),
