@@ -98,26 +98,33 @@ class _EditUserPageState extends State<EditUserPage> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedRole,
-              isExpanded: true,
-              items: _roleOptions
-                  .map((role) => DropdownMenuItem<String>(
-                        value: role,
-                        child: Text(_roleLabel(role)),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedRole = value);
-                }
-              },
+          child: RadioGroup<String>(
+            groupValue: _selectedRole,
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedRole = value);
+              }
+            },
+            child: Column(
+              children: [
+                for (int i = 0; i < _roleOptions.length; i++)
+                  RadioListTile<String>(
+                    value: _roleOptions[i],
+                    title: Text(_roleLabel(_roleOptions[i])),
+                    activeColor: Colors.blue.shade600,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12),
+                    shape: i < _roleOptions.length - 1
+                        ? Border(
+                            bottom: BorderSide(color: Colors.grey.shade200),
+                          )
+                        : null,
+                  ),
+              ],
             ),
           ),
         ),
