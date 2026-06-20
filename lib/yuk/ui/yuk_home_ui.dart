@@ -601,9 +601,13 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                 final unitPrice = (takenVal > 0 && subtotalVal > 0)
                     ? subtotalVal / takenVal
                     : null;
-                final unitLabel = (item.type != null && item.type!.isNotEmpty)
-                    ? '1 ${item.type}'
-                    : '1 dona';
+                // Birlik nomi: "кг", "шт", bo'lmasa "dona".
+                final unitName = (item.type != null && item.type!.isNotEmpty)
+                    ? item.type!
+                    : 'dona';
+                // Olingan miqdor + birlik narxi: "5.250 кг • 1 кг = 9 524 so'm".
+                final unitLabel =
+                    '${_fmtQty(takenVal)} $unitName • 1 $unitName';
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
