@@ -174,7 +174,11 @@ class _YukHomeUiState extends State<YukHomeUi> {
             tabs: _sklads.map((id) => Tab(text: _skladName(id))).toList(),
           ),
         ),
-        body: Consumer<YukProvider>(
+        // Bo'sh joyga (maydonlardan tashqari) bosilsa klaviatura yopiladi.
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Consumer<YukProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading) {
               return const Center(child: CircularProgressIndicator.adaptive());
@@ -214,6 +218,7 @@ class _YukHomeUiState extends State<YukHomeUi> {
               }).toList(),
             );
           },
+          ),
         ),
       ),
     );
