@@ -16,6 +16,7 @@ class ProductModelAdmin {
   final bool moneApp;
   final bool bozor;
   final String source;
+  final List<int> sklads;
 
   ProductModelAdmin({
     required this.id,
@@ -32,6 +33,7 @@ class ProductModelAdmin {
     this.moneApp = true,
     this.bozor = false,
     this.source = 'samarqand',
+    this.sklads = const [],
   });
 
   factory ProductModelAdmin.fromJson(Map<String, dynamic> json) {
@@ -53,6 +55,7 @@ class ProductModelAdmin {
               (json['source'] as String).isEmpty)
           ? 'samarqand'
           : json['source'],
+      sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
     );
   }
 
@@ -89,6 +92,7 @@ class ProductModelAdmin {
       'mone_app': moneApp,
       'bozor': bozor,
       'source': source,
+      'sklads': sklads,
     };
   }
 
@@ -106,6 +110,7 @@ class ProductModelAdmin {
       'mone_app': moneApp,
       'bozor': bozor,
       'source': source,
+      'sklads': sklads,
     };
   }
 
@@ -124,6 +129,7 @@ class ProductModelAdmin {
     bool? moneApp,
     bool? bozor,
     String? source,
+    List<int>? sklads,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -140,6 +146,7 @@ class ProductModelAdmin {
       moneApp: moneApp ?? this.moneApp,
       bozor: bozor ?? this.bozor,
       source: source ?? this.source,
+      sklads: sklads ?? this.sklads,
     );
   }
 }

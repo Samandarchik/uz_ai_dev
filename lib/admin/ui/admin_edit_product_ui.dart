@@ -40,11 +40,17 @@ class _EditProductPageState extends State<EditProductPage> {
   late bool _moneApp;
   late bool _bozor;
   late String _source;
+  late List<int> _selectedSklads;
 
   static const Map<String, String> _sourceOptions = {
     'samarqand': 'Samarqand',
     'toshkent': 'Toshkent',
     'zagranitsa': 'Zagranitsa',
+  };
+
+  static const Map<int, String> _skladOptions = {
+    1: 'Marxabo Sklat',
+    2: 'Sardor Sklat',
   };
 
   @override
@@ -68,6 +74,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _source = _sourceOptions.containsKey(widget.product.source)
         ? widget.product.source
         : 'samarqand';
+    _selectedSklads = List.from(widget.product.sklads);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryProviderAdmin>().getCategories();
@@ -411,41 +418,6 @@ class _EditProductPageState extends State<EditProductPage> {
               },
             ),
             const SizedBox(height: 16),
-            Consumer<FilialProviderAdmin>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(
-                      child: CircularProgressIndicator.adaptive());
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Филиалы:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...provider.filials.map((filial) {
-                      return CheckboxListTile(
-                        title: Text(filial.name),
-                        value: _selectedFilials.contains(filial.id),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedFilials.add(filial.id);
-                            } else {
-                              _selectedFilials.remove(filial.id);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
             // Mone app / Bozor / Yuk manbai
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -457,6 +429,43 @@ class _EditProductPageState extends State<EditProductPage> {
                 });
               },
             ),
+            // Filiallar tanlovi faqat Mone app yoqilganda ko'rinadi
+            if (_moneApp)
+              Consumer<FilialProviderAdmin>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(
+                        child: CircularProgressIndicator.adaptive());
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Филиалы:',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...provider.filials.map((filial) {
+                        return CheckboxListTile(
+                          title: Text(filial.name),
+                          value: _selectedFilials.contains(filial.id),
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedFilials.add(filial.id);
+                              } else {
+                                _selectedFilials.remove(filial.id);
+                              }
+                            });
+                          },
+                        );
+                      }),
+                    ],
+                  );
+                },
+              ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Bozor'),
@@ -467,25 +476,53 @@ class _EditProductPageState extends State<EditProductPage> {
                 });
               },
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _source,
-              decoration: const InputDecoration(
-                labelText: 'Yuk qayerdan keladi',
-                border: OutlineInputBorder(),
+            // Bozor yoqilganda: yuk manbai (radio) va sklad tanlovi (checkbox)
+            if (_bozor) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Yuk qayerdan keladi',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              items: _sourceOptions.entries.map((entry) {
-                return DropdownMenuItem<String>(
-                  value: entry.key,
-                  child: Text(entry.value),
+              RadioGroup<String>(
+                groupValue: _source,
+                onChanged: (value) {
+                  setState(() {
+                    _source = value ?? 'samarqand';
+                  });
+                },
+                child: Column(
+                  children: _sourceOptions.entries.map((entry) {
+                    return RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(entry.value),
+                      value: entry.key,
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Qaysi skladdan buyurtma bera oladi',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ..._skladOptions.entries.map((entry) {
+                return CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(entry.value),
+                  value: _selectedSklads.contains(entry.key),
+                  onChanged: (bool? value) {
+                    setState(() {
+                      if (value == true) {
+                        _selectedSklads.add(entry.key);
+                      } else {
+                        _selectedSklads.remove(entry.key);
+                      }
+                    });
+                  },
                 );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _source = value ?? 'samarqand';
-                });
-              },
-            ),
+              }),
+            ],
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
@@ -499,11 +536,19 @@ class _EditProductPageState extends State<EditProductPage> {
                       ? null
                       : () async {
                           if (_formKey.currentState!.validate()) {
-                            if (_selectedFilials.isEmpty) {
+                            if (_moneApp && _selectedFilials.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content:
                                         Text('Выберите хотя бы одну ветку')),
+                              );
+                              return;
+                            }
+                            if (_bozor && _selectedSklads.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Выберите хотя бы один склад')),
                               );
                               return;
                             }
@@ -545,6 +590,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               moneApp: _moneApp,
                               bozor: _bozor,
                               source: _source,
+                              sklads: _selectedSklads,
                             );
 
                             final success = await context
