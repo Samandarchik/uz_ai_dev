@@ -301,14 +301,23 @@ class _OmborProductTile extends StatelessWidget {
   static const Color _accentColor = Color(0xFFC5A97B);
 
   String get _subtitle {
-    // Miqdor birligi mahsulotning o'z type'i (kg/sht), "g" emas.
     final unit = (product.type != null && product.type!.isNotEmpty)
         ? product.type!
         : '';
-    if (product.grams != null) {
-      return unit.isNotEmpty ? '${product.grams} $unit' : '${product.grams}';
+    // Ombor (bozor) ekranida pachka miqdori = bozor gramm; bo'lmasa mone gramm.
+    final qty = product.bozorGrams ?? product.grams;
+    if (qty == null) return unit;
+
+    final v = qty.toDouble();
+    final u = unit.toLowerCase();
+    final isKg = u == 'kg' || u == 'кг';
+    // 1 kg dan kam bo'lsa grammda ko'rsatamiz: 0.4 kg -> "400 gr".
+    if (isKg && v > 0 && v < 1) {
+      return '${(v * 1000).round()} gr';
     }
-    return unit;
+    // Ortiqcha nollarsiz: 0.4 -> "0.4", 2 -> "2".
+    final s = v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+    return unit.isNotEmpty ? '$s $unit' : s;
   }
 
   @override
