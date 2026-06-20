@@ -239,12 +239,69 @@ String _formatMoney(num v) {
 }
 
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.
-// Har item yonida narx kiritish "+" tugmasi va pastida "Chek bilan yuborish".
-class _YukOrderCard extends StatelessWidget {
+// Har item qatorida INLINE narx maydonlari (Nechpuldan / Jami summa),
+// pastida "Chek bilan yuborish" tugmasi.
+class _YukOrderCard extends StatefulWidget {
   final YukOrder order;
   const _YukOrderCard({required this.order});
 
+  @override
+  State<_YukOrderCard> createState() => _YukOrderCardState();
+}
+
+class _YukOrderCardState extends State<_YukOrderCard> {
   static const Color _accentColor = Color(0xFFC5A97B);
+
+  // Har bir item (product_id) uchun narx va jami controllerlari.
+  final Map<int, TextEditingController> _priceControllers = {};
+  final Map<int, TextEditingController> _subtotalControllers = {};
+
+  YukOrder get order => widget.order;
+
+  String _fmt(double v) {
+    if (v == 0) return '';
+    return v.toStringAsFixed(0);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final provider = context.read<YukProvider>();
+    for (final item in order.items) {
+      final existing = provider.getItemPrice(order.id, item.productId);
+      _priceControllers[item.productId] =
+          TextEditingController(text: existing != null ? _fmt(existing.price) : '');
+      _subtotalControllers[item.productId] = TextEditingController(
+          text: existing != null ? _fmt(existing.subtotal) : '');
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _priceControllers.values) {
+      c.dispose();
+    }
+    for (final c in _subtotalControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  // Bo'sh yoki noto'g'ri bo'lsa 0 qaytaradi.
+  double _parse(String raw) {
+    final cleaned = raw.trim().replaceAll(' ', '');
+    if (cleaned.isEmpty) return 0;
+    final v = double.tryParse(cleaned);
+    if (v == null || v < 0) return 0;
+    return v;
+  }
+
+  void _onItemChanged(int productId) {
+    final provider = context.read<YukProvider>();
+    final price = _parse(_priceControllers[productId]?.text ?? '');
+    final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
+    provider.setItemPrice(order.id, productId, price, subtotal);
+  }
 
   String _formatCount(num v) {
     if (v == v.roundToDouble()) return v.toInt().toString();
@@ -258,25 +315,30 @@ class _YukOrderCard extends StatelessWidget {
     return DateFormat('dd.MM.yyyy HH:mm').format(dt.toLocal());
   }
 
-  // Pastdan chiqadigan narx kiritish oynasi.
-  Future<void> _openPriceSheet(BuildContext context, YukOrderItem item) async {
-    final provider = context.read<YukProvider>();
-    final existing = provider.getItemPrice(order.id, item.productId);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (sheetContext) => _PriceSheet(
-        item: item,
-        initialPrice: existing?.price,
-        initialSubtotal: existing?.subtotal,
-        onSave: (price, subtotal) {
-          provider.setItemPrice(order.id, item.productId, price, subtotal);
-        },
+  // Inline kichik narx maydoni.
+  Widget _inlineField({
+    required TextEditingController controller,
+    required String label,
+    required ValueChanged<String> onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      onChanged: onChanged,
+      style: const TextStyle(fontSize: 13, color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 12, color: Colors.black54),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _accentColor),
+        ),
       ),
     );
   }
@@ -340,54 +402,48 @@ class _YukOrderCard extends StatelessWidget {
               ),
               const Divider(height: 18),
               ...order.items.map((item) {
-                final p = provider.getItemPrice(order.id, item.productId);
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.name,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${_formatCount(item.count)}'
-                              '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            if (p != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                '${_formatMoney(p.price)} so\'mdan • '
-                                'Jami: ${_formatMoney(p.subtotal)} so\'m',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _accentColor,
-                                ),
-                              ),
-                            ],
-                          ],
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      _circleButton(
-                        icon: p != null ? Icons.edit : Icons.add,
-                        background:
-                            p != null ? Colors.grey.shade200 : _accentColor,
-                        foreground: p != null ? Colors.black87 : Colors.white,
-                        onTap: () => _openPriceSheet(context, item),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_formatCount(item.count)}'
+                        '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _inlineField(
+                              controller: _priceControllers[item.productId]!,
+                              label: 'Nechpuldan',
+                              onChanged: (_) => _onItemChanged(item.productId),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _inlineField(
+                              controller:
+                                  _subtotalControllers[item.productId]!,
+                              label: 'Jami summa',
+                              onChanged: (_) => _onItemChanged(item.productId),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -464,173 +520,6 @@ class _YukOrderCard extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget _circleButton({
-    required IconData icon,
-    required Color background,
-    required Color foreground,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: background,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, size: 20, color: foreground),
-        ),
-      ),
-    );
-  }
-}
-
-// Narx kiritish oynasi: birlik narxi va jami summa.
-class _PriceSheet extends StatefulWidget {
-  final YukOrderItem item;
-  final double? initialPrice;
-  final double? initialSubtotal;
-  final void Function(double price, double subtotal) onSave;
-
-  const _PriceSheet({
-    required this.item,
-    required this.initialPrice,
-    required this.initialSubtotal,
-    required this.onSave,
-  });
-
-  @override
-  State<_PriceSheet> createState() => _PriceSheetState();
-}
-
-class _PriceSheetState extends State<_PriceSheet> {
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _priceController;
-  late final TextEditingController _subtotalController;
-
-  String _fmt(double? v) {
-    if (v == null || v == 0) return '';
-    return v.toStringAsFixed(0);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _priceController = TextEditingController(text: _fmt(widget.initialPrice));
-    _subtotalController =
-        TextEditingController(text: _fmt(widget.initialSubtotal));
-  }
-
-  @override
-  void dispose() {
-    _priceController.dispose();
-    _subtotalController.dispose();
-    super.dispose();
-  }
-
-  String? _validateNumber(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Maydonni to\'ldiring';
-    }
-    final parsed = double.tryParse(value.trim().replaceAll(' ', ''));
-    if (parsed == null) return 'Faqat son kiriting';
-    if (parsed < 0) return 'Manfiy bo\'lmasin';
-    return null;
-  }
-
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
-    final price =
-        double.parse(_priceController.text.trim().replaceAll(' ', ''));
-    final subtotal =
-        double.parse(_subtotalController.text.trim().replaceAll(' ', ''));
-    widget.onSave(price, subtotal);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              widget.item.name,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _priceController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              validator: _validateNumber,
-              decoration: InputDecoration(
-                labelText: 'Nechpuldan',
-                suffixText: 'so\'m',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _subtotalController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              validator: _validateNumber,
-              decoration: InputDecoration(
-                labelText: 'Jami summa',
-                suffixText: 'so\'m',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accentColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('Saqlash'),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
