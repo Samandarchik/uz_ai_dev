@@ -96,7 +96,8 @@ class _OmborHomeUiState extends State<OmborHomeUi> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.only(bottom: 24),
+            // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
+            padding: const EdgeInsets.only(bottom: 96),
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final category = categories[index];
@@ -125,6 +126,124 @@ class _OmborHomeUiState extends State<OmborHomeUi> {
           );
         },
       ),
+      bottomNavigationBar: const _OmborCartBar(),
+    );
+  }
+}
+
+// Pastdagi savat paneli: nechta mahsulot tanlangani + "Buyurtma berish".
+class _OmborCartBar extends StatelessWidget {
+  const _OmborCartBar();
+
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  String _formatQty(double v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
+  }
+
+  Future<void> _submit(BuildContext context, OmborProvider provider) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final message = await provider.submitOrder();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message.isEmpty ? 'Buyurtma yuborildi' : message),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OmborProvider>(
+      builder: (context, provider, child) {
+        if (provider.cartItemCount == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${provider.cartItemCount} ta mahsulot',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        'Jami: ${_formatQty(provider.cartTotalQty)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: provider.isSubmitting
+                      ? null
+                      : () => provider.clearCart(),
+                  child: const Text(
+                    'Tozalash',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                ElevatedButton(
+                  onPressed: provider.isSubmitting
+                      ? null
+                      : () => _submit(context, provider),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accentColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                  ),
+                  child: provider.isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Buyurtma berish'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -233,7 +352,92 @@ class _OmborProductTile extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          _QtyStepper(productId: product.id),
         ],
+      ),
+    );
+  }
+}
+
+// Mahsulot uchun miqdor tanlash (+/-). 0 bo'lsa faqat "+" tugmasi ko'rinadi.
+class _QtyStepper extends StatelessWidget {
+  final int productId;
+  const _QtyStepper({required this.productId});
+
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  String _formatQty(double v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OmborProvider>(
+      builder: (context, provider, child) {
+        final count = provider.countOf(productId);
+
+        if (count <= 0) {
+          return _circleButton(
+            icon: Icons.add,
+            background: _accentColor,
+            foreground: Colors.white,
+            onTap: () => provider.addToCart(productId),
+          );
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _circleButton(
+              icon: Icons.remove,
+              background: Colors.grey.shade200,
+              foreground: Colors.black87,
+              onTap: () => provider.decrement(productId),
+            ),
+            Container(
+              constraints: const BoxConstraints(minWidth: 32),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                _formatQty(count),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            _circleButton(
+              icon: Icons.add,
+              background: _accentColor,
+              foreground: Colors.white,
+              onTap: () => provider.addToCart(productId),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _circleButton({
+    required IconData icon,
+    required Color background,
+    required Color foreground,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: background,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 20, color: foreground),
+        ),
       ),
     );
   }

@@ -12,6 +12,62 @@ class OmborProvider extends ChangeNotifier {
 
   List<String> get categories => productsByCategory.keys.toList();
 
+  // ─────────────────────── Savatcha holati ───────────────────────
+  // product_id -> count (count float bo'lishi mumkin).
+  final Map<int, double> _cart = {};
+
+  Map<int, double> get cart => Map.unmodifiable(_cart);
+
+  // Savatdagi har xil mahsulotlar soni.
+  int get cartItemCount => _cart.length;
+
+  // Savatdagi umumiy miqdor (countlar yig'indisi).
+  double get cartTotalQty =>
+      _cart.values.fold(0.0, (sum, count) => sum + count);
+
+  bool isSubmitting = false;
+
+  double countOf(int productId) => _cart[productId] ?? 0;
+
+  // Mahsulotni 1 taga oshirish (yo'q bo'lsa qo'shadi).
+  void addToCart(int productId, {double step = 1}) {
+    _cart[productId] = (_cart[productId] ?? 0) + step;
+    notifyListeners();
+  }
+
+  // Mahsulotni 1 taga kamaytirish; 0 ga tushsa savatdan olib tashlanadi.
+  void decrement(int productId, {double step = 1}) {
+    final current = _cart[productId] ?? 0;
+    final next = current - step;
+    if (next <= 0) {
+      _cart.remove(productId);
+    } else {
+      _cart[productId] = next;
+    }
+    notifyListeners();
+  }
+
+  // Mahsulotni savatdan butunlay olib tashlash.
+  void removeFromCart(int productId) {
+    _cart.remove(productId);
+    notifyListeners();
+  }
+
+  // Aniq miqdorni o'rnatish; <=0 bo'lsa olib tashlanadi.
+  void setCount(int productId, double count) {
+    if (count <= 0) {
+      _cart.remove(productId);
+    } else {
+      _cart[productId] = count;
+    }
+    notifyListeners();
+  }
+
+  void clearCart() {
+    _cart.clear();
+    notifyListeners();
+  }
+
   Future<void> fetchProducts() async {
     isLoading = true;
     errorMessage = null;
@@ -23,6 +79,30 @@ class OmborProvider extends ChangeNotifier {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Savatdagi mahsulotlardan buyurtma yuborish.
+  // Muvaffaqiyatda savatni tozalaydi va backend message'ini qaytaradi.
+  // Xato bo'lsa Exception otadi (UI uni ushlab SnackBar ko'rsatadi).
+  Future<String> submitOrder() async {
+    if (_cart.isEmpty) {
+      throw Exception('Savat bo\'sh');
+    }
+
+    isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final items = _cart.entries
+          .map((e) => {'product_id': e.key, 'count': e.value})
+          .toList();
+      final message = await _service.submitOrder(items);
+      _cart.clear();
+      return message;
+    } finally {
+      isSubmitting = false;
       notifyListeners();
     }
   }
