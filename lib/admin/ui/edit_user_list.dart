@@ -30,6 +30,8 @@ class _EditUserPageState extends State<EditUserPage> {
 
   bool _isAdmin = false;
   int? _selectedFilialId;
+  String _selectedRole = 'seller';
+  late List<String> _roleOptions;
   bool _isLoading = false;
   bool _isLoadingFilials = false;
   bool _obscurePassword = true;
@@ -45,10 +47,82 @@ class _EditUserPageState extends State<EditUserPage> {
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
     _passwordController = TextEditingController();
     _isAdmin = widget.user?.isAdmin ?? false;
-    _selectedFilialId = widget.user?.filial?.id;
+    // filial_id 0 (filial belgilanmagan, masalan ombor/yuk keltiruvchi) -> null,
+    // aks holda DropdownButton mos element topolmay crash bo'ladi.
+    final fid = widget.user?.filial?.id ?? widget.user?.filialId;
+    _selectedFilialId = (fid == null || fid == 0) ? null : fid;
     _categoryIds = widget.user?.categoryIds ?? [];
+
+    // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
+    // (masalan superadmin) uni ham ro'yxatga qo'shamiz (dropdown crash bo'lmasligi uchun).
+    _roleOptions = ['seller', 'ombor', 'yuk_keltiruvchi'];
+    final r = widget.user?.role ?? 'seller';
+    _selectedRole = r.isEmpty ? 'seller' : r;
+    if (!_roleOptions.contains(_selectedRole)) {
+      _roleOptions = [_selectedRole, ..._roleOptions];
+    }
+
     _loadFilials();
     _loadCategories();
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'seller':
+        return 'Sotuvchi (do\'konchi)';
+      case 'ombor':
+        return 'Ombor';
+      case 'yuk_keltiruvchi':
+        return 'Yuk keltiruvchi';
+      case 'superadmin':
+        return 'Superadmin';
+      case 'admin':
+        return 'Admin';
+      default:
+        return role;
+    }
+  }
+
+  Widget _buildRoleSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Rol',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedRole,
+              isExpanded: true,
+              items: _roleOptions
+                  .map((role) => DropdownMenuItem<String>(
+                        value: role,
+                        child: Text(_roleLabel(role)),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedRole = value);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -97,6 +171,7 @@ class _EditUserPageState extends State<EditUserPage> {
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
           isAdmin: _isAdmin,
+          role: _selectedRole,
           filialId: _selectedFilialId,
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
@@ -113,7 +188,8 @@ class _EditUserPageState extends State<EditUserPage> {
           phone: _phoneController.text.trim(),
           password: _passwordController.text,
           isAdmin: _isAdmin,
-          filialId: _selectedFilialId!.toInt(),
+          role: _selectedRole,
+          filialId: _selectedFilialId,
           categoryIds: _categoryIds,
         );
 
@@ -656,6 +732,10 @@ class _EditUserPageState extends State<EditUserPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 20),
+
+              // Role Selector
+              _buildRoleSelector(),
               const SizedBox(height: 20),
 
               // Filial Selector
