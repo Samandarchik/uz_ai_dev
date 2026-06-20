@@ -544,7 +544,11 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                     children: [
                       Expanded(
                         flex: _nameFlex,
-                        child: Column(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          // Mahsulot nomi ustiga bosilsa klaviatura yopiladi.
+                          onTap: () => FocusScope.of(context).unfocus(),
+                          child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
@@ -564,6 +568,7 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                               ),
                             ),
                           ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
