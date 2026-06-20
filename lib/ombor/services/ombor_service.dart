@@ -101,16 +101,28 @@ class OmborService {
     }
   }
 
-  // POST /api/orders/{id}/accept -> narxlangan buyurtmani qabul qilish va
-  // video(lar)ni yuborish (multipart, "videos" maydoni).
+  // POST /api/orders/{id}/accept -> narxlangan buyurtmani qabul qilish.
+  // Har bir mahsulot uchun rasm/video yuboriladi: multipart maydonlari
+  // "image_<product_id>" va "video_<product_id>".
+  // images/videos: product_id -> lokal fayl yo'li.
   // Javob: {"success": true, "message": "...", "data": {order}}
-  Future<void> acceptOrder(int orderId, List<String> videoPaths) async {
+  Future<void> acceptOrder(
+    int orderId,
+    Map<int, String> images,
+    Map<int, String> videos,
+  ) async {
     try {
       final form = FormData();
-      for (final path in videoPaths) {
+      for (final entry in images.entries) {
         form.files.add(MapEntry(
-          'videos',
-          await MultipartFile.fromFile(path),
+          'image_${entry.key}',
+          await MultipartFile.fromFile(entry.value),
+        ));
+      }
+      for (final entry in videos.entries) {
+        form.files.add(MapEntry(
+          'video_${entry.key}',
+          await MultipartFile.fromFile(entry.value),
         ));
       }
       final response = await dio.post(

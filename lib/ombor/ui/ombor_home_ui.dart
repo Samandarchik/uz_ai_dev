@@ -301,14 +301,14 @@ class _OmborProductTile extends StatelessWidget {
   static const Color _accentColor = Color(0xFFC5A97B);
 
   String get _subtitle {
-    final parts = <String>[];
-    if (product.type != null && product.type!.isNotEmpty) {
-      parts.add(product.type!);
-    }
+    // Miqdor birligi mahsulotning o'z type'i (kg/sht), "g" emas.
+    final unit = (product.type != null && product.type!.isNotEmpty)
+        ? product.type!
+        : '';
     if (product.grams != null) {
-      parts.add('${product.grams} g');
+      return unit.isNotEmpty ? '${product.grams} $unit' : '${product.grams}';
     }
-    return parts.join(' · ');
+    return unit;
   }
 
   @override

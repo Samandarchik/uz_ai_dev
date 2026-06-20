@@ -68,6 +68,9 @@ class OmborOrderItem {
   final String type;
   final double taken;
   final double subtotal;
+  // Omborchi qabul qilganda yuborgan rasm/video (relativ /static/...).
+  final String imageUrl;
+  final String videoUrl;
 
   OmborOrderItem({
     required this.productId,
@@ -76,6 +79,8 @@ class OmborOrderItem {
     required this.type,
     required this.taken,
     required this.subtotal,
+    this.imageUrl = '',
+    this.videoUrl = '',
   });
 
   factory OmborOrderItem.fromJson(Map<String, dynamic> json) {
@@ -86,6 +91,8 @@ class OmborOrderItem {
       type: json['type']?.toString() ?? '',
       taken: _toDouble(json['taken']),
       subtotal: _toDouble(json['subtotal']),
+      imageUrl: json['image_url']?.toString() ?? '',
+      videoUrl: json['video_url']?.toString() ?? '',
     );
   }
 }

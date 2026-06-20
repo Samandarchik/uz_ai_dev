@@ -135,13 +135,18 @@ class OmborProvider extends ChangeNotifier {
     }
   }
 
-  // Narxlangan buyurtmani qabul qilish va video(lar)ni yuborish.
+  // Narxlangan buyurtmani qabul qilish: har bir mahsulot uchun rasm/video.
+  // images/videos: product_id -> lokal fayl yo'li.
   // Muvaffaqiyatda ro'yxat yangilanadi. Xato bo'lsa Exception otadi.
-  Future<void> acceptOrder(int orderId, List<String> videoPaths) async {
+  Future<void> acceptOrder(
+    int orderId,
+    Map<int, String> images,
+    Map<int, String> videos,
+  ) async {
     acceptingOrderId = orderId;
     notifyListeners();
     try {
-      await _service.acceptOrder(orderId, videoPaths);
+      await _service.acceptOrder(orderId, images, videos);
       await fetchMyOrders();
     } finally {
       acceptingOrderId = null;

@@ -1,6 +1,9 @@
-import 'package:camera/camera.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
@@ -179,9 +182,74 @@ String _formatDate(String raw) {
   return '$datePart $timePart';
 }
 
-class _OrderCard extends StatelessWidget {
+class _OrderCard extends StatefulWidget {
   final OmborOrder order;
   const _OrderCard({required this.order});
+
+  @override
+  State<_OrderCard> createState() => _OrderCardState();
+}
+
+class _OrderCardState extends State<_OrderCard> {
+  OmborOrder get order => widget.order;
+
+  // Har bir mahsulot (product_id) uchun olingan rasm/video lokal fayl yo'li.
+  final Map<int, String> _images = {};
+  final Map<int, String> _videos = {};
+
+  final ImagePicker _picker = ImagePicker();
+
+  // Mahsulot uchun rasm olish (kamera).
+  Future<void> _captureImage(int productId) async {
+    final x = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    if (x != null) {
+      setState(() => _images[productId] = x.path);
+    }
+  }
+
+  // Mahsulot uchun aylana video yozish.
+  Future<void> _captureVideo(int productId) async {
+    final segments = await Navigator.of(context).push<List<XFile>>(
+      MaterialPageRoute(
+        builder: (_) => const TelegramStyleVideoRecorder(),
+      ),
+    );
+    if (segments != null && segments.isNotEmpty) {
+      setState(() => _videos[productId] = segments.first.path);
+    }
+  }
+
+  // Qabul qilish: olingan rasm/videolarni yuboradi.
+  Future<void> _accept() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final provider = context.read<OmborProvider>();
+
+    if (_images.isEmpty && _videos.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Kamida bitta rasm yoki video qo\'shing'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await provider.acceptOrder(order.id, _images, _videos);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Qabul qilindi')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,11 +315,20 @@ class _OrderCard extends StatelessWidget {
             ),
           ],
           const Divider(height: 20),
-          // Itemlar. Narxlangan/qabul qilingan bo'lsa — yuk keltiruvchidagidek
-          // jadval (Nechta olgani / Jami summa), aks holda oddiy ro'yxat.
+          // Itemlar. Narxlangan/qabul qilingan bo'lsa — har mahsulotga
+          // Rasm va Video ustunlari; aks holda oddiy ro'yxat.
           if (order.isPriced || order.isAccepted) ...[
-            const _PriceTableHeader(),
-            ...order.items.map((item) => _PricedItemRow(item: item)),
+            const _MediaTableHeader(),
+            ...order.items.map(
+              (item) => _MediaItemRow(
+                item: item,
+                editable: order.isPriced,
+                localImagePath: _images[item.productId],
+                localVideoPath: _videos[item.productId],
+                onTapImage: () => _captureImage(item.productId),
+                onTapVideo: () => _captureVideo(item.productId),
+              ),
+            ),
           ] else
             ...order.items.map((item) => _OrderItemRow(item: item)),
           // Jami (narxlangan yoki qabul qilingan bo'lsa).
@@ -279,7 +356,7 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ],
-          // Narxlangan buyurtma -> "Qabul qiling" (video yozib yuboriladi).
+          // Narxlangan buyurtma -> "Qabul qiling" (rasm/video yuboriladi).
           if (order.isPriced) ...[
             const SizedBox(height: 12),
             Consumer<OmborProvider>(
@@ -288,7 +365,7 @@ class _OrderCard extends StatelessWidget {
                 return SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: loading ? null : () => _acceptWithVideo(context),
+                    onPressed: loading ? null : _accept,
                     icon: loading
                         ? const SizedBox(
                             width: 18,
@@ -298,7 +375,7 @@ class _OrderCard extends StatelessWidget {
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.videocam, size: 20),
+                        : const Icon(Icons.check, size: 20),
                     label: Text(loading ? 'Yuborilmoqda...' : 'Qabul qiling'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E7D32),
@@ -314,7 +391,7 @@ class _OrderCard extends StatelessWidget {
               },
             ),
           ],
-          // Qabul qilingan buyurtma -> belgi va video soni.
+          // Qabul qilingan buyurtma -> belgi.
           if (order.isAccepted) ...[
             const SizedBox(height: 12),
             Container(
@@ -324,17 +401,14 @@ class _OrderCard extends StatelessWidget {
                 color: const Color(0xFF2E7D32).withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.check_circle,
-                      size: 18, color: Color(0xFF2E7D32)),
-                  const SizedBox(width: 6),
+                  Icon(Icons.check_circle, size: 18, color: Color(0xFF2E7D32)),
+                  SizedBox(width: 6),
                   Text(
-                    order.videoUrls.isNotEmpty
-                        ? 'Qabul qilindi • ${order.videoUrls.length} video'
-                        : 'Qabul qilindi',
-                    style: const TextStyle(
+                    'Qabul qilindi',
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF2E7D32),
@@ -347,38 +421,6 @@ class _OrderCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // "Qabul qiling" bosilganda: aylana video rekorderni ochadi, yozilgan
-  // video(lar)ni backendga yuboradi va buyurtmani qabul qiladi.
-  Future<void> _acceptWithVideo(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final provider = context.read<OmborProvider>();
-
-    final segments = await Navigator.of(context).push<List<XFile>>(
-      MaterialPageRoute(
-        builder: (_) => const TelegramStyleVideoRecorder(),
-      ),
-    );
-    // Foydalanuvchi bekor qilgan bo'lsa (orqaga) — hech narsa qilinmaydi.
-    if (segments == null || segments.isEmpty) return;
-
-    try {
-      await provider.acceptOrder(
-        order.id,
-        segments.map((e) => e.path).toList(),
-      );
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Qabul qilindi')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 }
 
@@ -437,9 +479,9 @@ class _OrderItemRow extends StatelessWidget {
   }
 }
 
-// Yuk keltiruvchidagidek jadval sarlavhasi.
-class _PriceTableHeader extends StatelessWidget {
-  const _PriceTableHeader();
+// Jadval sarlavhasi: Mahsulot | Rasm | Video.
+class _MediaTableHeader extends StatelessWidget {
+  const _MediaTableHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -456,14 +498,12 @@ class _PriceTableHeader extends StatelessWidget {
           SizedBox(width: 6),
           Expanded(
             flex: 3,
-            child: Text('Nechta olgani',
-                textAlign: TextAlign.center, style: style),
+            child: Text('Rasm', textAlign: TextAlign.center, style: style),
           ),
           SizedBox(width: 6),
           Expanded(
             flex: 4,
-            child: Text('Jami summa',
-                textAlign: TextAlign.center, style: style),
+            child: Text('Video', textAlign: TextAlign.center, style: style),
           ),
         ],
       ),
@@ -471,11 +511,24 @@ class _PriceTableHeader extends StatelessWidget {
   }
 }
 
-// Narxlangan mahsulot qatori: nom + olingan/buyurtma farqi + birlik narxi,
-// o'ngda "Nechta olgani" va "Jami summa" (read-only) qutilar.
-class _PricedItemRow extends StatelessWidget {
+// Mahsulot qatori: nom + olingan/buyurtma farqi + birlik narxi,
+// o'ngda "Rasm" va "Video" tugmalari (yoki yuborilgan media ko'rinishi).
+class _MediaItemRow extends StatelessWidget {
   final OmborOrderItem item;
-  const _PricedItemRow({required this.item});
+  final bool editable; // narxlangan (qabul qilinmagan) -> media olish mumkin
+  final String? localImagePath;
+  final String? localVideoPath;
+  final VoidCallback onTapImage;
+  final VoidCallback onTapVideo;
+
+  const _MediaItemRow({
+    required this.item,
+    required this.editable,
+    required this.localImagePath,
+    required this.localVideoPath,
+    required this.onTapImage,
+    required this.onTapVideo,
+  });
 
   static const Color _accent = Color(0xFFC5A97B);
 
@@ -550,41 +603,162 @@ class _PricedItemRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Expanded(
-            flex: 3,
-            child: _ReadOnlyBox(text: taken > 0 ? _fmtQty(taken) : '0'),
-          ),
+          // Rasm ustuni.
+          Expanded(flex: 3, child: _imageCell()),
           const SizedBox(width: 6),
-          Expanded(
-            flex: 4,
-            child: _ReadOnlyBox(text: subtotal > 0 ? _formatSum(subtotal) : '0'),
-          ),
+          // Video ustuni.
+          Expanded(flex: 4, child: _videoCell()),
         ],
+      ),
+    );
+  }
+
+  Widget _imageCell() {
+    // Tahrirlanadigan: olingan rasm bo'lsa thumbnail, aks holda "Rasm" tugma.
+    if (editable) {
+      if (localImagePath != null) {
+        return _MediaThumb(
+          onTap: onTapImage,
+          child: Image.file(File(localImagePath!), fit: BoxFit.cover),
+        );
+      }
+      return _MediaButton(
+        icon: Icons.photo_camera_outlined,
+        label: 'Rasm',
+        onTap: onTapImage,
+      );
+    }
+    // Qabul qilingan: yuborilgan rasm (network) yoki bo'sh.
+    if (item.imageUrl.isNotEmpty) {
+      return _MediaThumb(
+        child: Image.network(
+          '${AppUrls.baseUrl}${item.imageUrl}',
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, size: 18, color: Colors.grey),
+        ),
+      );
+    }
+    return const _MediaEmpty();
+  }
+
+  Widget _videoCell() {
+    if (editable) {
+      final has = localVideoPath != null;
+      return _MediaButton(
+        icon: has ? Icons.check_circle : Icons.videocam_outlined,
+        label: has ? 'Yozildi' : 'Video',
+        filled: has,
+        onTap: onTapVideo,
+      );
+    }
+    if (item.videoUrl.isNotEmpty) {
+      return const _MediaButton(
+        icon: Icons.play_circle_fill,
+        label: 'Video',
+        filled: true,
+      );
+    }
+    return const _MediaEmpty();
+  }
+}
+
+// Rasm/Video olish tugmasi (quti ko'rinishida).
+class _MediaButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool filled;
+  final VoidCallback? onTap;
+  const _MediaButton({
+    required this.icon,
+    required this.label,
+    this.filled = false,
+    this.onTap,
+  });
+
+  static const Color _green = Color(0xFF2E7D32);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = filled ? _green : Colors.grey.shade600;
+    return Material(
+      color: filled
+          ? _green.withValues(alpha: 0.10)
+          : const Color(0xFFF5F1EA),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: filled ? _green.withValues(alpha: 0.4) : Colors.grey.shade300,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// Read-only (faqat ko'rish uchun) qiymat qutisi — yuk keltiruvchidagi
-// o'chirilgan maydon ko'rinishida.
-class _ReadOnlyBox extends StatelessWidget {
-  final String text;
-  const _ReadOnlyBox({required this.text});
+// Olingan rasm thumbnaili.
+class _MediaThumb extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  const _MediaThumb({required this.child, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// Media yo'q (qabul qilingan, lekin bu mahsulotga yuborilmagan).
+class _MediaEmpty extends StatelessWidget {
+  const _MediaEmpty();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 42,
+      height: 48,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1EA),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 13, color: Colors.black54),
-      ),
+      child: Text('—', style: TextStyle(color: Colors.grey.shade500)),
     );
   }
 }
