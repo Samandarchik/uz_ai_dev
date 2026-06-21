@@ -240,7 +240,7 @@ class _OmborCartBar extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Jami: ${provider.cartTotalQty} ta',
+                        'Jami: ${_formatMilli(provider.cartTotalMilli)}',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -403,18 +403,34 @@ class _OmborProductTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _QtyStepper(productId: product.id),
+          _QtyStepper(
+            productId: product.id,
+            // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
+            // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
+            stepMilli: ((product.bozorGrams ?? 1) * 1000).round(),
+          ),
         ],
       ),
     );
   }
 }
 
-// Mahsulot uchun miqdor tanlash (+/-). Butun son (nechta dona/pachka).
-// 0 bo'lsa faqat "+" tugmasi ko'rinadi.
+// Milli-birlikni (qiymat*1000) faqat butun son arifmetikasi bilan formatlash:
+// 1200 -> "1.2", 400 -> "0.4", 2000 -> "2". Float umuman ishlatilmaydi.
+String _formatMilli(int milli) {
+  final whole = milli ~/ 1000;
+  final frac = milli % 1000;
+  if (frac == 0) return '$whole';
+  final f = frac.toString().padLeft(3, '0').replaceAll(RegExp(r'0+$'), '');
+  return '$whole.$f';
+}
+
+// Mahsulot uchun miqdor tanlash (+/-). Ichkarida milli-birlik (butun son);
+// har qadam = stepMilli (bozor gramm * 1000). 0 bo'lsa faqat "+" ko'rinadi.
 class _QtyStepper extends StatelessWidget {
   final int productId;
-  const _QtyStepper({required this.productId});
+  final int stepMilli;
+  const _QtyStepper({required this.productId, required this.stepMilli});
 
   static const Color _accentColor = Color(0xFFC5A97B);
 
@@ -422,14 +438,14 @@ class _QtyStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<OmborProvider>(
       builder: (context, provider, child) {
-        final count = provider.countOf(productId);
+        final milli = provider.countMilli(productId);
 
-        if (count <= 0) {
+        if (milli <= 0) {
           return _circleButton(
             icon: Icons.add,
             background: _accentColor,
             foreground: Colors.white,
-            onTap: () => provider.addToCart(productId),
+            onTap: () => provider.addToCart(productId, stepMilli),
           );
         }
 
@@ -440,14 +456,14 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.remove,
               background: Colors.grey.shade200,
               foreground: Colors.black87,
-              onTap: () => provider.decrement(productId),
+              onTap: () => provider.decrement(productId, stepMilli),
             ),
             Container(
               constraints: const BoxConstraints(minWidth: 32),
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                '$count',
+                _formatMilli(milli),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -459,7 +475,7 @@ class _QtyStepper extends StatelessWidget {
               icon: Icons.add,
               background: _accentColor,
               foreground: Colors.white,
-              onTap: () => provider.addToCart(productId),
+              onTap: () => provider.addToCart(productId, stepMilli),
             ),
           ],
         );

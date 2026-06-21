@@ -14,8 +14,9 @@ class OmborProvider extends ChangeNotifier {
   List<String> get categories => productsByCategory.keys.toList();
 
   // ─────────────────────── Savatcha holati ───────────────────────
-  // product_id -> count (butun son — nechta dona/pachka). Float emas, chunki
-  // float yig'indisida xatolik chiqadi (0.4+0.4+0.4 = 1.2000...02).
+  // product_id -> miqdor * 1000 ("milli-birlik", BUTUN son). Float emas:
+  // 0.4 -> 400; 400+400+400 = 1200 -> 1.2 (float xatosi yo'q). Ko'rsatishda
+  // va yuborishda /1000 qilinadi.
   final Map<int, int> _cart = {};
 
   Map<int, int> get cart => Map.unmodifiable(_cart);
@@ -23,22 +24,23 @@ class OmborProvider extends ChangeNotifier {
   // Savatdagi har xil mahsulotlar soni.
   int get cartItemCount => _cart.length;
 
-  // Savatdagi umumiy miqdor (countlar yig'indisi).
-  int get cartTotalQty => _cart.values.fold(0, (sum, count) => sum + count);
+  // Savatdagi umumiy miqdor (milli-birlik yig'indisi; ko'rsatishda /1000).
+  int get cartTotalMilli => _cart.values.fold(0, (sum, c) => sum + c);
 
   bool isSubmitting = false;
 
-  int countOf(int productId) => _cart[productId] ?? 0;
+  // Mahsulot miqdori milli-birlikda (0 = savatda yo'q).
+  int countMilli(int productId) => _cart[productId] ?? 0;
 
-  // Mahsulotni 1 taga oshirish (yo'q bo'lsa qo'shadi).
-  void addToCart(int productId) {
-    _cart[productId] = (_cart[productId] ?? 0) + 1;
+  // Bir qadam (stepMilli = bozor gramm * 1000) qo'shish.
+  void addToCart(int productId, int stepMilli) {
+    _cart[productId] = (_cart[productId] ?? 0) + stepMilli;
     notifyListeners();
   }
 
-  // Mahsulotni 1 taga kamaytirish; 0 ga tushsa savatdan olib tashlanadi.
-  void decrement(int productId) {
-    final next = (_cart[productId] ?? 0) - 1;
+  // Bir qadam kamaytirish; 0 ga tushsa savatdan olib tashlanadi.
+  void decrement(int productId, int stepMilli) {
+    final next = (_cart[productId] ?? 0) - stepMilli;
     if (next <= 0) {
       _cart.remove(productId);
     } else {
@@ -50,16 +52,6 @@ class OmborProvider extends ChangeNotifier {
   // Mahsulotni savatdan butunlay olib tashlash.
   void removeFromCart(int productId) {
     _cart.remove(productId);
-    notifyListeners();
-  }
-
-  // Aniq miqdorni o'rnatish; <=0 bo'lsa olib tashlanadi.
-  void setCount(int productId, int count) {
-    if (count <= 0) {
-      _cart.remove(productId);
-    } else {
-      _cart[productId] = count;
-    }
     notifyListeners();
   }
 
@@ -122,8 +114,9 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Milli-birlikdan haqiqiy miqdorga: 1200 -> 1.2 (xatosiz).
       final items = _cart.entries
-          .map((e) => {'product_id': e.key, 'count': e.value})
+          .map((e) => {'product_id': e.key, 'count': e.value / 1000.0})
           .toList();
       final message = await _service.submitOrder(items);
       _cart.clear();
