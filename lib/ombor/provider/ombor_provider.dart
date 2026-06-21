@@ -106,6 +106,9 @@ class OmborProvider extends ChangeNotifier {
   // Muvaffaqiyatda savatni tozalaydi va backend message'ini qaytaradi.
   // Xato bo'lsa Exception otadi (UI uni ushlab SnackBar ko'rsatadi).
   Future<String> submitOrder() async {
+    // Qayta yuborishni bloklash: tugma tez ikki marta bosilsa ham (UI guard
+    // build vaqtida ishlaydi) ikkita bir xil buyurtma yaratilmasin.
+    if (isSubmitting) return '';
     if (_cart.isEmpty) {
       throw Exception('Savat bo\'sh');
     }
