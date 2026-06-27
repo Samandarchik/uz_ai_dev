@@ -1,65 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/composition_item.dart';
+import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
 
-// Bitta ingredient qatori uchun controllerlar.
-class CompositionRow {
-  final TextEditingController nameController;
-  final TextEditingController amountController;
-  String unit;
+// Composition (tarkib) holatini boshqaradigan controller.
+// Endi ingredientlar qo'lda yozilmaydi — qidiruv sahifasidan tanlanadi.
+// Parent ekran shuni yaratadi, save paytida build() chaqiradi va dispose qiladi.
+class CompositionController {
+  final List<CompositionItem> items;
 
-  CompositionRow({String name = '', String amount = '', this.unit = ''})
-      : nameController = TextEditingController(text: name),
-        amountController = TextEditingController(text: amount);
+  CompositionController([List<CompositionItem>? initial])
+      : items = List<CompositionItem>.from(initial ?? const []);
+
+  // To'liq ro'yxatni qaytaradi.
+  List<CompositionItem> build() => List<CompositionItem>.from(items);
 
   void dispose() {
-    nameController.dispose();
-    amountController.dispose();
+    // Controller ichida tashlanadigan resurs yo'q (text controllerlar olib tashlandi).
   }
 }
 
-// Composition (tarkib) holatini boshqaradigan controller.
-// Parent ekran shuni yaratadi, save paytida build() chaqiradi va dispose qiladi.
-class CompositionController {
-  final List<CompositionRow> rows;
-
-  CompositionController([List<CompositionItem>? initial])
-      : rows = (initial ?? [])
-            .map((e) => CompositionRow(
-                  name: e.name,
-                  amount: _amountToText(e.amount),
-                  unit: e.unit,
-                ))
-            .toList();
-
-  static String _amountToText(double amount) {
-    if (amount == amount.roundToDouble()) {
-      return amount.toInt().toString();
-    }
-    return amount.toString();
+// Miqdorni chiroyli matnga aylantiradi (1.0 -> "1").
+String _amountToText(double amount) {
+  if (amount == amount.roundToDouble()) {
+    return amount.toInt().toString();
   }
-
-  // Bo'sh nomli qatorlarni tashlab, to'liq ro'yxatni qaytaradi.
-  List<CompositionItem> build() {
-    return rows
-        .where((r) => r.nameController.text.trim().isNotEmpty)
-        .map((r) => CompositionItem(
-              name: r.nameController.text.trim(),
-              amount: double.tryParse(
-                      r.amountController.text.trim().replaceAll(',', '.')) ??
-                  0,
-              unit: r.unit,
-            ))
-        .toList();
-  }
-
-  void dispose() {
-    for (final r in rows) {
-      r.dispose();
-    }
-  }
+  return amount.toString();
 }
 
 // "Ингредиенты / Tarkib" bo'limi UI.
+// Har bir ingredient read-only ko'rinadi (nom + miqdor + birlik), faqat o'chirish mumkin.
+// Pastdagi tugma qidiruv sahifasini ochadi va qaytgan ingredientni qo'shadi.
 class CompositionSection extends StatefulWidget {
   final CompositionController controller;
   final List<String> units;
@@ -75,29 +45,29 @@ class CompositionSection extends StatefulWidget {
 }
 
 class _CompositionSectionState extends State<CompositionSection> {
-  void _addRow() {
-    setState(() {
-      widget.controller.rows.add(CompositionRow(
-        unit: widget.units.isNotEmpty ? widget.units.first : '',
-      ));
-    });
+  Future<void> _addIngredient() async {
+    final result = await Navigator.push<CompositionItem>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompositionPickerPage(units: widget.units),
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        widget.controller.items.add(result);
+      });
+    }
   }
 
-  void _removeRow(int index) {
+  void _removeItem(int index) {
     setState(() {
-      widget.controller.rows[index].dispose();
-      widget.controller.rows.removeAt(index);
+      widget.controller.items.removeAt(index);
     });
-  }
-
-  String _effectiveUnit(CompositionRow row) {
-    if (widget.units.contains(row.unit)) return row.unit;
-    return widget.units.isNotEmpty ? widget.units.first : '';
   }
 
   @override
   Widget build(BuildContext context) {
-    final rows = widget.controller.rows;
+    final items = widget.controller.items;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -106,79 +76,32 @@ class _CompositionSectionState extends State<CompositionSection> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        ...List.generate(rows.length, (index) {
-          final row = rows[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Nomi
-                Expanded(
-                  flex: 4,
-                  child: TextFormField(
-                    controller: row.nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Название',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Miqdori
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: row.amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Кол-во',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Birligi (dropdown)
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    value:
-                        widget.units.isEmpty ? null : _effectiveUnit(row),
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Ед.',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: widget.units
-                        .map((u) => DropdownMenuItem<String>(
-                              value: u,
-                              child: Text(u),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        row.unit = value ?? row.unit;
-                      });
-                    },
-                  ),
-                ),
-                // O'chirish
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeRow(index),
-                ),
-              ],
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Ингредиенты не добавлены',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ),
+        ...List.generate(items.length, (index) {
+          final item = items[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              dense: true,
+              title: Text(item.name),
+              subtitle: Text('${_amountToText(item.amount)} ${item.unit}'),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () => _removeItem(index),
+              ),
             ),
           );
         }),
         const SizedBox(height: 4),
         OutlinedButton.icon(
-          onPressed: _addRow,
+          onPressed: _addIngredient,
           icon: const Icon(Icons.add),
           label: const Text('Добавить ингредиент'),
         ),
