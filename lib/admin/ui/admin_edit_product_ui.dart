@@ -50,6 +50,11 @@ class _EditProductPageState extends State<EditProductPage> {
   late final CompositionController _compositionController;
   List<String> _units = ApiProductService.defaultUnits;
 
+  // «Состав» switch: yoniq bo'lsa Состав tarkib nomlaridan to'ladi (read-only),
+  // eski erkin matn _savedComment ga saqlanadi.
+  late bool _compositionAsIngredients;
+  late String _savedComment;
+
   static const Map<String, String> _sourceOptions = {
     'samarqand': 'Samarqand',
     'toshkent': 'Toshkent',
@@ -90,6 +95,14 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _compositionController = CompositionController(widget.product.composition);
 
+    // «Состав» switch holatini saqlangan ma'lumotdan tiklaymiz.
+    _compositionAsIngredients = widget.product.compositionAsIngredients;
+    _savedComment = widget.product.comment ?? '';
+    if (_compositionAsIngredients) {
+      // Yoniq bo'lsa «Состав» nomlardan to'ladi (read-only).
+      ingredientsController.text = _compositionNames();
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
@@ -104,6 +117,32 @@ class _EditProductPageState extends State<EditProductPage> {
         _units = units;
       });
     }
+  }
+
+  // Tarkibdagi mahsulot nomlarini vergul bilan birlashtiradi.
+  String _compositionNames() =>
+      _compositionController.items.map((e) => e.name).join(', ');
+
+  // Switch yoniq bo'lsa «Состав» maydonini tarkib nomlaridan yangilaydi.
+  void _syncIngredientsFromComposition() {
+    if (_compositionAsIngredients) {
+      ingredientsController.text = _compositionNames();
+    }
+  }
+
+  void _onCompositionSwitchChanged(bool value) {
+    setState(() {
+      if (value) {
+        // YONIQ: joriy matnni comment ga saqlab, maydonni nomlardan to'ldiramiz.
+        _savedComment = ingredientsController.text;
+        _compositionAsIngredients = true;
+        ingredientsController.text = _compositionNames();
+      } else {
+        // O'CHIQ: comment dagi eski matnni tiklaymiz.
+        _compositionAsIngredients = false;
+        ingredientsController.text = _savedComment;
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -354,8 +393,23 @@ class _EditProductPageState extends State<EditProductPage> {
             SizedBox(
               height: 20,
             ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Состав = из ингредиентов',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Switch(
+                  value: _compositionAsIngredients,
+                  onChanged: _onCompositionSwitchChanged,
+                ),
+              ],
+            ),
             TextFormField(
               controller: ingredientsController,
+              readOnly: _compositionAsIngredients,
               decoration: const InputDecoration(
                 labelText: 'Состав',
                 border: OutlineInputBorder(),
@@ -572,6 +626,7 @@ class _EditProductPageState extends State<EditProductPage> {
             CompositionSection(
               controller: _compositionController,
               units: _units,
+              onChanged: () => setState(_syncIngredientsFromComposition),
             ),
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
@@ -645,6 +700,11 @@ class _EditProductPageState extends State<EditProductPage> {
                               source: _source,
                               sklads: _selectedSklads,
                               composition: _compositionController.build(),
+                              comment: _compositionAsIngredients
+                                  ? _savedComment
+                                  : ingredientsController.text,
+                              compositionAsIngredients:
+                                  _compositionAsIngredients,
                             );
 
                             final success = await context

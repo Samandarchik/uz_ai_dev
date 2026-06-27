@@ -41,6 +41,11 @@ class _AddProductPageState extends State<AddProductPage> {
   final CompositionController _compositionController = CompositionController();
   List<String> _units = ApiProductService.defaultUnits;
 
+  // «Состав» switch: yoniq bo'lsa Состав tarkib nomlaridan to'ladi (read-only),
+  // eski erkin matn _savedComment ga saqlanadi.
+  bool _compositionAsIngredients = false;
+  String _savedComment = '';
+
   static const Map<String, String> _sourceOptions = {
     'samarqand': 'Samarqand',
     'toshkent': 'Toshkent',
@@ -70,6 +75,32 @@ class _AddProductPageState extends State<AddProductPage> {
         _units = units;
       });
     }
+  }
+
+  // Tarkibdagi mahsulot nomlarini vergul bilan birlashtiradi.
+  String _compositionNames() =>
+      _compositionController.items.map((e) => e.name).join(', ');
+
+  // Switch yoniq bo'lsa «Состав» maydonini tarkib nomlaridan yangilaydi.
+  void _syncIngredientsFromComposition() {
+    if (_compositionAsIngredients) {
+      ingredientsControlle.text = _compositionNames();
+    }
+  }
+
+  void _onCompositionSwitchChanged(bool value) {
+    setState(() {
+      if (value) {
+        // YONIQ: joriy matnni comment ga saqlab, maydonni nomlardan to'ldiramiz.
+        _savedComment = ingredientsControlle.text;
+        _compositionAsIngredients = true;
+        ingredientsControlle.text = _compositionNames();
+      } else {
+        // O'CHIQ: comment dagi eski matnni tiklaymiz.
+        _compositionAsIngredients = false;
+        ingredientsControlle.text = _savedComment;
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -267,8 +298,23 @@ class _AddProductPageState extends State<AddProductPage> {
             SizedBox(
               height: 20,
             ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Состав = из ингредиентов',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Switch(
+                  value: _compositionAsIngredients,
+                  onChanged: _onCompositionSwitchChanged,
+                ),
+              ],
+            ),
             TextFormField(
               controller: ingredientsControlle,
+              readOnly: _compositionAsIngredients,
               decoration: const InputDecoration(
                 labelText: 'Состав',
                 border: OutlineInputBorder(),
@@ -279,7 +325,8 @@ class _AddProductPageState extends State<AddProductPage> {
               textInputAction:
                   TextInputAction.newline, // Enter yangi qator ochadi
               validator: (value) {
-                if (value == null || value.isEmpty) {
+                if (!_compositionAsIngredients &&
+                    (value == null || value.isEmpty)) {
                   return 'Писать Состав';
                 }
                 return null;
@@ -476,6 +523,7 @@ class _AddProductPageState extends State<AddProductPage> {
             CompositionSection(
               controller: _compositionController,
               units: _units,
+              onChanged: () => setState(_syncIngredientsFromComposition),
             ),
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
@@ -547,6 +595,11 @@ class _AddProductPageState extends State<AddProductPage> {
                               source: _source,
                               sklads: _selectedSklads,
                               composition: _compositionController.build(),
+                              comment: _compositionAsIngredients
+                                  ? _savedComment
+                                  : ingredientsControlle.text,
+                              compositionAsIngredients:
+                                  _compositionAsIngredients,
                             );
 
                             final success = await context

@@ -25,6 +25,12 @@ class ProductModelAdmin {
   // Mahsulot tarkibi (ingredientlar ro'yxati)
   final List<CompositionItem> composition;
 
+  // «Состав» switch yoqilganda eski erkin matn shu yerda saqlanadi
+  final String? comment;
+
+  // «Состав» tarkibdagi mahsulot nomlaridan to'lsa true bo'ladi
+  final bool compositionAsIngredients;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -43,6 +49,8 @@ class ProductModelAdmin {
     this.source = 'samarqand',
     this.sklads = const [],
     this.composition = const [],
+    this.comment,
+    this.compositionAsIngredients = false,
   });
 
   factory ProductModelAdmin.fromJson(Map<String, dynamic> json) {
@@ -67,6 +75,8 @@ class ProductModelAdmin {
           : json['source'],
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
       composition: CompositionItem.listFromJson(json['composition']),
+      comment: json['comment']?.toString(),
+      compositionAsIngredients: json['composition_as_ingredients'] ?? false,
     );
   }
 
@@ -88,6 +98,8 @@ class ProductModelAdmin {
       'bozor': bozor,
       'source': source,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'comment': comment,
+      'composition_as_ingredients': compositionAsIngredients,
     };
   }
 
@@ -108,6 +120,8 @@ class ProductModelAdmin {
       'source': source,
       'sklads': sklads,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'comment': comment,
+      'composition_as_ingredients': compositionAsIngredients,
     };
   }
 
@@ -128,6 +142,8 @@ class ProductModelAdmin {
       'source': source,
       'sklads': sklads,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'comment': comment,
+      'composition_as_ingredients': compositionAsIngredients,
     };
   }
 
@@ -149,6 +165,8 @@ class ProductModelAdmin {
     String? source,
     List<int>? sklads,
     List<CompositionItem>? composition,
+    String? comment,
+    bool? compositionAsIngredients,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -168,6 +186,9 @@ class ProductModelAdmin {
       source: source ?? this.source,
       sklads: sklads ?? this.sklads,
       composition: composition ?? this.composition,
+      comment: comment ?? this.comment,
+      compositionAsIngredients:
+          compositionAsIngredients ?? this.compositionAsIngredients,
     );
   }
 }
