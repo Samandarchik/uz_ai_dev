@@ -1,0 +1,377 @@
+{
+  "_model": {
+    "izoh": "Tortlar tex kartasi (тех карта) uchun JSON model. Barcha OG'IRLIK/HAJM butun son (int) sifatida ENG KICHIK birlikda saqlanadi: gramm (g) yoki millilitr (ml). float ISHLATILMAYDI. Dona (pcs) va metr (m) o'z birligida butun son. Miqdorlar PARTIYA uchun (batch_qty dona). 1 dona uchun = amount / batch_qty.",
+    "birliklar": {
+      "g": "gramm  (1 kg = 1000 g)",
+      "ml": "millilitr (1 litr = 1000 ml)",
+      "pcs": "dona",
+      "m": "metr"
+    },
+    "tech_card_maydonlari": {
+      "id": "string — barqaror kalit (slug)",
+      "name": "string — tort nomi",
+      "diameter_cm": "int — diametri (sm); leden/merenga uchun null",
+      "batch_qty": "int — partiyada nechta dona",
+      "batch_weight_g": "int — partiyaning umumiy vazni (g)",
+      "piece_weight_g": "int — 1 dona vazni (g)",
+      "bases": "Base[] — yarim tayyor bloklar (biskvit, krem, sироп, jele, yig'ish)",
+      "consumables": "Item[] — qadoqlash materiallari (расходник)"
+    },
+    "base_maydonlari": {
+      "name": "string — baza nomi (масалан 'База61 Крем А')",
+      "weight_g": "int — shu bazaning partiyaga umumiy vazni (g)",
+      "ingredients": "Item[]"
+    },
+    "item_maydonlari": {
+      "name": "string — ingredient nomi",
+      "unit": "string — 'g' | 'ml' | 'pcs' | 'm'",
+      "amount": "int — partiya uchun miqdor, unit birligida"
+    }
+  },
+  "tech_cards": [
+    {
+      "id": "rafaello-18",
+      "name": "Тортик Рафаэлло",
+      "diameter_cm": 18,
+      "batch_qty": 20,
+      "batch_weight_g": 26657,
+      "piece_weight_g": 1332,
+      "bases": [
+        {
+          "name": "Бисквит тортий мини рафаэлло",
+          "weight_g": 7990,
+          "ingredients": [
+            {
+              "name": "Мука пшеничная в/с (Данинан)",
+              "unit": "g",
+              "amount": 1000
+            },
+            {
+              "name": "Мука 1 сорт (Дон)",
+              "unit": "g",
+              "amount": 1000
+            },
+            {
+              "name": "Сахар",
+              "unit": "g",
+              "amount": 1500
+            },
+            {
+              "name": "Яйца (белок/желток) Цех (3-4)",
+              "unit": "g",
+              "amount": 3300
+            },
+            {
+              "name": "Разрыхлитель (кабартма)",
+              "unit": "g",
+              "amount": 60
+            },
+            {
+              "name": "Вода для расчёта",
+              "unit": "ml",
+              "amount": 550
+            },
+            {
+              "name": "Авалекс (5кг)",
+              "unit": "g",
+              "amount": 250
+            },
+            {
+              "name": "Обинавот",
+              "unit": "g",
+              "amount": 200
+            },
+            {
+              "name": "Крахмал Кукурузный",
+              "unit": "g",
+              "amount": 130
+            }
+          ]
+        },
+        {
+          "name": "Крем тортий мини рафаэлло",
+          "weight_g": 6207,
+          "ingredients": [
+            {
+              "name": "Каймак основной 45%",
+              "unit": "g",
+              "amount": 3594
+            },
+            {
+              "name": "Молоко сгущённое 20кг",
+              "unit": "g",
+              "amount": 687
+            },
+            {
+              "name": "Кокосовая стружка",
+              "unit": "g",
+              "amount": 52
+            },
+            {
+              "name": "Глюкоза",
+              "unit": "g",
+              "amount": 214
+            },
+            {
+              "name": "Сахарная пудра",
+              "unit": "g",
+              "amount": 858
+            },
+            {
+              "name": "Улучшитель вкуса Рафаэлло",
+              "unit": "g",
+              "amount": 302
+            },
+            {
+              "name": "1656 (BON BON AL COCCO SET) декор",
+              "unit": "g",
+              "amount": 500
+            }
+          ]
+        },
+        {
+          "name": "Украшение тортий мини рафаэлло",
+          "weight_g": 5120,
+          "ingredients": [
+            {
+              "name": "Шанти крем",
+              "unit": "g",
+              "amount": 2000
+            },
+            {
+              "name": "Молоко сгущённое 20кг",
+              "unit": "g",
+              "amount": 1500
+            },
+            {
+              "name": "Кокосовая стружка",
+              "unit": "g",
+              "amount": 300
+            },
+            {
+              "name": "Рафаэлло (15шт) 80 штук",
+              "unit": "g",
+              "amount": 880
+            },
+            {
+              "name": "База 8 Безе А",
+              "unit": "g",
+              "amount": 300
+            },
+            {
+              "name": "Миндальные лепестки",
+              "unit": "g",
+              "amount": 140
+            }
+          ]
+        },
+        {
+          "name": "База44 Сахарный сироп, декор",
+          "weight_g": 7340,
+          "ingredients": [
+            {
+              "name": "Сахарный сироп",
+              "unit": "g",
+              "amount": 6300
+            },
+            {
+              "name": "Желе для декора",
+              "unit": "g",
+              "amount": 1040
+            }
+          ]
+        }
+      ],
+      "consumables": [
+        {
+          "name": "Лента (красная)",
+          "unit": "m",
+          "amount": 20
+        },
+        {
+          "name": "Подложка картон (24 диаметр)",
+          "unit": "pcs",
+          "amount": 20
+        }
+      ]
+    },
+    {
+      "id": "rafaello-20",
+      "name": "Тортик Рафаэлло",
+      "diameter_cm": 20,
+      "batch_qty": 26,
+      "batch_weight_g": 52626,
+      "piece_weight_g": 2024,
+      "bases": [
+        {
+          "name": "База9 Бисквит Турецкий А",
+          "weight_g": 15290,
+          "ingredients": [
+            {
+              "name": "Мука пшеничная в/с (Данинан)",
+              "unit": "g",
+              "amount": 2000
+            },
+            {
+              "name": "Мука 1 сорт (Дон)",
+              "unit": "g",
+              "amount": 2000
+            },
+            {
+              "name": "Сахар",
+              "unit": "g",
+              "amount": 3000
+            },
+            {
+              "name": "Разрыхлитель (кабартма)",
+              "unit": "g",
+              "amount": 130
+            },
+            {
+              "name": "Яйца (белок/желток) Цех (3-4)",
+              "unit": "g",
+              "amount": 6200
+            },
+            {
+              "name": "Авалекс (5кг)",
+              "unit": "g",
+              "amount": 460
+            },
+            {
+              "name": "Обинавот",
+              "unit": "g",
+              "amount": 200
+            },
+            {
+              "name": "Вода для расчёта",
+              "unit": "ml",
+              "amount": 1100
+            },
+            {
+              "name": "Крахмал Кукурузный",
+              "unit": "g",
+              "amount": 200
+            }
+          ]
+        },
+        {
+          "name": "База44 Сахарный сироп А",
+          "weight_g": 8190,
+          "ingredients": [
+            {
+              "name": "Сахар",
+              "unit": "g",
+              "amount": 3068
+            },
+            {
+              "name": "Вода для расчёта",
+              "unit": "ml",
+              "amount": 5122
+            }
+          ]
+        },
+        {
+          "name": "База61 Крем А",
+          "weight_g": 16796,
+          "ingredients": [
+            {
+              "name": "Каймак основной 45%",
+              "unit": "g",
+              "amount": 10582
+            },
+            {
+              "name": "Молоко сгущённое 20кг",
+              "unit": "g",
+              "amount": 2028
+            },
+            {
+              "name": "Кокосовая стружка",
+              "unit": "g",
+              "amount": 156
+            },
+            {
+              "name": "Глюкоза",
+              "unit": "g",
+              "amount": 624
+            },
+            {
+              "name": "Сахарная пудра",
+              "unit": "g",
+              "amount": 2522
+            },
+            {
+              "name": "Улучшитель вкуса Рафаэлло",
+              "unit": "g",
+              "amount": 884
+            }
+          ]
+        },
+        {
+          "name": "База11 Шанти база А",
+          "weight_g": 4420,
+          "ingredients": [
+            {
+              "name": "Шанти крем",
+              "unit": "g",
+              "amount": 4420
+            }
+          ]
+        },
+        {
+          "name": "База5 Желе А",
+          "weight_g": 130,
+          "ingredients": [
+            {
+              "name": "Желе для декора (7кг)",
+              "unit": "g",
+              "amount": 104
+            },
+            {
+              "name": "Вода для расчёта",
+              "unit": "ml",
+              "amount": 26
+            }
+          ]
+        },
+        {
+          "name": "Тортик Рафаэлло (сборка)",
+          "weight_g": 7800,
+          "ingredients": [
+            {
+              "name": "Молоко сгущённое 20кг",
+              "unit": "g",
+              "amount": 3900
+            },
+            {
+              "name": "Кокосовая стружка",
+              "unit": "g",
+              "amount": 780
+            },
+            {
+              "name": "Миндаль (бодом) очищеный",
+              "unit": "g",
+              "amount": 260
+            },
+            {
+              "name": "Рафаэлло (15шт) 260 штук",
+              "unit": "g",
+              "amount": 2860
+            }
+          ]
+        }
+      ],
+      "consumables": [
+        {
+          "name": "Лента (красная)",
+          "unit": "m",
+          "amount": 26
+        },
+        {
+          "name": "Подложка картон (26 диаметр)",
+          "unit": "pcs",
+          "amount": 26
+        }
+      ]
+    }
+  ]
+}

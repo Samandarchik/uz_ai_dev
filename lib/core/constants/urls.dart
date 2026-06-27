@@ -1,6 +1,6 @@
 abstract final class AppUrls {
-  // static const String baseUrl = "https://moneapp.monebakeryuz.uz";
-  static const String baseUrl = "http://localhost:1010";
+  static const String baseUrl = "https://moneapp.monebakeryuz.uz";
+  // static const String baseUrl = "http://localhost:1010";
 
   static const String login = '$baseUrl/api/login';
   static const String register = '$baseUrl/api/register';
@@ -8,6 +8,9 @@ abstract final class AppUrls {
   static const String productAll = '$baseUrl/api/products/all';
   static const String product1 = '$baseUrl/api/products1';
   static const String product = '$baseUrl/api/products';
+
+  // Mahsulot tarkibi uchun birliklar ro'yxati
+  static const String units = '$baseUrl/api/units';
 
   // Ombor (bozor mahsulotlari)
   static String omborProducts = '$baseUrl/api/ombor/products';

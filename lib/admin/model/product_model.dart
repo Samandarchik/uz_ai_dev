@@ -1,3 +1,5 @@
+import 'package:uz_ai_dev/admin/model/composition_item.dart';
+
 class ProductModelAdmin {
   final int id;
   final String name;
@@ -20,6 +22,9 @@ class ProductModelAdmin {
   final String source;
   final List<int> sklads;
 
+  // Mahsulot tarkibi (ingredientlar ro'yxati)
+  final List<CompositionItem> composition;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -37,6 +42,7 @@ class ProductModelAdmin {
     this.bozor = false,
     this.source = 'samarqand',
     this.sklads = const [],
+    this.composition = const [],
   });
 
   factory ProductModelAdmin.fromJson(Map<String, dynamic> json) {
@@ -60,6 +66,7 @@ class ProductModelAdmin {
           ? 'samarqand'
           : json['source'],
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
+      composition: CompositionItem.listFromJson(json['composition']),
     );
   }
 
@@ -80,6 +87,7 @@ class ProductModelAdmin {
       'mone_app': moneApp,
       'bozor': bozor,
       'source': source,
+      'composition': composition.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -99,6 +107,7 @@ class ProductModelAdmin {
       'bozor': bozor,
       'source': source,
       'sklads': sklads,
+      'composition': composition.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -118,6 +127,7 @@ class ProductModelAdmin {
       'bozor': bozor,
       'source': source,
       'sklads': sklads,
+      'composition': composition.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -138,6 +148,7 @@ class ProductModelAdmin {
     bool? bozor,
     String? source,
     List<int>? sklads,
+    List<CompositionItem>? composition,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -156,6 +167,7 @@ class ProductModelAdmin {
       bozor: bozor ?? this.bozor,
       source: source ?? this.source,
       sklads: sklads ?? this.sklads,
+      composition: composition ?? this.composition,
     );
   }
 }

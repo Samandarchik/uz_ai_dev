@@ -7,6 +7,8 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/admin/services/api_product_service.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/composition_section.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -34,6 +36,11 @@ class _AddProductPageState extends State<AddProductPage> {
   String _source = 'samarqand';
   List<int> _selectedSklads = [];
 
+  // Tarkib (composition)
+  final ApiProductService _productService = ApiProductService();
+  final CompositionController _compositionController = CompositionController();
+  List<String> _units = ApiProductService.defaultUnits;
+
   static const Map<String, String> _sourceOptions = {
     'samarqand': 'Samarqand',
     'toshkent': 'Toshkent',
@@ -53,6 +60,16 @@ class _AddProductPageState extends State<AddProductPage> {
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
     });
+    _loadUnits();
+  }
+
+  Future<void> _loadUnits() async {
+    final units = await _productService.getUnits();
+    if (mounted) {
+      setState(() {
+        _units = units;
+      });
+    }
   }
 
   Future<void> _pickImage() async {
@@ -456,6 +473,11 @@ class _AddProductPageState extends State<AddProductPage> {
               }),
             ],
             const SizedBox(height: 24),
+            CompositionSection(
+              controller: _compositionController,
+              units: _units,
+            ),
+            const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
                 return ElevatedButton(
@@ -524,6 +546,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               bozor: _bozor,
                               source: _source,
                               sklads: _selectedSklads,
+                              composition: _compositionController.build(),
                             );
 
                             final success = await context
@@ -564,6 +587,7 @@ class _AddProductPageState extends State<AddProductPage> {
     ingredientsControlle.dispose();
     grammController.dispose();
     bozorGrammController.dispose();
+    _compositionController.dispose();
     super.dispose();
   }
 }

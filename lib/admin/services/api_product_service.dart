@@ -6,6 +6,33 @@ import 'package:uz_ai_dev/core/di/di.dart';
 class ApiProductService {
   final Dio dio = sl<Dio>();
 
+  // Default birliklar ro'yxati (so'rov fail bo'lsa fallback)
+  static const List<String> defaultUnits = [
+    'шт',
+    'г',
+    'кг',
+    'л',
+    'мл',
+    'м',
+    'см',
+  ];
+
+  // Birliklar ro'yxatini olish (GET /api/units)
+  Future<List<String>> getUnits() async {
+    try {
+      final response = await dio.get(AppUrls.units);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? response.data;
+        final units = data.map((e) => e.toString()).toList();
+        return units.isEmpty ? defaultUnits : units;
+      }
+      return defaultUnits;
+    } catch (e) {
+      print('Ошибка getUnits: $e');
+      return defaultUnits;
+    }
+  }
+
   // Get all products
   Future<List<ProductModelAdmin>> getAllProducts() async {
     try {
