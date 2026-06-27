@@ -120,8 +120,11 @@ class _EditProductPageState extends State<EditProductPage> {
   }
 
   // Tarkibdagi mahsulot nomlarini vergul bilan birlashtiradi.
-  String _compositionNames() =>
-      _compositionController.items.map((e) => e.name).join(', ');
+  // Faqat switch'i YONIQ (showInSostav) bo'lgan ingredientlar qo'shiladi.
+  String _compositionNames() => _compositionController.items
+      .where((e) => e.showInSostav)
+      .map((e) => e.name)
+      .join(', ');
 
   // Switch yoniq bo'lsa «Состав» maydonini tarkib nomlaridan yangilaydi.
   void _syncIngredientsFromComposition() {

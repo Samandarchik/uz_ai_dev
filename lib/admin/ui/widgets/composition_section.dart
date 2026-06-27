@@ -136,9 +136,18 @@ class _CompositionSectionState extends State<CompositionSection> {
               dense: true,
               title: Text(item.name),
               subtitle: Text('${_amountToText(item.amount)} ${item.unit}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmRemove(index),
+              // Switch YONIQ -> ingredient nomi «Состав»ga chiqadi, O'CHIQ -> chiqmaydi.
+              // O'chirish endi faqat qatorni bosib turish (long-press) orqali.
+              trailing: Switch.adaptive(
+                value: item.showInSostav,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: (value) {
+                  setState(() {
+                    widget.controller.items[index] =
+                        item.copyWith(showInSostav: value);
+                  });
+                  widget.onChanged?.call();
+                },
               ),
               onTap: () => _editItem(index),
               onLongPress: () => _confirmRemove(index),
