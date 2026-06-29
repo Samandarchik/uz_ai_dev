@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/data/local/base_storage.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
@@ -25,6 +28,19 @@ class YukProvider extends ChangeNotifier {
   // bir marta saqlaymiz — har bosishda so'rov ketmasligi uchun.
   final Map<int, Timer> _draftTimers = {};
   static const Duration _draftDebounce = Duration(milliseconds: 700);
+
+  // OFFLINE himoya: kiritilgan narxlar telefon xotirasiga (SharedPreferences)
+  // DARHOL yoziladi. Internet o'chiq bo'lsa ham ilovani yopib qayta ochganda
+  // qiymatlar tiklanadi; internet qaytganda backendga sinxronlanadi.
+  final BaseStorage _storage = sl<BaseStorage>();
+  static const String _draftsKey = 'yuk_price_drafts';
+  // Internet o'chiq bo'lsa buyurtmalar ro'yxati ham ko'rinishi uchun oxirgi
+  // muvaffaqiyatli ro'yxat lokal keshlanadi.
+  static const String _ordersKey = 'yuk_orders_cache';
+
+  // Hozir ko'rsatilayotgan ro'yxat internetdan emas, lokal keshdan olinganmi
+  // (UI'da "offline" eslatmasi ko'rsatish uchun).
+  bool isOffline = false;
 
   // Hozir yuborilayotgan buyurtma id (spinner uchun). null bo'lsa hech nima.
   int? submittingOrderId;
@@ -65,11 +81,47 @@ class YukProvider extends ChangeNotifier {
 
     try {
       orders = await _service.fetchOrders();
+      isOffline = false;
+      // Ro'yxatni offline kesh uchun saqlaymiz.
+      _persistOrders();
+      // Yuborilgan buyurtmalarning eski lokal qoralamasini tozalaymiz.
+      _pruneDoneDrafts();
+      // Internet bor — kutib turgan lokal qoralamalarni backendga yuboramiz.
+      unawaited(flushDrafts());
     } catch (e) {
-      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      // Internet yo'q: oxirgi saqlangan ro'yxatni ko'rsatamiz (bo'lsa).
+      final cached = _readCachedOrders();
+      if (cached.isNotEmpty) {
+        orders = cached;
+        isOffline = true;
+        _pruneDoneDrafts();
+      } else {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      }
     } finally {
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Joriy ro'yxatni JSON sifatida lokal saqlash.
+  void _persistOrders() {
+    try {
+      final data = orders.map((o) => o.toJson()).toList();
+      _storage.putString(key: _ordersKey, value: jsonEncode(data));
+    } catch (_) {
+      // saqlanmasa ham ilova ishlayveradi.
+    }
+  }
+
+  // Lokal keshdagi buyurtmalar (internet yo'q paytda).
+  List<YukOrder> _readCachedOrders() {
+    final raw = _storage.getString(key: _ordersKey);
+    if (raw.isEmpty) return [];
+    try {
+      return parseYukOrders(jsonDecode(raw));
+    } catch (_) {
+      return [];
     }
   }
 
@@ -78,8 +130,78 @@ class YukProvider extends ChangeNotifier {
     final map = _prices.putIfAbsent(orderId, () => {});
     map[productId] = (taken: taken, subtotal: subtotal);
     notifyListeners();
-    // Backendga qoralama sifatida (debounce bilan) saqlaymiz.
+    // 1) Lokal xotiraga DARHOL yozamiz (offline'da ham yo'qolmaydi).
+    _persistDrafts();
+    // 2) Backendga qoralama sifatida (debounce bilan) yuboramiz.
     _scheduleDraftSave(orderId);
+  }
+
+  // ─────────────────────── Qoralama: lokal saqlash ───────────────────────
+
+  // _prices ni JSON sifatida SharedPreferences'ga yozish.
+  // Shakl: { "orderId": { "productId": {"taken":x,"subtotal":y} } }.
+  void _persistDrafts() {
+    final out = <String, dynamic>{};
+    _prices.forEach((orderId, items) {
+      if (items.isEmpty) return;
+      final m = <String, dynamic>{};
+      items.forEach((pid, v) {
+        m['$pid'] = {'taken': v.taken, 'subtotal': v.subtotal};
+      });
+      out['$orderId'] = m;
+    });
+    // Fire-and-forget; xato bo'lsa ilova baribir ishlayveradi.
+    _storage.putString(key: _draftsKey, value: jsonEncode(out));
+  }
+
+  // Ilova ochilganda lokal qoralamalarni _prices ga tiklaymiz. fetchOrders'dan
+  // OLDIN chaqirilsa, kartalar maydonlarni shu qiymatlar bilan to'ldiradi.
+  Future<void> loadDrafts() async {
+    final raw = _storage.getString(key: _draftsKey);
+    if (raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      decoded.forEach((orderKey, items) {
+        final orderId = int.tryParse(orderKey.toString());
+        if (orderId == null || items is! Map) return;
+        final map = _prices.putIfAbsent(orderId, () => {});
+        items.forEach((pidKey, v) {
+          final pid = int.tryParse(pidKey.toString());
+          if (pid == null || v is! Map) return;
+          final taken = (v['taken'] as num?)?.toDouble() ?? 0;
+          final subtotal = (v['subtotal'] as num?)?.toDouble() ?? 0;
+          map[pid] = (taken: taken, subtotal: subtotal);
+        });
+      });
+      notifyListeners();
+    } catch (_) {
+      // Buzuq JSON bo'lsa e'tiborsiz qoldiramiz.
+    }
+  }
+
+  // Internet qaytganda barcha lokal qoralamalarni backendga yuboramiz
+  // (best-effort). fetchOrders muvaffaqiyatli bo'lgach va socket ulanganда chaqiriladi.
+  Future<void> flushDrafts() async {
+    final ids = _prices.keys.toList();
+    for (final orderId in ids) {
+      await _saveDraft(orderId);
+    }
+  }
+
+  // Buyurtma yuborilgan/qabul qilingan bo'lsa, uning lokal qoralamasini
+  // tozalaymiz (eski qiymat ko'rinib qolmasligi uchun).
+  void _pruneDoneDrafts() {
+    var changed = false;
+    for (final o in orders) {
+      if ((o.status == 'narxlandi' || o.status == 'qabul_qilindi') &&
+          _prices.containsKey(o.id)) {
+        _prices.remove(o.id);
+        _draftTimers.remove(o.id)?.cancel();
+        changed = true;
+      }
+    }
+    if (changed) _persistDrafts();
   }
 
   // So'nggi o'zgarishdan keyin _draftDebounce o'tgach qoralamani backendga
@@ -178,9 +300,10 @@ class YukProvider extends ChangeNotifier {
 
       await _service.priceOrder(orderId, items, total);
 
-      // Yuborilgach lokal narxni tozala, "qaytarib olish" vaqtini belgila va
-      // ro'yxatni yangila.
+      // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
+      // vaqtini belgila va ro'yxatni yangila.
       _prices.remove(orderId);
+      _persistDrafts();
       _submittedAt[orderId] = DateTime.now();
       submittingOrderId = null;
       await fetchOrders();
@@ -249,6 +372,12 @@ class YukProvider extends ChangeNotifier {
     } else {
       orders.add(order); // yo'q bo'lsa qo'sh
     }
+    // Socket'dan xabar keldi — demak online'miz.
+    isOffline = false;
+    // Buyurtma yuborilgan bo'lsa eski lokal qoralamani tozalaymiz.
+    _pruneDoneDrafts();
+    // Yangilangan ro'yxatni keshlaymiz.
+    _persistOrders();
     notifyListeners();
   }
 

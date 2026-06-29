@@ -91,9 +91,12 @@ class _YukHomeUiState extends State<YukHomeUi> {
   void initState() {
     super.initState();
     _loadSklads();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<YukProvider>();
-      provider.fetchOrders();
+      // Avval lokal qoralamalarni tiklaymiz (internet o'chiq bo'lsa ham
+      // kiritilgan narxlar yo'qolmasin), keyin serverdan ro'yxatni olamiz.
+      await provider.loadDrafts();
+      await provider.fetchOrders();
       // Real-time: narxlash/buyurtma o'zgarishlari refresh'siz ko'rinishi uchun.
       provider.connectSocket();
     });
@@ -204,31 +207,41 @@ class _YukHomeUiState extends State<YukHomeUi> {
               );
             }
 
-            return TabBarView(
-              children: _sklads.map((id) {
-                final orders = provider.ordersForSklad(id);
-                return RefreshIndicator(
-                  onRefresh: () => provider.fetchOrders(),
-                  child: orders.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(
-                              child: Text(
-                                'Buyurtmalar yo\'q',
-                                style: TextStyle(color: Colors.black54),
+            return Column(
+              children: [
+                // Internet yo'q paytda ko'rsatiladigan eslatma. Ro'yxat oxirgi
+                // saqlangan keshdan, kiritilgan narxlar lokal saqlanadi.
+                if (provider.isOffline) const _OfflineBanner(),
+                Expanded(
+                  child: TabBarView(
+                    children: _sklads.map((id) {
+                      final orders = provider.ordersForSklad(id);
+                      return RefreshIndicator(
+                        onRefresh: () => provider.fetchOrders(),
+                        child: orders.isEmpty
+                            ? ListView(
+                                children: const [
+                                  SizedBox(height: 120),
+                                  Center(
+                                    child: Text(
+                                      'Buyurtmalar yo\'q',
+                                      style: TextStyle(color: Colors.black54),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                itemCount: orders.length,
+                                itemBuilder: (context, index) =>
+                                    _YukOrderCard(order: orders[index]),
                               ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: orders.length,
-                          itemBuilder: (context, index) =>
-                              _YukOrderCard(order: orders[index]),
-                        ),
-                );
-              }).toList(),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             );
           },
           ),
@@ -252,6 +265,34 @@ class _YukHomeUiState extends State<YukHomeUi> {
         ),
       ],
       bottom: bottom,
+    );
+  }
+}
+
+// Internet yo'q paytdagi yupqa eslatma chizig'i.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFFFF3E0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off, size: 16, color: Color(0xFFB26A00)),
+          SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Internet yo\'q — narxlar telefonда saqlanmoqda, ulanish '
+              'tiklanganda yuboriladi',
+              style: TextStyle(fontSize: 12, color: Color(0xFFB26A00)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -35,6 +35,16 @@ class YukOrderItem {
       subtotal: (json['subtotal'] ?? 0).toDouble(),
     );
   }
+
+  // Offline kesh uchun (fromJson bilan teskari).
+  Map<String, dynamic> toJson() => {
+        'product_id': productId,
+        'name': name,
+        'count': count,
+        'type': type,
+        'taken': taken,
+        'subtotal': subtotal,
+      };
 }
 
 class YukOrder {
@@ -83,6 +93,19 @@ class YukOrder {
       items: items,
     );
   }
+
+  // Offline kesh uchun (fromJson bilan teskari).
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'order_id': orderId,
+        'username': username,
+        'sklad_id': skladId,
+        'sklad_name': skladName,
+        'total': total,
+        'status': status,
+        'created': created,
+        'items': items.map((e) => e.toJson()).toList(),
+      };
 }
 
 // Javobdagi `data` massivini parse qilish.
