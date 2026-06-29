@@ -92,8 +92,18 @@ class _YukHomeUiState extends State<YukHomeUi> {
     super.initState();
     _loadSklads();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<YukProvider>().fetchOrders();
+      final provider = context.read<YukProvider>();
+      provider.fetchOrders();
+      // Real-time: narxlash/buyurtma o'zgarishlari refresh'siz ko'rinishi uchun.
+      provider.connectSocket();
     });
+  }
+
+  @override
+  void dispose() {
+    // Ekrandan chiqishda real-time ulanishni uzamiz.
+    context.read<YukProvider>().disconnectSocket();
+    super.dispose();
   }
 
   // SharedPreferences'dagi 'user' JSON ichidan `sklads` ro'yxatini o'qish.
@@ -128,6 +138,8 @@ class _YukHomeUiState extends State<YukHomeUi> {
   }
 
   void _logout() {
+    // Logout: avval socketni uzamiz.
+    context.read<YukProvider>().disconnectSocket();
     tokenStorage.removeToken();
     tokenStorage.removeRefreshToken();
     context.push(LoginPage());

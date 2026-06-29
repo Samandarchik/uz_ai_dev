@@ -33,12 +33,17 @@ class _OmborHomeUiState extends State<OmborHomeUi>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OmborProvider>().fetchProducts();
+      final provider = context.read<OmborProvider>();
+      provider.fetchProducts();
+      // Real-time: ro'yxat refresh'siz avtomatik yangilanishi uchun socketga ulanamiz.
+      provider.connectSocket();
     });
   }
 
   @override
   void dispose() {
+    // Ekrandan chiqishda real-time ulanishni uzamiz.
+    context.read<OmborProvider>().disconnectSocket();
     _tabController.dispose();
     super.dispose();
   }
@@ -57,6 +62,8 @@ class _OmborHomeUiState extends State<OmborHomeUi>
         actions: [
           IconButton(
             onPressed: () {
+              // Logout: avval socketni uzamiz.
+              context.read<OmborProvider>().disconnectSocket();
               tokenStorage.removeToken();
               tokenStorage.removeRefreshToken();
               context.push(LoginPage());

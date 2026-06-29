@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
@@ -148,5 +151,52 @@ class OmborProvider extends ChangeNotifier {
       acceptingOrderId = null;
       notifyListeners();
     }
+  }
+
+  // ─────────────────────── Real-time (WebSocket) ───────────────────────
+  StreamSubscription<OrderSocketEvent>? _socketSub;
+
+  // WebSocket'ga ulanib, buyurtma hodisalarini tinglaymiz. fetchMyOrders bilan
+  // birga ishlaydi (u boshlang'ich sync, bu — real-time yangilanish).
+  void connectSocket() {
+    _socketSub ??= OrderSocket.instance.events.listen(_onSocketEvent);
+    OrderSocket.instance.connect();
+  }
+
+  // Ekrandan chiqqanda yoki logout'da ulanishni uzamiz.
+  void disconnectSocket() {
+    _socketSub?.cancel();
+    _socketSub = null;
+    OrderSocket.instance.disconnect();
+  }
+
+  // Kelgan hodisani myOrders'ga qo'llash: deleted -> o'chir, aks holda upsert.
+  void _onSocketEvent(OrderSocketEvent event) {
+    final id = event.order['id'];
+    final orderId = (id is int) ? id : int.tryParse(id?.toString() ?? '');
+    if (orderId == null) return;
+
+    if (event.action == 'deleted') {
+      myOrders.removeWhere((o) => o.id == orderId);
+      notifyListeners();
+      return;
+    }
+
+    final order = OmborOrder.fromJson(event.order);
+    final index = myOrders.indexWhere((o) => o.id == order.id);
+    if (index >= 0) {
+      myOrders[index] = order; // bor bo'lsa almashtir
+    } else {
+      myOrders.add(order); // yo'q bo'lsa qo'sh
+    }
+    // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblash.
+    myOrders.sort((a, b) => b.id.compareTo(a.id));
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    disconnectSocket();
+    super.dispose();
   }
 }

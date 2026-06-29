@@ -20,6 +20,9 @@ abstract final class AppUrls {
 
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
+
+  // Real-time buyurtmalar uchun WebSocket. https->wss, http->ws avtomatik.
+  static String wsOrders = '${baseUrl.replaceFirst('http', 'ws')}/api/ws';
   static const String orderslist = '$baseUrl/api/orderslist';
   //filials
   static const String filials = '$baseUrl/api/filials';

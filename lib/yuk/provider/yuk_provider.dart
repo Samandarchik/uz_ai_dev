@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
@@ -168,5 +171,50 @@ class YukProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // ─────────────────────── Real-time (WebSocket) ───────────────────────
+  StreamSubscription<OrderSocketEvent>? _socketSub;
+
+  // WebSocket'ga ulanib, buyurtma hodisalarini tinglaymiz. fetchOrders bilan
+  // birga ishlaydi (u boshlang'ich sync, bu — real-time yangilanish).
+  void connectSocket() {
+    _socketSub ??= OrderSocket.instance.events.listen(_onSocketEvent);
+    OrderSocket.instance.connect();
+  }
+
+  // Ekrandan chiqqanda yoki logout'da ulanishni uzamiz.
+  void disconnectSocket() {
+    _socketSub?.cancel();
+    _socketSub = null;
+    OrderSocket.instance.disconnect();
+  }
+
+  // Kelgan hodisani orders'ga qo'llash: deleted -> o'chir, aks holda upsert.
+  void _onSocketEvent(OrderSocketEvent event) {
+    final id = event.order['id'];
+    final orderId = (id is int) ? id : int.tryParse(id?.toString() ?? '');
+    if (orderId == null) return;
+
+    if (event.action == 'deleted') {
+      orders.removeWhere((o) => o.id == orderId);
+      notifyListeners();
+      return;
+    }
+
+    final order = YukOrder.fromJson(event.order);
+    final index = orders.indexWhere((o) => o.id == order.id);
+    if (index >= 0) {
+      orders[index] = order; // bor bo'lsa almashtir
+    } else {
+      orders.add(order); // yo'q bo'lsa qo'sh
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    disconnectSocket();
+    super.dispose();
   }
 }
