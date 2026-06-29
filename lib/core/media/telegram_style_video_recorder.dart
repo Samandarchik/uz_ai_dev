@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
@@ -445,7 +446,7 @@ class _TelegramStyleVideoRecorderState
   Widget build(BuildContext context) {
     if (!_isInitialized || _controller == null) {
       return const Material(
-        color: Colors.white,
+        color: Colors.transparent,
         child: Center(child: CircularProgressIndicator()),
       );
     }
@@ -474,26 +475,40 @@ class _TelegramStyleVideoRecorderState
     final double cameraH = previewSize.width;
 
     return Material(
-      color: Colors.black,
+      color: Colors.transparent,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── 1. FULLSCREEN KAMERA (orqa fon) ──
+          // ── 1. BLURLANGAN ORQA FON (ostidagi ekran ko'rinib, xira turadi) ──
+          // Telegram kabi: kamera butun ekranni egallamaydi, faqat doirada
+          // ko'rinadi; orqa fon esa blurlangan holda qoladi.
           Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(color: Colors.black.withOpacity(0.45)),
+            ),
+          ),
+
+          // ── 2. AYLANA KAMERA (faqat doira ichida) ──
+          Positioned(
+            top: circleTop,
+            left: circleLeft,
+            width: circleDiameter,
+            height: circleDiameter,
             child: Listener(
               onPointerDown: _handlePointerDown,
               onPointerMove: _handlePointerMove,
               onPointerUp: _handlePointerUp,
               behavior: HitTestBehavior.translucent,
-              child: _isSwitchingCamera
-                  ? Container(
-                      color: Colors.black,
-                      child: const Center(
-                        child: CircularProgressIndicator.adaptive(),
-                      ),
-                    )
-                  : ClipRect(
-                      child: FittedBox(
+              child: ClipOval(
+                child: _isSwitchingCamera
+                    ? Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: CircularProgressIndicator.adaptive(),
+                        ),
+                      )
+                    : FittedBox(
                         fit: BoxFit.cover,
                         child: SizedBox(
                           width: cameraW,
@@ -501,22 +516,6 @@ class _TelegramStyleVideoRecorderState
                           child: CameraPreview(_controller!),
                         ),
                       ),
-                    ),
-            ),
-          ),
-
-          // ── 2. AYLANA TASHQARISINI QORAYTIRISH ──
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: CircleDimMaskPainter(
-                  circleCenter: Offset(
-                    size.width / 2,
-                    circleTop + circleDiameter / 2,
-                  ),
-                  circleRadius: circleDiameter / 2,
-                  overlayColor: Colors.black.withOpacity(0.55),
-                ),
               ),
             ),
           ),
@@ -729,35 +728,6 @@ class _TelegramStyleVideoRecorderState
         child: child,
       ),
     );
-  }
-}
-
-class CircleDimMaskPainter extends CustomPainter {
-  final Offset circleCenter;
-  final double circleRadius;
-  final Color overlayColor;
-
-  CircleDimMaskPainter({
-    required this.circleCenter,
-    required this.circleRadius,
-    required this.overlayColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = overlayColor;
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addOval(Rect.fromCircle(center: circleCenter, radius: circleRadius))
-      ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CircleDimMaskPainter old) {
-    return old.circleCenter != circleCenter ||
-        old.circleRadius != circleRadius ||
-        old.overlayColor != overlayColor;
   }
 }
 

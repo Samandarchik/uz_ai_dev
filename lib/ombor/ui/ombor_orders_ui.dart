@@ -246,8 +246,10 @@ class _OrderCardState extends State<_OrderCard> {
   // Mahsulot uchun aylana video yozish.
   Future<void> _captureVideo(int productId) async {
     final segments = await Navigator.of(context).push<List<XFile>>(
-      MaterialPageRoute(
-        builder: (_) => const TelegramStyleVideoRecorder(),
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (_, __, ___) => const TelegramStyleVideoRecorder(),
       ),
     );
     if (segments == null || segments.isEmpty) return;
