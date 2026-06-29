@@ -453,14 +453,27 @@ class _OrderCardState extends State<_OrderCard> {
                 Builder(
                   builder: (_) {
                     // Tahrirlanadigan (narxlangan) buyurtmada jami summa kiritilgan
-                    // "Kelgan soni" lar bo'yicha jonli hisoblanadi. Asl summadan
-                    // farq qilsa: eskisi qizil + chizilgan, yangisi yashilda.
-                    final live = order.isPriced ? _liveTotal() : order.total;
-                    final changed =
-                        order.isPriced && (live - order.total).abs() > 0.0001;
-                    if (!changed) {
+                    // "Kelgan soni" lar bo'yicha jonli hisoblanadi. Qabul qilingan
+                    // buyurtmada esa backenddan kelgan received_total ishlatiladi.
+                    // Asl summadan farq qilsa: eskisi qizil + chizilgan, yangisi
+                    // yashilda.
+                    final double newTotal;
+                    final bool reduced;
+                    if (order.isPriced) {
+                      newTotal = _liveTotal();
+                      reduced = (newTotal - order.total).abs() > 0.0001;
+                    } else if (order.isAccepted &&
+                        order.receivedTotal > 0 &&
+                        (order.receivedTotal - order.total).abs() > 0.0001) {
+                      newTotal = order.receivedTotal;
+                      reduced = true;
+                    } else {
+                      newTotal = order.total;
+                      reduced = false;
+                    }
+                    if (!reduced) {
                       return Text(
-                        '${_formatSum(live)} so\'m',
+                        '${_formatSum(newTotal)} so\'m',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -484,7 +497,7 @@ class _OrderCardState extends State<_OrderCard> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${_formatSum(live)} so\'m',
+                          '${_formatSum(newTotal)} so\'m',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

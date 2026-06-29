@@ -13,6 +13,10 @@ class OmborOrder {
   final String skladName;
   final String status; // "created" | "narxlandi" | "qabul_qilindi"
   final double total;
+  // Ombor qabul qilgandan keyin kamaygan jami summa. total — narxlangan
+  // to'liq summa bo'lib qoladi. receivedTotal != total (va >0) bo'lsa —
+  // kam qabul qilingan.
+  final double receivedTotal;
   final String created;
   final List<OmborOrderItem> items;
   // Omborchi qabul qilganda yuborilgan video(lar) (relativ /static/...).
@@ -24,6 +28,7 @@ class OmborOrder {
     required this.skladName,
     required this.status,
     required this.total,
+    this.receivedTotal = 0,
     required this.created,
     required this.items,
     this.videoUrls = const [],
@@ -54,6 +59,7 @@ class OmborOrder {
       skladName: json['sklad_name']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       total: _toDouble(json['total']),
+      receivedTotal: _toDouble(json['received_total']),
       created: json['created']?.toString() ?? '',
       items: parsedItems,
       videoUrls: videos,
@@ -68,6 +74,8 @@ class OmborOrderItem {
   final String type;
   final double taken;
   final double subtotal;
+  // Yuk keltiruvchi sotib olgan summa (xarid narxi). subtotal'dan alohida.
+  final double bought;
   // Omborchi kiritgan haqiqatda kelgan miqdor (taken'dan kam bo'lsa kamomad).
   final double received;
   // Omborchi qabul qilganda yuborgan rasm/video (relativ /static/...).
@@ -81,6 +89,7 @@ class OmborOrderItem {
     required this.type,
     required this.taken,
     required this.subtotal,
+    this.bought = 0,
     this.received = 0,
     this.imageUrl = '',
     this.videoUrl = '',
@@ -94,6 +103,7 @@ class OmborOrderItem {
       type: json['type']?.toString() ?? '',
       taken: _toDouble(json['taken']),
       subtotal: _toDouble(json['subtotal']),
+      bought: _toDouble(json['bought']),
       received: _toDouble(json['received']),
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',

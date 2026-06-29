@@ -8,8 +8,8 @@ import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
-// Bitta item uchun lokal holat: olingan miqdor va jami summa.
-typedef ItemPrice = ({double taken, double subtotal});
+// Bitta item uchun lokal holat: olingan miqdor, jami summa va sotib olingan summa.
+typedef ItemPrice = ({double taken, double subtotal, double bought});
 
 // Yuk keltiruvchi bosh ekrani uchun holat boshqaruvchi.
 class YukProvider extends ChangeNotifier {
@@ -125,10 +125,16 @@ class YukProvider extends ChangeNotifier {
     }
   }
 
-  // Bitta item holatini saqlash (olingan miqdor + jami summa).
-  void setItemPrice(int orderId, int productId, double taken, double subtotal) {
+  // Bitta item holatini saqlash (olingan miqdor + jami summa + sotib olingan).
+  void setItemPrice(
+    int orderId,
+    int productId,
+    double taken,
+    double subtotal,
+    double bought,
+  ) {
     final map = _prices.putIfAbsent(orderId, () => {});
-    map[productId] = (taken: taken, subtotal: subtotal);
+    map[productId] = (taken: taken, subtotal: subtotal, bought: bought);
     notifyListeners();
     // 1) Lokal xotiraga DARHOL yozamiz (offline'da ham yo'qolmaydi).
     _persistDrafts();
@@ -146,7 +152,11 @@ class YukProvider extends ChangeNotifier {
       if (items.isEmpty) return;
       final m = <String, dynamic>{};
       items.forEach((pid, v) {
-        m['$pid'] = {'taken': v.taken, 'subtotal': v.subtotal};
+        m['$pid'] = {
+          'taken': v.taken,
+          'subtotal': v.subtotal,
+          'bought': v.bought,
+        };
       });
       out['$orderId'] = m;
     });
@@ -171,7 +181,8 @@ class YukProvider extends ChangeNotifier {
           if (pid == null || v is! Map) return;
           final taken = (v['taken'] as num?)?.toDouble() ?? 0;
           final subtotal = (v['subtotal'] as num?)?.toDouble() ?? 0;
-          map[pid] = (taken: taken, subtotal: subtotal);
+          final bought = (v['bought'] as num?)?.toDouble() ?? 0;
+          map[pid] = (taken: taken, subtotal: subtotal, bought: bought);
         });
       });
       notifyListeners();
@@ -224,6 +235,7 @@ class YukProvider extends ChangeNotifier {
                 'product_id': e.key,
                 'taken': e.value.taken,
                 'subtotal': e.value.subtotal,
+                'bought': e.value.bought,
               })
           .toList();
       await _service.saveDraft(orderId, items, orderTotal(orderId));
@@ -234,9 +246,15 @@ class YukProvider extends ChangeNotifier {
 
   // Boshlang'ich qiymatni notify'siz o'rnatish (initState'da chaqirish uchun).
   // Qaytarib olingan buyurtmaning oldingi qiymatlarini tiklash uchun ishlatiladi.
-  void seedItemPrice(int orderId, int productId, double taken, double subtotal) {
+  void seedItemPrice(
+    int orderId,
+    int productId,
+    double taken,
+    double subtotal,
+    double bought,
+  ) {
     final map = _prices.putIfAbsent(orderId, () => {});
-    map[productId] = (taken: taken, subtotal: subtotal);
+    map[productId] = (taken: taken, subtotal: subtotal, bought: bought);
   }
 
   // Bitta item holatini olish (yo'q bo'lsa null).
@@ -294,6 +312,7 @@ class YukProvider extends ChangeNotifier {
                 'product_id': e.key,
                 'taken': e.value.taken,
                 'subtotal': e.value.subtotal,
+                'bought': e.value.bought,
               })
           .toList();
       final total = orderTotal(orderId);

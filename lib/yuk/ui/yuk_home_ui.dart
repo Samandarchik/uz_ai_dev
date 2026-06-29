@@ -371,9 +371,11 @@ class _YukOrderCard extends StatefulWidget {
 class _YukOrderCardState extends State<_YukOrderCard> {
   static const Color _accentColor = Color(0xFFC5A97B);
 
-  // Har bir item (product_id) uchun olingan miqdor va jami controllerlari.
+  // Har bir item (product_id) uchun olingan miqdor, jami va sotib olingan
+  // summa controllerlari.
   final Map<int, TextEditingController> _takenControllers = {};
   final Map<int, TextEditingController> _subtotalControllers = {};
+  final Map<int, TextEditingController> _boughtControllers = {};
 
   // Har bir item (product_id) uchun "Nechta olgani" maydonining FocusNode'i.
   final Map<int, FocusNode> _takenFocusNodes = {};
@@ -424,15 +426,21 @@ class _YukOrderCardState extends State<_YukOrderCard> {
       final existing = provider.getItemPrice(order.id, item.productId);
       final taken0 = existing?.taken ?? item.taken;
       final subtotal0 = existing?.subtotal ?? item.subtotal;
+      final bought0 = existing?.bought ?? item.bought;
       _takenControllers[item.productId] =
           TextEditingController(text: _fmtQty(taken0));
       _subtotalControllers[item.productId] =
           TextEditingController(text: _fmt(subtotal0));
+      _boughtControllers[item.productId] =
+          TextEditingController(text: _fmt(bought0));
       _takenFocusNodes[item.productId] = FocusNode();
       // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
       // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz.
-      if (!_isDone && existing == null && (taken0 > 0 || subtotal0 > 0)) {
-        provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
+      if (!_isDone &&
+          existing == null &&
+          (taken0 > 0 || subtotal0 > 0 || bought0 > 0)) {
+        provider.seedItemPrice(
+            order.id, item.productId, taken0, subtotal0, bought0);
       }
     }
     _maybeStartUndoTicker();
@@ -466,6 +474,9 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     for (final c in _subtotalControllers.values) {
       c.dispose();
     }
+    for (final c in _boughtControllers.values) {
+      c.dispose();
+    }
     for (final f in _takenFocusNodes.values) {
       f.dispose();
     }
@@ -485,7 +496,8 @@ class _YukOrderCardState extends State<_YukOrderCard> {
     final provider = context.read<YukProvider>();
     final taken = _parse(_takenControllers[productId]?.text ?? '');
     final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
-    provider.setItemPrice(order.id, productId, taken, subtotal);
+    final bought = _parse(_boughtControllers[productId]?.text ?? '');
+    provider.setItemPrice(order.id, productId, taken, subtotal, bought);
   }
 
   String _formatCount(num v) {
@@ -552,7 +564,8 @@ class _YukOrderCardState extends State<_YukOrderCard> {
   // Jadval ustunlari uchun nisbatlar — sarlavha va qatorlar bir xil ishlatadi.
   static const int _nameFlex = 5;
   static const int _qtyFlex = 3;
-  static const int _sumFlex = 4;
+  static const int _sumFlex = 3;
+  static const int _boughtFlex = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -690,6 +703,19 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      flex: _boughtFlex,
+                      child: Text(
+                        'Sotib olingan',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -804,6 +830,16 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                           onChanged: (_) => _onItemChanged(item.productId),
                         ),
                       ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: _boughtFlex,
+                        child: _inlineField(
+                          controller: _boughtControllers[item.productId]!,
+                          hint: '0',
+                          enabled: !done,
+                          onChanged: (_) => _onItemChanged(item.productId),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -819,13 +855,50 @@ class _YukOrderCardState extends State<_YukOrderCard> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    '${_formatMoney(orderTotal)} so\'m',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                  Builder(
+                    builder: (_) {
+                      // Ombor kam qabul qilgan bo'lsa (received_total != total),
+                      // eski summa qizil+chizilgan, yangisi yashilda.
+                      final received = order.receivedTotal;
+                      final reduced = done &&
+                          received > 0 &&
+                          (received - order.total).abs() > 0.0001;
+                      if (!reduced) {
+                        return Text(
+                          '${_formatMoney(orderTotal)} so\'m',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${_formatMoney(order.total)} so\'m',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFC62828),
+                              decoration: TextDecoration.lineThrough,
+                              decorationColor: Color(0xFFC62828),
+                              decorationThickness: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_formatMoney(received)} so\'m',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

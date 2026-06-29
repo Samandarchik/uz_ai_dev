@@ -15,6 +15,9 @@ class YukOrderItem {
   // Narxlangan buyurtmada: olingan miqdor va shu item jami summasi.
   final double taken;
   final double subtotal;
+  // Yuk keltiruvchi sotib olgan summa (xarid narxi). subtotal'dan alohida,
+  // total'ga ta'sir qilmaydi.
+  final double bought;
 
   YukOrderItem({
     required this.productId,
@@ -23,6 +26,7 @@ class YukOrderItem {
     this.type,
     this.taken = 0,
     this.subtotal = 0,
+    this.bought = 0,
   });
 
   factory YukOrderItem.fromJson(Map<String, dynamic> json) {
@@ -33,6 +37,7 @@ class YukOrderItem {
       type: json['type'],
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
+      bought: (json['bought'] ?? 0).toDouble(),
     );
   }
 
@@ -44,6 +49,7 @@ class YukOrderItem {
         'type': type,
         'taken': taken,
         'subtotal': subtotal,
+        'bought': bought,
       };
 }
 
@@ -54,6 +60,10 @@ class YukOrder {
   final int skladId;
   final String skladName;
   final num total;
+  // Ombor qabul qilgandan keyin kamaygan jami summa. total — narxlangan
+  // to'liq summa bo'lib qoladi. receivedTotal != total (va >0) bo'lsa —
+  // kam qabul qilingan.
+  final double receivedTotal;
   final String status;
   final String created;
   final List<YukOrderItem> items;
@@ -65,6 +75,7 @@ class YukOrder {
     required this.skladId,
     required this.skladName,
     required this.total,
+    this.receivedTotal = 0,
     required this.status,
     required this.created,
     required this.items,
@@ -88,6 +99,7 @@ class YukOrder {
       skladId: json['sklad_id'] ?? 0,
       skladName: json['sklad_name'] ?? '',
       total: json['total'] ?? 0,
+      receivedTotal: (json['received_total'] ?? 0).toDouble(),
       status: json['status'] ?? '',
       created: json['created']?.toString() ?? '',
       items: items,
@@ -102,6 +114,7 @@ class YukOrder {
         'sklad_id': skladId,
         'sklad_name': skladName,
         'total': total,
+        'received_total': receivedTotal,
         'status': status,
         'created': created,
         'items': items.map((e) => e.toJson()).toList(),
