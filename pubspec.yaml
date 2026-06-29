@@ -27,6 +27,9 @@ dependencies:
   # Media: aylana (Telegram uslubidagi) video yozish va ko'rish, ovoz yozish.
   camera: ^0.11.4
   video_player: ^2.10.1
+  # Videoni kvadrat (1:1) qirqib, 480p ga siqish (Telegram video note uslubi).
+  # FFmpeg ishlatmaydi: iOS'da AVFoundation, Android'da MediaCodec.
+  easy_video_editor: ^0.1.6
   wakelock_plus: ^1.4.0
   permission_handler: ^12.0.1
   record: ^6.2.0

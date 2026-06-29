@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
+import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
@@ -248,10 +249,54 @@ class _OrderCardState extends State<_OrderCard> {
         builder: (_) => const TelegramStyleVideoRecorder(),
       ),
     );
-    if (segments != null && segments.isNotEmpty) {
+    if (segments == null || segments.isEmpty) return;
+    if (!mounted) return;
+
+    // Yozilgan videoni kvadrat (1:1) qirqib, 480p ga siqamiz —
+    // Telegram video note uslubi: kichik hajm, sifat saqlanadi.
+    final messenger = ScaffoldMessenger.of(context);
+    _showProcessingDialog();
+    try {
+      final processedPath = await VideoProcessor.toSquareNote(
+        segments.map((e) => e.path).toList(),
+      );
       if (!mounted) return;
-      setState(() => _videos[productId] = segments.first.path);
+      Navigator.of(context, rootNavigator: true).pop(); // dialogni yopish
+      setState(() => _videos[productId] = processedPath);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // dialogni yopish
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Videoni tayyorlashda xatolik: '
+            '${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
+
+  // Video qayta ishlanayotganda chiqadigan progress oynasi.
+  void _showProcessingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            SizedBox(width: 16),
+            Expanded(child: Text('Video tayyorlanmoqda...')),
+          ],
+        ),
+      ),
+    );
   }
 
   // Qabul qilish: olingan rasm/videolarni yuboradi.
