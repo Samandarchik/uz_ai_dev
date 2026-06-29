@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
@@ -738,7 +739,7 @@ class _MediaItemRow extends StatelessWidget {
               children: [
                 Expanded(child: _imageCell()),
                 const SizedBox(width: 4),
-                Expanded(child: _videoCell()),
+                Expanded(child: _videoCell(context)),
               ],
             ),
           ),
@@ -805,7 +806,7 @@ class _MediaItemRow extends StatelessWidget {
     return const _MediaEmpty();
   }
 
-  Widget _videoCell() {
+  Widget _videoCell(BuildContext context) {
     if (editable) {
       final has = localVideoPath != null;
       return _MediaButton(
@@ -815,7 +816,18 @@ class _MediaItemRow extends StatelessWidget {
       );
     }
     if (item.videoUrl.isNotEmpty) {
-      return const _MediaButton(icon: Icons.play_circle_fill, filled: true);
+      // Bosilganda videoni aylana shaklida (Telegram video note kabi) ko'rsatadi.
+      return _MediaButton(
+        icon: Icons.play_circle_fill,
+        filled: true,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CircularNetworkVideoPlayer(
+              url: '${AppUrls.baseUrl}${item.videoUrl}',
+            ),
+          ),
+        ),
+      );
     }
     return const _MediaEmpty();
   }
