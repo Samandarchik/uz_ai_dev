@@ -7,8 +7,7 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
-import 'package:uz_ai_dev/admin/services/api_product_service.dart';
-import 'package:uz_ai_dev/admin/ui/widgets/composition_section.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -36,10 +35,8 @@ class _AddProductPageState extends State<AddProductPage> {
   String _source = 'samarqand';
   List<int> _selectedSklads = [];
 
-  // Tarkib (composition)
-  final ApiProductService _productService = ApiProductService();
-  final CompositionController _compositionController = CompositionController();
-  List<String> _units = ApiProductService.defaultUnits;
+  // Tarkib (tex karta)
+  final TechCardController _techController = TechCardController();
 
   // «Состав» switch: yoniq bo'lsa Состав tarkib nomlaridan to'ladi (read-only),
   // eski erkin matn _savedComment ga saqlanadi.
@@ -65,31 +62,10 @@ class _AddProductPageState extends State<AddProductPage> {
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
     });
-    _loadUnits();
   }
 
-  Future<void> _loadUnits() async {
-    final units = await _productService.getUnits();
-    if (mounted) {
-      setState(() {
-        _units = units;
-      });
-    }
-  }
-
-  // Tarkibdagi mahsulot nomlarini vergul bilan birlashtiradi.
-  // Faqat switch'i YONIQ (showInSostav) bo'lgan ingredientlar qo'shiladi.
-  String _compositionNames() => _compositionController.items
-      .where((e) => e.showInSostav)
-      .map((e) => e.name)
-      .join(', ');
-
-  // Switch yoniq bo'lsa «Состав» maydonini tarkib nomlaridan yangilaydi.
-  void _syncIngredientsFromComposition() {
-    if (_compositionAsIngredients) {
-      ingredientsControlle.text = _compositionNames();
-    }
-  }
+  // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan birlashtiradi.
+  String _compositionNames() => _techController.sostavNames().join(', ');
 
   void _onCompositionSwitchChanged(bool value) {
     setState(() {
@@ -522,12 +498,8 @@ class _AddProductPageState extends State<AddProductPage> {
                 );
               }),
             ],
-            const SizedBox(height: 24),
-            CompositionSection(
-              controller: _compositionController,
-              units: _units,
-              onChanged: () => setState(_syncIngredientsFromComposition),
-            ),
+            // Тех карта (состав) bu sahifada KO'RSATILMAYDI — mahsulot
+            // yaratilgach, ro'yxatda double-tap yoki «i» ikona orqali qo'shiladi.
             const SizedBox(height: 24),
             Consumer<CategoryProviderAdminUpload>(
               builder: (context, uploadProvider, child) {
@@ -597,7 +569,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               bozor: _bozor,
                               source: _source,
                               sklads: _selectedSklads,
-                              composition: _compositionController.build(),
+                              techCard: _techController.build(),
                               comment: _compositionAsIngredients
                                   ? _savedComment
                                   : ingredientsControlle.text,
@@ -643,7 +615,7 @@ class _AddProductPageState extends State<AddProductPage> {
     ingredientsControlle.dispose();
     grammController.dispose();
     bozorGrammController.dispose();
-    _compositionController.dispose();
+    _techController.dispose();
     super.dispose();
   }
 }

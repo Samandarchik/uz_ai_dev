@@ -1,4 +1,5 @@
 import 'package:uz_ai_dev/admin/model/composition_item.dart';
+import 'package:uz_ai_dev/admin/model/tech_card.dart';
 
 class ProductModelAdmin {
   final int id;
@@ -22,8 +23,12 @@ class ProductModelAdmin {
   final String source;
   final List<int> sklads;
 
-  // Mahsulot tarkibi (ingredientlar ro'yxati)
+  // Mahsulot tarkibi (eski tekis ingredientlar ro'yxati — saqlanadi, lekin
+  // endi tahrirlash IERARXIK tex karta orqali bo'ladi).
   final List<CompositionItem> composition;
+
+  // Yangi iyerarxik tex karta (tortlar uchun). null bo'lishi mumkin.
+  final TechCard? techCard;
 
   // «Состав» switch yoqilganda eski erkin matn shu yerda saqlanadi
   final String? comment;
@@ -49,6 +54,7 @@ class ProductModelAdmin {
     this.source = 'samarqand',
     this.sklads = const [],
     this.composition = const [],
+    this.techCard,
     this.comment,
     this.compositionAsIngredients = false,
   });
@@ -75,6 +81,9 @@ class ProductModelAdmin {
           : json['source'],
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
       composition: CompositionItem.listFromJson(json['composition']),
+      techCard: json['tech_card'] != null
+          ? TechCard.fromJson(Map<String, dynamic>.from(json['tech_card']))
+          : null,
       comment: json['comment']?.toString(),
       compositionAsIngredients: json['composition_as_ingredients'] ?? false,
     );
@@ -98,6 +107,7 @@ class ProductModelAdmin {
       'bozor': bozor,
       'source': source,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
     };
@@ -120,6 +130,7 @@ class ProductModelAdmin {
       'source': source,
       'sklads': sklads,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
     };
@@ -142,6 +153,7 @@ class ProductModelAdmin {
       'source': source,
       'sklads': sklads,
       'composition': composition.map((e) => e.toJson()).toList(),
+      'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
     };
@@ -165,6 +177,7 @@ class ProductModelAdmin {
     String? source,
     List<int>? sklads,
     List<CompositionItem>? composition,
+    TechCard? techCard,
     String? comment,
     bool? compositionAsIngredients,
   }) {
@@ -186,6 +199,7 @@ class ProductModelAdmin {
       source: source ?? this.source,
       sklads: sklads ?? this.sklads,
       composition: composition ?? this.composition,
+      techCard: techCard ?? this.techCard,
       comment: comment ?? this.comment,
       compositionAsIngredients:
           compositionAsIngredients ?? this.compositionAsIngredients,

@@ -6,6 +6,7 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/get_pdf_service.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_edit_product_ui.dart';
+import 'package:uz_ai_dev/admin/ui/tech_card_editor_page.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class AdminProductUi extends StatefulWidget {
@@ -239,16 +240,13 @@ class _AdminProductUiState extends State<AdminProductUi> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () async {
-              final result = await Navigator.push(
+              // createProduct provider ro'yxatini lokal yangilaydi — qayta GET shart emas.
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const AddProductPage(),
                 ),
               );
-
-              if (result == true) {
-                _refreshProducts();
-              }
             },
           ),
         ],
@@ -347,23 +345,54 @@ class _AdminProductUiState extends State<AdminProductUi> {
     );
   }
 
+  // Mahsulot ichida tarkib (tex karta) bormi — «i» ikonani shartli ko'rsatish uchun.
+  bool _hasTechCard(ProductModelAdmin product) {
+    final tc = product.techCard;
+    if (tc == null) return false;
+    return tc.bases.any((b) => b.ingredients.isNotEmpty) ||
+        tc.consumables.isNotEmpty;
+  }
+
+  // Tahrirlash/qo'shish/tex-karta saqlangach provider o'zini lokal yangilaydi
+  // (updateProduct/createProduct + notifyListeners). Shuning uchun bu yerda
+  // butun bazani QAYTA GET qilmaymiz — Consumer o'zi qayta chizadi.
+  Future<void> _openEditPage(ProductModelAdmin product) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProductPage(product: product),
+      ),
+    );
+  }
+
+  Future<void> _openTechCard(ProductModelAdmin product) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TechCardEditorPage(product: product),
+      ),
+    );
+  }
+
   Widget _buildProductListTile(
       BuildContext context, ProductModelAdmin product) {
-    return ListTile(
+    // Bitta bosish → mahsulotni tahrirlash (avalgi sahifa).
+    // Ikki marta bosish (double-tap) → tex karta (состав) sahifasi.
+    // Bosib turish → o'chirish. «i» ikona ham tex kartani ochadi (tarkibi bor bo'lsa).
+    return GestureDetector(
+      onTap: () => _openEditPage(product),
+      onDoubleTap: () => _openTechCard(product),
       onLongPress: () => _showDeleteConfirmDialog(context, product),
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => EditProductPage(product: product),
-          ),
-        );
-
-        if (result == true) {
-          _refreshProducts();
-        }
-      },
-      leading: ClipOval(
+      child: ListTile(
+        trailing: _hasTechCard(product)
+            ? IconButton(
+                icon: const Icon(Icons.info_outline),
+                color: Theme.of(context).colorScheme.primary,
+                tooltip: 'Тех карта',
+                onPressed: () => _openTechCard(product),
+              )
+            : null,
+        leading: ClipOval(
         child: GestureDetector(
           onTap: () {
             if (product.imageUrl != null) {
@@ -398,11 +427,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 ),
         ),
       ),
-      title: Text(
-        '${product.name} (${product.type})',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
+        title: Text(
+          '${product.name} (${product.type})',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ),
     );

@@ -28,11 +28,16 @@ class _OmborHomeUiState extends State<OmborHomeUi>
 
   late final TabController _tabController;
 
+  // dispose() ichida context.read() xavfsiz emas (widget deaktiv bo'lishi mumkin),
+  // shuning uchun provider referensini didChangeDependencies'da saqlaymiz.
+  OmborProvider? _omborProvider;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final provider = context.read<OmborProvider>();
       provider.fetchProducts();
       // Real-time: ro'yxat refresh'siz avtomatik yangilanishi uchun socketga ulanamiz.
@@ -41,9 +46,15 @@ class _OmborHomeUiState extends State<OmborHomeUi>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _omborProvider = context.read<OmborProvider>();
+  }
+
+  @override
   void dispose() {
-    // Ekrandan chiqishda real-time ulanishni uzamiz.
-    context.read<OmborProvider>().disconnectSocket();
+    // Ekrandan chiqishda real-time ulanishni uzamiz (saqlangan referens orqali).
+    _omborProvider?.disconnectSocket();
     _tabController.dispose();
     super.dispose();
   }

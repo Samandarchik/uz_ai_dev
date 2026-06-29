@@ -87,11 +87,16 @@ class _YukHomeUiState extends State<YukHomeUi> {
   List<int> _sklads = [];
   bool _loadingSklads = true;
 
+  // dispose() ichida context.read() xavfsiz emas (widget deaktiv bo'lishi mumkin),
+  // shuning uchun provider referensini didChangeDependencies'da saqlaymiz.
+  YukProvider? _yukProvider;
+
   @override
   void initState() {
     super.initState();
     _loadSklads();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final provider = context.read<YukProvider>();
       // Avval lokal qoralamalarni tiklaymiz (internet o'chiq bo'lsa ham
       // kiritilgan narxlar yo'qolmasin), keyin serverdan ro'yxatni olamiz.
@@ -103,9 +108,15 @@ class _YukHomeUiState extends State<YukHomeUi> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _yukProvider = context.read<YukProvider>();
+  }
+
+  @override
   void dispose() {
-    // Ekrandan chiqishda real-time ulanishni uzamiz.
-    context.read<YukProvider>().disconnectSocket();
+    // Ekrandan chiqishda real-time ulanishni uzamiz (saqlangan referens orqali).
+    _yukProvider?.disconnectSocket();
     super.dispose();
   }
 

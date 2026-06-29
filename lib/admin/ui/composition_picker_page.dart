@@ -1,25 +1,24 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:uz_ai_dev/admin/model/composition_item.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
-import 'package:uz_ai_dev/admin/services/api_product_service.dart';
+import 'package:uz_ai_dev/admin/model/tech_card.dart';
+import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 // Ingredient (tarkib) tanlash sahifasi.
 // AppBar'da qidiruv maydoni, pastda barcha mahsulotlar ro'yxati.
-// Mahsulot tanlanganda miqdor + birlik so'raydigan dialog ochiladi va
-// natija sifatida [CompositionItem] qaytaradi.
+// Mahsulot tanlanganda miqdor (butun son) + birlik so'raydigan dialog ochiladi
+// va natija sifatida [TechItem] qaytaradi.
 class CompositionPickerPage extends StatefulWidget {
-  final List<String> units;
-
-  const CompositionPickerPage({super.key, required this.units});
+  const CompositionPickerPage({super.key});
 
   @override
   State<CompositionPickerPage> createState() => _CompositionPickerPageState();
 }
 
 class _CompositionPickerPageState extends State<CompositionPickerPage> {
-  final ApiProductService _service = ApiProductService();
   final TextEditingController _searchController = TextEditingController();
 
   List<ProductModelAdmin> _allProducts = [];
@@ -34,17 +33,23 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
     _searchController.addListener(_onSearchChanged);
   }
 
+  // Mahsulotlar YAGONA provider (ProductProviderAdmin) dan olinadi.
+  // Ro'yxat allaqachon yuklangan bo'lsa (home page'da) qaytadan GET qilinmaydi —
+  // faqat hech yuklanmagan bo'lsa bir marta yuklanadi.
   Future<void> _loadProducts() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final products = await _service.getAllProducts();
+      final provider = context.read<ProductProviderAdmin>();
+      if (provider.products.isEmpty) {
+        await provider.initializeProducts();
+      }
       if (!mounted) return;
       setState(() {
-        _allProducts = products;
-        _filtered = products;
+        _allProducts = provider.products;
+        _filtered = provider.products;
         _isLoading = false;
       });
     } catch (e) {
@@ -75,12 +80,9 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
   }
 
   Future<void> _onProductTap(ProductModelAdmin product) async {
-    final result = await showDialog<CompositionItem>(
+    final result = await showDialog<TechItem>(
       context: context,
-      builder: (_) => _AmountUnitDialog(
-        product: product,
-        units: widget.units,
-      ),
+      builder: (_) => _AmountUnitDialog(product: product),
     );
     if (result != null && mounted) {
       Navigator.pop(context, result);
@@ -177,12 +179,11 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
   }
 }
 
-// Miqdor (amount) + birlik (unit) kiritish dialogi.
+// Miqdor (butun son amount) + birlik (g/ml/pcs/m) kiritish dialogi.
 class _AmountUnitDialog extends StatefulWidget {
   final ProductModelAdmin product;
-  final List<String> units;
 
-  const _AmountUnitDialog({required this.product, required this.units});
+  const _AmountUnitDialog({required this.product});
 
   @override
   State<_AmountUnitDialog> createState() => _AmountUnitDialogState();
@@ -190,22 +191,18 @@ class _AmountUnitDialog extends StatefulWidget {
 
 class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   final TextEditingController _amountController = TextEditingController();
-  late String _unit;
+  // Default birlik — gramm (eng ko'p ishlatiladigan).
+  String _unit = 'g';
 
   @override
   void initState() {
     super.initState();
-    // Default birlik = mahsulot turi (type), agar ro'yxatda bo'lsa.
-    if (widget.units.contains(widget.product.type)) {
-      _unit = widget.product.type;
-    } else {
-      _unit = widget.units.isNotEmpty ? widget.units.first : '';
-    }
+    // Mahsulot turidan birlikni topishga harakat qilamiz.
+    _unit = normalizeTechUnit(widget.product.type);
   }
 
   void _submit() {
-    final amount =
-        double.tryParse(_amountController.text.trim().replaceAll(',', '.'));
+    final amount = int.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Введите корректное количество')),
@@ -214,7 +211,7 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
     }
     Navigator.pop(
       context,
-      CompositionItem(
+      TechItem(
         productId: widget.product.id,
         name: widget.product.name,
         amount: amount,
@@ -233,25 +230,25 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
           TextField(
             controller: _amountController,
             autofocus: true,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(
-              labelText: 'Количество',
+              labelText: 'Количество (целое)',
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: widget.units.contains(_unit) ? _unit : null,
+            value: _unit,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Ед. изм.',
               border: OutlineInputBorder(),
             ),
-            items: widget.units
+            items: kTechUnits
                 .map((u) => DropdownMenuItem<String>(
                       value: u,
-                      child: Text(u),
+                      child: Text(techUnitLabel(u)),
                     ))
                 .toList(),
             onChanged: (value) {
