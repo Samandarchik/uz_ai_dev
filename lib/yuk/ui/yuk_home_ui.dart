@@ -12,6 +12,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 
 // Sklad nomlari (loyihaning boshqa joylarida ham shu hardcode map ishlatiladi).
 const Map<int, String> kSkladNames = {
@@ -270,6 +271,11 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        IconButton(
+          onPressed: () => context.push(YukProfileUi(sklads: _sklads)),
+          icon: const Icon(Icons.person_outline),
+          tooltip: 'Profil',
+        ),
         IconButton(
           onPressed: _logout,
           icon: const Icon(Icons.logout),
