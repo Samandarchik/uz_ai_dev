@@ -327,6 +327,7 @@ class _TelegramStyleVideoRecorderState
     try {
       await _controller!.startVideoRecording();
       await WakelockPlus.enable();
+      if (!mounted) return;
       setState(() {
         _isRecording = true;
         _isPaused = false;
@@ -349,9 +350,11 @@ class _TelegramStyleVideoRecorderState
     try {
       if (_isPaused) {
         await _controller!.resumeVideoRecording();
+        if (!mounted) return;
         setState(() => _isPaused = false);
       } else {
         await _controller!.pauseVideoRecording();
+        if (!mounted) return;
         setState(() => _isPaused = true);
       }
     } catch (e) {
@@ -367,6 +370,7 @@ class _TelegramStyleVideoRecorderState
       final XFile lastSegment = await _controller!.stopVideoRecording();
       _videoSegments.add(lastSegment);
       await WakelockPlus.disable();
+      if (!mounted) return;
       setState(() {
         _isRecording = false;
         _isPaused = false;
@@ -384,6 +388,7 @@ class _TelegramStyleVideoRecorderState
           if (result['action'] == 'send') {
             Navigator.of(context).pop(_videoSegments);
           } else if (result['action'] == 'retake') {
+            if (!mounted) return;
             setState(() {
               _videoSegments.clear();
               _recordedSeconds = 0;

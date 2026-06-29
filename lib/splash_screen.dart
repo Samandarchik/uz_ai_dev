@@ -4,6 +4,7 @@ import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_home_ui.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
+import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -46,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkToken(bool isRelease) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
-    String role = prefs.getString('role') ?? 'seller';
+    String role = prefs.getString('role') ?? AppRoles.seller;
     bool? isAdmin = prefs.getBool('is_admin');
 
     await Future.delayed(const Duration(seconds: 1));
@@ -59,11 +60,11 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     // Role bo'yicha yo'naltirish
-    if (isAdmin == true || role == 'superadmin') {
+    if (isAdmin == true || role == AppRoles.superAdmin) {
       context.pushReplacement(const AdminHomeUi());
-    } else if (role == 'ombor') {
+    } else if (role == AppRoles.ombor) {
       context.pushReplacement(const OmborHomeUi());
-    } else if (role == 'yuk_keltiruvchi') {
+    } else if (role == AppRoles.yukKeltiruvchi) {
       context.pushReplacement(const YukHomeUi());
     } else if (role == 'customer' || role == 'bringer') {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi

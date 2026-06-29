@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/network/error_handler.dart';
 
 class ApiAdminService {
   final Dio dio = sl<Dio>();
@@ -50,9 +51,7 @@ class ApiAdminService {
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'unknown_server_error';
+        final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
         throw Exception('category_create_error' + ': $errorMessage');
       } else {
         throw Exception('network_error' + ': ${e.message}');
@@ -83,9 +82,7 @@ class ApiAdminService {
         if (e.response!.statusCode == 404) {
           throw Exception('category_not_found');
         }
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'unknown_server_error';
+        final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
         throw Exception('category_update_error' + ': $errorMessage');
       } else {
         throw Exception('network_error' + ': ${e.message}');
@@ -123,9 +120,7 @@ class ApiAdminService {
         } else if (e.response!.statusCode == 409) {
           throw Exception('category_cannot_delete');
         }
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'unknown_server_error';
+        final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
         throw Exception('category_delete_error' + ': $errorMessage');
       } else {
         throw Exception('network_error' + ': ${e.message}');

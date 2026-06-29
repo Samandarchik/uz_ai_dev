@@ -3,7 +3,7 @@ class User {
   final String name;
   final String phone;
   final bool isAdmin;
-  final String role; // superadmin, seller, customer, bringer
+  final String role; // superadmin, admin, seller, ombor, yuk_keltiruvchi
   final int? filialId;
   final Filial? filial;
   final String? password;

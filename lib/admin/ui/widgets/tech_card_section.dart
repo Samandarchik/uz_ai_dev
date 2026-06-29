@@ -77,6 +77,7 @@ class _TechCardSectionState extends State<TechCardSection> {
   Future<void> _addBase() async {
     final name = await _askBaseName();
     if (name == null) return;
+    if (!mounted) return;
     setState(() {
       c.bases.add(TechBase(name: name, ingredients: const []));
     });
@@ -104,6 +105,7 @@ class _TechCardSectionState extends State<TechCardSection> {
       ),
     );
     if (result == null) return;
+    if (!mounted) return;
     setState(() {
       c.bases[index] = result;
     });
@@ -130,6 +132,7 @@ class _TechCardSectionState extends State<TechCardSection> {
       ),
     );
     if (ok != true) return;
+    if (!mounted) return;
     setState(() {
       c.bases.removeAt(index);
     });
@@ -148,6 +151,7 @@ class _TechCardSectionState extends State<TechCardSection> {
       ),
     );
     if (result == null) return;
+    if (!mounted) return;
     setState(() {
       c.consumables
         ..clear()

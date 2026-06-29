@@ -134,6 +134,7 @@ class _EditProductPageState extends State<EditProductPage> {
       );
 
       if (pickedFile != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = File(pickedFile.path);
           _imageChanged = true;
@@ -158,6 +159,7 @@ class _EditProductPageState extends State<EditProductPage> {
       );
 
       if (pickedFile != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = File(pickedFile.path);
           _imageChanged = true;

@@ -236,6 +236,7 @@ class _OrderCardState extends State<_OrderCard> {
       imageQuality: 70,
     );
     if (x != null) {
+      if (!mounted) return;
       setState(() => _images[productId] = x.path);
     }
   }
@@ -248,6 +249,7 @@ class _OrderCardState extends State<_OrderCard> {
       ),
     );
     if (segments != null && segments.isNotEmpty) {
+      if (!mounted) return;
       setState(() => _videos[productId] = segments.first.path);
     }
   }

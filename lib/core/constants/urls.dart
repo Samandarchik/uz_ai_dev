@@ -23,7 +23,6 @@ abstract final class AppUrls {
 
   // Real-time buyurtmalar uchun WebSocket. https->wss, http->ws avtomatik.
   static String wsOrders = '${baseUrl.replaceFirst('http', 'ws')}/api/ws';
-  static const String orderslist = '$baseUrl/api/orderslist';
   //filials
   static const String filials = '$baseUrl/api/filials';
   //Category

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
+import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_home_ui.dart';
@@ -39,6 +40,7 @@ class _LoginPageState extends State<LoginPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String>? accounts = prefs.getStringList('saved_accounts');
     if (accounts != null) {
+      if (!mounted) return;
       setState(() {
         _savedAccounts = accounts
             .map((account) => Map<String, String>.from(jsonDecode(account)))
@@ -96,6 +98,7 @@ class _LoginPageState extends State<LoginPage> {
     // Login API tanlash
     final result = await ApiService.login(loginInput, _passwordController.text);
 
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
@@ -111,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('name', jsonEncode(user["name"]));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
-      await prefs.setString("role", user["role"] ?? "seller");
+      await prefs.setString("role", user["role"] ?? AppRoles.seller);
       await prefs.setString('user', jsonEncode(user));
 
       _navigateByRole(user);
@@ -127,6 +130,7 @@ class _LoginPageState extends State<LoginPage> {
 
     final result = await ApiService.login("770451117", "112233");
 
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
@@ -142,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('token', result['data']['token']);
       await prefs.setString('user', jsonEncode(user));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
-      await prefs.setString("role", user["role"] ?? "seller");
+      await prefs.setString("role", user["role"] ?? AppRoles.seller);
 
       _navigateByRole(user);
     } else {
@@ -151,14 +155,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _navigateByRole(Map<String, dynamic> user) async {
-    final role = user["role"] ?? "seller";
+    final role = user["role"] ?? AppRoles.seller;
     final isAdmin = user["is_admin"] ?? false;
 
-    if (isAdmin == true || role == "superadmin") {
+    if (isAdmin == true || role == AppRoles.superAdmin) {
       context.pushAndRemove(const AdminHomeUi());
-    } else if (role == "ombor") {
+    } else if (role == AppRoles.ombor) {
       context.pushAndRemove(const OmborHomeUi());
-    } else if (role == "yuk_keltiruvchi") {
+    } else if (role == AppRoles.yukKeltiruvchi) {
       context.pushAndRemove(const YukHomeUi());
     } else if (role == "customer" || role == "bringer") {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi

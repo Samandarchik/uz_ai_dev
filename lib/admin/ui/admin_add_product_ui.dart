@@ -92,6 +92,7 @@ class _AddProductPageState extends State<AddProductPage> {
       );
 
       if (pickedFile != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = File(pickedFile.path);
         });
@@ -115,6 +116,7 @@ class _AddProductPageState extends State<AddProductPage> {
       );
 
       if (pickedFile != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = File(pickedFile.path);
         });

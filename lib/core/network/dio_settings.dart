@@ -163,33 +163,3 @@ class AppInterceptors extends QueuedInterceptorsWrapper {
     }
   }
 }
-
-/*
-class AppInterceptors extends QueuedInterceptorsWrapper {
-  final Dio dio;
-  final TokenStorage tokenStorage;
-
-  AppInterceptors(this.dio, this.tokenStorage);
-
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    final token = await tokenStorage.getToken();
-    if (token.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $token';
-    }
-    pPrint('Request: ${options.uri}', 1);
-    handler.next(options);
-  }
-
-  @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
-    pPrint('Response: ${response.data}', 2);
-    handler.next(response);
-  }
-
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    pPrint('onError: ${err.message}', 4);
-    handler.next(err);
-  }
-}*/

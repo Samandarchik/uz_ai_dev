@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';
 import 'package:uz_ai_dev/admin/services/user_management_service.dart';
+import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:provider/provider.dart';
 
@@ -31,7 +32,7 @@ class _EditUserPageState extends State<EditUserPage> {
   bool _isAdmin = false;
   int? _selectedFilialId;
   List<int> _selectedSklads = [];
-  String _selectedRole = 'seller';
+  String _selectedRole = AppRoles.seller;
   late List<String> _roleOptions;
   // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar (hozircha hardcode).
   static const Map<int, String> _skladOptions = {
@@ -63,9 +64,9 @@ class _EditUserPageState extends State<EditUserPage> {
 
     // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
     // (masalan superadmin) uni ham ro'yxatga qo'shamiz (dropdown crash bo'lmasligi uchun).
-    _roleOptions = ['seller', 'ombor', 'yuk_keltiruvchi'];
-    final r = widget.user?.role ?? 'seller';
-    _selectedRole = r.isEmpty ? 'seller' : r;
+    _roleOptions = [AppRoles.seller, AppRoles.ombor, AppRoles.yukKeltiruvchi];
+    final r = widget.user?.role ?? AppRoles.seller;
+    _selectedRole = r.isEmpty ? AppRoles.seller : r;
     if (!_roleOptions.contains(_selectedRole)) {
       _roleOptions = [_selectedRole, ..._roleOptions];
     }
@@ -76,15 +77,15 @@ class _EditUserPageState extends State<EditUserPage> {
 
   String _roleLabel(String role) {
     switch (role) {
-      case 'seller':
+      case AppRoles.seller:
         return 'Sotuvchi (do\'konchi)';
-      case 'ombor':
+      case AppRoles.ombor:
         return 'Ombor';
-      case 'yuk_keltiruvchi':
+      case AppRoles.yukKeltiruvchi:
         return 'Yuk keltiruvchi';
-      case 'superadmin':
+      case AppRoles.superAdmin:
         return 'Superadmin';
-      case 'admin':
+      case AppRoles.admin:
         return 'Admin';
       default:
         return role;
@@ -161,11 +162,13 @@ class _EditUserPageState extends State<EditUserPage> {
     });
     try {
       final filials = await _filialService.getAllFilials();
+      if (!mounted) return;
       setState(() {
         _filials = filials;
         _isLoadingFilials = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _filialError = e.toString();
         _isLoadingFilials = false;
@@ -184,15 +187,15 @@ class _EditUserPageState extends State<EditUserPage> {
   // Xato bo'lsa snackbar chiqarib true qaytaradi (saqlashni to'xtatish uchun).
   bool _hasFilialSkladError() {
     String? message;
-    if (_selectedRole == 'seller') {
+    if (_selectedRole == AppRoles.seller) {
       if (_selectedFilialId == null) {
         message = 'Выберите ветку';
       }
-    } else if (_selectedRole == 'ombor') {
+    } else if (_selectedRole == AppRoles.ombor) {
       if (_selectedSklads.length != 1) {
         message = 'Выберите один склад';
       }
-    } else if (_selectedRole == 'yuk_keltiruvchi') {
+    } else if (_selectedRole == AppRoles.yukKeltiruvchi) {
       if (_selectedSklads.isEmpty) {
         message = 'Выберите хотя бы один склад';
       }
@@ -217,7 +220,7 @@ class _EditUserPageState extends State<EditUserPage> {
     if (_hasFilialSkladError()) return;
 
     // filial_id faqat seller uchun yuboriladi; ombor/yuk uchun null.
-    final int? filialId = _selectedRole == 'seller' ? _selectedFilialId : null;
+    final int? filialId = _selectedRole == AppRoles.seller ? _selectedFilialId : null;
 
     setState(() => _isLoading = true);
 
@@ -310,7 +313,7 @@ class _EditUserPageState extends State<EditUserPage> {
   // - ombor          → bitta sklad (radio)
   // - yuk_keltiruvchi → bir nechta sklad (checkbox)
   Widget _buildSkladSelector() {
-    final bool isOmbor = _selectedRole == 'ombor';
+    final bool isOmbor = _selectedRole == AppRoles.ombor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -878,10 +881,10 @@ class _EditUserPageState extends State<EditUserPage> {
               const SizedBox(height: 20),
 
               // Filial (seller) yoki Sklad (ombor / yuk_keltiruvchi) selektori
-              if (_selectedRole == 'seller')
+              if (_selectedRole == AppRoles.seller)
                 _buildFilialSelector()
-              else if (_selectedRole == 'ombor' ||
-                  _selectedRole == 'yuk_keltiruvchi')
+              else if (_selectedRole == AppRoles.ombor ||
+                  _selectedRole == AppRoles.yukKeltiruvchi)
                 _buildSkladSelector(),
               const SizedBox(height: 20),
 

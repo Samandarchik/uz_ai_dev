@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/network/error_handler.dart';
 
 class ApiProductService {
   final Dio dio = sl<Dio>();
@@ -105,10 +106,7 @@ class ApiProductService {
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Mahsulot yaratishda Ошибка: $errorMessage');
+        throw Exception('Mahsulot yaratishda Ошибка: ${parseDioError(e)}');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
@@ -136,10 +134,7 @@ class ApiProductService {
         if (e.response!.statusCode == 404) {
           throw Exception('Mahsulot topilmadi');
         }
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Mahsulot yangilashda Ошибка: $errorMessage');
+        throw Exception('Mahsulot yangilashda Ошибка: ${parseDioError(e)}');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
@@ -172,10 +167,7 @@ class ApiProductService {
         } else if (e.response!.statusCode == 409) {
           throw Exception('Mahsulot o\'chirib bo\'lmaydi, u ishlatilmoqda');
         }
-        final errorMessage = e.response!.data['message'] ??
-            e.response!.data['error'] ??
-            'Noma\'lum server xatosi';
-        throw Exception('Mahsulot o\'chirishda Ошибка: $errorMessage');
+        throw Exception('Mahsulot o\'chirishda Ошибка: ${parseDioError(e)}');
       } else {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }

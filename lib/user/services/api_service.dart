@@ -37,30 +37,6 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> register() async {
-    try {
-      final response = await _dio.post(
-        '$baseUrl/api/login',
-        data: {
-          'phone': '+998770451117',
-          'password': '293',
-        },
-      );
-
-      return Map<String, dynamic>.from(response.data);
-    } on DioException catch (e) {
-      return {
-        'success': false,
-        'message': _handleDioError(e),
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Kutilmagan xato: $e',
-      };
-    }
-  }
-
   // ────────────────────────── PRODUCTS ──────────────────────────
 
   static Future<Map<String, dynamic>> getProducts(String token) async {
@@ -201,7 +177,8 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      return true;
+      print('Delete User error: $e');
+      return false;
     }
   }
 

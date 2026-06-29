@@ -73,6 +73,7 @@ class _OrdersPageState extends State<OrdersPage> {
     final result =
         await ApiService.getOrders(token, page: _currentPage, limit: _limit);
 
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
@@ -116,6 +117,7 @@ class _OrdersPageState extends State<OrdersPage> {
     String? token = prefs.getString('token');
 
     if (token == null) {
+      if (!mounted) return;
       setState(() {
         _isLoadingMore = false;
       });
@@ -125,6 +127,7 @@ class _OrdersPageState extends State<OrdersPage> {
     final result = await ApiService.getOrders(token,
         page: _currentPage + 1, limit: _limit);
 
+    if (!mounted) return;
     setState(() {
       _isLoadingMore = false;
     });

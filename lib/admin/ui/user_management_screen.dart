@@ -75,12 +75,14 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           users = await _userService.getAllUsers();
       }
 
+      if (!mounted) return;
       setState(() {
         _users = users;
         _filteredUsers = users;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;

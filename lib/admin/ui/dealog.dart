@@ -52,6 +52,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
     );
 
     if (image != null) {
+      if (!mounted) return;
       setState(() {
         _selectedImage = File(image.path);
       });
