@@ -231,6 +231,24 @@ class _OrderCardState extends State<_OrderCard> {
     return double.tryParse(cleaned) ?? 0;
   }
 
+  // Omborchi kiritgan "Kelgan soni" lar bo'yicha jonli umumiy summa.
+  // Backend bilan bir xil: birlik narx = subtotal/taken, received bo'yicha
+  // qayta hisoblanadi (kam qabul qilinsa summa kamayadi).
+  double _liveTotal() {
+    double total = 0;
+    for (final item in order.items) {
+      final received = _received.containsKey(item.productId)
+          ? _parseQty(_received[item.productId]!.text)
+          : item.taken;
+      if (item.taken > 0 && received != item.taken) {
+        total += (item.subtotal / item.taken) * received;
+      } else {
+        total += item.subtotal;
+      }
+    }
+    return total;
+  }
+
   // Mahsulot uchun rasm olish (kamera).
   Future<void> _captureImage(int productId) async {
     final x = await _picker.pickImage(
@@ -432,13 +450,50 @@ class _OrderCardState extends State<_OrderCard> {
                     color: Colors.black87,
                   ),
                 ),
-                Text(
-                  '${_formatSum(order.total)} so\'m',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
+                Builder(
+                  builder: (_) {
+                    // Tahrirlanadigan (narxlangan) buyurtmada jami summa kiritilgan
+                    // "Kelgan soni" lar bo'yicha jonli hisoblanadi. Asl summadan
+                    // farq qilsa: eskisi qizil + chizilgan, yangisi yashilda.
+                    final live = order.isPriced ? _liveTotal() : order.total;
+                    final changed =
+                        order.isPriced && (live - order.total).abs() > 0.0001;
+                    if (!changed) {
+                      return Text(
+                        '${_formatSum(live)} so\'m',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${_formatSum(order.total)} so\'m',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red,
+                            decoration: TextDecoration.lineThrough,
+                            decorationColor: Colors.red,
+                            decorationThickness: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_formatSum(live)} so\'m',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
