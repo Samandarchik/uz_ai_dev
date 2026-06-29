@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -132,21 +133,63 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final circleRadius = size.width * 0.5;
+    final diameter = size.width * 0.9;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Video player (to'liq ekran)
+          // ── Blurlangan orqa fon (videoning o'zidan) ──
           if (_isInitialized && _controller != null)
             Positioned.fill(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller!.value.size.width,
-                  height: _controller!.value.size.height,
-                  child: VideoPlayer(_controller!),
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
+                  ),
+                ),
+              ),
+            ),
+
+          // Orqa fonni yengil qoraytirish (doira ajralib tursin)
+          Positioned.fill(
+            child: Container(color: Colors.black.withValues(alpha: 0.4)),
+          ),
+
+          // ── Markazda aylana (aniq) video ──
+          if (_isInitialized && _controller != null)
+            Center(
+              child: SizedBox(
+                width: diameter,
+                height: diameter,
+                child: ClipOval(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _controller!.value.size.width,
+                      height: _controller!.value.size.height,
+                      child: VideoPlayer(_controller!),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Aylana oq border
+          if (_isInitialized)
+            Center(
+              child: IgnorePointer(
+                child: Container(
+                  width: diameter,
+                  height: diameter,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                  ),
                 ),
               ),
             ),
@@ -165,18 +208,6 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
               ),
             ),
 
-          // Aylana mask - faqat markazni ko'rsatish
-          if (_isInitialized)
-            Positioned.fill(
-              child: CustomPaint(
-                painter: CirclePreviewMaskPainter(
-                  circleRadius: circleRadius,
-                  borderColor: Colors.white,
-                  borderWidth: 4,
-                ),
-              ),
-            ),
-
           // Play/Pause overlay (markazda)
           if (_isInitialized && !_isLoadingNextSegment)
             Center(
@@ -184,8 +215,8 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
                 onTap: _togglePlayPause,
                 behavior: HitTestBehavior.translucent,
                 child: Container(
-                  width: circleRadius * 2,
-                  height: circleRadius * 2,
+                  width: diameter,
+                  height: diameter,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.transparent,
@@ -330,48 +361,5 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
         ),
       ),
     );
-  }
-}
-
-// Aylana mask painter - faqat markazni ko'rsatish
-class CirclePreviewMaskPainter extends CustomPainter {
-  final double circleRadius;
-  final Color borderColor;
-  final double borderWidth;
-
-  CirclePreviewMaskPainter({
-    required this.circleRadius,
-    required this.borderColor,
-    required this.borderWidth,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // Oq orqa fon (aylana tashqarisi)
-    final whitePaint = Paint()..color = Colors.white;
-
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addOval(Rect.fromCircle(center: center, radius: circleRadius))
-      ..fillType = PathFillType.evenOdd;
-
-    canvas.drawPath(path, whitePaint);
-
-    // Aylana border
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderWidth;
-
-    canvas.drawCircle(center, circleRadius, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(CirclePreviewMaskPainter oldDelegate) {
-    return oldDelegate.borderColor != borderColor ||
-        oldDelegate.circleRadius != circleRadius ||
-        oldDelegate.borderWidth != borderWidth;
   }
 }
