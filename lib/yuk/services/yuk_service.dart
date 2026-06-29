@@ -73,6 +73,25 @@ class YukService {
     }
   }
 
+  // PUT /api/yuk/orders/{id}/draft -> kiritilayotgan narxlarni (hali yubormasdan)
+  // qoralama sifatida backendda saqlash. Status o'zgarmaydi. Body priceOrder
+  // bilan bir xil. Ilovadan chiqib qayta kirilganda qiymatlar tiklanadi.
+  Future<void> saveDraft(
+    int orderId,
+    List<Map<String, dynamic>> items,
+    double total,
+  ) async {
+    final response = await dio.put(
+      '${AppUrls.yukOrders}/$orderId/draft',
+      data: {
+        'items': items,
+        'total': total,
+      },
+    );
+    if (response.statusCode == 200) return;
+    throw Exception('Qoralama saqlanmadi: ${response.statusCode}');
+  }
+
   // POST /api/yuk/orders/{id}/revert -> yuborilgan buyurtmani qaytarib olish
   // (narxlangan -> qayta tahrirlanadigan holatga). Faqat ~30 soniya ichida.
   Future<void> revertOrder(int orderId) async {

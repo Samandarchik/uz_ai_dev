@@ -20,6 +20,12 @@ class YukProvider extends ChangeNotifier {
   // Buyurtma yuborilguncha shu yerda turadi.
   final Map<int, Map<int, ItemPrice>> _prices = {};
 
+  // Qoralamani backendga saqlash uchun har bir buyurtma bo'yicha debounce timer.
+  // Maydon o'zgargach darrov emas, ozgina kutib (so'nggi o'zgarishdan keyin)
+  // bir marta saqlaymiz — har bosishda so'rov ketmasligi uchun.
+  final Map<int, Timer> _draftTimers = {};
+  static const Duration _draftDebounce = Duration(milliseconds: 700);
+
   // Hozir yuborilayotgan buyurtma id (spinner uchun). null bo'lsa hech nima.
   int? submittingOrderId;
 
@@ -72,6 +78,36 @@ class YukProvider extends ChangeNotifier {
     final map = _prices.putIfAbsent(orderId, () => {});
     map[productId] = (taken: taken, subtotal: subtotal);
     notifyListeners();
+    // Backendga qoralama sifatida (debounce bilan) saqlaymiz.
+    _scheduleDraftSave(orderId);
+  }
+
+  // So'nggi o'zgarishdan keyin _draftDebounce o'tgach qoralamani backendga
+  // bir marta yuboradi. Xatolar jim e'tiborsiz qoldiriladi — bu best-effort
+  // saqlash (asosiy yuborish baribir alohida "Yuborish" tugmasi bilan).
+  void _scheduleDraftSave(int orderId) {
+    _draftTimers[orderId]?.cancel();
+    _draftTimers[orderId] = Timer(_draftDebounce, () {
+      _draftTimers.remove(orderId);
+      _saveDraft(orderId);
+    });
+  }
+
+  Future<void> _saveDraft(int orderId) async {
+    final map = _prices[orderId];
+    if (map == null || map.isEmpty) return;
+    try {
+      final items = map.entries
+          .map((e) => <String, dynamic>{
+                'product_id': e.key,
+                'taken': e.value.taken,
+                'subtotal': e.value.subtotal,
+              })
+          .toList();
+      await _service.saveDraft(orderId, items, orderTotal(orderId));
+    } catch (_) {
+      // Qoralama saqlanmasa ham UI ishlayveradi; jim e'tiborsiz qoldiramiz.
+    }
   }
 
   // Boshlang'ich qiymatni notify'siz o'rnatish (initState'da chaqirish uchun).
@@ -121,6 +157,10 @@ class YukProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+
+    // Kutib turgan qoralama saqlash bo'lsa bekor qilamiz — endi yakuniy narx
+    // yuborilmoqda.
+    _draftTimers.remove(orderId)?.cancel();
 
     submittingOrderId = orderId;
     errorMessage = null;
@@ -215,6 +255,10 @@ class YukProvider extends ChangeNotifier {
   @override
   void dispose() {
     disconnectSocket();
+    for (final t in _draftTimers.values) {
+      t.cancel();
+    }
+    _draftTimers.clear();
     super.dispose();
   }
 }
