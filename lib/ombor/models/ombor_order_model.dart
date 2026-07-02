@@ -74,8 +74,6 @@ class OmborOrderItem {
   final String type;
   final double taken;
   final double subtotal;
-  // Yuk keltiruvchi sotib olgan summa (xarid narxi). subtotal'dan alohida.
-  final double bought;
   // Omborchi kiritgan haqiqatda kelgan miqdor (taken'dan kam bo'lsa kamomad).
   final double received;
   // Omborchi qabul qilganda yuborgan rasm/video (relativ /static/...).
@@ -89,7 +87,6 @@ class OmborOrderItem {
     required this.type,
     required this.taken,
     required this.subtotal,
-    this.bought = 0,
     this.received = 0,
     this.imageUrl = '',
     this.videoUrl = '',
@@ -103,7 +100,6 @@ class OmborOrderItem {
       type: json['type']?.toString() ?? '',
       taken: _toDouble(json['taken']),
       subtotal: _toDouble(json['subtotal']),
-      bought: _toDouble(json['bought']),
       received: _toDouble(json['received']),
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',

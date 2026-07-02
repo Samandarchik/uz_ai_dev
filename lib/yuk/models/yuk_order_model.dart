@@ -15,9 +15,6 @@ class YukOrderItem {
   // Narxlangan buyurtmada: olingan miqdor va shu item jami summasi.
   final double taken;
   final double subtotal;
-  // Yuk keltiruvchi sotib olgan summa (xarid narxi). subtotal'dan alohida,
-  // total'ga ta'sir qilmaydi.
-  final double bought;
   // Omborchi qabul qilganda kiritgan haqiqatda kelgan miqdor (taken'dan kam
   // bo'lsa kamomad). Qabul qilinmaguncha 0.
   final double received;
@@ -29,7 +26,6 @@ class YukOrderItem {
     this.type,
     this.taken = 0,
     this.subtotal = 0,
-    this.bought = 0,
     this.received = 0,
   });
 
@@ -41,7 +37,6 @@ class YukOrderItem {
       type: json['type'],
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
-      bought: (json['bought'] ?? 0).toDouble(),
       received: (json['received'] ?? 0).toDouble(),
     );
   }
@@ -54,7 +49,6 @@ class YukOrderItem {
         'type': type,
         'taken': taken,
         'subtotal': subtotal,
-        'bought': bought,
         'received': received,
       };
 }

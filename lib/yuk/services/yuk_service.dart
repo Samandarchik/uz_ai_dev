@@ -38,7 +38,7 @@ class YukService {
   }
 
   // PUT /api/yuk/orders/{id} -> buyurtmaga narx kiritib omborga qaytarish.
-  // Body: { "items":[{"product_id":5,"taken":6,"subtotal":3000,"bought":2400}, ...],
+  // Body: { "items":[{"product_id":5,"taken":6,"subtotal":3000}, ...],
   //         "total":3000 }
   // Javob: { "success": true, "message": "...", "data": {order} }
   Future<void> priceOrder(
