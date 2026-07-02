@@ -15,9 +15,16 @@ typedef ItemPrice = ({double taken, double subtotal});
 class YukProvider extends ChangeNotifier {
   final YukService _service = YukService();
 
+  // Asosiy sahifa ro'yxati: backenddan ?status=pending bilan olinadi
+  // (faqat hali yuborilmagan buyurtmalar + undo oynasi ochiq yuborilganlar).
   List<YukOrder> orders = [];
   bool isLoading = false;
   String? errorMessage;
+
+  // Tarix ekrani ro'yxati: backenddan ?status=done bilan alohida olinadi.
+  List<YukOrder> historyOrders = [];
+  bool isHistoryLoading = false;
+  String? historyError;
 
   // Lokal narxlar: orderId -> productId -> {taken, subtotal}.
   // Buyurtma yuborilguncha shu yerda turadi.
@@ -80,7 +87,7 @@ class YukProvider extends ChangeNotifier {
   // Tarix ekrani: berilgan skladning yuborilgan buyurtmalari, yangisi tepada.
   List<YukOrder> doneForSklad(int skladId) {
     final list =
-        orders.where((o) => o.skladId == skladId && _isDone(o)).toList();
+        historyOrders.where((o) => o.skladId == skladId && _isDone(o)).toList();
     list.sort((a, b) {
       final da = DateTime.tryParse(a.created) ?? DateTime(2000);
       final db = DateTime.tryParse(b.created) ?? DateTime(2000);
@@ -95,7 +102,19 @@ class YukProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      orders = await _service.fetchOrders();
+      // Asosiy sahifa uchun faqat yuborilmaganlarni olamiz.
+      final fetched = await _service.fetchOrders(status: 'pending');
+      // Endigina yuborilgan (undo oynasi hali ochiq) buyurtmalar pending
+      // ro'yxatida kelmaydi — "Qaytarib olish" tugmasi ko'rinib turishi uchun
+      // ularni eski ro'yxatdan saqlab qolamiz.
+      for (final o in orders) {
+        if (_isDone(o) &&
+            undoRemaining(o.id) > Duration.zero &&
+            !fetched.any((f) => f.id == o.id)) {
+          fetched.add(o);
+        }
+      }
+      orders = fetched;
       isOffline = false;
       // Ro'yxatni offline kesh uchun saqlaymiz.
       _persistOrders();
@@ -115,6 +134,23 @@ class YukProvider extends ChangeNotifier {
       }
     } finally {
       isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Tarix ekrani uchun yuborilgan buyurtmalarni backenddan olish
+  // (?status=done). Ekran ochilganda va pull-to-refresh'da chaqiriladi.
+  Future<void> fetchHistory() async {
+    isHistoryLoading = true;
+    historyError = null;
+    notifyListeners();
+
+    try {
+      historyOrders = await _service.fetchOrders(status: 'done');
+    } catch (e) {
+      historyError = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isHistoryLoading = false;
       notifyListeners();
     }
   }
@@ -316,13 +352,22 @@ class YukProvider extends ChangeNotifier {
           .toList();
       final total = orderTotal(orderId);
 
-      await _service.priceOrder(orderId, items, total);
+      final updated = await _service.priceOrder(orderId, items, total);
 
       // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
       // vaqtini belgila va ro'yxatni yangila.
       _prices.remove(orderId);
       _persistDrafts();
       _submittedAt[orderId] = DateTime.now();
+      // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
+      // asosiy sahifada undo oynasi davomida "Yuborilgan" ko'rinishida qoladi,
+      // tarixga esa darhol tushadi.
+      if (updated != null) {
+        final i = orders.indexWhere((o) => o.id == updated.id);
+        if (i >= 0) orders[i] = updated;
+        historyOrders.removeWhere((o) => o.id == updated.id);
+        historyOrders.insert(0, updated);
+      }
       submittingOrderId = null;
       // Undo oynasi tugagach ro'yxatni qayta filtrlaymiz — karta asosiy
       // sahifadan tarixga o'tishi uchun.
@@ -346,8 +391,18 @@ class YukProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.revertOrder(orderId);
+      final updated = await _service.revertOrder(orderId);
       _submittedAt.remove(orderId);
+      // Qaytarib olingan buyurtma tarixdan chiqib, asosiy ro'yxatga qaytadi.
+      historyOrders.removeWhere((o) => o.id == orderId);
+      if (updated != null) {
+        final i = orders.indexWhere((o) => o.id == updated.id);
+        if (i >= 0) {
+          orders[i] = updated;
+        } else {
+          orders.insert(0, updated);
+        }
+      }
       revertingOrderId = null;
       await fetchOrders();
       return true;
@@ -384,16 +439,28 @@ class YukProvider extends ChangeNotifier {
 
     if (event.action == 'deleted') {
       orders.removeWhere((o) => o.id == orderId);
+      historyOrders.removeWhere((o) => o.id == orderId);
       notifyListeners();
       return;
     }
 
     final order = YukOrder.fromJson(event.order);
     final index = orders.indexWhere((o) => o.id == order.id);
-    if (index >= 0) {
-      orders[index] = order; // bor bo'lsa almashtir
+    if (_isDone(order)) {
+      // Yuborilgan buyurtma — tarixga tushadi. Asosiy ro'yxatda bor bo'lsa
+      // yangilaymiz (undo oynasi davomida ko'rinib turadi), yo'q bo'lsa
+      // qo'shmaymiz — asosiy sahifa faqat pending uchun.
+      if (index >= 0) orders[index] = order;
+      historyOrders.removeWhere((o) => o.id == order.id);
+      historyOrders.insert(0, order);
     } else {
-      orders.add(order); // yo'q bo'lsa qo'sh
+      // Pending buyurtma — asosiy ro'yxatga (tarixdan chiqarib) qo'llaymiz.
+      if (index >= 0) {
+        orders[index] = order; // bor bo'lsa almashtir
+      } else {
+        orders.add(order); // yo'q bo'lsa qo'sh
+      }
+      historyOrders.removeWhere((o) => o.id == order.id);
     }
     // Socket'dan xabar keldi — demak online'miz.
     isOffline = false;

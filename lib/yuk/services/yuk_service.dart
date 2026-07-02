@@ -10,9 +10,14 @@ class YukService {
 
   // GET /api/yuk/orders -> yuk keltiruvchiga biriktirilgan skladlarning
   // buyurtmalari. Javob: { "success": true, "message": "...", "data": [ ... ] }
-  Future<List<YukOrder>> fetchOrders() async {
+  // status: 'pending' — faqat yuborilmaganlar (asosiy sahifa),
+  //         'done'    — faqat yuborilganlar (tarix ekrani), null — hammasi.
+  Future<List<YukOrder>> fetchOrders({String? status}) async {
     try {
-      final response = await dio.get(AppUrls.yukOrders);
+      final response = await dio.get(
+        AppUrls.yukOrders,
+        queryParameters: status == null ? null : {'status': status},
+      );
 
       if (response.statusCode == 200) {
         final body = response.data;
@@ -41,7 +46,8 @@ class YukService {
   // Body: { "items":[{"product_id":5,"taken":6,"subtotal":3000}, ...],
   //         "total":3000 }
   // Javob: { "success": true, "message": "...", "data": {order} }
-  Future<void> priceOrder(
+  // Yangilangan buyurtmani qaytaradi (lokal ro'yxatni refetch'siz yangilash uchun).
+  Future<YukOrder?> priceOrder(
     int orderId,
     List<Map<String, dynamic>> items,
     double total,
@@ -56,7 +62,11 @@ class YukService {
       );
 
       if (response.statusCode == 200) {
-        return;
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return YukOrder.fromJson(Map<String, dynamic>.from(body['data']));
+        }
+        return null;
       }
       throw Exception('Buyurtmani yuborib bo\'lmadi: ${response.statusCode}');
     } on DioException catch (e) {
@@ -94,11 +104,16 @@ class YukService {
 
   // POST /api/yuk/orders/{id}/revert -> yuborilgan buyurtmani qaytarib olish
   // (narxlangan -> qayta tahrirlanadigan holatga). Faqat ~30 soniya ichida.
-  Future<void> revertOrder(int orderId) async {
+  // Yangilangan (pending) buyurtmani qaytaradi.
+  Future<YukOrder?> revertOrder(int orderId) async {
     try {
       final response = await dio.post('${AppUrls.yukOrders}/$orderId/revert');
       if (response.statusCode == 200) {
-        return;
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return YukOrder.fromJson(Map<String, dynamic>.from(body['data']));
+        }
+        return null;
       }
       throw Exception('Qaytarib olib bo\'lmadi: ${response.statusCode}');
     } on DioException catch (e) {
