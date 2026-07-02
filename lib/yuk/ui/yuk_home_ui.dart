@@ -12,6 +12,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 
 // Sklad nomlari (loyihaning boshqa joylarida ham shu hardcode map ishlatiladi).
@@ -227,7 +228,9 @@ class _YukHomeUiState extends State<YukHomeUi> {
                 Expanded(
                   child: TabBarView(
                     children: _sklads.map((id) {
-                      final orders = provider.ordersForSklad(id);
+                      // Asosiy sahifada faqat hali yuborilmagan buyurtmalar
+                      // (yuborilganlar AppBar'dagi tarix ekranida).
+                      final orders = provider.pendingForSklad(id);
                       return RefreshIndicator(
                         onRefresh: () => provider.fetchOrders(),
                         child: orders.isEmpty
@@ -246,8 +249,12 @@ class _YukHomeUiState extends State<YukHomeUi> {
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8),
                                 itemCount: orders.length,
-                                itemBuilder: (context, index) =>
-                                    _YukOrderCard(order: orders[index]),
+                                itemBuilder: (context, index) => YukOrderCard(
+                                  // Ro'yxatdan karta chiqib ketganda (yuborilib
+                                  // tarixga o'tganda) state adashmasligi uchun.
+                                  key: ValueKey(orders[index].id),
+                                  order: orders[index],
+                                ),
                               ),
                       );
                     }).toList(),
@@ -271,6 +278,12 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        // Yuborilgan buyurtmalar tarixi.
+        IconButton(
+          onPressed: () => context.push(YukHistoryUi(sklads: _sklads)),
+          icon: const Icon(Icons.history),
+          tooltip: 'Yuborilganlar tarixi',
+        ),
         IconButton(
           onPressed: () => context.push(YukProfileUi(sklads: _sklads)),
           icon: const Icon(Icons.person_outline),
@@ -366,15 +379,16 @@ String _formatMoney(num v) {
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.
 // Har item qatorida INLINE maydonlar (Nechta olgani / Jami summa),
 // pastida "Chek bilan yuborish" tugmasi.
-class _YukOrderCard extends StatefulWidget {
+// Public — tarix ekrani (yuk_history_ui.dart) ham shu kartani ishlatadi.
+class YukOrderCard extends StatefulWidget {
   final YukOrder order;
-  const _YukOrderCard({required this.order});
+  const YukOrderCard({super.key, required this.order});
 
   @override
-  State<_YukOrderCard> createState() => _YukOrderCardState();
+  State<YukOrderCard> createState() => _YukOrderCardState();
 }
 
-class _YukOrderCardState extends State<_YukOrderCard> {
+class _YukOrderCardState extends State<YukOrderCard> {
   static const Color _accentColor = Color(0xFFC5A97B);
 
   // Har bir item (product_id) uchun olingan miqdor va jami summa controllerlari.

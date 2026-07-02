@@ -62,16 +62,31 @@ class YukProvider extends ChangeNotifier {
     return left.isNegative ? Duration.zero : left;
   }
 
-  // Berilgan sklad_id ga tegishli buyurtmalar.
-  // Hali yuborilmagan (kutilayotgan) buyurtmalar tepada, yuborilganlar pastda.
-  List<YukOrder> ordersForSklad(int skladId) {
-    final list = orders.where((o) => o.skladId == skladId).toList();
-    // Narxlangan yoki omborchi qabul qilgan buyurtmalar — "tugagan" (pastda).
-    bool isDone(YukOrder o) =>
-        o.status == 'narxlandi' || o.status == 'qabul_qilindi';
-    final pending = list.where((o) => !isDone(o)).toList();
-    final done = list.where(isDone).toList();
-    return [...pending, ...done];
+  // Buyurtma "tugagan"mi — narxlangan yoki omborchi qabul qilgan.
+  static bool _isDone(YukOrder o) =>
+      o.status == 'narxlandi' || o.status == 'qabul_qilindi';
+
+  // Asosiy sahifa: berilgan skladning FAQAT hali yuborilmagan buyurtmalari.
+  // Endigina yuborilgani "qaytarib olish" oynasi (30 s) tugaguncha ko'rinib
+  // turadi — undo tugmasi qo'l ostida bo'lishi uchun; keyin tarixga o'tadi.
+  List<YukOrder> pendingForSklad(int skladId) {
+    return orders
+        .where((o) =>
+            o.skladId == skladId &&
+            (!_isDone(o) || undoRemaining(o.id) > Duration.zero))
+        .toList();
+  }
+
+  // Tarix ekrani: berilgan skladning yuborilgan buyurtmalari, yangisi tepada.
+  List<YukOrder> doneForSklad(int skladId) {
+    final list =
+        orders.where((o) => o.skladId == skladId && _isDone(o)).toList();
+    list.sort((a, b) {
+      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
+      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
+      return db.compareTo(da);
+    });
+    return list;
   }
 
   Future<void> fetchOrders() async {
@@ -309,6 +324,11 @@ class YukProvider extends ChangeNotifier {
       _persistDrafts();
       _submittedAt[orderId] = DateTime.now();
       submittingOrderId = null;
+      // Undo oynasi tugagach ro'yxatni qayta filtrlaymiz — karta asosiy
+      // sahifadan tarixga o'tishi uchun.
+      Timer(undoWindow + const Duration(seconds: 1), () {
+        if (!_disposed) notifyListeners();
+      });
       await fetchOrders();
       return true;
     } catch (e) {
@@ -384,8 +404,12 @@ class YukProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // dispose'dan keyin kechikkan timerlar notifyListeners chaqirmasligi uchun.
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     disconnectSocket();
     for (final t in _draftTimers.values) {
       t.cancel();
