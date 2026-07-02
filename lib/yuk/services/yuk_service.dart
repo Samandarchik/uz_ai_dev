@@ -42,22 +42,53 @@ class YukService {
     }
   }
 
+  // POST /api/yuk/upload -> rasm yoki video faylni yuklash (multipart, "file").
+  // Javob: { "success": true, "data": { "url": "/static/yuk/<fayl>" } }
+  // Qaytgan relativ URL priceOrder'ning attachments ro'yxatiga qo'shiladi.
+  Future<String> uploadFile(String path) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(path),
+      });
+      final response = await dio.post(AppUrls.yukUpload, data: form);
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          final url = body['data']['url']?.toString() ?? '';
+          if (url.isNotEmpty) return url;
+        }
+      }
+      throw Exception('Fayl yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
   // PUT /api/yuk/orders/{id} -> buyurtmaga narx kiritib omborga qaytarish.
   // Body: { "items":[{"product_id":5,"taken":6,"subtotal":3000}, ...],
-  //         "total":3000 }
+  //         "total":3000, "attachments":["/static/yuk/x.jpg", ...] }
   // Javob: { "success": true, "message": "...", "data": {order} }
   // Yangilangan buyurtmani qaytaradi (lokal ro'yxatni refetch'siz yangilash uchun).
   Future<YukOrder?> priceOrder(
     int orderId,
     List<Map<String, dynamic>> items,
-    double total,
-  ) async {
+    double total, {
+    List<String> attachments = const [],
+  }) async {
     try {
       final response = await dio.put(
         '${AppUrls.yukOrders}/$orderId',
         data: {
           'items': items,
           'total': total,
+          'attachments': attachments,
         },
       );
 

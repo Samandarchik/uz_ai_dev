@@ -67,6 +67,9 @@ class YukOrder {
   final String status;
   final String created;
   final List<YukOrderItem> items;
+  // Yuk keltiruvchi narxlashda biriktirgan rasm/video URL'lari
+  // (relativ /static/yuk/...). Ko'rsatishda AppUrls.baseUrl qo'shiladi.
+  final List<String> attachments;
 
   YukOrder({
     required this.id,
@@ -79,6 +82,7 @@ class YukOrder {
     required this.status,
     required this.created,
     required this.items,
+    this.attachments = const [],
   });
 
   factory YukOrder.fromJson(Map<String, dynamic> json) {
@@ -88,6 +92,16 @@ class YukOrder {
       for (final item in rawItems) {
         if (item is Map) {
           items.add(YukOrderItem.fromJson(Map<String, dynamic>.from(item)));
+        }
+      }
+    }
+
+    final rawAttachments = json['attachments'];
+    final attachments = <String>[];
+    if (rawAttachments is List) {
+      for (final a in rawAttachments) {
+        if (a != null && a.toString().isNotEmpty) {
+          attachments.add(a.toString());
         }
       }
     }
@@ -103,6 +117,7 @@ class YukOrder {
       status: json['status'] ?? '',
       created: json['created']?.toString() ?? '',
       items: items,
+      attachments: attachments,
     );
   }
 
@@ -118,6 +133,7 @@ class YukOrder {
         'status': status,
         'created': created,
         'items': items.map((e) => e.toJson()).toList(),
+        'attachments': attachments,
       };
 }
 

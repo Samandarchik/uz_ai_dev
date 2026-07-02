@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -398,6 +402,9 @@ class _YukOrderCardState extends State<YukOrderCard> {
   // Har bir item (product_id) uchun "Nechta olgani" maydonining FocusNode'i.
   final Map<int, FocusNode> _takenFocusNodes = {};
 
+  // Rasm/video tanlash uchun (kamera va galereya).
+  final ImagePicker _picker = ImagePicker();
+
   // "Qaytarib olish" oynasi sanog'ini har soniyada yangilab turuvchi timer.
   Timer? _undoTicker;
 
@@ -454,6 +461,11 @@ class _YukOrderCardState extends State<YukOrderCard> {
       if (!_isDone && existing == null && (taken0 > 0 || subtotal0 > 0)) {
         provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
       }
+    }
+    // Qaytarib olingan buyurtmaning serverda qolgan biriktirmalarini lokal
+    // ro'yxatga tiklaymiz (qayta yuborishda yo'qolmasligi uchun).
+    if (!_isDone && order.attachments.isNotEmpty) {
+      provider.seedAttachments(order.id, order.attachments);
     }
     _maybeStartUndoTicker();
   }
@@ -518,6 +530,244 @@ class _YukOrderCardState extends State<YukOrderCard> {
     final dt = DateTime.tryParse(raw);
     if (dt == null) return raw;
     return DateFormat('dd.MM.yyyy HH:mm').format(dt.toLocal());
+  }
+
+  // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
+
+  // Fayl/URL video ekanini kengaytmasidan aniqlash.
+  static bool _isVideoPath(String p) {
+    final ext = p.split('.').last.toLowerCase();
+    return const {'mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', '3gp'}
+        .contains(ext);
+  }
+
+  // Relativ /static/... URL'ni to'liq manzilga aylantirish.
+  static String _fullUrl(String url) =>
+      url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
+
+  Future<void> _pickFromCamera({required bool video}) async {
+    try {
+      final XFile? file = video
+          ? await _picker.pickVideo(source: ImageSource.camera)
+          : await _picker.pickImage(source: ImageSource.camera);
+      if (file == null || !mounted) return;
+      context.read<YukProvider>().addAttachments(order.id, [file.path]);
+    } catch (_) {
+      // Ruxsat berilmagan/bekor qilingan — jim.
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      // Galereyadan bir nechta rasm/video birga tanlash mumkin.
+      final List<XFile> files = await _picker.pickMultipleMedia();
+      if (files.isEmpty || !mounted) return;
+      context
+          .read<YukProvider>()
+          .addAttachments(order.id, files.map((f) => f.path).toList());
+    } catch (_) {
+      // Ruxsat berilmagan/bekor qilingan — jim.
+    }
+  }
+
+  // Rasm/video qo'shish manbasini tanlash oynasi.
+  void _showAddAttachmentSheet() {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera, color: _accentColor),
+              title: const Text('Kamera — rasm'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromCamera(video: false);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam, color: _accentColor),
+              title: const Text('Kamera — video'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromCamera(video: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: _accentColor),
+              title: const Text('Galereya (rasm/video)'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromGallery();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Rasmni to'liq ekranda ko'rish; video tashqi pleerda ochiladi.
+  void _openAttachment(String entry) {
+    final isRemote = YukProvider.isRemoteAttachment(entry);
+    if (_isVideoPath(entry)) {
+      if (isRemote) {
+        launchUrl(Uri.parse(_fullUrl(entry)),
+            mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Center(
+                child: isRemote
+                    ? Image.network(_fullUrl(entry))
+                    : Image.file(File(entry)),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context, rootNavigator: true)
+                    .pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Bitta biriktirma plitkasi (72x72): rasm — thumbnail, video — play belgisi.
+  Widget _attachmentTile(String entry, {VoidCallback? onRemove}) {
+    final isRemote = YukProvider.isRemoteAttachment(entry);
+    final isVideo = _isVideoPath(entry);
+
+    Widget content;
+    if (isVideo) {
+      content = Container(
+        color: Colors.black87,
+        child: const Center(
+          child: Icon(Icons.play_circle_outline, color: Colors.white, size: 28),
+        ),
+      );
+    } else if (isRemote) {
+      content = Image.network(
+        _fullUrl(entry),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFF5F1EA),
+          child: const Icon(Icons.broken_image, color: Colors.black26),
+        ),
+      );
+    } else {
+      content = Image.file(File(entry), fit: BoxFit.cover);
+    }
+
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            onTap: () => _openAttachment(entry),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: content,
+            ),
+          ),
+          if (onRemove != null)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Yuborishdan oldin: biriktirmalar ro'yxati + qo'shish tugmasi.
+  Widget _buildAttachmentsEditor(YukProvider provider) {
+    final entries = provider.attachmentsFor(order.id);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ...entries.map(
+            (e) => _attachmentTile(
+              e,
+              onRemove: () => provider.removeAttachment(order.id, e),
+            ),
+          ),
+          // Qo'shish plitkasi.
+          GestureDetector(
+            onTap: _showAddAttachmentSheet,
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _accentColor),
+                color: _accentColor.withValues(alpha: 0.06),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined,
+                      color: _accentColor, size: 22),
+                  SizedBox(height: 2),
+                  Text(
+                    'Rasm/video',
+                    style: TextStyle(fontSize: 9, color: _accentColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Yuborilgan buyurtmada: biriktirmalarni faqat ko'rish.
+  Widget _buildAttachmentsViewer() {
+    if (order.attachments.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: order.attachments.map(_attachmentTile).toList(),
+      ),
+    );
   }
 
   // Inline kichik narx maydoni (jadval ustuni ichida).
@@ -887,6 +1137,12 @@ class _YukOrderCardState extends State<YukOrderCard> {
                 ],
               ),
               const SizedBox(height: 10),
+              // Yuborish tugmasi tepasida rasm/video biriktirish joyi:
+              // kamera yoki galereyadan, bir nechta bo'lishi mumkin.
+              if (!done)
+                _buildAttachmentsEditor(provider)
+              else
+                _buildAttachmentsViewer(),
               // Yuborilgan buyurtmada tugma o'rniga "Yuborilgan" belgisi va
               // (30 soniya ichida) "Qaytarib olish" tugmasi.
               if (done)

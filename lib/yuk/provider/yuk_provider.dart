@@ -30,6 +30,12 @@ class YukProvider extends ChangeNotifier {
   // Buyurtma yuborilguncha shu yerda turadi.
   final Map<int, Map<int, ItemPrice>> _prices = {};
 
+  // Buyurtmaga biriktirilgan rasm/video ro'yxati: orderId -> entrylar.
+  // Entry — telefon xotirasidagi fayl yo'li YOKI serverdagi relativ URL
+  // ('/static/...' bilan boshlanadi; qaytarib olingan buyurtmadan keladi).
+  // Yuborishda lokal fayllar avval /yuk/upload'ga yuklanadi.
+  final Map<int, List<String>> _attachments = {};
+
   // Qoralamani backendga saqlash uchun har bir buyurtma bo'yicha debounce timer.
   // Maydon o'zgargach darrov emas, ozgina kutib (so'nggi o'zgarishdan keyin)
   // bir marta saqlaymiz — har bosishda so'rov ketmasligi uchun.
@@ -325,6 +331,41 @@ class YukProvider extends ChangeNotifier {
     return map != null && map.isNotEmpty;
   }
 
+  // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
+
+  // Entry serverdagi URL'mi (lokal fayl emas).
+  static bool isRemoteAttachment(String entry) =>
+      entry.startsWith('/static/') || entry.startsWith('http');
+
+  // Buyurtmaning joriy biriktirmalari (ko'rsatish tartibida).
+  List<String> attachmentsFor(int orderId) =>
+      List.unmodifiable(_attachments[orderId] ?? const []);
+
+  void addAttachments(int orderId, List<String> paths) {
+    if (paths.isEmpty) return;
+    final list = _attachments.putIfAbsent(orderId, () => []);
+    for (final p in paths) {
+      if (p.isNotEmpty && !list.contains(p)) list.add(p);
+    }
+    notifyListeners();
+  }
+
+  void removeAttachment(int orderId, String entry) {
+    final list = _attachments[orderId];
+    if (list == null) return;
+    list.remove(entry);
+    if (list.isEmpty) _attachments.remove(orderId);
+    notifyListeners();
+  }
+
+  // Qaytarib olingan (yoki qoralamali) pending buyurtmaning serverda saqlangan
+  // biriktirmalarini lokal ro'yxatga tiklash — qayta yuborishda yo'qolmasin.
+  // Faqat lokal ro'yxat bo'sh bo'lsa (kiritilganini ustidan yozmaslik uchun).
+  void seedAttachments(int orderId, List<String> urls) {
+    if (urls.isEmpty || _attachments.containsKey(orderId)) return;
+    _attachments[orderId] = List.of(urls);
+  }
+
   // Narxlangan buyurtmani backendga yuborish (omborga qaytarish).
   Future<bool> submitPrices(int orderId) async {
     final map = _prices[orderId];
@@ -352,11 +393,29 @@ class YukProvider extends ChangeNotifier {
           .toList();
       final total = orderTotal(orderId);
 
-      final updated = await _service.priceOrder(orderId, items, total);
+      // Avval biriktirilgan lokal fayllarni (rasm/video) serverga yuklaymiz;
+      // serverda allaqachon bor URL'lar (qaytarib olingandan qolgan) o'z
+      // holicha ketadi. Birortasi yuklanmasa — butun yuborish to'xtaydi.
+      final attachmentUrls = <String>[];
+      for (final entry in _attachments[orderId] ?? const <String>[]) {
+        if (isRemoteAttachment(entry)) {
+          attachmentUrls.add(entry);
+        } else {
+          attachmentUrls.add(await _service.uploadFile(entry));
+        }
+      }
+
+      final updated = await _service.priceOrder(
+        orderId,
+        items,
+        total,
+        attachments: attachmentUrls,
+      );
 
       // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
       // vaqtini belgila va ro'yxatni yangila.
       _prices.remove(orderId);
+      _attachments.remove(orderId);
       _persistDrafts();
       _submittedAt[orderId] = DateTime.now();
       // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
@@ -402,6 +461,8 @@ class YukProvider extends ChangeNotifier {
         } else {
           orders.insert(0, updated);
         }
+        // Oldin yuborilgan biriktirmalar qayta yuborishda yo'qolmasligi uchun.
+        seedAttachments(updated.id, updated.attachments);
       }
       revertingOrderId = null;
       await fetchOrders();

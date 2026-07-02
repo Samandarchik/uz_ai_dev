@@ -13,6 +13,8 @@ abstract final class AppUrls {
 
   // Yuk keltiruvchi (sklad buyurtmalari)
   static String yukOrders = '$baseUrl/api/yuk/orders';
+  // Yuk keltiruvchi buyurtmaga biriktiriladigan rasm/video yuklash
+  static String yukUpload = '$baseUrl/api/yuk/upload';
 
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
