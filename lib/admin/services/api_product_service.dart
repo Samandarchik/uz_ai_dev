@@ -7,33 +7,6 @@ import 'package:uz_ai_dev/core/network/error_handler.dart';
 class ApiProductService {
   final Dio dio = sl<Dio>();
 
-  // Default birliklar ro'yxati (so'rov fail bo'lsa fallback)
-  static const List<String> defaultUnits = [
-    'шт',
-    'г',
-    'кг',
-    'л',
-    'мл',
-    'м',
-    'см',
-  ];
-
-  // Birliklar ro'yxatini olish (GET /api/units)
-  Future<List<String>> getUnits() async {
-    try {
-      final response = await dio.get(AppUrls.units);
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? response.data;
-        final units = data.map((e) => e.toString()).toList();
-        return units.isEmpty ? defaultUnits : units;
-      }
-      return defaultUnits;
-    } catch (e) {
-      print('Ошибка getUnits: $e');
-      return defaultUnits;
-    }
-  }
-
   // Get all products
   Future<List<ProductModelAdmin>> getAllProducts() async {
     try {
@@ -55,37 +28,6 @@ class ApiProductService {
       }
     } catch (e) {
       print('Ошибка getAllProducts: $e');
-      throw Exception('Kutilmagan Ошибка: $e');
-    }
-  }
-
-  // Get products by category ID
-  Future<List<ProductModelAdmin>> getProductsByCategoryId(
-      int categoryId) async {
-    try {
-      final response = await dio.get(AppUrls.productAll);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? response.data;
-        final List<ProductModelAdmin> allProducts =
-            data.map((e) => ProductModelAdmin.fromJson(e)).toList();
-
-        // Filter products by category_id
-        return allProducts
-            .where((product) => product.categoryId == categoryId)
-            .toList();
-      } else {
-        throw Exception('Server xatosi: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        throw Exception(
-            'Server xatosi: ${e.response!.statusCode} - ${e.response!.statusMessage}');
-      } else {
-        throw Exception('Tarmoq xatosi: ${e.message}');
-      }
-    } catch (e) {
-      print('Ошибка getProductsByCategoryId: $e');
       throw Exception('Kutilmagan Ошибка: $e');
     }
   }
@@ -188,28 +130,6 @@ class ApiProductService {
     } catch (e) {
       print('Ошибка reorderProducts: $e');
       return false;
-    }
-  }
-
-  // Get single product by ID
-  Future<ProductModelAdmin?> getProductById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.product}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data['data'] ?? response.data;
-        return ProductModelAdmin.fromJson(responseData);
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('Mahsulot olishda Ошибка: ${e.message}');
-    } catch (e) {
-      print('Ошибка getProductById: $e');
-      throw Exception('Mahsulot olishda kutilmagan Ошибка: $e');
     }
   }
 }

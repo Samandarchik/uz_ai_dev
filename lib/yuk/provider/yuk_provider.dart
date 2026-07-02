@@ -279,16 +279,6 @@ class YukProvider extends ChangeNotifier {
     return map != null && map.isNotEmpty;
   }
 
-  // Buyurtmaning hamma itemi narxlanganmi.
-  bool isOrderFullyPriced(YukOrder order) {
-    final map = _prices[order.id];
-    if (map == null) return false;
-    for (final item in order.items) {
-      if (!map.containsKey(item.productId)) return false;
-    }
-    return order.items.isNotEmpty;
-  }
-
   // Narxlangan buyurtmani backendga yuborish (omborga qaytarish).
   Future<bool> submitPrices(int orderId) async {
     final map = _prices[orderId];

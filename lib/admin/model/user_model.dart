@@ -184,15 +184,3 @@ class CreateUserRequest {
     };
   }
 }
-
-class AssignFilialRequest {
-  final int filialId;
-
-  AssignFilialRequest({required this.filialId});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'filial_id': filialId,
-    };
-  }
-}

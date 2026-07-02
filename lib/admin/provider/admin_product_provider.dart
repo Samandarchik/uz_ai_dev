@@ -11,7 +11,6 @@ class ProductProviderAdmin extends ChangeNotifier {
   bool _isLoading = false;
   bool _isInitialized = false; // Ma'lumotlar yuklangani
   String? _error;
-  ProductModelAdmin? _selectedProduct;
   int? _selectedCategoryId;
 
   // Getters
@@ -20,8 +19,6 @@ class ProductProviderAdmin extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
   String? get error => _error;
-  ProductModelAdmin? get selectedProduct => _selectedProduct;
-  int? get selectedCategoryId => _selectedCategoryId;
 
   // Barcha mahsulotlarni bir marta yuklash
   Future<void> initializeProducts({bool forceRefresh = false}) async {
@@ -55,30 +52,6 @@ class ProductProviderAdmin extends ChangeNotifier {
         .where((product) => product.categoryId == categoryId)
         .toList();
     notifyListeners();
-  }
-
-  // Barcha mahsulotlarni ko'rsatish
-  void showAllProducts() {
-    _selectedCategoryId = null;
-    _filteredProducts = _allProducts;
-    notifyListeners();
-  }
-
-  // Get all products (eski metod, mos kelish uchun)
-  Future<void> getAllProducts({bool forceRefresh = false}) async {
-    await initializeProducts(forceRefresh: forceRefresh);
-  }
-
-  // Get products by category ID (optimized - filterdan foydalanadi)
-  Future<void> getProductsByCategoryId(int categoryId,
-      {bool forceRefresh = false}) async {
-    // Agar ma'lumotlar yuklanmagan bo'lsa, avval yuklaymiz
-    if (!_isInitialized || forceRefresh) {
-      await initializeProducts(forceRefresh: forceRefresh);
-    }
-
-    // Keyin filter qilamiz
-    filterByCategory(categoryId);
   }
 
   // Create new product
@@ -167,35 +140,6 @@ class ProductProviderAdmin extends ChangeNotifier {
     }
   }
 
-  // Get product by ID
-  Future<ProductModelAdmin?> getProductById(int id) async {
-    // Avval local datadan qidiramiz
-    try {
-      final localProduct = _allProducts.firstWhere((p) => p.id == id);
-      _selectedProduct = localProduct;
-      notifyListeners();
-      return localProduct;
-    } catch (e) {
-      // Agar local datada bo'lmasa, serverdan olamiz
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      try {
-        final product = await _service.getProductById(id);
-        _selectedProduct = product;
-        _isLoading = false;
-        notifyListeners();
-        return product;
-      } catch (e) {
-        _error = e.toString();
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
-    }
-  }
-
   // Reorder products within category
   Future<bool> reorderProducts(int categoryId, int oldIndex, int newIndex) async {
     if (newIndex > oldIndex) newIndex--;
@@ -212,39 +156,8 @@ class ProductProviderAdmin extends ChangeNotifier {
     return success;
   }
 
-  // Set selected product
-  void setSelectedProduct(ProductModelAdmin? product) {
-    _selectedProduct = product;
-    notifyListeners();
-  }
-
-  // Clear filter
-  void clearFilter() {
-    _selectedCategoryId = null;
-    _filteredProducts = _allProducts;
-    notifyListeners();
-  }
-
-  // Clear error
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
-
   // Kategoriya bo'yicha mahsulotlar sonini olish
   int getProductCountByCategory(int categoryId) {
     return _allProducts.where((p) => p.categoryId == categoryId).length;
-  }
-
-  // Clear all data
-  void clear() {
-    _allProducts = [];
-    _filteredProducts = [];
-    _selectedProduct = null;
-    _selectedCategoryId = null;
-    _error = null;
-    _isLoading = false;
-    _isInitialized = false;
-    notifyListeners();
   }
 }

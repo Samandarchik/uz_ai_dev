@@ -3,8 +3,6 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
 class ApiService {
-  static const String baseUrl = AppUrls.baseUrl;
-
   static Dio get _dio => sl<Dio>();
 
   // ────────────────────────── AUTH ──────────────────────────
@@ -13,7 +11,7 @@ class ApiService {
       String phone, String password) async {
     try {
       final response = await _dio.post(
-        '$baseUrl/api/login',
+        AppUrls.login,
         data: {
           'phone': phone,
           'password': password,
@@ -37,82 +35,13 @@ class ApiService {
     }
   }
 
-  // ────────────────────────── PRODUCTS ──────────────────────────
-
-  static Future<Map<String, dynamic>> getProducts(String token) async {
-    try {
-      final response = await _dio.get(
-        '$baseUrl/api/products',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
-
-      return Map<String, dynamic>.from(response.data);
-    } on DioException catch (e) {
-      print('Products DioException: ${e.message}');
-      if (e.response?.statusCode == 401) {
-        return {
-          'success': false,
-          'message': 'Qaytadan login qiling!',
-          'needLogin': true,
-        };
-      }
-      return {
-        'success': false,
-        'message': _handleDioError(e),
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Kutilmagan xato: $e',
-      };
-    }
-  }
-
   // ────────────────────────── ORDERS ──────────────────────────
-
-  static Future<Map<String, dynamic>> createOrder(
-      String token, Map<String, dynamic> orderData) async {
-    try {
-      final response = await _dio.post(
-        '$baseUrl/api/orders',
-        data: orderData,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
-
-      print('Order Response Status: ${response.statusCode}');
-      print('Order Response Body: ${response.data}');
-
-      return Map<String, dynamic>.from(response.data);
-    } on DioException catch (e) {
-      print('Order DioException: ${e.message}');
-      if (e.response?.statusCode == 401) {
-        return {
-          'success': false,
-          'message': 'Token yaroqsiz. Qaytadan kiring.',
-          'needLogin': true,
-        };
-      }
-      return {
-        'success': false,
-        'message': _handleDioError(e),
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Kutilmagan xato: $e',
-      };
-    }
-  }
 
   static Future<Map<String, dynamic>> getOrders(String token,
       {int page = 1, int limit = 30}) async {
     try {
       final response = await _dio.get(
-        '$baseUrl/api/orders',
+        AppUrls.orders,
         queryParameters: {'page': page, 'limit': limit},
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
@@ -158,27 +87,6 @@ class ApiService {
         'success': false,
         'message': 'Kutilmagan xato: $e',
       };
-    }
-  }
-
-  static Future<Map<String, dynamic>> getAllOrders(String token) async {
-    return getOrders(token, page: 1, limit: 1000);
-  }
-
-  // ────────────────────────── USER ──────────────────────────
-
-  static Future<bool> deleteUser(String token) async {
-    try {
-      await _dio.delete(
-        '$baseUrl/api/delete-user',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
-      return true;
-    } catch (e) {
-      print('Delete User error: $e');
-      return false;
     }
   }
 

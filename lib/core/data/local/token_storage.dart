@@ -8,21 +8,8 @@ final class TokenStorage {
 
   TokenStorage(this._baseStorage);
 
-  // Token methods
-  Future<void> putToken(String token) async {
-    await _baseStorage.putString(key: _token, value: token);
-  }
-
-  Future<void> putRefreshToken(String refreshToken) async {
-    await _baseStorage.putString(key: _refreshToken, value: refreshToken);
-  }
-
   Future<String> getToken() async {
     return _baseStorage.getString(key: _token);
-  }
-
-  Future<String> getRefreshToken() async {
-    return _baseStorage.getString(key: _refreshToken);
   }
 
   Future<void> removeToken() async {

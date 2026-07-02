@@ -52,12 +52,6 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Mahsulotni savatdan butunlay olib tashlash.
-  void removeFromCart(int productId) {
-    _cart.remove(productId);
-    notifyListeners();
-  }
-
   void clearCart() {
     _cart.clear();
     notifyListeners();

@@ -144,26 +144,4 @@ class ApiAdminService {
       return false;
     }
   }
-
-  // Get single category by ID (optional method)
-  Future<CategoryProductAdmin?> getCategoryById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.category}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data['data'] ?? response.data;
-        return CategoryProductAdmin.fromJson(responseData);
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('category_fetch_error' + ': ${e.message}');
-    } catch (e) {
-      print('Ошибка getCategoryById: $e');
-      throw Exception('category_fetch_unexpected' + ': $e');
-    }
-  }
 }

@@ -163,56 +163,7 @@ class UserManagementService {
     }
   }
 
-  // Assign filial to user - PUT /api/users/{id}/assign-filial
-  Future<User> assignFilialToUser(int userId, int filialId) async {
-    try {
-      final response = await dio.put(
-        '${AppUrls.users}/$userId/assign-filial',
-        data: AssignFilialRequest(filialId: filialId).toJson(),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          final user = await getUserById(userId);
-          if (user != null) {
-            return user;
-          } else {
-            throw Exception('updated_user_fetch_error');
-          }
-        } else {
-          throw Exception(responseData['message'] ?? 'assign_filial_error');
-        }
-      } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        if (e.response!.statusCode == 404) {
-          throw Exception('user_or_filial_not_found');
-        }
-        final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('assign_filial_error' + ': $errorMessage');
-      } else {
-        throw Exception('network_error' + ': ${e.message}');
-      }
-    } catch (e) {
-      print('Xatolik assignFilialToUser: $e');
-      throw Exception('unexpected_error_assign' + ': $e');
-    }
-  }
-
   // Helper methods
-  Future<List<User>> getUsersByFilial(int filialId) async {
-    try {
-      final allUsers = await getAllUsers();
-      return allUsers.where((user) => user.filialId == filialId).toList();
-    } catch (e) {
-      throw Exception('users_by_filial_error' + ': $e');
-    }
-  }
-
   Future<List<User>> getAdminUsers() async {
     try {
       final allUsers = await getAllUsers();
@@ -228,21 +179,6 @@ class UserManagementService {
       return allUsers.where((user) => !user.isAdmin).toList();
     } catch (e) {
       throw Exception('regular_users_error' + ': $e');
-    }
-  }
-
-  Future<List<User>> searchUsers(String query) async {
-    try {
-      final allUsers = await getAllUsers();
-      if (query.isEmpty) return allUsers;
-
-      return allUsers.where((user) {
-        final nameMatch = user.name.toLowerCase().contains(query.toLowerCase());
-        final phoneMatch = user.phone.contains(query);
-        return nameMatch || phoneMatch;
-      }).toList();
-    } catch (e) {
-      throw Exception('search_users_error' + ': $e');
     }
   }
 
@@ -292,32 +228,6 @@ class FilialService {
     } catch (e) {
       print('Xatolik getAllFilials: $e');
       throw Exception('unexpected_error_filials' + ': $e');
-    }
-  }
-
-  Future<Filial?> getFilialById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.filials}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          return Filial.fromJson(responseData['data']);
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('filial_fetch_error' + ': ${e.message}');
-    } catch (e) {
-      print('Xatolik getFilialById: $e');
-      throw Exception('unexpected_error_filial' + ': $e');
     }
   }
 }

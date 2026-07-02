@@ -15,7 +15,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
   bool _isLoading = false;
   bool _isUploading = false;
   String? _error;
-  CategoryProductAdmin? _selectedCategory;
   double _uploadProgress = 0.0;
 
   // Getters
@@ -23,7 +22,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isUploading => _isUploading;
   String? get error => _error;
-  CategoryProductAdmin? get selectedCategory => _selectedCategory;
   double get uploadProgress => _uploadProgress;
 
   // Upload image to /api/upload using Dio
@@ -212,11 +210,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
       final index = _categories.indexWhere((c) => c.id == result.id);
       if (index != -1) {
         _categories[index] = result;
-
-        // Update selected category if it's the one being updated
-        if (_selectedCategory?.id == result.id) {
-          _selectedCategory = result;
-        }
       }
 
       _isLoading = false;
@@ -236,27 +229,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     }
   }
 
-  // Quick update methods for specific fields
-  Future<bool> updateCategoryName(int categoryId, String newName) async {
-    final category = _categories.firstWhere((c) => c.id == categoryId);
-    return await updateCategory(category, newName: newName);
-  }
-
-  Future<bool> updateCategoryPrint(int categoryId, int newPrint) async {
-    final category = _categories.firstWhere((c) => c.id == categoryId);
-    return await updateCategory(category, newPrint: newPrint);
-  }
-
-  Future<bool> updateCategoryImage(int categoryId, File imageFile) async {
-    final category = _categories.firstWhere((c) => c.id == categoryId);
-    return await updateCategory(category, imageFile: imageFile);
-  }
-
-  Future<bool> updateCategoryImageUrl(int categoryId, String imageUrl) async {
-    final category = _categories.firstWhere((c) => c.id == categoryId);
-    return await updateCategory(category, newImageUrl: imageUrl);
-  }
-
   // Delete category
   Future<bool> deleteCategory(CategoryProductAdmin category) async {
     _isLoading = true;
@@ -266,11 +238,6 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     try {
       await _service.deleteCategory(category);
       _categories.removeWhere((c) => c.id == category.id);
-
-      // Clear selected category if it was deleted
-      if (_selectedCategory?.id == category.id) {
-        _selectedCategory = null;
-      }
 
       _isLoading = false;
       notifyListeners();
@@ -283,66 +250,4 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     }
   }
 
-  // Get category by ID
-  Future<CategoryProductAdmin?> getCategoryById(int id) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final category = await _service.getCategoryById(id);
-      _selectedCategory = category;
-      _isLoading = false;
-      notifyListeners();
-      return category;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return null;
-    }
-  }
-
-  // Set selected category
-  void setSelectedCategory(CategoryProductAdmin? category) {
-    _selectedCategory = category;
-    notifyListeners();
-  }
-
-  // Refresh single category
-  Future<void> refreshCategory(int categoryId) async {
-    try {
-      final category = await _service.getCategoryById(categoryId);
-      if (category != null) {
-        final index = _categories.indexWhere((c) => c.id == categoryId);
-        if (index != -1) {
-          _categories[index] = category;
-          if (_selectedCategory?.id == categoryId) {
-            _selectedCategory = category;
-          }
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  // Clear error
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
-
-  // Clear all data
-  void clear() {
-    _categories = [];
-    _selectedCategory = null;
-    _error = null;
-    _isLoading = false;
-    _isUploading = false;
-    _uploadProgress = 0.0;
-    notifyListeners();
-  }
 }

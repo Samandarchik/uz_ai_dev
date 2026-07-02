@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/user/models/user_model.dart';
+import 'package:uz_ai_dev/admin/model/user_model.dart';
 
 class ApiFilialService {
   final Dio dio = sl<Dio>();
@@ -28,28 +28,6 @@ class ApiFilialService {
     } catch (e) {
       print('Ошибка getFilials: $e');
       throw Exception('unexpected_error' + ': $e');
-    }
-  }
-
-  // Get single filial by ID
-  Future<Filial?> getFilialById(int id) async {
-    try {
-      final response = await dio.get('${AppUrls.filials}/$id');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data['data'] ?? response.data;
-        return Filial.fromJson(responseData);
-      } else {
-        return null;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return null;
-      }
-      throw Exception('filial_fetch_error' + ': ${e.message}');
-    } catch (e) {
-      print('Ошибка getFilialById: $e');
-      throw Exception('filial_fetch_unexpected' + ': $e');
     }
   }
 }
