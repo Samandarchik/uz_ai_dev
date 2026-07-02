@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:easy_video_editor/easy_video_editor.dart';
 
 /// Telegram "video note" uslubidagi qayta ishlash:
 ///  - bir nechta segment bo'lsa, ularni bitta videoga birlashtiradi;
-///  - markazdan KVADRAT (1:1) qirqadi — ekranda aylana ko'rinishda chiqadi;
+///  - iOS'da markazdan KVADRAT (1:1) qirqadi. Android'da qirqilmaydi —
+///    MediaCodec bilan crop ba'zi qurilmalarda native crash beradi; ilovada
+///    video baribir ClipOval + cover bilan aylana ko'rsatilgani uchun
+///    ko'rinishga ta'sir qilmaydi;
 ///  - 480p ga siqadi (kichik hajm, sifat saqlanadi).
 ///
 /// FFmpeg ishlatmaydi: iOS'da AVFoundation, Android'da MediaCodec.
@@ -26,9 +31,13 @@ class VideoProcessor {
       builder = builder.merge(otherVideoPaths: segmentPaths.sublist(1));
     }
 
-    // 2) Kvadrat qirqish + 480p ga siqish.
+    // 2) iOS: kvadrat qirqish. Android'da o'tkazib yuboriladi (yuqoridagi izoh).
+    if (Platform.isIOS) {
+      builder = builder.crop(aspectRatio: VideoAspectRatio.ratio1x1);
+    }
+
+    // 3) 480p ga siqish.
     final outputPath = await builder
-        .crop(aspectRatio: VideoAspectRatio.ratio1x1)
         .compress(resolution: VideoResolution.p480)
         .export(onProgress: onProgress);
 

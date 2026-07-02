@@ -287,13 +287,16 @@ class _OrderCardState extends State<_OrderCard> {
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // dialogni yopish
+      // Qayta ishlash muvaffaqiyatsiz bo'lsa ham video yuborilsin:
+      // xom (qayta ishlanmagan) birinchi segment ishlatiladi. Ilovada baribir
+      // aylana (ClipOval) ko'rinishda chiqadi, faqat hajmi kattaroq bo'ladi.
+      setState(() => _videos[productId] = segments.first.path);
       messenger.showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-            'Videoni tayyorlashda xatolik: '
-            '${e.toString().replaceFirst('Exception: ', '')}',
+            'Video siqilmadi, asl holicha yuboriladi (hajmi kattaroq)',
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.orange,
         ),
       );
     }

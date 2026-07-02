@@ -157,10 +157,13 @@ class _TelegramStyleVideoRecorderState
 
   Future<void> _openCamera(int cameraIndex) async {
     await _controller?.dispose();
+    // fps faqat iOS'da beriladi: Android'da (CameraX) ba'zi qurilmalar 30 fps
+    // oralig'ini qo'llamaydi va bu native IllegalArgumentException bilan
+    // ilovani o'chirib yuboradi (Dart try/catch ushlay olmaydi).
     _controller = CameraController(
       _cameras[cameraIndex],
       ResolutionPreset.high,
-      fps: 30,
+      fps: Platform.isIOS ? 30 : null,
       enableAudio: true,
     );
     await _controller!.initialize();
