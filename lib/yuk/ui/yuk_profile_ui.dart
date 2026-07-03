@@ -14,6 +14,7 @@ class YukProfileUi extends StatelessWidget {
   static const Color _accent = Color(0xFFC5A97B);
   static const Color _green = Color(0xFF2E7D32);
   static const Color _red = Color(0xFFC62828);
+  static const Color _blue = Color(0xFF1565C0);
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +111,7 @@ class _Stats {
   final double brought; // jami olib kelingan summa (yuborilgan total)
   final double accepted; // qabul qilingan summa
   final double shortage; // qabul qilinmagan (kamomad) summa
+  final double expenses; // rasxod (xarajat) summasi — kamomadga kirmaydi
   final List<YukOrder> shortageOrders; // kamomadli buyurtmalar
 
   _Stats({
@@ -119,12 +121,13 @@ class _Stats {
     required this.brought,
     required this.accepted,
     required this.shortage,
+    required this.expenses,
     required this.shortageOrders,
   });
 
   factory _Stats.from(Iterable<YukOrder> orders) {
     int sent = 0, acc = 0, pend = 0;
-    double brought = 0, accepted = 0, shortage = 0;
+    double brought = 0, accepted = 0, shortage = 0, expenses = 0;
     final shortageOrders = <YukOrder>[];
 
     for (final o in orders) {
@@ -134,6 +137,7 @@ class _Stats {
 
       sent++;
       brought += o.total.toDouble();
+      expenses += o.expensesTotal;
 
       if (isPriced) {
         pend++;
@@ -160,6 +164,7 @@ class _Stats {
       brought: brought,
       accepted: accepted,
       shortage: shortage,
+      expenses: expenses,
       shortageOrders: shortageOrders,
     );
   }
@@ -204,6 +209,15 @@ class _SummaryGrid extends StatelessWidget {
                 value: '${_money(stats.shortage)} so\'m',
                 sub: 'kamomad',
                 color: YukProfileUi._red,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatCard(
+                label: 'Xarajatlar',
+                value: '${_money(stats.expenses)} so\'m',
+                sub: 'rasxod',
+                color: YukProfileUi._blue,
               ),
             ),
           ],
@@ -303,6 +317,8 @@ class _SkladCard extends StatelessWidget {
               YukProfileUi._green),
           _row('Qabul qilinmagan', '${_money(stats.shortage)} so\'m',
               YukProfileUi._red),
+          _row('Xarajatlar', '${_money(stats.expenses)} so\'m',
+              YukProfileUi._blue),
         ],
       ),
     );

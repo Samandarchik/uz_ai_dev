@@ -208,8 +208,10 @@ class _OrderCardState extends State<_OrderCard> {
     super.initState();
     // Narxlangan buyurtmada "Kelgan soni" maydonini yuk keltiruvchi aytgan
     // miqdor (taken) bilan oldindan to'ldiramiz; omborchi kam bo'lsa o'zgartiradi.
+    // Rasxod (xarajat) itemlari qabul qilinmaydi — controller ochilmaydi.
     if (order.isPriced) {
       for (final item in order.items) {
+        if (item.isRasxod) continue;
         _received[item.productId] =
             TextEditingController(text: _fmtQty(item.taken));
       }
@@ -237,6 +239,8 @@ class _OrderCardState extends State<_OrderCard> {
   double _liveTotal() {
     double total = 0;
     for (final item in order.items) {
+      // Rasxod (xarajat) mahsulot summasiga kirmaydi.
+      if (item.isRasxod) continue;
       final received = _received.containsKey(item.productId)
           ? _parseQty(_received[item.productId]!.text)
           : item.taken;
@@ -425,7 +429,9 @@ class _OrderCardState extends State<_OrderCard> {
           // Rasm va Video ustunlari; aks holda oddiy ro'yxat.
           if (order.isPriced || order.isAccepted) ...[
             const _MediaTableHeader(),
-            ...order.items.map(
+            // Rasxod (xarajat) itemlari jadvalga kirmaydi — ular pastdagi
+            // "Xarajatlar" blokida (qabul qilinmaydi, rasm/video yo'q).
+            ...order.items.where((i) => !i.isRasxod).map(
               (item) => _MediaItemRow(
                 item: item,
                 editable: order.isPriced,
@@ -437,81 +443,176 @@ class _OrderCardState extends State<_OrderCard> {
                 onTapVideo: () => _captureVideo(item.productId),
               ),
             ),
+            // Xarajatlar bloki (rasxod itemlari: nomi + summa).
+            if (order.items.any((i) => i.isRasxod)) ...[
+              const Divider(height: 20),
+              const Text(
+                'Xarajatlar',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 4),
+              ...order.items.where((i) => i.isRasxod).map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${_formatSum(item.subtotal)} so\'m',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+            ],
           ] else
             ...order.items.map((item) => _OrderItemRow(item: item)),
-          // Jami (narxlangan yoki qabul qilingan bo'lsa).
+          // Chek yakuni (narxlangan yoki qabul qilingan bo'lsa):
+          // Mahsulot / Xarajat (bo'lsa) / Jami.
           if (order.isPriced || order.isAccepted) ...[
             const Divider(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Jami:',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                Builder(
-                  builder: (_) {
-                    // Tahrirlanadigan (narxlangan) buyurtmada jami summa kiritilgan
-                    // "Kelgan soni" lar bo'yicha jonli hisoblanadi. Qabul qilingan
-                    // buyurtmada esa backenddan kelgan received_total ishlatiladi.
-                    // Asl summadan farq qilsa: eskisi qizil + chizilgan, yangisi
-                    // yashilda.
-                    final double newTotal;
-                    final bool reduced;
-                    if (order.isPriced) {
-                      newTotal = _liveTotal();
-                      reduced = (newTotal - order.total).abs() > 0.0001;
-                    } else if (order.isAccepted &&
-                        order.receivedTotal > 0 &&
-                        (order.receivedTotal - order.total).abs() > 0.0001) {
-                      newTotal = order.receivedTotal;
-                      reduced = true;
-                    } else {
-                      newTotal = order.total;
-                      reduced = false;
-                    }
-                    if (!reduced) {
-                      return Text(
+            Builder(
+              builder: (_) {
+                // Tahrirlanadigan (narxlangan) buyurtmada mahsulot summasi
+                // kiritilgan "Kelgan soni" lar bo'yicha jonli hisoblanadi.
+                // Qabul qilingan buyurtmada esa backenddan kelgan
+                // received_total ishlatiladi. Asl summadan farq qilsa:
+                // eskisi qizil + chizilgan, yangisi yashilda.
+                final double newTotal;
+                final bool reduced;
+                if (order.isPriced) {
+                  newTotal = _liveTotal();
+                  reduced = (newTotal - order.total).abs() > 0.0001;
+                } else if (order.isAccepted &&
+                    order.receivedTotal > 0 &&
+                    (order.receivedTotal - order.total).abs() > 0.0001) {
+                  newTotal = order.receivedTotal;
+                  reduced = true;
+                } else {
+                  newTotal = order.total;
+                  reduced = false;
+                }
+                final expenses = order.expensesTotal;
+                final grandTotal = newTotal + expenses;
+
+                Widget mahsulotValue;
+                if (!reduced) {
+                  mahsulotValue = Text(
+                    '${_formatSum(newTotal)} so\'m',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  );
+                } else {
+                  mahsulotValue = Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_formatSum(order.total)} so\'m',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red,
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Colors.red,
+                          decorationThickness: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
                         '${_formatSum(newTotal)} so\'m',
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2E7D32),
                         ),
-                      );
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      ),
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${_formatSum(order.total)} so\'m',
-                          style: const TextStyle(
+                        const Text(
+                          'Mahsulot:',
+                          style: TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.red,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: Colors.red,
-                            decorationThickness: 2,
+                            color: Colors.black54,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        mahsulotValue,
+                      ],
+                    ),
+                    if (expenses > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Xarajat:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          Text(
+                            '${_formatSum(expenses)} so\'m',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Jami:',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
                         Text(
-                          '${_formatSum(newTotal)} so\'m',
+                          '${_formatSum(grandTotal)} so\'m',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
+                            color: Colors.black87,
                           ),
                         ),
                       ],
-                    );
-                  },
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ],
           // Narxlangan buyurtma -> "Qabul qiling" (rasm/video yuboriladi).
@@ -712,12 +813,15 @@ class _MediaItemRow extends StatelessWidget {
     final unitLabel =
         unitPrice != null ? '${_fmtQty(taken)} * ${_formatSum(unitPrice)}' : '';
     final diff = taken - item.count;
-    final showDiff = taken > 0 && diff.abs() > 0.0001;
+    // Proche (yuk keltiruvchi qo'shgan) mahsulotda buyurtma soni yo'q —
+    // farq ko'rsatilmaydi.
+    final showDiff = !item.isProche && taken > 0 && diff.abs() > 0.0001;
     final diffText =
         diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
     final diffColor = diff > 0 ? _green : _red;
-    final qtyLabel =
-        '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
+    final qtyLabel = item.isProche
+        ? 'Qo\'shimcha'
+        : '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
 
     // Kelgan soni (haqiqatda kelgan) va taken (yuk keltiruvchi aytgan) farqi.
     final received =

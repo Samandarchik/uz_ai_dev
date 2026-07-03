@@ -64,7 +64,12 @@ class _EditUserPageState extends State<EditUserPage> {
 
     // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
     // (masalan superadmin) uni ham ro'yxatga qo'shamiz (dropdown crash bo'lmasligi uchun).
-    _roleOptions = [AppRoles.seller, AppRoles.ombor, AppRoles.yukKeltiruvchi];
+    _roleOptions = [
+      AppRoles.seller,
+      AppRoles.ombor,
+      AppRoles.yukKeltiruvchi,
+      AppRoles.bugalter,
+    ];
     final r = widget.user?.role ?? AppRoles.seller;
     _selectedRole = r.isEmpty ? AppRoles.seller : r;
     if (!_roleOptions.contains(_selectedRole)) {
@@ -83,6 +88,8 @@ class _EditUserPageState extends State<EditUserPage> {
         return 'Ombor';
       case AppRoles.yukKeltiruvchi:
         return 'Yuk keltiruvchi';
+      case AppRoles.bugalter:
+        return 'Bugalter';
       case AppRoles.superAdmin:
         return 'Superadmin';
       case AppRoles.admin:
@@ -200,6 +207,7 @@ class _EditUserPageState extends State<EditUserPage> {
         message = 'Выберите хотя бы один склад';
       }
     }
+    // bugalter: filial ham, sklad ham talab qilinmaydi.
     if (message != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

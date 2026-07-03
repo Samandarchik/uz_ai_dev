@@ -73,7 +73,10 @@ class YukService {
 
   // PUT /api/yuk/orders/{id} -> buyurtmaga narx kiritib omborga qaytarish.
   // Body: { "items":[{"product_id":5,"taken":6,"subtotal":3000}, ...],
-  //         "total":3000, "attachments":["/static/yuk/x.jpg", ...] }
+  //         "total":3000, "attachments":["/static/yuk/x.jpg", ...],
+  //         "added_items":[{"item_type":"proche","name":"...","taken":1,
+  //                         "subtotal":300000}, ...] }
+  // total — mahsulotlar summasi (katalog + proche), rasxod KIRMAYDI.
   // Javob: { "success": true, "message": "...", "data": {order} }
   // Yangilangan buyurtmani qaytaradi (lokal ro'yxatni refetch'siz yangilash uchun).
   Future<YukOrder?> priceOrder(
@@ -81,6 +84,7 @@ class YukService {
     List<Map<String, dynamic>> items,
     double total, {
     List<String> attachments = const [],
+    List<Map<String, dynamic>> addedItems = const [],
   }) async {
     try {
       final response = await dio.put(
@@ -89,6 +93,7 @@ class YukService {
           'items': items,
           'total': total,
           'attachments': attachments,
+          'added_items': addedItems,
         },
       );
 

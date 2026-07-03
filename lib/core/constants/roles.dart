@@ -5,4 +5,5 @@ abstract final class AppRoles {
   static const String superAdmin = 'superadmin';
   static const String ombor = 'ombor';
   static const String yukKeltiruvchi = 'yuk_keltiruvchi';
+  static const String bugalter = 'bugalter';
 }

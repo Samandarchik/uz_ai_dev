@@ -18,6 +18,10 @@ class YukOrderItem {
   // Omborchi qabul qilganda kiritgan haqiqatda kelgan miqdor (taken'dan kam
   // bo'lsa kamomad). Qabul qilinmaguncha 0.
   final double received;
+  // Item turi: '' — oddiy buyurtma mahsuloti, 'proche' — yuk keltiruvchi
+  // qo'shgan qo'shimcha mahsulot, 'rasxod' — xarajat/xizmat (ombor qabul
+  // qilmaydi, chek oxirida alohida ko'rsatiladi).
+  final String itemType;
 
   YukOrderItem({
     required this.productId,
@@ -27,7 +31,11 @@ class YukOrderItem {
     this.taken = 0,
     this.subtotal = 0,
     this.received = 0,
+    this.itemType = '',
   });
+
+  bool get isRasxod => itemType == 'rasxod';
+  bool get isProche => itemType == 'proche';
 
   factory YukOrderItem.fromJson(Map<String, dynamic> json) {
     return YukOrderItem(
@@ -38,6 +46,7 @@ class YukOrderItem {
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       received: (json['received'] ?? 0).toDouble(),
+      itemType: json['item_type']?.toString() ?? '',
     );
   }
 
@@ -50,6 +59,43 @@ class YukOrderItem {
         'taken': taken,
         'subtotal': subtotal,
         'received': received,
+        'item_type': itemType,
+      };
+}
+
+// Yuk keltiruvchi buyurtmaga o'zi qo'shgan qo'shimcha yozuv (hali yuborilmagan,
+// lokal saqlanadi): 'proche' — qo'shimcha mahsulot (nomi + soni + jami summa),
+// 'rasxod' — xarajat/xizmat (nomi + jami summa, soni 0).
+class YukAddedItem {
+  final String itemType; // 'proche' | 'rasxod'
+  final String name;
+  final double taken;
+  final double subtotal;
+
+  YukAddedItem({
+    required this.itemType,
+    required this.name,
+    required this.taken,
+    required this.subtotal,
+  });
+
+  bool get isRasxod => itemType == 'rasxod';
+  bool get isProche => itemType == 'proche';
+
+  factory YukAddedItem.fromJson(Map<String, dynamic> json) {
+    return YukAddedItem(
+      itemType: json['item_type']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      taken: (json['taken'] ?? 0).toDouble(),
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'item_type': itemType,
+        'name': name,
+        'taken': taken,
+        'subtotal': subtotal,
       };
 }
 
@@ -60,6 +106,9 @@ class YukOrder {
   final int skladId;
   final String skladName;
   final num total;
+  // Rasxod (xarajat) itemlar yig'indisi. total rasxodni O'Z ICHIGA OLMAYDI;
+  // umumiy chek = total + expensesTotal.
+  final double expensesTotal;
   // Ombor qabul qilgandan keyin kamaygan jami summa. total — narxlangan
   // to'liq summa bo'lib qoladi. receivedTotal != total (va >0) bo'lsa —
   // kam qabul qilingan.
@@ -78,6 +127,7 @@ class YukOrder {
     required this.skladId,
     required this.skladName,
     required this.total,
+    this.expensesTotal = 0,
     this.receivedTotal = 0,
     required this.status,
     required this.created,
@@ -113,6 +163,7 @@ class YukOrder {
       skladId: json['sklad_id'] ?? 0,
       skladName: json['sklad_name'] ?? '',
       total: json['total'] ?? 0,
+      expensesTotal: (json['expenses_total'] ?? 0).toDouble(),
       receivedTotal: (json['received_total'] ?? 0).toDouble(),
       status: json['status'] ?? '',
       created: json['created']?.toString() ?? '',
@@ -129,6 +180,7 @@ class YukOrder {
         'sklad_id': skladId,
         'sklad_name': skladName,
         'total': total,
+        'expenses_total': expensesTotal,
         'received_total': receivedTotal,
         'status': status,
         'created': created,

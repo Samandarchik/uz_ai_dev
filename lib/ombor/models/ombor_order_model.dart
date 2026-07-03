@@ -13,6 +13,9 @@ class OmborOrder {
   final String skladName;
   final String status; // "created" | "narxlandi" | "qabul_qilindi"
   final double total;
+  // Rasxod (xarajat) itemlar yig'indisi. total rasxodni O'Z ICHIGA OLMAYDI;
+  // umumiy chek = total + expensesTotal.
+  final double expensesTotal;
   // Ombor qabul qilgandan keyin kamaygan jami summa. total — narxlangan
   // to'liq summa bo'lib qoladi. receivedTotal != total (va >0) bo'lsa —
   // kam qabul qilingan.
@@ -28,6 +31,7 @@ class OmborOrder {
     required this.skladName,
     required this.status,
     required this.total,
+    this.expensesTotal = 0,
     this.receivedTotal = 0,
     required this.created,
     required this.items,
@@ -59,6 +63,7 @@ class OmborOrder {
       skladName: json['sklad_name']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       total: _toDouble(json['total']),
+      expensesTotal: _toDouble(json['expenses_total']),
       receivedTotal: _toDouble(json['received_total']),
       created: json['created']?.toString() ?? '',
       items: parsedItems,
@@ -79,6 +84,9 @@ class OmborOrderItem {
   // Omborchi qabul qilganda yuborgan rasm/video (relativ /static/...).
   final String imageUrl;
   final String videoUrl;
+  // Item turi: '' — oddiy mahsulot, 'proche' — yuk keltiruvchi qo'shgan
+  // qo'shimcha mahsulot, 'rasxod' — xarajat/xizmat (qabul qilinmaydi).
+  final String itemType;
 
   OmborOrderItem({
     required this.productId,
@@ -90,7 +98,11 @@ class OmborOrderItem {
     this.received = 0,
     this.imageUrl = '',
     this.videoUrl = '',
+    this.itemType = '',
   });
+
+  bool get isRasxod => itemType == 'rasxod';
+  bool get isProche => itemType == 'proche';
 
   factory OmborOrderItem.fromJson(Map<String, dynamic> json) {
     return OmborOrderItem(
@@ -103,6 +115,7 @@ class OmborOrderItem {
       received: _toDouble(json['received']),
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',
+      itemType: json['item_type']?.toString() ?? '',
     );
   }
 }

@@ -16,6 +16,10 @@ abstract final class AppUrls {
   // Yuk keltiruvchi buyurtmaga biriktiriladigan rasm/video yuklash
   static String yukUpload = '$baseUrl/api/yuk/upload';
 
+  // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
+  // buyurtmalari.
+  static String bugalterOrders = '$baseUrl/api/bugalter/orders';
+
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
 

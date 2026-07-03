@@ -5,6 +5,7 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => OmborProvider()),
         ChangeNotifierProvider(create: (_) => YukProvider()),
+        ChangeNotifierProvider(create: (_) => BugalterProvider()),
         ChangeNotifierProvider(create: (_) => ProductProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdmin()),
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),

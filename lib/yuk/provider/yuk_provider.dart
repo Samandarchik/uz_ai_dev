@@ -30,6 +30,11 @@ class YukProvider extends ChangeNotifier {
   // Buyurtma yuborilguncha shu yerda turadi.
   final Map<int, Map<int, ItemPrice>> _prices = {};
 
+  // Yuk keltiruvchi o'zi qo'shgan qo'shimcha yozuvlar (proche mahsulot /
+  // rasxod xarajat): orderId -> ro'yxat. Buyurtma yuborilguncha faqat lokal
+  // saqlanadi (draft endpointга yuborilmaydi), submit'da added_items sifatida ketadi.
+  final Map<int, List<YukAddedItem>> _addedItems = {};
+
   // Buyurtmaga biriktirilgan rasm/video ro'yxati: orderId -> entrylar.
   // Entry — telefon xotirasidagi fayl yo'li YOKI serverdagi relativ URL
   // ('/static/...' bilan boshlanadi; qaytarib olingan buyurtmadan keladi).
@@ -47,6 +52,8 @@ class YukProvider extends ChangeNotifier {
   // qiymatlar tiklanadi; internet qaytganda backendga sinxronlanadi.
   final BaseStorage _storage = sl<BaseStorage>();
   static const String _draftsKey = 'yuk_price_drafts';
+  // Qo'shilgan yozuvlar (proche/rasxod) uchun lokal saqlash kaliti.
+  static const String _addedItemsKey = 'yuk_added_items_drafts';
   // Internet o'chiq bo'lsa buyurtmalar ro'yxati ham ko'rinishi uchun oxirgi
   // muvaffaqiyatli ro'yxat lokal keshlanadi.
   static const String _ordersKey = 'yuk_orders_cache';
@@ -198,6 +205,78 @@ class YukProvider extends ChangeNotifier {
     _scheduleDraftSave(orderId);
   }
 
+  // ──────────── Qo'shilgan yozuvlar (proche mahsulot / rasxod) ────────────
+
+  // Buyurtmaning qo'shilgan yozuvlari (ko'rsatish tartibida).
+  List<YukAddedItem> addedItemsFor(int orderId) =>
+      List.unmodifiable(_addedItems[orderId] ?? const []);
+
+  void addAddedItem(int orderId, YukAddedItem item) {
+    _addedItems.putIfAbsent(orderId, () => []).add(item);
+    notifyListeners();
+    _persistAddedItems();
+  }
+
+  void removeAddedItem(int orderId, int index) {
+    final list = _addedItems[orderId];
+    if (list == null || index < 0 || index >= list.length) return;
+    list.removeAt(index);
+    if (list.isEmpty) _addedItems.remove(orderId);
+    notifyListeners();
+    _persistAddedItems();
+  }
+
+  // Qo'shilgan proche mahsulotlar summasi (mahsulot jamiga kiradi).
+  double addedProductsTotal(int orderId) {
+    var sum = 0.0;
+    for (final it in _addedItems[orderId] ?? const <YukAddedItem>[]) {
+      if (it.isProche) sum += it.subtotal;
+    }
+    return sum;
+  }
+
+  // Qo'shilgan rasxod (xarajat) yozuvlari summasi (mahsulot jamiga KIRMAYDI).
+  double addedExpensesTotal(int orderId) {
+    var sum = 0.0;
+    for (final it in _addedItems[orderId] ?? const <YukAddedItem>[]) {
+      if (it.isRasxod) sum += it.subtotal;
+    }
+    return sum;
+  }
+
+  // _addedItems ni JSON sifatida SharedPreferences'ga yozish.
+  // Shakl: { "orderId": [ {item_type,name,taken,subtotal}, ... ] }.
+  void _persistAddedItems() {
+    final out = <String, dynamic>{};
+    _addedItems.forEach((orderId, items) {
+      if (items.isEmpty) return;
+      out['$orderId'] = items.map((e) => e.toJson()).toList();
+    });
+    _storage.putString(key: _addedItemsKey, value: jsonEncode(out));
+  }
+
+  // Lokal saqlangan qo'shilgan yozuvlarni tiklash (loadDrafts ichида chaqiriladi).
+  void _loadAddedItems() {
+    final raw = _storage.getString(key: _addedItemsKey);
+    if (raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      decoded.forEach((orderKey, items) {
+        final orderId = int.tryParse(orderKey.toString());
+        if (orderId == null || items is! List) return;
+        final list = _addedItems.putIfAbsent(orderId, () => []);
+        for (final v in items) {
+          if (v is Map) {
+            list.add(YukAddedItem.fromJson(Map<String, dynamic>.from(v)));
+          }
+        }
+      });
+    } catch (_) {
+      // Buzuq JSON bo'lsa e'tiborsiz qoldiramiz.
+    }
+  }
+
   // ─────────────────────── Qoralama: lokal saqlash ───────────────────────
 
   // _prices ni JSON sifatida SharedPreferences'ga yozish.
@@ -222,8 +301,13 @@ class YukProvider extends ChangeNotifier {
   // Ilova ochilganda lokal qoralamalarni _prices ga tiklaymiz. fetchOrders'dan
   // OLDIN chaqirilsa, kartalar maydonlarni shu qiymatlar bilan to'ldiradi.
   Future<void> loadDrafts() async {
+    // Qo'shilgan yozuvlar (proche/rasxod) ham shu bosqichda tiklanadi.
+    _loadAddedItems();
     final raw = _storage.getString(key: _draftsKey);
-    if (raw.isEmpty) return;
+    if (raw.isEmpty) {
+      if (_addedItems.isNotEmpty) notifyListeners();
+      return;
+    }
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return;
@@ -258,15 +342,22 @@ class YukProvider extends ChangeNotifier {
   // tozalaymiz (eski qiymat ko'rinib qolmasligi uchun).
   void _pruneDoneDrafts() {
     var changed = false;
+    var addedChanged = false;
     for (final o in orders) {
-      if ((o.status == 'narxlandi' || o.status == 'qabul_qilindi') &&
-          _prices.containsKey(o.id)) {
-        _prices.remove(o.id);
-        _draftTimers.remove(o.id)?.cancel();
-        changed = true;
+      if (o.status == 'narxlandi' || o.status == 'qabul_qilindi') {
+        if (_prices.containsKey(o.id)) {
+          _prices.remove(o.id);
+          _draftTimers.remove(o.id)?.cancel();
+          changed = true;
+        }
+        if (_addedItems.containsKey(o.id)) {
+          _addedItems.remove(o.id);
+          addedChanged = true;
+        }
       }
     }
     if (changed) _persistDrafts();
+    if (addedChanged) _persistAddedItems();
   }
 
   // So'nggi o'zgarishdan keyin _draftDebounce o'tgach qoralamani backendga
@@ -291,7 +382,8 @@ class YukProvider extends ChangeNotifier {
                 'subtotal': e.value.subtotal,
               })
           .toList();
-      await _service.saveDraft(orderId, items, orderTotal(orderId));
+      // Draft endpoint added_items qabul qilmaydi — total faqat katalog summasi.
+      await _service.saveDraft(orderId, items, _catalogTotal(orderId));
     } catch (_) {
       // Qoralama saqlanmasa ham UI ishlayveradi; jim e'tiborsiz qoldiramiz.
     }
@@ -314,8 +406,8 @@ class YukProvider extends ChangeNotifier {
     return _prices[orderId]?[productId];
   }
 
-  // Buyurtma uchun jami summa (barcha kiritilgan subtotal yig'indisi).
-  double orderTotal(int orderId) {
+  // Katalogdagi (buyurtmadagi) itemlar uchun kiritilgan subtotal yig'indisi.
+  double _catalogTotal(int orderId) {
     final map = _prices[orderId];
     if (map == null) return 0;
     var sum = 0.0;
@@ -325,10 +417,20 @@ class YukProvider extends ChangeNotifier {
     return sum;
   }
 
-  // Kamida bitta item narxlanganmi (yuborish tugmasi uchun).
+  // Buyurtma uchun MAHSULOT jami summasi: katalog narxlari + qo'shilgan
+  // proche mahsulotlar. Rasxod (xarajat) bunga KIRMAYDI —
+  // u addedExpensesTotal'da alohida.
+  double orderTotal(int orderId) {
+    return _catalogTotal(orderId) + addedProductsTotal(orderId);
+  }
+
+  // Kamida bitta item narxlanganmi yoki qo'shimcha yozuv qo'shilganmi
+  // (yuborish tugmasi uchun).
   bool hasAnyPrice(int orderId) {
     final map = _prices[orderId];
-    return map != null && map.isNotEmpty;
+    if (map != null && map.isNotEmpty) return true;
+    final added = _addedItems[orderId];
+    return added != null && added.isNotEmpty;
   }
 
   // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
@@ -366,10 +468,31 @@ class YukProvider extends ChangeNotifier {
     _attachments[orderId] = List.of(urls);
   }
 
+  // Qaytarib olingan pending buyurtmaning serverdan qaytgan proche/rasxod
+  // itemlarini lokal qo'shilgan yozuvlarga tiklash — qayta yuborishda
+  // yo'qolmasin. Faqat lokal ro'yxat bo'sh bo'lsa (ustidan yozmaslik uchun).
+  void seedAddedItems(int orderId, List<YukOrderItem> items) {
+    if (_addedItems.containsKey(orderId)) return;
+    final list = <YukAddedItem>[
+      for (final it in items)
+        if (it.isProche || it.isRasxod)
+          YukAddedItem(
+            itemType: it.itemType,
+            name: it.name,
+            taken: it.taken,
+            subtotal: it.subtotal,
+          ),
+    ];
+    if (list.isEmpty) return;
+    _addedItems[orderId] = list;
+    _persistAddedItems();
+  }
+
   // Narxlangan buyurtmani backendga yuborish (omborga qaytarish).
   Future<bool> submitPrices(int orderId) async {
-    final map = _prices[orderId];
-    if (map == null || map.isEmpty) {
+    final map = _prices[orderId] ?? const <int, ItemPrice>{};
+    final added = _addedItems[orderId] ?? const <YukAddedItem>[];
+    if (map.isEmpty && added.isEmpty) {
       errorMessage = 'Hech qanday narx kiritilmagan';
       notifyListeners();
       return false;
@@ -391,6 +514,8 @@ class YukProvider extends ChangeNotifier {
                 'subtotal': e.value.subtotal,
               })
           .toList();
+      // Mahsulot jami (katalog + proche); rasxod totalga kirmaydi — backend
+      // uni expenses_total sifatida alohida hisoblaydi.
       final total = orderTotal(orderId);
 
       // Avval biriktirilgan lokal fayllarni (rasm/video) serverga yuklaymiz;
@@ -410,13 +535,16 @@ class YukProvider extends ChangeNotifier {
         items,
         total,
         attachments: attachmentUrls,
+        addedItems: added.map((e) => e.toJson()).toList(),
       );
 
       // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
       // vaqtini belgila va ro'yxatni yangila.
       _prices.remove(orderId);
+      _addedItems.remove(orderId);
       _attachments.remove(orderId);
       _persistDrafts();
+      _persistAddedItems();
       _submittedAt[orderId] = DateTime.now();
       // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
       // asosiy sahifada undo oynasi davomida "Yuborilgan" ko'rinishida qoladi,
