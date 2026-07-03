@@ -114,10 +114,24 @@ class _OmborHomeUiState extends State<OmborHomeUi>
 }
 
 // "Mahsulotlar" tabи mazmuni: kategoriyalar bo'yicha mahsulotlar ro'yxati.
-class _OmborProductsTab extends StatelessWidget {
+class _OmborProductsTab extends StatefulWidget {
   const _OmborProductsTab();
 
+  @override
+  State<_OmborProductsTab> createState() => _OmborProductsTabState();
+}
+
+class _OmborProductsTabState extends State<_OmborProductsTab> {
   static const Color _accentColor = Color(0xFFC5A97B);
+
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,33 +176,84 @@ class _OmborProductsTab extends StatelessWidget {
           return const Center(child: Text('Mahsulotlar topilmadi'));
         }
 
-        return ListView.builder(
-          // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
-          padding: const EdgeInsets.only(bottom: 96),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            final products = provider.productsByCategory[category] ?? [];
-            if (products.isEmpty) return const SizedBox.shrink();
+        final query = _searchQuery.toLowerCase();
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    category,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Mahsulot qidirish...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-                ...products.map((p) => _OmborProductTile(product: p)),
-              ],
-            );
-          },
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
+                padding: const EdgeInsets.only(bottom: 96),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final allProducts =
+                      provider.productsByCategory[category] ?? [];
+
+                  final products = query.isEmpty
+                      ? allProducts
+                      : allProducts.where((p) {
+                          return p.name.toLowerCase().contains(query) ||
+                              category.toLowerCase().contains(query);
+                        }).toList();
+
+                  if (products.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      ...products.map((p) => _OmborProductTile(product: p)),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
