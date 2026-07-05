@@ -175,9 +175,15 @@ class YukProvider extends ChangeNotifier {
     }
   }
 
+  // Ledger kamida bir marta yuklanganmi — socket hodisalarida jim yangilash
+  // faqat shundan keyin yoqiladi (profil ochilmagan bo'lsa keraksiz so'rov yo'q).
+  bool _ledgerLoadedOnce = false;
+  Timer? _ledgerRefreshTimer;
+
   // Profil ekrani uchun kunlik hisob daftarini backenddan olish.
   // Ekran ochilganda va pull-to-refresh'da chaqiriladi.
   Future<void> fetchLedger() async {
+    _ledgerLoadedOnce = true;
     isLoadingLedger = true;
     ledgerError = null;
     notifyListeners();
@@ -239,6 +245,9 @@ class YukProvider extends ChangeNotifier {
     _addedItems.putIfAbsent(orderId, () => []).add(item);
     notifyListeners();
     _persistAddedItems();
+    // Rasxod/proche qo'shilishi ham qoralama bilan backendga ketadi —
+    // ledger'dagi Rasxod real time yangilanishi uchun.
+    _scheduleDraftSave(orderId);
   }
 
   void removeAddedItem(int orderId, int index) {
@@ -248,6 +257,7 @@ class YukProvider extends ChangeNotifier {
     if (list.isEmpty) _addedItems.remove(orderId);
     notifyListeners();
     _persistAddedItems();
+    _scheduleDraftSave(orderId);
   }
 
   // Qo'shilgan proche mahsulotlar summasi (mahsulot jamiga kiradi).
@@ -396,8 +406,10 @@ class YukProvider extends ChangeNotifier {
   }
 
   Future<void> _saveDraft(int orderId) async {
-    final map = _prices[orderId];
-    if (map == null || map.isEmpty) return;
+    final map = _prices[orderId] ?? const <int, ItemPrice>{};
+    final added = _addedItems[orderId] ?? const <YukAddedItem>[];
+    // Narx ham, qo'shilgan item ham bo'lmasa yuboradigan narsa yo'q.
+    if (map.isEmpty && added.isEmpty) return;
     try {
       final items = map.entries
           .map((e) => <String, dynamic>{
@@ -406,8 +418,15 @@ class YukProvider extends ChangeNotifier {
                 'subtotal': e.value.subtotal,
               })
           .toList();
-      // Draft endpoint added_items qabul qilmaydi — total faqat katalog summasi.
-      await _service.saveDraft(orderId, items, _catalogTotal(orderId));
+      // Qo'shilgan proche/rasxod itemlar ham qoralamada ketadi — profil
+      // ledger'idagi Rasxod real time yangilanadi (backend ularni idempotent
+      // qayta yozadi, submit'dagi bilan bir xil shakl).
+      await _service.saveDraft(
+        orderId,
+        items,
+        _catalogTotal(orderId),
+        addedItems: added.map((e) => e.toJson()).toList(),
+      );
     } catch (_) {
       // Qoralama saqlanmasa ham UI ishlayveradi; jim e'tiborsiz qoldiramiz.
     }
@@ -682,6 +701,27 @@ class YukProvider extends ChangeNotifier {
     // Yangilangan ro'yxatni keshlaymiz.
     _persistOrders();
     notifyListeners();
+
+    // Profil ochilgan bo'lsa kunlik hisob daftarini ham yangilaymiz —
+    // Rasxod/Itog real time o'zgarishi uchun. Debounce: har draft
+    // hodisasida emas, hodisalar tinchigach bir marta.
+    if (_ledgerLoadedOnce) {
+      _ledgerRefreshTimer?.cancel();
+      _ledgerRefreshTimer = Timer(const Duration(milliseconds: 1200), () {
+        if (!_disposed) _refreshLedgerSilently();
+      });
+    }
+  }
+
+  // Ledgerni spinner ko'rsatmasdan (jim) yangilash — socket hodisalari uchun.
+  Future<void> _refreshLedgerSilently() async {
+    try {
+      ledger = await _service.fetchLedger();
+      if (!_disposed) notifyListeners();
+    } catch (_) {
+      // Real-time yangilash muvaffaqiyatsiz bo'lsa jim qolamiz — foydalanuvchi
+      // pull-to-refresh bilan qayta olishi mumkin.
+    }
   }
 
   // dispose'dan keyin kechikkan timerlar notifyListeners chaqirmasligi uchun.
@@ -695,6 +735,7 @@ class YukProvider extends ChangeNotifier {
       t.cancel();
     }
     _draftTimers.clear();
+    _ledgerRefreshTimer?.cancel();
     super.dispose();
   }
 }

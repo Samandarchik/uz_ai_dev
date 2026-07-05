@@ -155,13 +155,17 @@ class YukService {
   Future<void> saveDraft(
     int orderId,
     List<Map<String, dynamic>> items,
-    double total,
-  ) async {
+    double total, {
+    List<Map<String, dynamic>> addedItems = const [],
+  }) async {
     final response = await dio.put(
       '${AppUrls.yukOrders}/$orderId/draft',
       data: {
         'items': items,
         'total': total,
+        // Qo'shilgan proche/rasxod itemlar — ledger'dagi Rasxod real time
+        // yangilanishi uchun qoralamada ham yuboriladi.
+        'added_items': addedItems,
       },
     );
     if (response.statusCode == 200) return;
