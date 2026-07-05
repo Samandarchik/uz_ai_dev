@@ -200,8 +200,19 @@ class _OrderCardState extends State<_OrderCard> {
   final Map<int, String> _videos = {};
   // Har bir mahsulot uchun "Kelgan soni" (haqiqatda kelgan miqdor) controlleri.
   final Map<int, TextEditingController> _received = {};
+  // Double-tap bilan qayta tahrirlashga ochilgan (allaqachon qabul qilingan)
+  // itemlar. Buyurtma to'liq yopilmaguncha omborchi xato kiritgan sonni
+  // shu yo'l bilan tuzatishi mumkin.
+  final Set<int> _reEditing = {};
 
   final ImagePicker _picker = ImagePicker();
+
+  // Qabul qilingan itemni double-tap bilan qayta tahrirlashga ochish.
+  void _startReEdit(OmborOrderItem item) {
+    _received.putIfAbsent(item.productId, () => TextEditingController());
+    _received[item.productId]!.text = _fmtQty(item.received);
+    setState(() => _reEditing.add(item.productId));
+  }
 
   @override
   void initState() {
@@ -375,13 +386,18 @@ class _OrderCardState extends State<_OrderCard> {
 
   // Bitta mahsulotni qabul qilish: kelgan soni + rasm/video yuboriladi.
   // Rasm ham video ham bo'lmasa yuborilmaydi (kamida bittasi majburiy).
-  Future<void> _acceptItem(int productId) async {
+  Future<void> _acceptItem(OmborOrderItem item) async {
     final messenger = ScaffoldMessenger.of(context);
     final provider = context.read<OmborProvider>();
+    final productId = item.productId;
 
     final imagePath = _images[productId];
     final videoPath = _videos[productId];
-    if (imagePath == null && videoPath == null) {
+    // Yangi media majburiy — faqat itemda avvaldan saqlangan rasm/video
+    // bo'lmasa (qayta tahrirlashda eski rasm yetarli).
+    final hasExistingMedia =
+        item.imageUrl.isNotEmpty || item.videoUrl.isNotEmpty;
+    if (imagePath == null && videoPath == null && !hasExistingMedia) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Avval rasm yoki video oling')),
       );
@@ -402,10 +418,12 @@ class _OrderCardState extends State<_OrderCard> {
       );
       if (!mounted) return;
       // Yuborilgan lokal fayllar endi kerak emas — backenddan kelgan
-      // yangilangan order o'z URL'larini olib keladi.
+      // yangilangan order o'z URL'larini olib keladi. Qayta tahrirlash
+      // rejimi ham yopiladi.
       setState(() {
         _images.remove(productId);
         _videos.remove(productId);
+        _reEditing.remove(productId);
       });
     } catch (e) {
       messenger.showSnackBar(
@@ -494,8 +512,11 @@ class _OrderCardState extends State<_OrderCard> {
               (item) => Consumer<OmborProvider>(
                 builder: (ctx, p, _) => _MediaItemRow(
                   item: item,
+                  // Qabul qilingan item read-only, LEKIN buyurtma hali to'liq
+                  // yopilmagan bo'lsa double-tap bilan qayta ochish mumkin.
                   editable: (order.isPriced || order.isCreated) &&
-                      !item.accepted,
+                      (!item.accepted ||
+                          _reEditing.contains(item.productId)),
                   receivedController: _received[item.productId],
                   localImagePath: _images[item.productId],
                   localVideoPath: _videos[item.productId],
@@ -503,7 +524,12 @@ class _OrderCardState extends State<_OrderCard> {
                       p.acceptingItemProductId == item.productId,
                   onReceivedChanged: () => setState(() {}),
                   onTapMedia: () => _pickMedia(item.productId),
-                  onAccept: () => _acceptItem(item.productId),
+                  onAccept: () => _acceptItem(item),
+                  onDoubleTap: (order.isPriced || order.isCreated) &&
+                          item.accepted &&
+                          !_reEditing.contains(item.productId)
+                      ? () => _startReEdit(item)
+                      : null,
                 ),
               ),
             ),
@@ -833,6 +859,9 @@ class _MediaItemRow extends StatelessWidget {
   final VoidCallback onTapMedia;
   // Qabul tugmasi bosilganda itemni serverga yuboradi.
   final VoidCallback onAccept;
+  // Qabul qilingan qator double-tap qilinsa qayta tahrirlashga ochiladi
+  // (buyurtma to'liq yopilmagan bo'lsa). null -> double-tap ishlamaydi.
+  final VoidCallback? onDoubleTap;
 
   const _MediaItemRow({
     required this.item,
@@ -844,6 +873,7 @@ class _MediaItemRow extends StatelessWidget {
     required this.onReceivedChanged,
     required this.onTapMedia,
     required this.onAccept,
+    this.onDoubleTap,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -883,7 +913,11 @@ class _MediaItemRow extends StatelessWidget {
         shortage > 0 ? '-${_fmtQty(shortage)}' : '+${_fmtQty(shortage.abs())}';
     final shortColor = shortage > 0 ? _red : _green;
 
-    return Padding(
+    return GestureDetector(
+      // Qabul qilingan qatorni double-tap bilan qayta tahrirlashga ochish.
+      behavior: HitTestBehavior.translucent,
+      onDoubleTap: onDoubleTap,
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -966,6 +1000,7 @@ class _MediaItemRow extends StatelessWidget {
           // Qabul tugmasi (yoki qabul qilingan bo'lsa yashil check).
           Expanded(flex: 2, child: _acceptCell()),
         ],
+      ),
       ),
     );
   }
