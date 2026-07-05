@@ -200,39 +200,63 @@ class OmborProductTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: hasImage
-                  ? CachedNetworkImage(
-                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: _accentColor,
+          GestureDetector(
+            onTap: () {
+              // Rasm bosilsa katta (to'liq) ko'rinishda ochiladi.
+              if (!hasImage) return;
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: CachedNetworkImage(
+                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(color: _accentColor),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
+                      Icons.error,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: hasImage
+                    ? CachedNetworkImage(
+                        imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: _accentColor,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image_not_supported,
+                              color: Colors.grey),
+                        ),
+                      )
+                    : Container(
                         color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported,
+                        child: const Icon(Icons.inventory_2_outlined,
                             color: Colors.grey),
                       ),
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.inventory_2_outlined,
-                          color: Colors.grey),
-                    ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
