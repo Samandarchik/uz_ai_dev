@@ -235,6 +235,10 @@ class _OrderCardState extends State<_OrderCard> {
     if (order.isPriced || order.isCreated) {
       for (final item in order.items) {
         if (item.isRasxod || item.accepted) continue;
+        // Narxlangan buyurtmada yuk umuman olib kelmagan mahsulot (taken 0,
+        // summa 0) qabul qilinmaydi — controller ham ochilmaydi (read-only
+        // "Olinmagan" ko'rinadi).
+        if (order.isPriced && item.taken <= 0 && item.subtotal <= 0) continue;
         _received[item.productId] = TextEditingController(
           text: order.isPriced ? _fmtQty(item.taken) : '',
         );
@@ -528,9 +532,19 @@ class _OrderCardState extends State<_OrderCard> {
               (item) => Consumer<OmborProvider>(
                 builder: (ctx, p, _) => _MediaItemRow(
                   item: item,
+                  // Yuk yuborgandan keyin umuman olib kelinmagan mahsulot
+                  // (taken 0, summa 0) — qabul qilinmaydi, "Olinmagan"
+                  // ko'rinadi va buyurtma yopilishini to'smaydi.
+                  notBrought: !order.isCreated &&
+                      !item.accepted &&
+                      item.taken <= 0 &&
+                      item.subtotal <= 0,
                   // Qabul qilingan item read-only.
                   editable: (order.isPriced || order.isCreated) &&
-                      !item.accepted,
+                      !item.accepted &&
+                      !(order.isPriced &&
+                          item.taken <= 0 &&
+                          item.subtotal <= 0),
                   receivedController: _received[item.productId],
                   localImagePath: _images[item.productId],
                   localVideoPath: _videos[item.productId],
@@ -675,6 +689,9 @@ class _MediaItemRow extends StatelessWidget {
   // media/son kiritiladi va qabul tugmasi ko'rinadi. Aks holda (item yoki
   // butun order qabul qilingan) qator read-only.
   final bool editable;
+  // Yuk yuborgandan keyin umuman olib kelinmagan mahsulot — qatorda
+  // "Olinmagan" belgisi ko'rinadi, qabul qilinmaydi.
+  final bool notBrought;
   final TextEditingController? receivedController;
   final String? localImagePath;
   final String? localVideoPath;
@@ -689,6 +706,7 @@ class _MediaItemRow extends StatelessWidget {
   const _MediaItemRow({
     required this.item,
     required this.editable,
+    this.notBrought = false,
     required this.receivedController,
     required this.localImagePath,
     required this.localVideoPath,
@@ -837,7 +855,7 @@ class _MediaItemRow extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text(
-        _fmtQty(item.received),
+        notBrought ? '—' : _fmtQty(item.received),
         style: const TextStyle(fontSize: 13, color: Colors.black54),
       ),
     );
@@ -926,6 +944,26 @@ class _MediaItemRow extends StatelessWidget {
   // Qabul kataги: tahrirlanadigan qatorda yashil check tugma (yuborishda
   // spinner), qabul qilingan qatorda yashil check belgisi.
   Widget _acceptCell() {
+    if (notBrought) {
+      // Olib kelinmagan mahsulot — qabul qilinmaydi.
+      return Container(
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _red.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _red.withValues(alpha: 0.35)),
+        ),
+        child: const Text(
+          'Olinmagan',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: _red,
+          ),
+        ),
+      );
+    }
     if (!editable) {
       // Item (yoki butun order) qabul qilingan — belgigina ko'rsatiladi.
       return Container(
