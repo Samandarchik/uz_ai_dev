@@ -175,9 +175,14 @@ class OmborProductCard extends StatelessWidget {
 
   static const Color _accentColor = Color(0xFFC5A97B);
 
-  // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
-  // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
-  int get _stepMilli => ((product.bozorGrams ?? 1) * 1000).round();
+  // Bir qadam = kartochkada ko'rsatilgan pachka miqdori * 1000 (milli-birlik,
+  // butun son). Subtitle bilan BIR XIL fallback: bozor gramm -> mone gramm ->
+  // 1. Masalan 0.5 ko'rsatilgan mahsulotda + har bosilganda +0.5 qo'shiladi.
+  int get _stepMilli {
+    final qty = product.bozorGrams ?? product.grams;
+    if (qty == null || qty <= 0) return 1000;
+    return (qty * 1000).round();
+  }
 
   String get _subtitle {
     final unit =
