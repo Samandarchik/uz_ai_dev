@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
@@ -120,9 +121,8 @@ class OmborCartBar extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => provider.clearCart(),
+                  onPressed:
+                      provider.isSubmitting ? null : () => provider.clearCart(),
                   child: const Text(
                     'Tozalash',
                     style: TextStyle(color: Colors.black54),
@@ -166,9 +166,8 @@ class OmborProductTile extends StatelessWidget {
   static const Color _accentColor = Color(0xFFC5A97B);
 
   String get _subtitle {
-    final unit = (product.type != null && product.type!.isNotEmpty)
-        ? product.type!
-        : '';
+    final unit =
+        (product.type != null && product.type!.isNotEmpty) ? product.type! : '';
     // Ombor (bozor) ekranida pachka miqdori = bozor gramm; bo'lmasa mone gramm.
     final qty = product.bozorGrams ?? product.grams;
     if (qty == null) return unit;
@@ -185,125 +184,195 @@ class OmborProductTile extends StatelessWidget {
     return unit.isNotEmpty ? '$s $unit' : s;
   }
 
+  // Uzoq bosilganda miqdorni qo'lda kiritish oynasi: xohlagancha buyurtma
+  // berish mumkin. "." yoki "," bilan kasr kiritilsa butun songa yaxlitlanadi.
+  Future<void> _showQtyInputDialog(BuildContext context) async {
+    final provider = context.read<OmborProvider>();
+    final controller = TextEditingController();
+    final current = provider.countMilli(product.id);
+
+    void confirm(BuildContext dialogContext) {
+      // Vergul ham nuqta kabi qabul qilinadi: "2,5" -> "2.5".
+      final raw = controller.text.trim().replaceAll(',', '.');
+      if (raw.isEmpty) return;
+      final value = double.tryParse(raw);
+      if (value == null) return;
+      // Kasr bo'lsa butun songa yaxlitlanadi: 2.5 -> 3, 2.4 -> 2.
+      Navigator.pop(dialogContext, value.round() * 1000);
+    }
+
+    final milli = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          product.name,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Miqdor',
+            hintText: current > 0
+                ? 'Hozir: ${formatMilli(current)}'
+                : 'Miqdorni kiriting',
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => confirm(dialogContext),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              'Bekor',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => confirm(dialogContext),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Saqlash'),
+          ),
+        ],
+      ),
+    );
+
+    if (milli != null) {
+      provider.setCountMilli(product.id, milli);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        product.imageUrl != null && product.imageUrl!.isNotEmpty;
+    final hasImage = product.imageUrl != null && product.imageUrl!.isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              // Rasm bosilsa katta (to'liq) ko'rinishda ochiladi.
-              if (!hasImage) return;
-              showDialog(
-                context: context,
-                builder: (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: CachedNetworkImage(
-                    imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(color: _accentColor),
-                    ),
-                    errorWidget: (context, url, error) => const Icon(
-                      Icons.error,
-                      size: 40,
-                      color: Colors.white,
+    return GestureDetector(
+      onLongPress: () => _showQtyInputDialog(context),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: () {
+                // Rasm bosilsa katta (to'liq) ko'rinishda ochiladi.
+                if (!hasImage) return;
+                showDialog(
+                  context: context,
+                  builder: (_) => Dialog(
+                    backgroundColor: Colors.transparent,
+                    child: CachedNetworkImage(
+                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(color: _accentColor),
+                      ),
+                      errorWidget: (context, url, error) => const Icon(
+                        Icons.error,
+                        size: 40,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: hasImage
-                    ? CachedNetworkImage(
-                        imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: _accentColor,
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: hasImage
+                      ? CachedNetworkImage(
+                          imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _accentColor,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image_not_supported,
+                                color: Colors.grey),
+                          ),
+                        )
+                      : Container(
                           color: Colors.grey.shade200,
-                          child: const Icon(Icons.image_not_supported,
+                          child: const Icon(Icons.inventory_2_outlined,
                               color: Colors.grey),
                         ),
-                      )
-                    : Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.inventory_2_outlined,
-                            color: Colors.grey),
-                      ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                if (_subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    _subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-                if (product.sourceLabel.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manba: ${product.sourceLabel}',
+                    product.name,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: _accentColor,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                   ),
+                  if (_subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                  if (product.sourceLabel.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Manba: ${product.sourceLabel}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _accentColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          OmborQtyStepper(
-            productId: product.id,
-            // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
-            // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
-            stepMilli: ((product.bozorGrams ?? 1) * 1000).round(),
-          ),
-        ],
+            const SizedBox(width: 8),
+            OmborQtyStepper(
+              productId: product.id,
+              // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
+              // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
+              stepMilli: ((product.bozorGrams ?? 1) * 1000).round(),
+            ),
+          ],
+        ),
       ),
     );
   }

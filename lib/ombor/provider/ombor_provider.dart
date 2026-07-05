@@ -89,6 +89,17 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Miqdorni to'g'ridan-to'g'ri o'rnatish (qo'lda kiritilganda).
+  // 0 yoki manfiy bo'lsa savatdan olib tashlanadi.
+  void setCountMilli(int productId, int milli) {
+    if (milli <= 0) {
+      _cart.remove(productId);
+    } else {
+      _cart[productId] = milli;
+    }
+    notifyListeners();
+  }
+
   void clearCart() {
     _cart.clear();
     notifyListeners();
