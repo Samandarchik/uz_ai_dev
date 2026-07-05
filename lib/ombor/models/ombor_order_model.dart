@@ -41,9 +41,13 @@ class OmborOrder {
   // Yuk keltiruvchi narx qo'yganmi (omborchi endi qabul qila oladi).
   bool get isPriced => status == 'narxlandi';
 
-  // Hali narxlanmagan (yangi yuborilgan) buyurtma — lekin omborchi
-  // baribir qabul qila oladi (kelgan soni + rasm/video bilan).
-  bool get isCreated => status == 'created';
+  // Hali narxlanmagan buyurtma — lekin omborchi baribir qabul qila oladi
+  // (kelgan soni + rasm/video bilan). Ombor ekrani faqat o'z sklad
+  // buyurtmalarini ko'rsatadi, shuning uchun narxlanmagan va qabul
+  // qilinmagan HAR QANDAY status shu qatorga kiradi — jumladan eski
+  // rol-headersiz yaratilib printer yo'liga tushgan "sent_to_printer"
+  // yoki revert'dan keyingi "pending" ham.
+  bool get isCreated => !isPriced && !isAccepted;
 
   // Omborchi qabul qilib videoni yuborganmi.
   bool get isAccepted => status == 'qabul_qilindi';

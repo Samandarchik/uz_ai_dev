@@ -447,9 +447,13 @@ class _YukOrderCardState extends State<YukOrderCard> {
     final provider = context.read<YukProvider>();
     for (final item in order.items) {
       // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
-      // (yuborilgan) qiymat ko'rsatiladi.
+      // (yuborilgan) qiymat ko'rsatiladi. Omborchi qabul qilgan itemda
+      // "olingan miqdor" QULFLANGAN — omborchi kiritgan kelgan soni
+      // ko'rsatiladi (lokal qoralama e'tiborga olinmaydi).
       final existing = provider.getItemPrice(order.id, item.productId);
-      final taken0 = existing?.taken ?? item.taken;
+      final taken0 = item.accepted
+          ? (item.received > 0 ? item.received : item.taken)
+          : (existing?.taken ?? item.taken);
       final subtotal0 = existing?.subtotal ?? item.subtotal;
       _takenControllers[item.productId] =
           TextEditingController(text: _fmtQty(taken0));
@@ -1314,6 +1318,15 @@ class _YukOrderCardState extends State<YukOrderCard> {
                 final diffColor = diff > 0
                     ? const Color(0xFF2E7D32)
                     : const Color(0xFFC62828);
+                // Omborchi qabul qilgan item: kelgan soni socket orqali
+                // kelganda maydon avtomatik yangilanadi va QULFLANADI
+                // (yuk keltiruvchi uni o'zgartira olmaydi, faqat narx kiritadi).
+                if (item.accepted) {
+                  final want =
+                      _fmtQty(item.received > 0 ? item.received : item.taken);
+                  final ctrl = _takenCtrlFor(item);
+                  if (ctrl.text != want) ctrl.text = want;
+                }
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
@@ -1389,7 +1402,9 @@ class _YukOrderCardState extends State<YukOrderCard> {
                           hint: '0',
                           // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
                           decimal: _isKg(item.type),
-                          enabled: !done,
+                          // Omborchi qabul qilgan itemning kelgan soni
+                          // qulflangan — faqat narx (summa) kiritiladi.
+                          enabled: !done && !item.accepted,
                           onChanged: (_) => _onItemChanged(item.productId),
                         ),
                       ),

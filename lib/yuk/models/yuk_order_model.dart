@@ -18,6 +18,10 @@ class YukOrderItem {
   // Omborchi qabul qilganda kiritgan haqiqatda kelgan miqdor (taken'dan kam
   // bo'lsa kamomad). Qabul qilinmaguncha 0.
   final double received;
+  // Omborchi shu mahsulotni qabul qilgani (item-darajali qabul). Qabul
+  // qilingan itemning "olingan miqdor" (taken) maydoni QULFLANGAN — yuk
+  // keltiruvchi uni o'zgartira olmaydi, faqat narx kiritadi.
+  final bool accepted;
   // Item turi: '' — oddiy buyurtma mahsuloti, 'proche' — yuk keltiruvchi
   // qo'shgan qo'shimcha mahsulot, 'rasxod' — xarajat/xizmat (ombor qabul
   // qilmaydi, chek oxirida alohida ko'rsatiladi).
@@ -31,6 +35,7 @@ class YukOrderItem {
     this.taken = 0,
     this.subtotal = 0,
     this.received = 0,
+    this.accepted = false,
     this.itemType = '',
   });
 
@@ -46,6 +51,7 @@ class YukOrderItem {
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       received: (json['received'] ?? 0).toDouble(),
+      accepted: json['accepted'] == true,
       itemType: json['item_type']?.toString() ?? '',
     );
   }
@@ -59,6 +65,7 @@ class YukOrderItem {
         'taken': taken,
         'subtotal': subtotal,
         'received': received,
+        'accepted': accepted,
         'item_type': itemType,
       };
 }
