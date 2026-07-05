@@ -209,10 +209,11 @@ class _OrderCardState extends State<_OrderCard> {
     // "Kelgan soni" maydonini oldindan to'ldiramiz; omborchi kam bo'lsa
     // o'zgartiradi. Narxlangan buyurtmada — yuk keltiruvchi aytgan miqdor
     // (taken), hali narxlanmagan (created) buyurtmada — buyurtma soni (count).
-    // Rasxod (xarajat) itemlari qabul qilinmaydi — controller ochilmaydi.
+    // Rasxod (xarajat) itemlari va allaqachon qabul qilingan itemlar uchun
+    // controller ochilmaydi (ular read-only ko'rinadi).
     if (order.isPriced || order.isCreated) {
       for (final item in order.items) {
-        if (item.isRasxod) continue;
+        if (item.isRasxod || item.accepted) continue;
         _received[item.productId] = TextEditingController(
           text: _fmtQty(order.isPriced ? item.taken : item.count),
         );
@@ -243,9 +244,13 @@ class _OrderCardState extends State<_OrderCard> {
     for (final item in order.items) {
       // Rasxod (xarajat) mahsulot summasiga kirmaydi.
       if (item.isRasxod) continue;
-      final received = _received.containsKey(item.productId)
-          ? _parseQty(_received[item.productId]!.text)
-          : item.taken;
+      // Qabul qilingan itemda backend saqlagan received, tahrirlanayotganda
+      // controllerdagi qiymat, aks holda taken ishlatiladi.
+      final received = item.accepted
+          ? (item.received > 0 ? item.received : item.taken)
+          : (_received.containsKey(item.productId)
+              ? _parseQty(_received[item.productId]!.text)
+              : item.taken);
       if (item.taken > 0 && received != item.taken) {
         total += (item.subtotal / item.taken) * received;
       } else {
@@ -253,6 +258,45 @@ class _OrderCardState extends State<_OrderCard> {
       }
     }
     return total;
+  }
+
+  // Kamera katakchasi bosilganda: "Rasm olish" yoki "Video olish" tanlovi.
+  // Tanlovga qarab _captureImage yoki _captureVideo ishlaydi.
+  Future<void> _pickMedia(int productId) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Rasm yoki video', style: TextStyle(fontSize: 16)),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('image'),
+            child: const Row(
+              children: [
+                Icon(Icons.photo_camera_outlined, color: Colors.black87),
+                SizedBox(width: 12),
+                Text('Rasm olish'),
+              ],
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('video'),
+            child: const Row(
+              children: [
+                Icon(Icons.videocam_outlined, color: Colors.black87),
+                SizedBox(width: 12),
+                Text('Video olish'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'image') {
+      await _captureImage(productId);
+    } else {
+      await _captureVideo(productId);
+    }
   }
 
   // Mahsulot uchun rasm olish (kamera).
@@ -329,30 +373,40 @@ class _OrderCardState extends State<_OrderCard> {
     );
   }
 
-  // Qabul qilish: olingan rasm/videolarni yuboradi.
-  Future<void> _accept() async {
+  // Bitta mahsulotni qabul qilish: kelgan soni + rasm/video yuboriladi.
+  // Rasm ham video ham bo'lmasa yuborilmaydi (kamida bittasi majburiy).
+  Future<void> _acceptItem(int productId) async {
     final messenger = ScaffoldMessenger.of(context);
     final provider = context.read<OmborProvider>();
 
-    if (_images.isEmpty && _videos.isEmpty) {
+    final imagePath = _images[productId];
+    final videoPath = _videos[productId];
+    if (imagePath == null && videoPath == null) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Kamida bitta rasm yoki video qo\'shing'),
-        ),
+        const SnackBar(content: Text('Avval rasm yoki video oling')),
       );
       return;
     }
 
-    final receivedMap = <int, double>{};
-    _received.forEach((pid, c) {
-      receivedMap[pid] = _parseQty(c.text);
-    });
+    final received = _received.containsKey(productId)
+        ? _parseQty(_received[productId]!.text)
+        : 0.0;
 
     try {
-      await provider.acceptOrder(order.id, receivedMap, _images, _videos);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Qabul qilindi')),
+      await provider.acceptOrderItem(
+        order.id,
+        productId,
+        received,
+        imagePath,
+        videoPath,
       );
+      if (!mounted) return;
+      // Yuborilgan lokal fayllar endi kerak emas — backenddan kelgan
+      // yangilangan order o'z URL'larini olib keladi.
+      setState(() {
+        _images.remove(productId);
+        _videos.remove(productId);
+      });
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -428,21 +482,29 @@ class _OrderCardState extends State<_OrderCard> {
           ],
           const Divider(height: 20),
           // Itemlar. Narxlangan/yangi (created)/qabul qilingan bo'lsa —
-          // har mahsulotga Rasm va Video ustunlari; aks holda oddiy ro'yxat.
+          // jadval: Mahsulot | Kelgan soni | Rasm/Video | Qabul;
+          // aks holda oddiy ro'yxat.
           if (order.isPriced || order.isCreated || order.isAccepted) ...[
             const _MediaTableHeader(),
             // Rasxod (xarajat) itemlari jadvalga kirmaydi — ular pastdagi
             // "Xarajatlar" blokida (qabul qilinmaydi, rasm/video yo'q).
+            // Har mahsulot alohida qabul qilinadi; item.accepted bo'lsa
+            // qatori read-only bo'lib qoladi.
             ...order.items.where((i) => !i.isRasxod).map(
-              (item) => _MediaItemRow(
-                item: item,
-                editable: order.isPriced || order.isCreated,
-                receivedController: _received[item.productId],
-                localImagePath: _images[item.productId],
-                localVideoPath: _videos[item.productId],
-                onReceivedChanged: () => setState(() {}),
-                onTapImage: () => _captureImage(item.productId),
-                onTapVideo: () => _captureVideo(item.productId),
+              (item) => Consumer<OmborProvider>(
+                builder: (ctx, p, _) => _MediaItemRow(
+                  item: item,
+                  editable: (order.isPriced || order.isCreated) &&
+                      !item.accepted,
+                  receivedController: _received[item.productId],
+                  localImagePath: _images[item.productId],
+                  localVideoPath: _videos[item.productId],
+                  isAccepting: p.acceptingItemOrderId == order.id &&
+                      p.acceptingItemProductId == item.productId,
+                  onReceivedChanged: () => setState(() {}),
+                  onTapMedia: () => _pickMedia(item.productId),
+                  onAccept: () => _acceptItem(item.productId),
+                ),
               ),
             ),
             // Xarajatlar bloki (rasxod itemlari: nomi + summa).
@@ -617,42 +679,10 @@ class _OrderCardState extends State<_OrderCard> {
               },
             ),
           ],
-          // Narxlangan yoki hali narxlanmagan (created) buyurtma ->
-          // "Qabul qiling" (kelgan soni + rasm/video yuboriladi).
-          if (order.isPriced || order.isCreated) ...[
-            const SizedBox(height: 12),
-            Consumer<OmborProvider>(
-              builder: (ctx, p, _) {
-                final loading = p.acceptingOrderId == order.id;
-                return SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: loading ? null : _accept,
-                    icon: loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.check, size: 20),
-                    label: Text(loading ? 'Yuborilmoqda...' : 'Qabul qiling'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+          // Eslatma: buyurtma darajasidagi katta "Qabul qiling" tugmasi yo'q —
+          // omborchi har mahsulotni qatoridagi tugma bilan alohida qabul
+          // qiladi; hamma item qabul bo'lsa backend statusni o'zi
+          // 'qabul_qilindi' qiladi.
           // Qabul qilingan buyurtma -> belgi.
           if (order.isAccepted) ...[
             const SizedBox(height: 12),
@@ -741,7 +771,7 @@ class _OrderItemRow extends StatelessWidget {
   }
 }
 
-// Jadval sarlavhasi: Mahsulot | Kelgan soni | Rasm/Video.
+// Jadval sarlavhasi: Mahsulot | Kelgan soni | Rasm/Video | Qabul.
 class _MediaTableHeader extends StatelessWidget {
   const _MediaTableHeader();
 
@@ -765,9 +795,14 @@ class _MediaTableHeader extends StatelessWidget {
           ),
           SizedBox(width: 6),
           Expanded(
-            flex: 4,
-            child: Text('Rasm / Video',
+            flex: 2,
+            child: Text('Rasm/Video',
                 textAlign: TextAlign.center, style: style),
+          ),
+          SizedBox(width: 6),
+          Expanded(
+            flex: 2,
+            child: Text('Qabul', textAlign: TextAlign.center, style: style),
           ),
         ],
       ),
@@ -776,18 +811,23 @@ class _MediaTableHeader extends StatelessWidget {
 }
 
 // Mahsulot qatori: nom + farq + birlik narxi | "Kelgan soni" maydoni |
-// rasm va video yonma-yon.
+// Rasm/Video (bitta katak) | Qabul tugmasi.
 class _MediaItemRow extends StatelessWidget {
   final OmborOrderItem item;
-  // Narxlangan yoki hali narxlanmagan (created), lekin qabul qilinmagan
-  // buyurtma -> media/son kiritiladi.
+  // Buyurtma narxlangan yoki created VA item hali qabul qilinmagan ->
+  // media/son kiritiladi va qabul tugmasi ko'rinadi. Aks holda (item yoki
+  // butun order qabul qilingan) qator read-only.
   final bool editable;
   final TextEditingController? receivedController;
   final String? localImagePath;
   final String? localVideoPath;
+  // Shu item hozir serverga yuborilmoqda (tugmada spinner).
+  final bool isAccepting;
   final VoidCallback onReceivedChanged;
-  final VoidCallback onTapImage;
-  final VoidCallback onTapVideo;
+  // Rasm/Video katakchasi bosilganda tanlov dialogini ochadi.
+  final VoidCallback onTapMedia;
+  // Qabul tugmasi bosilganda itemni serverga yuboradi.
+  final VoidCallback onAccept;
 
   const _MediaItemRow({
     required this.item,
@@ -795,9 +835,10 @@ class _MediaItemRow extends StatelessWidget {
     required this.receivedController,
     required this.localImagePath,
     required this.localVideoPath,
+    required this.isAccepting,
     required this.onReceivedChanged,
-    required this.onTapImage,
-    required this.onTapVideo,
+    required this.onTapMedia,
+    required this.onAccept,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -914,17 +955,11 @@ class _MediaItemRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          // Rasm va Video yonma-yon.
-          Expanded(
-            flex: 4,
-            child: Row(
-              children: [
-                Expanded(child: _imageCell()),
-                const SizedBox(width: 4),
-                Expanded(child: _videoCell(context)),
-              ],
-            ),
-          ),
+          // Rasm/Video — bitta katak (bosilganda rasm/video tanlov dialogi).
+          Expanded(flex: 2, child: _mediaCell(context)),
+          const SizedBox(width: 6),
+          // Qabul tugmasi (yoki qabul qilingan bo'lsa yashil check).
+          Expanded(flex: 2, child: _acceptCell()),
         ],
       ),
     );
@@ -965,36 +1000,41 @@ class _MediaItemRow extends StatelessWidget {
     );
   }
 
-  Widget _imageCell() {
+  // Rasm/Video kataги. Tahrirlanadigan qatorda: lokal rasm bo'lsa
+  // thumbnail, faqat video bo'lsa yashil videocam, hech nima bo'lmasa
+  // kamera ikonkasi — bosilganda har doim tanlov dialogi ochiladi.
+  // Qabul qilingan qatorda: saqlangan rasm (bosilsa katta ko'rish) yoki
+  // video (bosilsa aylana pleer).
+  Widget _mediaCell(BuildContext context) {
     if (editable) {
       if (localImagePath != null) {
         return _MediaThumb(
-          onTap: onTapImage,
+          onTap: onTapMedia,
           child: Image.file(File(localImagePath!), fit: BoxFit.cover),
         );
       }
-      return _MediaButton(icon: Icons.photo_camera_outlined, onTap: onTapImage);
+      if (localVideoPath != null) {
+        return _MediaButton(
+          icon: Icons.videocam,
+          filled: true,
+          onTap: onTapMedia,
+        );
+      }
+      return _MediaButton(
+        icon: Icons.photo_camera_outlined,
+        onTap: onTapMedia,
+      );
     }
     if (item.imageUrl.isNotEmpty) {
+      final url = '${AppUrls.baseUrl}${item.imageUrl}';
       return _MediaThumb(
+        onTap: () => _showFullImage(context, url),
         child: Image.network(
-          '${AppUrls.baseUrl}${item.imageUrl}',
+          url,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) =>
               const Icon(Icons.broken_image, size: 18, color: Colors.grey),
         ),
-      );
-    }
-    return const _MediaEmpty();
-  }
-
-  Widget _videoCell(BuildContext context) {
-    if (editable) {
-      final has = localVideoPath != null;
-      return _MediaButton(
-        icon: has ? Icons.check_circle : Icons.videocam_outlined,
-        filled: has,
-        onTap: onTapVideo,
       );
     }
     if (item.videoUrl.isNotEmpty) {
@@ -1012,6 +1052,72 @@ class _MediaItemRow extends StatelessWidget {
       );
     }
     return const _MediaEmpty();
+  }
+
+  // Saqlangan rasmni to'liq ekranda (kattalashtirib) ko'rish.
+  void _showFullImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Center(child: Image.network(url)),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Qabul kataги: tahrirlanadigan qatorda yashil check tugma (yuborishda
+  // spinner), qabul qilingan qatorda yashil check belgisi.
+  Widget _acceptCell() {
+    if (!editable) {
+      // Item (yoki butun order) qabul qilingan — belgigina ko'rsatiladi.
+      return Container(
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _green.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _green.withValues(alpha: 0.4)),
+        ),
+        child: const Icon(Icons.check_circle, size: 22, color: _green),
+      );
+    }
+    return Material(
+      color: isAccepting ? Colors.grey.shade300 : _green,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: isAccepting ? null : onAccept,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 48,
+          alignment: Alignment.center,
+          child: isAccepting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.check, size: 22, color: Colors.white),
+        ),
+      ),
+    );
   }
 }
 

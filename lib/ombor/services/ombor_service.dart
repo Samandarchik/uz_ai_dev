@@ -134,41 +134,45 @@ class OmborService {
     }
   }
 
-  // POST /api/orders/{id}/accept -> narxlangan buyurtmani qabul qilish.
-  // Har bir mahsulot uchun rasm/video yuboriladi: multipart maydonlari
-  // "image_<product_id>" va "video_<product_id>".
-  // images/videos: product_id -> lokal fayl yo'li.
-  // Javob: {"success": true, "message": "...", "data": {order}}
-  Future<void> acceptOrder(
+  // POST /api/orders/{id}/items/{productId}/accept -> BITTA mahsulotni
+  // qabul qilish (kelgan soni + rasm/video). Kamida bitta rasm yoki video
+  // majburiy (UI shuni tekshiradi). Order statusi created/narxlandi
+  // bo'lsagina ishlaydi; hamma item qabul bo'lsa backend statusni
+  // 'qabul_qilindi' qiladi.
+  // Javob: {"success": true, "message": "...", "data": {to'liq yangilangan order}}
+  Future<OmborOrder> acceptOrderItem(
     int orderId,
-    Map<int, double> received,
-    Map<int, String> images,
-    Map<int, String> videos,
+    int productId,
+    double received,
+    String? imagePath,
+    String? videoPath,
   ) async {
     try {
       final form = FormData();
-      for (final entry in received.entries) {
-        form.fields.add(MapEntry('received_${entry.key}', '${entry.value}'));
-      }
-      for (final entry in images.entries) {
+      form.fields.add(MapEntry('received', '$received'));
+      if (imagePath != null) {
         form.files.add(MapEntry(
-          'image_${entry.key}',
-          await MultipartFile.fromFile(entry.value),
+          'image',
+          await MultipartFile.fromFile(imagePath),
         ));
       }
-      for (final entry in videos.entries) {
+      if (videoPath != null) {
         form.files.add(MapEntry(
-          'video_${entry.key}',
-          await MultipartFile.fromFile(entry.value),
+          'video',
+          await MultipartFile.fromFile(videoPath),
         ));
       }
       final response = await dio.post(
-        '${AppUrls.orders}/$orderId/accept',
+        '${AppUrls.orders}/$orderId/items/$productId/accept',
         data: form,
       );
       final status = response.statusCode ?? 0;
+      final body = response.data;
       if (status >= 200 && status < 300) {
-        return;
+        final data = (body is Map) ? body['data'] : null;
+        if (data is Map) {
+          return OmborOrder.fromJson(Map<String, dynamic>.from(data));
+        }
       }
       throw Exception('Qabul qilib bo\'lmadi: $status');
     } on DioException catch (e) {

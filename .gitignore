@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Simulyator skrinshotlari (repo ildizi va lib/ ichiga tushib qoladi)
+simulator_screenshot_*.png

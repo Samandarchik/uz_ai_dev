@@ -91,6 +91,9 @@ class OmborOrderItem {
   // Item turi: '' — oddiy mahsulot, 'proche' — yuk keltiruvchi qo'shgan
   // qo'shimcha mahsulot, 'rasxod' — xarajat/xizmat (qabul qilinmaydi).
   final String itemType;
+  // Omborchi shu mahsulotni alohida qabul qilganmi (item darajasida).
+  // Hamma item qabul bo'lsa backend order statusini 'qabul_qilindi' qiladi.
+  final bool accepted;
 
   OmborOrderItem({
     required this.productId,
@@ -103,6 +106,7 @@ class OmborOrderItem {
     this.imageUrl = '',
     this.videoUrl = '',
     this.itemType = '',
+    this.accepted = false,
   });
 
   bool get isRasxod => itemType == 'rasxod';
@@ -120,6 +124,7 @@ class OmborOrderItem {
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',
       itemType: json['item_type']?.toString() ?? '',
+      accepted: json['accepted'] == true,
     );
   }
 }

@@ -133,8 +133,10 @@ class OmborProvider extends ChangeNotifier {
   bool isLoadingOrders = false;
   String? ordersError;
 
-  // Hozir qabul qilinayotgan buyurtma id (spinner uchun).
-  int? acceptingOrderId;
+  // Hozir qabul qilinayotgan item (order id + product id) — qator tugmasida
+  // spinner ko'rsatish uchun.
+  int? acceptingItemOrderId;
+  int? acceptingItemProductId;
 
   // GET /api/orders -> ombor userning o'z buyurtmalari.
   // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
@@ -183,22 +185,35 @@ class OmborProvider extends ChangeNotifier {
     }
   }
 
-  // Narxlangan buyurtmani qabul qilish: har bir mahsulot uchun rasm/video.
-  // images/videos: product_id -> lokal fayl yo'li.
-  // Muvaffaqiyatda ro'yxat yangilanadi. Xato bo'lsa Exception otadi.
-  Future<void> acceptOrder(
+  // Bitta mahsulotni qabul qilish: kelgan soni + rasm/video (kamida bittasi).
+  // Muvaffaqiyatda backend qaytargan TO'LIQ yangilangan order myOrders'da
+  // id bo'yicha almashtiriladi (qayta GET shart emas). Xato bo'lsa
+  // Exception otadi (UI uni ushlab SnackBar ko'rsatadi).
+  Future<void> acceptOrderItem(
     int orderId,
-    Map<int, double> received,
-    Map<int, String> images,
-    Map<int, String> videos,
+    int productId,
+    double received,
+    String? imagePath,
+    String? videoPath,
   ) async {
-    acceptingOrderId = orderId;
+    acceptingItemOrderId = orderId;
+    acceptingItemProductId = productId;
     notifyListeners();
     try {
-      await _service.acceptOrder(orderId, received, images, videos);
-      await fetchMyOrders();
+      final updated = await _service.acceptOrderItem(
+        orderId,
+        productId,
+        received,
+        imagePath,
+        videoPath,
+      );
+      final index = myOrders.indexWhere((o) => o.id == updated.id);
+      if (index >= 0) {
+        myOrders[index] = updated;
+      }
     } finally {
-      acceptingOrderId = null;
+      acceptingItemOrderId = null;
+      acceptingItemProductId = null;
       notifyListeners();
     }
   }
