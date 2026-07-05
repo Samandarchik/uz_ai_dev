@@ -447,13 +447,16 @@ class _YukOrderCardState extends State<YukOrderCard> {
     final provider = context.read<YukProvider>();
     for (final item in order.items) {
       // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
-      // (yuborilgan) qiymat ko'rsatiladi. Omborchi qabul qilgan itemda
-      // "olingan miqdor" QULFLANGAN — omborchi kiritgan kelgan soni
-      // ko'rsatiladi (lokal qoralama e'tiborga olinmaydi).
+      // (yuborilgan) qiymat ko'rsatiladi. Omborchi qabul qilgan itemda lokal
+      // qoralama bo'sh (0) bo'lsa, omborchi kiritgan kelgan soni bilan
+      // to'ldiriladi — keyin yuk keltiruvchi xohlasa tahrirlaydi.
       final existing = provider.getItemPrice(order.id, item.productId);
-      final taken0 = item.accepted
-          ? (item.received > 0 ? item.received : item.taken)
-          : (existing?.taken ?? item.taken);
+      final draftTaken = existing?.taken;
+      final taken0 = (draftTaken != null && draftTaken > 0)
+          ? draftTaken
+          : (item.accepted && item.received > 0
+              ? item.received
+              : item.taken);
       final subtotal0 = existing?.subtotal ?? item.subtotal;
       _takenControllers[item.productId] =
           TextEditingController(text: _fmtQty(taken0));
@@ -481,6 +484,26 @@ class _YukOrderCardState extends State<YukOrderCard> {
       provider.seedAddedItems(order.id, order.items);
     }
     _maybeStartUndoTicker();
+  }
+
+  // Ombor biror itemni qabul qilganda (socket orqali keladi) uning kelgan
+  // soni "Nechta olgani" maydoniga AVTO to'ldiriladi. Keyin yuk keltiruvchi
+  // xohlasa uni tahrirlashi mumkin — faqat to'liq yuborilgach (narxlandi)
+  // maydonlar butunlay yopiladi.
+  @override
+  void didUpdateWidget(covariant YukOrderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldAccepted = {
+      for (final i in oldWidget.order.items) i.productId: i.accepted,
+    };
+    for (final item in order.items) {
+      if (item.accepted && !(oldAccepted[item.productId] ?? false)) {
+        final v = item.received > 0 ? item.received : item.taken;
+        _takenCtrlFor(item).text = _fmtQty(v);
+        // Providerga ham yozamiz — "1 *" birlik narx darhol qayta hisoblanadi.
+        _onItemChanged(item);
+      }
+    }
   }
 
   // Buyurtma hozir yuborilgan va qaytarib olish oynasi ochiq bo'lsa, sanoqni
@@ -544,20 +567,14 @@ class _YukOrderCardState extends State<YukOrderCard> {
     return v;
   }
 
-  // Omborchi qabul qilgan itemning qulflangan kelgan soni. Qabul qilinmagan
-  // bo'lsa null — qiymat maydondан (controller) olinadi.
-  double? _lockedTaken(YukOrderItem item) {
-    if (!item.accepted) return null;
-    return item.received > 0 ? item.received : item.taken;
-  }
-
   void _onItemChanged(YukOrderItem item) {
     final provider = context.read<YukProvider>();
     final productId = item.productId;
-    // Qulflangan itemda taken har doim omborchi kiritgan son — controllerdagi
-    // eski/bo'sh qiymatga bog'lanmaydi (faqat summa yozilsa ham 1* narx chiqadi).
-    final taken = _lockedTaken(item) ??
-        _parse(_takenControllers[productId]?.text ?? '');
+    // Kelgan soni maydoni to'liq yuborilgunga qadar tahrirlanadi — qiymat
+    // har doim maydonning o'zidan (controller) olinadi. Ombor qabul qilganda
+    // maydon avto to'ldiriladi (didUpdateWidget), lekin yuk keltiruvchi uni
+    // o'zgartira oladi.
+    final taken = _parse(_takenControllers[productId]?.text ?? '');
     final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
     provider.setItemPrice(order.id, productId, taken, subtotal);
   }
@@ -1305,13 +1322,14 @@ class _YukOrderCardState extends State<YukOrderCard> {
                   .where((i) => done ? !i.isRasxod : i.itemType.isEmpty)
                   .map((item) {
                 // Bittasining narxi = jami summa / olingan miqdor.
-                // Lokal kiritma bo'lmasa, yuborilgan (backend) qiymatlardan olinadi.
-                // Omborchi qabul qilgan itemda olingan miqdor QULFLANGAN —
-                // birlik narx har doim shu (avto) qiymat bilan hisoblanadi:
-                // faqat summa yozilsa ham "1 *" narx darhol chiqadi.
+                // Tahrirlanadigan qatorda qiymat maydonning O'ZIDAN olinadi —
+                // ekranda nima tursa, "1 *" narx shu bilan hisoblanadi
+                // (avto to'lgan kelgan soni + faqat summa yozilsa ham chiqadi).
                 final priced = provider.getItemPrice(order.id, item.productId);
-                final takenVal =
-                    _lockedTaken(item) ?? priced?.taken ?? item.taken;
+                final takenCtrl = _takenControllers[item.productId];
+                final takenVal = (!done && takenCtrl != null)
+                    ? _parse(takenCtrl.text)
+                    : (priced?.taken ?? item.taken);
                 final subtotalVal = priced?.subtotal ?? item.subtotal;
                 final unitPrice = (takenVal > 0 && subtotalVal > 0)
                     ? subtotalVal / takenVal
@@ -1333,15 +1351,6 @@ class _YukOrderCardState extends State<YukOrderCard> {
                 final diffColor = diff > 0
                     ? const Color(0xFF2E7D32)
                     : const Color(0xFFC62828);
-                // Omborchi qabul qilgan item: kelgan soni socket orqali
-                // kelganda maydon avtomatik yangilanadi va QULFLANADI
-                // (yuk keltiruvchi uni o'zgartira olmaydi, faqat narx kiritadi).
-                if (item.accepted) {
-                  final want =
-                      _fmtQty(item.received > 0 ? item.received : item.taken);
-                  final ctrl = _takenCtrlFor(item);
-                  if (ctrl.text != want) ctrl.text = want;
-                }
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
@@ -1417,9 +1426,10 @@ class _YukOrderCardState extends State<YukOrderCard> {
                           hint: '0',
                           // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
                           decimal: _isKg(item.type),
-                          // Omborchi qabul qilgan itemning kelgan soni
-                          // qulflangan — faqat narx (summa) kiritiladi.
-                          enabled: !done && !item.accepted,
+                          // To'liq yuborilgunga qadar tahrirlanadi (ombor
+                          // qabul qilgan bo'lsa avto to'lgan, lekin yuk
+                          // keltiruvchi o'zgartirishi mumkin).
+                          enabled: !done,
                           onChanged: (_) => _onItemChanged(item),
                         ),
                       ),
