@@ -200,14 +200,14 @@ class _OrderCardState extends State<_OrderCard> {
   final Map<int, String> _videos = {};
   // Har bir mahsulot uchun "Kelgan soni" (haqiqatda kelgan miqdor) controlleri.
   final Map<int, TextEditingController> _received = {};
-  // Double-tap bilan qayta tahrirlashga ochilgan (allaqachon qabul qilingan)
+  // Uzoq bosish bilan qayta tahrirlashga ochilgan (allaqachon qabul qilingan)
   // itemlar. Buyurtma to'liq yopilmaguncha omborchi xato kiritgan sonni
   // shu yo'l bilan tuzatishi mumkin.
   final Set<int> _reEditing = {};
 
   final ImagePicker _picker = ImagePicker();
 
-  // Qabul qilingan itemni double-tap bilan qayta tahrirlashga ochish.
+  // Qabul qilingan itemni uzoq bosib qayta tahrirlashga ochish.
   void _startReEdit(OmborOrderItem item) {
     _received.putIfAbsent(item.productId, () => TextEditingController());
     _received[item.productId]!.text = _fmtQty(item.received);
@@ -513,7 +513,7 @@ class _OrderCardState extends State<_OrderCard> {
                 builder: (ctx, p, _) => _MediaItemRow(
                   item: item,
                   // Qabul qilingan item read-only, LEKIN buyurtma hali to'liq
-                  // yopilmagan bo'lsa double-tap bilan qayta ochish mumkin.
+                  // yopilmagan bo'lsa uzoq bosib qayta ochish mumkin.
                   editable: (order.isPriced || order.isCreated) &&
                       (!item.accepted ||
                           _reEditing.contains(item.productId)),
@@ -525,7 +525,7 @@ class _OrderCardState extends State<_OrderCard> {
                   onReceivedChanged: () => setState(() {}),
                   onTapMedia: () => _pickMedia(item.productId),
                   onAccept: () => _acceptItem(item),
-                  onDoubleTap: (order.isPriced || order.isCreated) &&
+                  onLongPress: (order.isPriced || order.isCreated) &&
                           item.accepted &&
                           !_reEditing.contains(item.productId)
                       ? () => _startReEdit(item)
@@ -859,9 +859,9 @@ class _MediaItemRow extends StatelessWidget {
   final VoidCallback onTapMedia;
   // Qabul tugmasi bosilganda itemni serverga yuboradi.
   final VoidCallback onAccept;
-  // Qabul qilingan qator double-tap qilinsa qayta tahrirlashga ochiladi
-  // (buyurtma to'liq yopilmagan bo'lsa). null -> double-tap ishlamaydi.
-  final VoidCallback? onDoubleTap;
+  // Qabul qilingan qator uzoq bosilsa (long press) qayta tahrirlashga
+  // ochiladi (buyurtma to'liq yopilmagan bo'lsa). null -> ishlamaydi.
+  final VoidCallback? onLongPress;
 
   const _MediaItemRow({
     required this.item,
@@ -873,7 +873,7 @@ class _MediaItemRow extends StatelessWidget {
     required this.onReceivedChanged,
     required this.onTapMedia,
     required this.onAccept,
-    this.onDoubleTap,
+    this.onLongPress,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -914,9 +914,9 @@ class _MediaItemRow extends StatelessWidget {
     final shortColor = shortage > 0 ? _red : _green;
 
     return GestureDetector(
-      // Qabul qilingan qatorni double-tap bilan qayta tahrirlashga ochish.
+      // Qabul qilingan qatorni uzoq bosib qayta tahrirlashga ochish.
       behavior: HitTestBehavior.translucent,
-      onDoubleTap: onDoubleTap,
+      onLongPress: onLongPress,
       child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(

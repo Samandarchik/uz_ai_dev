@@ -9,6 +9,7 @@ class User {
   final String? password;
   final List<int>? categoryIds;
   final List<int> sklads;
+  final String? telegramGroupId;
 
   User({
     required this.id,
@@ -21,6 +22,7 @@ class User {
     this.password,
     this.categoryIds,
     this.sklads = const [],
+    this.telegramGroupId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class User {
           ?.map((e) => e as int)
           .toList(),
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
+      telegramGroupId: json['telegram_group_id'],
     );
   }
 
@@ -49,6 +52,7 @@ class User {
       'filial_id': filialId,
       'sklads': sklads,
       if (password != null) 'password': password,
+      if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };
   }
 
@@ -62,6 +66,7 @@ class User {
     Filial? filial,
     String? password,
     List<int>? sklads,
+    String? telegramGroupId,
   }) {
     return User(
       id: id ?? this.id,
@@ -73,6 +78,7 @@ class User {
       filial: filial ?? this.filial,
       password: password ?? this.password,
       sklads: sklads ?? this.sklads,
+      telegramGroupId: telegramGroupId ?? this.telegramGroupId,
     );
   }
 }
@@ -124,6 +130,7 @@ class UpdateUserRequest {
   final String? password;
   final List<int>? categoryIds;
   final List<int>? sklads;
+  final String? telegramGroupId;
 
   UpdateUserRequest({
     this.name,
@@ -134,6 +141,7 @@ class UpdateUserRequest {
     this.password,
     this.categoryIds,
     this.sklads,
+    this.telegramGroupId,
   });
 
   Map<String, dynamic> toJson() {
@@ -146,6 +154,8 @@ class UpdateUserRequest {
     if (password != null && password!.isNotEmpty) data['password'] = password;
     if (categoryIds != null) data['category_list'] = categoryIds;
     if (sklads != null) data['sklads'] = sklads;
+    // Bo'sh string ham yuboriladi — backend bo'sh qiymatda tozalaydi.
+    if (telegramGroupId != null) data['telegram_group_id'] = telegramGroupId;
     return data;
   }
 }
@@ -159,6 +169,7 @@ class CreateUserRequest {
   final int? filialId;
   final List<int>? categoryIds;
   final List<int> sklads;
+  final String? telegramGroupId;
 
   CreateUserRequest({
     required this.name,
@@ -169,6 +180,7 @@ class CreateUserRequest {
     this.filialId,
     this.categoryIds,
     this.sklads = const [],
+    this.telegramGroupId,
   });
 
   Map<String, dynamic> toJson() {
@@ -181,6 +193,7 @@ class CreateUserRequest {
       if (filialId != null) 'filial_id': filialId,
       'category_list': categoryIds,
       'sklads': sklads,
+      if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };
   }
 }

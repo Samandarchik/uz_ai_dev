@@ -28,6 +28,7 @@ class _EditUserPageState extends State<EditUserPage> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _passwordController;
+  late TextEditingController _telegramGroupController;
 
   bool _isAdmin = false;
   int? _selectedFilialId;
@@ -54,6 +55,8 @@ class _EditUserPageState extends State<EditUserPage> {
     _nameController = TextEditingController(text: widget.user?.name ?? '');
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
     _passwordController = TextEditingController();
+    _telegramGroupController =
+        TextEditingController(text: widget.user?.telegramGroupId ?? '');
     _isAdmin = widget.user?.isAdmin ?? false;
     // filial_id 0 (filial belgilanmagan, masalan ombor/yuk keltiruvchi) -> null,
     // aks holda DropdownButton mos element topolmay crash bo'ladi.
@@ -159,6 +162,7 @@ class _EditUserPageState extends State<EditUserPage> {
     _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _telegramGroupController.dispose();
     super.dispose();
   }
 
@@ -246,6 +250,7 @@ class _EditUserPageState extends State<EditUserPage> {
               : null,
           categoryIds: _categoryIds,
           sklads: _selectedSklads,
+          telegramGroupId: _telegramGroupController.text.trim(),
         );
 
         print('Updating user with request: ${request.toJson()}');
@@ -261,6 +266,7 @@ class _EditUserPageState extends State<EditUserPage> {
           filialId: filialId,
           categoryIds: _categoryIds,
           sklads: _selectedSklads,
+          telegramGroupId: _telegramGroupController.text.trim(),
         );
 
         print('Creating user with request: ${request.toJson()}');
@@ -895,6 +901,43 @@ class _EditUserPageState extends State<EditUserPage> {
                   _selectedRole == AppRoles.yukKeltiruvchi)
                 _buildSkladSelector(),
               const SizedBox(height: 20),
+
+              // Telegram guruh ID (faqat ombor roli uchun, ixtiyoriy)
+              if (_selectedRole == AppRoles.ombor) ...[
+                Text(
+                  'Telegram guruh ID',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _telegramGroupController,
+                  decoration: InputDecoration(
+                    hintText: '-1001234567890',
+                    prefixIcon: const Icon(Icons.telegram),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.blue.shade600, width: 2),
+                    ),
+                  ),
+                  keyboardType: TextInputType.text,
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Category Selector
               _buildCategorySelector(),
