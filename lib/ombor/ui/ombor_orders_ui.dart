@@ -549,8 +549,13 @@ class _OrderCardState extends State<_OrderCard> {
           ] else
             ...order.items.map((item) => _OrderItemRow(item: item)),
           // Chek yakuni (narxlangan yoki qabul qilingan bo'lsa):
-          // Mahsulot / Xarajat (bo'lsa) / Jami.
-          if (order.isPriced || order.isAccepted) ...[
+          // Mahsulot / Xarajat (bo'lsa) / Jami. Yuk keltiruvchi hali
+          // yubormasdan (draft) narx kiritayotganida ham summalar socket
+          // orqali jonli ko'rinadi — bironta itemda summa paydo bo'lishi
+          // bilan blok chiqadi.
+          if (order.isPriced ||
+              order.isAccepted ||
+              order.items.any((i) => i.subtotal > 0)) ...[
             const Divider(height: 20),
             Builder(
               builder: (_) {
