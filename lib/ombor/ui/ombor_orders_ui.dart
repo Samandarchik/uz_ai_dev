@@ -217,16 +217,17 @@ class _OrderCardState extends State<_OrderCard> {
   @override
   void initState() {
     super.initState();
-    // "Kelgan soni" maydonini oldindan to'ldiramiz; omborchi kam bo'lsa
-    // o'zgartiradi. Narxlangan buyurtmada — yuk keltiruvchi aytgan miqdor
-    // (taken), hali narxlanmagan (created) buyurtmada — buyurtma soni (count).
+    // "Kelgan soni" maydoni: narxlangan buyurtmada yuk keltiruvchi aytgan
+    // miqdor (taken) bilan to'ldiriladi; hali narxlanmagan (created)
+    // buyurtmada BO'SH turadi — omborchi haqiqatda kelganini o'zi yozadi
+    // (buyurtma soni defolt qilib qo'yilmaydi).
     // Rasxod (xarajat) itemlari va allaqachon qabul qilingan itemlar uchun
     // controller ochilmaydi (ular read-only ko'rinadi).
     if (order.isPriced || order.isCreated) {
       for (final item in order.items) {
         if (item.isRasxod || item.accepted) continue;
         _received[item.productId] = TextEditingController(
-          text: _fmtQty(order.isPriced ? item.taken : item.count),
+          text: order.isPriced ? _fmtQty(item.taken) : '',
         );
       }
     }
