@@ -152,10 +152,10 @@ class _LedgerDayCard extends StatelessWidget {
             const SizedBox(height: 10),
             _row('Ertalabgi ostatok', day.opening, Colors.black87),
             // Rasxod — TO'LIQ summa: yuborilgani ham, hali yuborilmagan
-            // (yozilayotgan, real time) qoralamalar ham.
+            // (yozilayotgan, real time) qoralamalar ham. "Yuborilgan" alohida
+            // ko'rsatilmaydi, lekin Itog baribir faqat yuborilganlar bilan
+            // hisoblanadi (itog = opening - yuborilgan).
             _row('Rasxod', day.rasxod + day.yuborilgan, _red),
-            // Yuborilgan — shundan "yuborish" bosilgan qismi (Itog shu bilan).
-            _row('Yuborilgan', day.yuborilgan, _red),
             // Itog = ertalabgi ostatok - yuborilgan (yuborilgach shu yerga o'tadi).
             _row('Itog', day.itog, Colors.black87, bold: true),
             _row('Prixod', day.prixod, _green),
