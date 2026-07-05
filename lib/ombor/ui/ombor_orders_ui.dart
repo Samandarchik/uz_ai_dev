@@ -206,14 +206,16 @@ class _OrderCardState extends State<_OrderCard> {
   @override
   void initState() {
     super.initState();
-    // Narxlangan buyurtmada "Kelgan soni" maydonini yuk keltiruvchi aytgan
-    // miqdor (taken) bilan oldindan to'ldiramiz; omborchi kam bo'lsa o'zgartiradi.
+    // "Kelgan soni" maydonini oldindan to'ldiramiz; omborchi kam bo'lsa
+    // o'zgartiradi. Narxlangan buyurtmada — yuk keltiruvchi aytgan miqdor
+    // (taken), hali narxlanmagan (created) buyurtmada — buyurtma soni (count).
     // Rasxod (xarajat) itemlari qabul qilinmaydi — controller ochilmaydi.
-    if (order.isPriced) {
+    if (order.isPriced || order.isCreated) {
       for (final item in order.items) {
         if (item.isRasxod) continue;
-        _received[item.productId] =
-            TextEditingController(text: _fmtQty(item.taken));
+        _received[item.productId] = TextEditingController(
+          text: _fmtQty(order.isPriced ? item.taken : item.count),
+        );
       }
     }
   }
@@ -425,16 +427,16 @@ class _OrderCardState extends State<_OrderCard> {
             ),
           ],
           const Divider(height: 20),
-          // Itemlar. Narxlangan/qabul qilingan bo'lsa — har mahsulotga
-          // Rasm va Video ustunlari; aks holda oddiy ro'yxat.
-          if (order.isPriced || order.isAccepted) ...[
+          // Itemlar. Narxlangan/yangi (created)/qabul qilingan bo'lsa —
+          // har mahsulotga Rasm va Video ustunlari; aks holda oddiy ro'yxat.
+          if (order.isPriced || order.isCreated || order.isAccepted) ...[
             const _MediaTableHeader(),
             // Rasxod (xarajat) itemlari jadvalga kirmaydi — ular pastdagi
             // "Xarajatlar" blokida (qabul qilinmaydi, rasm/video yo'q).
             ...order.items.where((i) => !i.isRasxod).map(
               (item) => _MediaItemRow(
                 item: item,
-                editable: order.isPriced,
+                editable: order.isPriced || order.isCreated,
                 receivedController: _received[item.productId],
                 localImagePath: _images[item.productId],
                 localVideoPath: _videos[item.productId],
@@ -615,8 +617,9 @@ class _OrderCardState extends State<_OrderCard> {
               },
             ),
           ],
-          // Narxlangan buyurtma -> "Qabul qiling" (rasm/video yuboriladi).
-          if (order.isPriced) ...[
+          // Narxlangan yoki hali narxlanmagan (created) buyurtma ->
+          // "Qabul qiling" (kelgan soni + rasm/video yuboriladi).
+          if (order.isPriced || order.isCreated) ...[
             const SizedBox(height: 12),
             Consumer<OmborProvider>(
               builder: (ctx, p, _) {
@@ -776,7 +779,9 @@ class _MediaTableHeader extends StatelessWidget {
 // rasm va video yonma-yon.
 class _MediaItemRow extends StatelessWidget {
   final OmborOrderItem item;
-  final bool editable; // narxlangan (qabul qilinmagan) -> media/son kiritiladi
+  // Narxlangan yoki hali narxlanmagan (created), lekin qabul qilinmagan
+  // buyurtma -> media/son kiritiladi.
+  final bool editable;
   final TextEditingController? receivedController;
   final String? localImagePath;
   final String? localVideoPath;

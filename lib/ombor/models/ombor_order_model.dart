@@ -41,6 +41,10 @@ class OmborOrder {
   // Yuk keltiruvchi narx qo'yganmi (omborchi endi qabul qila oladi).
   bool get isPriced => status == 'narxlandi';
 
+  // Hali narxlanmagan (yangi yuborilgan) buyurtma — lekin omborchi
+  // baribir qabul qila oladi (kelgan soni + rasm/video bilan).
+  bool get isCreated => status == 'created';
+
   // Omborchi qabul qilib videoni yuborganmi.
   bool get isAccepted => status == 'qabul_qilindi';
 
