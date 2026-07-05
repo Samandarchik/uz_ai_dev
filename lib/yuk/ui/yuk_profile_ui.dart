@@ -151,9 +151,12 @@ class _LedgerDayCard extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: 10),
             _row('Ertalabgi ostatok', day.opening, Colors.black87),
+            // Rasxod — hali yuborilmagan (yozilayotgan) summalar, real time.
             _row('Rasxod', day.rasxod, _red),
-            // Itog = ertalabgi ostatok - rasxod (prixodsiz oraliq natija).
-            _row('Itog', day.opening - day.rasxod, Colors.black87, bold: true),
+            // Yuborilgan — "yuborish" bosilgan buyurtmalar summasi.
+            _row('Yuborilgan', day.yuborilgan, _red),
+            // Itog = ertalabgi ostatok - yuborilgan (yuborilgach shu yerga o'tadi).
+            _row('Itog', day.itog, Colors.black87, bold: true),
             _row('Prixod', day.prixod, _green),
             _row('Kechki ostatok', day.closing, Colors.black87, bold: true),
           ],
