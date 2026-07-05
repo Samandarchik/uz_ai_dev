@@ -409,6 +409,38 @@ class _OrderCardState extends State<_OrderCard> {
         ? _parseQty(_received[productId]!.text)
         : 0.0;
 
+    // Kelgan soni kiritilmagan yoki 0 bo'lsa qabul yuborilmaydi —
+    // rasm olingan bo'lsa ham. Omborchi haqiqiy sonni yozishi shart.
+    if (received <= 0) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Kelgan soni kiritilmagan',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '"${item.name}" uchun kelgan soni 0 dan ko\'p bo\'lishi kerak. '
+            'Avval haqiqatda kelgan miqdorni kiriting.',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC5A97B),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tushunarli'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     try {
       await provider.acceptOrderItem(
         order.id,
