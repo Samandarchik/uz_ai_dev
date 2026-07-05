@@ -544,9 +544,20 @@ class _YukOrderCardState extends State<YukOrderCard> {
     return v;
   }
 
-  void _onItemChanged(int productId) {
+  // Omborchi qabul qilgan itemning qulflangan kelgan soni. Qabul qilinmagan
+  // bo'lsa null — qiymat maydondан (controller) olinadi.
+  double? _lockedTaken(YukOrderItem item) {
+    if (!item.accepted) return null;
+    return item.received > 0 ? item.received : item.taken;
+  }
+
+  void _onItemChanged(YukOrderItem item) {
     final provider = context.read<YukProvider>();
-    final taken = _parse(_takenControllers[productId]?.text ?? '');
+    final productId = item.productId;
+    // Qulflangan itemda taken har doim omborchi kiritgan son — controllerdagi
+    // eski/bo'sh qiymatga bog'lanmaydi (faqat summa yozilsa ham 1* narx chiqadi).
+    final taken = _lockedTaken(item) ??
+        _parse(_takenControllers[productId]?.text ?? '');
     final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
     provider.setItemPrice(order.id, productId, taken, subtotal);
   }
@@ -1295,8 +1306,12 @@ class _YukOrderCardState extends State<YukOrderCard> {
                   .map((item) {
                 // Bittasining narxi = jami summa / olingan miqdor.
                 // Lokal kiritma bo'lmasa, yuborilgan (backend) qiymatlardan olinadi.
+                // Omborchi qabul qilgan itemda olingan miqdor QULFLANGAN —
+                // birlik narx har doim shu (avto) qiymat bilan hisoblanadi:
+                // faqat summa yozilsa ham "1 *" narx darhol chiqadi.
                 final priced = provider.getItemPrice(order.id, item.productId);
-                final takenVal = priced?.taken ?? item.taken;
+                final takenVal =
+                    _lockedTaken(item) ?? priced?.taken ?? item.taken;
                 final subtotalVal = priced?.subtotal ?? item.subtotal;
                 final unitPrice = (takenVal > 0 && subtotalVal > 0)
                     ? subtotalVal / takenVal
@@ -1405,7 +1420,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
                           // Omborchi qabul qilgan itemning kelgan soni
                           // qulflangan — faqat narx (summa) kiritiladi.
                           enabled: !done && !item.accepted,
-                          onChanged: (_) => _onItemChanged(item.productId),
+                          onChanged: (_) => _onItemChanged(item),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1415,7 +1430,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
                           controller: _subtotalCtrlFor(item),
                           hint: '0',
                           enabled: !done,
-                          onChanged: (_) => _onItemChanged(item.productId),
+                          onChanged: (_) => _onItemChanged(item),
                         ),
                       ),
                     ],
