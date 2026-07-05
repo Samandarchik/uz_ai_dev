@@ -1,18 +1,15 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
-import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
 
-// Ombor roli uchun bosh ekran — admin paneldagi kabi: avval kategoriyalar
-// ro'yxati, kategoriya bosilganda ichidagi mahsulotlar ochiladi.
+// Ombor roli uchun bosh ekran — user panelidagi kabi: tepada qidiruv,
+// har kategoriya sarlavha + "barchasi" tugmasi + gorizontal kartochkalar.
 class OmborHomeUi extends StatefulWidget {
   const OmborHomeUi({super.key});
 
@@ -72,17 +69,6 @@ class _OmborHomeUiState extends State<OmborHomeUi>
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Admin paneldagi kabi qidiruv: barcha mahsulotlar bo'yicha.
-          IconButton(
-            onPressed: () {
-              final provider = context.read<OmborProvider>();
-              showSearch(
-                context: context,
-                delegate: _OmborProductSearchDelegate(provider),
-              );
-            },
-            icon: const Icon(Icons.search),
-          ),
           IconButton(
             onPressed: () {
               // Logout: avval socketni uzamiz.
@@ -108,7 +94,7 @@ class _OmborHomeUiState extends State<OmborHomeUi>
       body: TabBarView(
         controller: _tabController,
         children: const [
-          _OmborCategoriesTab(),
+          _OmborProductsTab(),
           OmborOrdersView(),
         ],
       ),
@@ -125,12 +111,26 @@ class _OmborHomeUiState extends State<OmborHomeUi>
   }
 }
 
-// "Mahsulotlar" tabи mazmuni: admin paneldagi kabi kategoriyalar ro'yxati
-// (dumaloq rasm + nom + mahsulot soni). Bosilganda kategoriya sahifasi ochiladi.
-class _OmborCategoriesTab extends StatelessWidget {
-  const _OmborCategoriesTab();
+// "Mahsulotlar" tabи — user panelidagi bosh ekran kabi: qidiruv maydoni,
+// kategoriya sarlavhasi + "barchasi" tugmasi va gorizontal kartochkalar.
+class _OmborProductsTab extends StatefulWidget {
+  const _OmborProductsTab();
 
+  @override
+  State<_OmborProductsTab> createState() => _OmborProductsTabState();
+}
+
+class _OmborProductsTabState extends State<_OmborProductsTab> {
   static const Color _accentColor = Color(0xFFC5A97B);
+
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,8 +147,7 @@ class _OmborCategoriesTab extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: Colors.red, size: 48),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 12),
                   Text(
                     provider.errorMessage!,
@@ -175,171 +174,140 @@ class _OmborCategoriesTab extends StatelessWidget {
           return const Center(child: Text('Mahsulotlar topilmadi'));
         }
 
-        return RefreshIndicator(
-          onRefresh: () => provider.fetchProducts(),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              final productCount = provider.productCount(category.name);
+        final query = _searchQuery.toLowerCase();
 
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: ClipOval(
-                  child: GestureDetector(
-                    onTap: () {
-                      // Admin paneldagi kabi: rasm bosilsa katta ko'rinadi.
-                      if (category.imageUrl != null) {
-                        showDialog(
-                          context: context,
-                          builder: (_) => Dialog(
-                            backgroundColor: Colors.transparent,
-                            child: CachedNetworkImage(
-                              imageUrl:
-                                  "${AppUrls.baseUrl}${category.imageUrl}",
-                              fit: BoxFit.contain,
-                              errorWidget: (context, url, error) =>
-                                  const Icon(
-                                Icons.error,
-                                size: 40,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: category.imageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl:
-                                "${AppUrls.baseUrl}${category.imageUrl}",
-                            width: 55,
-                            height: 55,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.image_not_supported),
-                          )
-                        : Container(
-                            width: 55,
-                            height: 55,
-                            color: Colors.grey.shade300,
-                            child: const Icon(Icons.image_not_supported),
-                          ),
-                  ),
-                ),
-                title: Text(
-                  category.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: Text(
-                  '$productCount ta mahsulot',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                onTap: () {
-                  context.push(
-                    OmborCategoryProductsUi(categoryName: category.name),
-                  );
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Admin paneldagi kabi qidiruv oynasi. Natijadagi mahsulotni shu yerning
-// o'zida savatga qo'shish mumkin (+/- stepper saqlanadi).
-class _OmborProductSearchDelegate extends SearchDelegate<String> {
-  final OmborProvider provider;
-
-  _OmborProductSearchDelegate(this.provider)
-      : super(searchFieldLabel: 'Mahsulot qidirish...');
-
-  @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      if (query.isNotEmpty)
-        IconButton(
-          onPressed: () => query = '',
-          icon: const Icon(Icons.clear),
-        ),
-    ];
-  }
-
-  @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      onPressed: () => close(context, ''),
-      icon: const Icon(Icons.arrow_back),
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) => _buildSearchList(context);
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildSearchList(context);
-
-  Widget _buildSearchList(BuildContext context) {
-    final q = query.toLowerCase();
-    final results = q.isEmpty
-        ? <MapEntry<String, OmborProduct>>[]
-        : provider.allProductsWithCategory.where((entry) {
-            return entry.value.name.toLowerCase().contains(q) ||
-                entry.key.toLowerCase().contains(q);
-          }).toList();
-
-    if (query.isEmpty) {
-      return const Center(
-        child: Text(
-          'Mahsulot nomini kiriting',
-          style: TextStyle(color: Colors.grey, fontSize: 16),
-        ),
-      );
-    }
-
-    if (results.isEmpty) {
-      return const Center(
-        child: Text(
-          'Hech narsa topilmadi',
-          style: TextStyle(color: Colors.grey, fontSize: 16),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final entry = results[index];
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(
-                entry.key,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Mahsulot qidirish...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
-            OmborProductTile(product: entry.value),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => provider.fetchProducts(),
+                child: ListView.builder(
+                  // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
+                  padding: const EdgeInsets.only(bottom: 96),
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final allProducts =
+                        provider.productsByCategory[category.name] ?? [];
+
+                    final products = query.isEmpty
+                        ? allProducts
+                        : allProducts.where((p) {
+                            return p.name.toLowerCase().contains(query) ||
+                                category.name.toLowerCase().contains(query);
+                          }).toList();
+
+                    if (products.isEmpty) return const SizedBox.shrink();
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    category.name,
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    context.push(OmborCategoryProductsUi(
+                                      categoryName: category.name,
+                                    ));
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                          color: Colors.grey.shade400,
+                                          width: 1),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'barchasi',
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.chevron_right,
+                                          color: Colors.black54, size: 18),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 280,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: products.length,
+                              itemBuilder: (context, pIndex) =>
+                                  OmborProductCard(product: products[pIndex]),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ],
         );
       },

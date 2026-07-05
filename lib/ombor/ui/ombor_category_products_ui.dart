@@ -6,8 +6,8 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
-// Bitta kategoriya ichidagi bozor mahsulotlari (admin paneldagi kabi:
-// kategoriya ro'yxatidan kirib, ichida mahsulotlar ko'rinadi).
+// Bitta kategoriya ichidagi bozor mahsulotlari — user panelidagi
+// ProductsScreen kabi GRID ko'rinishda.
 class OmborCategoryProductsUi extends StatelessWidget {
   final String categoryName;
   const OmborCategoryProductsUi({super.key, required this.categoryName});
@@ -21,10 +21,7 @@ class OmborCategoryProductsUi extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: _bgColor,
         elevation: 0,
-        title: Text(
-          categoryName,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        title: Text(categoryName),
       ),
       body: Consumer<OmborProvider>(
         builder: (context, provider, child) {
@@ -34,12 +31,17 @@ class OmborCategoryProductsUi extends StatelessWidget {
             return const Center(child: Text('Mahsulotlar topilmadi'));
           }
 
-          return ListView.builder(
-            // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
-            padding: const EdgeInsets.only(top: 8, bottom: 96),
+          return GridView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 300,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.75,
+            ),
             itemCount: products.length,
             itemBuilder: (context, index) =>
-                OmborProductTile(product: products[index]),
+                OmborProductCard(product: products[index], isGrid: true),
           );
         },
       ),
@@ -159,29 +161,48 @@ class OmborCartBar extends StatelessWidget {
   }
 }
 
-class OmborProductTile extends StatelessWidget {
+// User panelidagi mahsulot kartochkasi uslubi: rasm tepada, nomi, pastda
+// "Qo'shish" yoki -/+ miqdor tugmasi.
+// - kartochka bosilsa: bir qadam qo'shiladi
+// - uzoq bosilsa: miqdorni qo'lda kiritish oynasi
+// - rasm bosilsa: rasm katta ochiladi
+// isGrid=true -> grid katakchasi (rasm cho'ziluvchan), false -> gorizontal
+// ro'yxat kartasi (eni 180, rasm balandligi 160).
+class OmborProductCard extends StatelessWidget {
   final OmborProduct product;
-  const OmborProductTile({super.key, required this.product});
+  final bool isGrid;
+  const OmborProductCard({super.key, required this.product, this.isGrid = false});
 
   static const Color _accentColor = Color(0xFFC5A97B);
+
+  // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
+  // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
+  int get _stepMilli => ((product.bozorGrams ?? 1) * 1000).round();
 
   String get _subtitle {
     final unit =
         (product.type != null && product.type!.isNotEmpty) ? product.type! : '';
-    // Ombor (bozor) ekranida pachka miqdori = bozor gramm; bo'lmasa mone gramm.
+    // Pachka miqdori = bozor gramm; bo'lmasa mone gramm.
     final qty = product.bozorGrams ?? product.grams;
-    if (qty == null) return unit;
-
-    final v = qty.toDouble();
-    final u = unit.toLowerCase();
-    final isKg = u == 'kg' || u == 'кг';
-    // 1 kg dan kam bo'lsa grammda ko'rsatamiz: 0.4 kg -> "400 gr".
-    if (isKg && v > 0 && v < 1) {
-      return '${(v * 1000).round()} gr';
+    String qtyText = '';
+    if (qty != null) {
+      final v = qty.toDouble();
+      final u = unit.toLowerCase();
+      final isKg = u == 'kg' || u == 'кг';
+      // 1 kg dan kam bo'lsa grammda: 0.4 kg -> "400 gr".
+      if (isKg && v > 0 && v < 1) {
+        qtyText = '${(v * 1000).round()} gr';
+      } else {
+        // Ortiqcha nollarsiz: 0.4 -> "0.4", 2 -> "2".
+        final s = v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+        qtyText = unit.isNotEmpty ? '$s $unit' : s;
+      }
+    } else {
+      qtyText = unit;
     }
-    // Ortiqcha nollarsiz: 0.4 -> "0.4", 2 -> "2".
-    final s = v == v.roundToDouble() ? v.toInt().toString() : v.toString();
-    return unit.isNotEmpty ? '$s $unit' : s;
+    final source = product.sourceLabel;
+    if (qtyText.isNotEmpty && source.isNotEmpty) return '$qtyText • $source';
+    return qtyText.isNotEmpty ? qtyText : source;
   }
 
   // Uzoq bosilganda miqdorni qo'lda kiritish oynasi: xohlagancha buyurtma
@@ -252,128 +273,214 @@ class OmborProductTile extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = product.imageUrl != null && product.imageUrl!.isNotEmpty;
-
-    return GestureDetector(
-      onLongPress: () => _showQtyInputDialog(context),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+  // Rasm bosilsa katta (to'liq) ko'rinishda ochiladi.
+  void _showImageDialog(BuildContext context) {
+    if (product.imageUrl == null || product.imageUrl!.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: CachedNetworkImage(
+          imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+          fit: BoxFit.contain,
+          placeholder: (context, url) => const Center(
+            child: CircularProgressIndicator(color: _accentColor),
+          ),
+          errorWidget: (context, url, error) => const Icon(
+            Icons.error,
+            size: 40,
+            color: Colors.white,
+          ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () {
-                // Rasm bosilsa katta (to'liq) ko'rinishda ochiladi.
-                if (!hasImage) return;
-                showDialog(
-                  context: context,
-                  builder: (_) => Dialog(
-                    backgroundColor: Colors.transparent,
-                    child: CachedNetworkImage(
-                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(color: _accentColor),
-                      ),
-                      errorWidget: (context, url, error) => const Icon(
-                        Icons.error,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    final hasImage = product.imageUrl != null && product.imageUrl!.isNotEmpty;
+    if (!hasImage) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.inventory_2_outlined,
+            color: Colors.grey, size: 40),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
+      width: double.infinity,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: _accentColor,
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.image_not_supported,
+            color: Colors.grey, size: 30),
+      ),
+    );
+  }
+
+  // Pastki tugma: tanlanmagan -> "Qo'shish"; tanlangan -> [-  miqdor  +].
+  Widget _buildButton(BuildContext context, OmborProvider provider) {
+    final milli = provider.countMilli(product.id);
+    final isSelected = milli > 0;
+
+    if (!isSelected) {
+      return ElevatedButton(
+        onPressed: () => provider.addToCart(product.id, _stepMilli),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _accentColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: EdgeInsets.zero,
+          elevation: 0,
+        ),
+        child: const Text(
+          'Qo\'shish',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    final type = product.type;
+    final qtyText = (type != null && type.isNotEmpty)
+        ? '${formatMilli(milli)} $type'
+        : formatMilli(milli);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _accentColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => provider.decrement(product.id, _stepMilli),
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 12),
+                    child:
+                        const Icon(Icons.remove, color: Colors.white, size: 20),
                   ),
-                );
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: hasImage
-                      ? CachedNetworkImage(
-                          imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: _accentColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.image_not_supported,
-                                color: Colors.grey),
-                          ),
-                        )
-                      : Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.inventory_2_outlined,
-                              color: Colors.grey),
-                        ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => provider.addToCart(product.id, _stepMilli),
+                  child: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 12),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          IgnorePointer(
+            child: Center(
+              child: Text(
+                qtyText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OmborProvider>(
+      builder: (context, provider, child) {
+        final image = GestureDetector(
+          onTap: () => _showImageDialog(context),
+          child: ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(12)),
+            child: isGrid
+                ? SizedBox(width: double.infinity, child: _buildImage())
+                : SizedBox(
+                    width: double.infinity, height: 150, child: _buildImage()),
+          ),
+        );
+
+        return GestureDetector(
+          onTap: () => provider.addToCart(product.id, _stepMilli),
+          onLongPress: () => _showQtyInputDialog(context),
+          child: Container(
+            width: isGrid ? null : 180,
+            margin: isGrid
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                isGrid ? Expanded(child: image) : image,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+                  child: Text(
                     product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                   ),
-                  if (_subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
+                ),
+                if (_subtitle.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+                    child: Text(
                       _subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 11,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                  ],
-                  if (product.sourceLabel.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Manba: ${product.sourceLabel}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: _accentColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                  ),
+                if (!isGrid) const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: _buildButton(context, provider),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            OmborQtyStepper(
-              productId: product.id,
-              // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
-              // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
-              stepMilli: ((product.bozorGrams ?? 1) * 1000).round(),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -386,85 +493,4 @@ String formatMilli(int milli) {
   if (frac == 0) return '$whole';
   final f = frac.toString().padLeft(3, '0').replaceAll(RegExp(r'0+$'), '');
   return '$whole.$f';
-}
-
-// Mahsulot uchun miqdor tanlash (+/-). Ichkarida milli-birlik (butun son);
-// har qadam = stepMilli (bozor gramm * 1000). 0 bo'lsa faqat "+" ko'rinadi.
-class OmborQtyStepper extends StatelessWidget {
-  final int productId;
-  final int stepMilli;
-  const OmborQtyStepper(
-      {super.key, required this.productId, required this.stepMilli});
-
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<OmborProvider>(
-      builder: (context, provider, child) {
-        final milli = provider.countMilli(productId);
-
-        if (milli <= 0) {
-          return _circleButton(
-            icon: Icons.add,
-            background: _accentColor,
-            foreground: Colors.white,
-            onTap: () => provider.addToCart(productId, stepMilli),
-          );
-        }
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _circleButton(
-              icon: Icons.remove,
-              background: Colors.grey.shade200,
-              foreground: Colors.black87,
-              onTap: () => provider.decrement(productId, stepMilli),
-            ),
-            Container(
-              constraints: const BoxConstraints(minWidth: 32),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                formatMilli(milli),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-            _circleButton(
-              icon: Icons.add,
-              background: _accentColor,
-              foreground: Colors.white,
-              onTap: () => provider.addToCart(productId, stepMilli),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _circleButton({
-    required IconData icon,
-    required Color background,
-    required Color foreground,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: background,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, size: 20, color: foreground),
-        ),
-      ),
-    );
-  }
 }
