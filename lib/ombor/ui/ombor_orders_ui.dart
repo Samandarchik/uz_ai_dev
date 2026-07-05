@@ -542,34 +542,13 @@ class _OrderCardState extends State<_OrderCard> {
                 ),
               ),
             ),
-            // Xarajatlar bloki (rasxod itemlari: nomi + summa).
-            if (order.items.any((i) => i.isRasxod)) ...[
-              const Divider(height: 20),
-              const Text(
-                'Xarajatlar',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Omborchi summa ko'rmaydi — faqat xarajat nomi ko'rinadi.
-              ...order.items.where((i) => i.isRasxod).map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-            ],
+            // Eslatma: "Xarajatlar" (rasxod) bloki omborchiga umuman
+            // ko'rsatilmaydi — rasxod itemlari yuk keltiruvchi/bugalterga
+            // tegishli.
           ] else
-            ...order.items.map((item) => _OrderItemRow(item: item)),
+            ...order.items
+                .where((i) => !i.isRasxod)
+                .map((item) => _OrderItemRow(item: item)),
           // Eslatma: omborchi pul summalarini ko'rmaydi — chek yakuni
           // (Mahsulot/Xarajat/Jami) bloki ataylab yo'q.
           // Eslatma: buyurtma darajasidagi katta "Qabul qiling" tugmasi yo'q —
