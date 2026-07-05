@@ -152,6 +152,8 @@ class _LedgerDayCard extends StatelessWidget {
             const SizedBox(height: 10),
             _row('Ertalabgi ostatok', day.opening, Colors.black87),
             _row('Rasxod', day.rasxod, _red),
+            // Itog = ertalabgi ostatok - rasxod (prixodsiz oraliq natija).
+            _row('Itog', day.opening - day.rasxod, Colors.black87, bold: true),
             _row('Prixod', day.prixod, _green),
             _row('Kechki ostatok', day.closing, Colors.black87, bold: true),
           ],
