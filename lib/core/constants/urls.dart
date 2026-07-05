@@ -15,6 +15,12 @@ abstract final class AppUrls {
   static String yukOrders = '$baseUrl/api/yuk/orders';
   // Yuk keltiruvchi buyurtmaga biriktiriladigan rasm/video yuklash
   static String yukUpload = '$baseUrl/api/yuk/upload';
+  // Yuk keltiruvchining kunlik hisob daftari (ostatok/rasxod/prixod)
+  static String yukLedger = '$baseUrl/api/yuk/ledger';
+  // Yuk keltiruvchi foydalanuvchilar ro'yxati (bugalter pul berishi uchun)
+  static String yukUsers = '$baseUrl/api/yuk-users';
+  // Bugalter yuk keltiruvchiga pul berishi (prixod yozuvi)
+  static String payments = '$baseUrl/api/payments';
 
   // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
   // buyurtmalari.

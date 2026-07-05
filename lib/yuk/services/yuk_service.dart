@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Yuk keltiruvchi sklad buyurtmalari uchun Dio servis.
@@ -39,6 +40,35 @@ class YukService {
       throw Exception('Tarmoq xatosi: ${e.message}');
     } catch (e) {
       throw Exception('Buyurtmalarni yuklashda kutilmagan xato: $e');
+    }
+  }
+
+  // GET /api/yuk/ledger -> yuk keltiruvchining kunlik hisob daftari.
+  // Javob: { "success": true, "data": [ {date,opening,prixod,rasxod,closing} ] }
+  // Kunlar backenddan kamayuvchi tartibda (eng yangi kun birinchi) keladi.
+  Future<List<YukLedgerDay>> fetchLedger() async {
+    try {
+      final response = await dio.get(AppUrls.yukLedger);
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) {
+          return parseYukLedger(body['data']);
+        }
+        return [];
+      }
+      throw Exception('Hisobni yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Hisobni yuklashda kutilmagan xato: $e');
     }
   }
 

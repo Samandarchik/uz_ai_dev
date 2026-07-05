@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
@@ -25,6 +26,12 @@ class YukProvider extends ChangeNotifier {
   List<YukOrder> historyOrders = [];
   bool isHistoryLoading = false;
   String? historyError;
+
+  // Profil ekrani: kunlik hisob daftari (ostatok/rasxod/prixod).
+  // Backenddan kamayuvchi tartibda (eng yangi kun birinchi) keladi.
+  List<YukLedgerDay> ledger = [];
+  bool isLoadingLedger = false;
+  String? ledgerError;
 
   // Lokal narxlar: orderId -> productId -> {taken, subtotal}.
   // Buyurtma yuborilguncha shu yerda turadi.
@@ -164,6 +171,23 @@ class YukProvider extends ChangeNotifier {
       historyError = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isHistoryLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Profil ekrani uchun kunlik hisob daftarini backenddan olish.
+  // Ekran ochilganda va pull-to-refresh'da chaqiriladi.
+  Future<void> fetchLedger() async {
+    isLoadingLedger = true;
+    ledgerError = null;
+    notifyListeners();
+
+    try {
+      ledger = await _service.fetchLedger();
+    } catch (e) {
+      ledgerError = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isLoadingLedger = false;
       notifyListeners();
     }
   }

@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 
-// Yuk keltiruvchi profili / statistikasi.
-// Qancha yuk olib kelgan, qanchasi qabul qilingan, qanchasi qabul qilinmagan
-// (kamomad), qancha sotib olgan — barchasini umumiy va sklad bo'yicha ko'rsatadi.
-class YukProfileUi extends StatelessWidget {
-  final List<int> sklads; // foydalanuvchining skladlari (tartibni saqlaydi)
-  const YukProfileUi({super.key, required this.sklads});
+// Yuk keltiruvchi profili — kunlik hisob daftari.
+// Har kun bitta yopiq karta (eng yangi kun tepada); bosilganda ochilib
+// ertalabgi ostatok / rasxod / prixod / kechki ostatok ko'rsatiladi.
+class YukProfileUi extends StatefulWidget {
+  const YukProfileUi({super.key});
 
+  @override
+  State<YukProfileUi> createState() => _YukProfileUiState();
+}
+
+class _YukProfileUiState extends State<YukProfileUi> {
   static const Color _bg = Color(0xFFFAF6F1);
   static const Color _accent = Color(0xFFC5A97B);
-  static const Color _green = Color(0xFF2E7D32);
-  static const Color _red = Color(0xFFC62828);
-  static const Color _blue = Color(0xFF1565C0);
+
+  @override
+  void initState() {
+    super.initState();
+    // Ekran ochilganda hisob daftarini yuklaymiz.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<YukProvider>().fetchLedger();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,65 +40,66 @@ class YukProfileUi extends StatelessWidget {
       ),
       body: Consumer<YukProvider>(
         builder: (context, provider, _) {
-          // Umumiy (barcha sklad) statistikasi.
-          final overall = _Stats.from(provider.orders);
-          // Sklad bo'yicha.
-          final perSklad = sklads
-              .map((id) => MapEntry(
-                    id,
-                    _Stats.from(
-                      provider.orders.where((o) => o.skladId == id),
+          if (provider.isLoadingLedger && provider.ledger.isEmpty) {
+            return const Center(child: CircularProgressIndicator.adaptive());
+          }
+
+          if (provider.ledgerError != null && provider.ledger.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 48),
+                    const SizedBox(height: 12),
+                    Text(
+                      provider.ledgerError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.black54),
                     ),
-                  ))
-              .toList();
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => provider.fetchLedger(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accent,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Qayta urinish'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
           return RefreshIndicator(
-            onRefresh: () => provider.fetchOrders(),
-            child: ListView(
-              padding: const EdgeInsets.all(14),
-              children: [
-                const Text(
-                  'Umumiy',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+            color: _accent,
+            onRefresh: () => provider.fetchLedger(),
+            child: provider.ledger.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(
+                        child: Text(
+                          'Hisob yozuvlari yo\'q',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: provider.ledger.length,
+                    itemBuilder: (context, index) {
+                      final day = provider.ledger[index];
+                      return _LedgerDayCard(
+                        key: ValueKey(day.date),
+                        day: day,
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(height: 10),
-                _SummaryGrid(stats: overall),
-                const SizedBox(height: 22),
-                const Text(
-                  'Sklad bo\'yicha',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...perSklad.map(
-                  (e) => _SkladCard(
-                    title: _skladNames[e.key] ?? 'Sklad ${e.key}',
-                    stats: e.value,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                // Kamomad bo'lgan buyurtmalar (qabul qilinmagan qismi bor).
-                if (overall.shortageOrders.isNotEmpty) ...[
-                  const Text(
-                    'Kamomad bo\'lgan buyurtmalar',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...overall.shortageOrders.map((o) => _ShortageTile(order: o)),
-                ],
-              ],
-            ),
           );
         },
       ),
@@ -96,248 +107,78 @@ class YukProfileUi extends StatelessWidget {
   }
 }
 
-// Sklad nomlari (yuk_home_ui dagi kSkladNames bilan bir xil).
-const Map<int, String> _skladNames = {
-  1: 'Marxabo Sklat',
-  2: 'Sardor Sklat',
-  3: 'Fresco Sklat',
-  4: 'Personal Sklad',
-};
+// Bitta kunning kartasi: sarlavha = sana, ochilganda 4 qator summa.
+class _LedgerDayCard extends StatelessWidget {
+  final YukLedgerDay day;
+  const _LedgerDayCard({super.key, required this.day});
 
-// Buyurtmalar to'plamidan hisoblangan statistika.
-class _Stats {
-  final int sentCount; // yuborilgan (narxlangan + qabul qilingan)
-  final int acceptedCount; // qabul qilingan
-  final int pendingCount; // narxlangan, lekin hali qabul qilinmagan
-  final double brought; // jami olib kelingan summa (yuborilgan total)
-  final double accepted; // qabul qilingan summa
-  final double shortage; // qabul qilinmagan (kamomad) summa
-  final double expenses; // rasxod (xarajat) summasi — kamomadga kirmaydi
-  final List<YukOrder> shortageOrders; // kamomadli buyurtmalar
-
-  _Stats({
-    required this.sentCount,
-    required this.acceptedCount,
-    required this.pendingCount,
-    required this.brought,
-    required this.accepted,
-    required this.shortage,
-    required this.expenses,
-    required this.shortageOrders,
-  });
-
-  factory _Stats.from(Iterable<YukOrder> orders) {
-    int sent = 0, acc = 0, pend = 0;
-    double brought = 0, accepted = 0, shortage = 0, expenses = 0;
-    final shortageOrders = <YukOrder>[];
-
-    for (final o in orders) {
-      final isAccepted = o.status == 'qabul_qilindi';
-      final isPriced = o.status == 'narxlandi';
-      if (!isAccepted && !isPriced) continue; // hali yuborilmagan
-
-      sent++;
-      brought += o.total.toDouble();
-      expenses += o.expensesTotal;
-
-      if (isPriced) {
-        pend++;
-      } else {
-        acc++;
-        // Qabul qilingan summa: kam qabul qilingan bo'lsa received_total,
-        // aks holda to'liq total.
-        final eff = (o.receivedTotal > 0 && o.receivedTotal != o.total)
-            ? o.receivedTotal
-            : o.total.toDouble();
-        accepted += eff;
-        final diff = o.total.toDouble() - eff;
-        if (diff > 0.0001) {
-          shortage += diff;
-          shortageOrders.add(o);
-        }
-      }
-    }
-
-    return _Stats(
-      sentCount: sent,
-      acceptedCount: acc,
-      pendingCount: pend,
-      brought: brought,
-      accepted: accepted,
-      shortage: shortage,
-      expenses: expenses,
-      shortageOrders: shortageOrders,
-    );
-  }
-}
-
-// Umumiy 4 ta ko'rsatkich kartasi (2x2 grid).
-class _SummaryGrid extends StatelessWidget {
-  final _Stats stats;
-  const _SummaryGrid({required this.stats});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                label: 'Olib kelingan',
-                value: '${_money(stats.brought)} so\'m',
-                sub: '${stats.sentCount} ta buyurtma',
-                color: YukProfileUi._accent,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                label: 'Qabul qilingan',
-                value: '${_money(stats.accepted)} so\'m',
-                sub: '${stats.acceptedCount} ta',
-                color: YukProfileUi._green,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                label: 'Qabul qilinmagan',
-                value: '${_money(stats.shortage)} so\'m',
-                sub: 'kamomad',
-                color: YukProfileUi._red,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                label: 'Xarajatlar',
-                value: '${_money(stats.expenses)} so\'m',
-                sub: 'rasxod',
-                color: YukProfileUi._blue,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String sub;
-  final Color color;
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.sub,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border(left: BorderSide(color: color, width: 4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            sub,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Bitta sklad bo'yicha qisqa statistika.
-class _SkladCard extends StatelessWidget {
-  final String title;
-  final _Stats stats;
-  const _SkladCard({required this.title, required this.stats});
+  static const Color _accent = Color(0xFFC5A97B);
+  static const Color _green = Color(0xFF2E7D32);
+  static const Color _red = Color(0xFFC62828);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                '${stats.sentCount} ta',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
+      // ExpansionTile'ning ochilgandagi chiziqlarini olib tashlaymiz.
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          const Divider(height: 16),
-          _row('Olib kelingan', '${_money(stats.brought)} so\'m',
-              YukProfileUi._accent),
-          _row('Qabul qilingan', '${_money(stats.accepted)} so\'m',
-              YukProfileUi._green),
-          _row('Qabul qilinmagan', '${_money(stats.shortage)} so\'m',
-              YukProfileUi._red),
-          _row('Xarajatlar', '${_money(stats.expenses)} so\'m',
-              YukProfileUi._blue),
-        ],
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          iconColor: _accent,
+          collapsedIconColor: Colors.black45,
+          leading: const Icon(Icons.calendar_today_outlined,
+              size: 20, color: _accent),
+          title: Text(
+            day.date,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          children: [
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            _row('Ertalabgi ostatok', day.opening, Colors.black87),
+            _row('Rasxod', day.rasxod, _red),
+            _row('Prixod', day.prixod, _green),
+            _row('Kechki ostatok', day.closing, Colors.black87, bold: true),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _row(String label, String value, Color color) {
+  Widget _row(String label, num value, Color color, {bool bold = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(fontSize: 13, color: Colors.black54)),
           Text(
-            value,
+            label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+              fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          Text(
+            '${_money(value)} so\'m',
+            style: TextStyle(
+              fontSize: bold ? 15 : 13,
+              fontWeight: bold ? FontWeight.bold : FontWeight.w600,
               color: color,
             ),
           ),
@@ -347,90 +188,19 @@ class _SkladCard extends StatelessWidget {
   }
 }
 
-// Kamomad bo'lgan buyurtma: olib kelingan -> qabul qilingan + farq.
-class _ShortageTile extends StatelessWidget {
-  final YukOrder order;
-  const _ShortageTile({required this.order});
-
-  @override
-  Widget build(BuildContext context) {
-    final eff = (order.receivedTotal > 0 && order.receivedTotal != order.total)
-        ? order.receivedTotal
-        : order.total.toDouble();
-    final diff = order.total.toDouble() - eff;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '#${order.orderId}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_skladNames[order.skladId] ?? 'Sklad ${order.skladId}'}'
-                  ' • ${order.username}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${_money(order.total)} so\'m',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: YukProfileUi._red,
-                  decoration: TextDecoration.lineThrough,
-                  decorationColor: YukProfileUi._red,
-                ),
-              ),
-              Text(
-                '${_money(eff)} so\'m',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: YukProfileUi._green,
-                ),
-              ),
-              Text(
-                '-${_money(diff)} so\'m',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: YukProfileUi._red,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Minglik ajratgich bilan summa (yuk_home_ui dagi _formatMoney bilan bir xil).
+// Minglik ajratgich bilan summa: 1234567 -> "1 234 567".
 String _money(num v) {
   final s = v.toStringAsFixed(0);
   final buf = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
-    buf.write(s[i]);
+  var start = 0;
+  if (s.startsWith('-')) {
+    buf.write('-');
+    start = 1;
+  }
+  final digits = s.substring(start);
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(' ');
+    buf.write(digits[i]);
   }
   return buf.toString();
 }

@@ -290,7 +290,7 @@ class _YukHomeUiState extends State<YukHomeUi> {
           tooltip: 'Yuborilganlar tarixi',
         ),
         IconButton(
-          onPressed: () => context.push(YukProfileUi(sklads: _sklads)),
+          onPressed: () => context.push(const YukProfileUi()),
           icon: const Icon(Icons.person_outline),
           tooltip: 'Profil',
         ),
