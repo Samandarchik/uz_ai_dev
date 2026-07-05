@@ -39,11 +39,39 @@ class _OmborOrdersUiState extends State<OmborOrdersUi> {
   }
 }
 
+// Qabul qilingan buyurtmalar tarixi — bosh ekrandagi AppBar'dagi tarix
+// tugmasidan ochiladi (yuk keltiruvchidagi kabi). Faqat status
+// "qabul_qilindi" bo'lgan buyurtmalar ko'rinadi.
+class OmborOrdersHistoryUi extends StatelessWidget {
+  const OmborOrdersHistoryUi({super.key});
+
+  static const Color _bgColor = Color(0xFFFAF6F1);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bgColor,
+      appBar: AppBar(
+        backgroundColor: _bgColor,
+        elevation: 0,
+        title: const Text(
+          'Qabul qilinganlar tarixi',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: const OmborOrdersView(acceptedOnly: true),
+    );
+  }
+}
+
 // Ombor buyurtmalari ro'yxati (mazmuni) — ham eski ekran, ham bosh ekrandagi
 // "Buyurtmalarim" tabи shuni ishlatadi. Tab/ekran ochilganda buyurtmalar
 // yuklanadi; loading/error/bo'sh/pull-to-refresh holatlari shu yerda.
+// acceptedOnly=false (default): faqat hali qabul qilinmagan (yuborilgan)
+// buyurtmalar; acceptedOnly=true: faqat qabul qilinganlar (tarix ekrani).
 class OmborOrdersView extends StatefulWidget {
-  const OmborOrdersView({super.key});
+  final bool acceptedOnly;
+  const OmborOrdersView({super.key, this.acceptedOnly = false});
 
   @override
   State<OmborOrdersView> createState() => _OmborOrdersViewState();
@@ -98,7 +126,11 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           );
         }
 
-        final orders = provider.myOrders;
+        // Asosiy tabда qabul qilinganlar ko'rinmaydi (ular tarixda),
+        // tarix ekranida esa faqat qabul qilinganlar chiqadi.
+        final orders = provider.myOrders
+            .where((o) => o.isAccepted == widget.acceptedOnly)
+            .toList();
         if (orders.isEmpty) {
           return RefreshIndicator(
             color: _accentColor,
@@ -107,16 +139,18 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
               children: [
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.6,
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.receipt_long,
+                        const Icon(Icons.receipt_long,
                             size: 56, color: Colors.grey),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text(
-                          'Hozircha buyurtmalar yo\'q',
-                          style: TextStyle(color: Colors.black54),
+                          widget.acceptedOnly
+                              ? 'Qabul qilingan buyurtmalar yo\'q'
+                              : 'Hozircha buyurtmalar yo\'q',
+                          style: const TextStyle(color: Colors.black54),
                         ),
                       ],
                     ),

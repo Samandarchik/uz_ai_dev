@@ -69,6 +69,14 @@ class _OmborHomeUiState extends State<OmborHomeUi>
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Qabul qilingan buyurtmalar tarixi (yuk keltiruvchidagi kabi).
+          IconButton(
+            onPressed: () {
+              context.push(const OmborOrdersHistoryUi());
+            },
+            tooltip: 'Qabul qilinganlar tarixi',
+            icon: const Icon(Icons.history),
+          ),
           IconButton(
             onPressed: () {
               // Logout: avval socketni uzamiz.
