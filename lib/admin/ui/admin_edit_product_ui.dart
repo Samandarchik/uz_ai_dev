@@ -62,6 +62,7 @@ class _EditProductPageState extends State<EditProductPage> {
     1: 'Marxabo Sklat',
     2: 'Sardor Sklat',
     3: 'Fresco Sklat',
+    4: 'Personal Sklad',
   };
 
   @override
