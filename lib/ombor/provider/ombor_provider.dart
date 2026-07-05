@@ -11,10 +11,47 @@ class OmborProvider extends ChangeNotifier {
   final OmborService _service = OmborService();
 
   Map<String, List<OmborProduct>> productsByCategory = {};
+  // GET /api/categories dan kelgan ro'yxat (rasm + server tartibi).
+  List<OmborCategory> allCategories = [];
   bool isLoading = false;
   String? errorMessage;
 
   List<String> get categories => productsByCategory.keys.toList();
+
+  // Admin paneldagi kabi ko'rsatiladigan kategoriyalar: server tartibida,
+  // faqat bozor mahsuloti borlari. /api/categories da topilmagan guruh
+  // nomlari ham yo'qolmasligi uchun oxiriga (rasmsiz) qo'shiladi.
+  List<OmborCategory> get orderedCategories {
+    final result = <OmborCategory>[];
+    final seen = <String>{};
+    for (final c in allCategories) {
+      if (productsByCategory.containsKey(c.name)) {
+        result.add(c);
+        seen.add(c.name);
+      }
+    }
+    for (final name in productsByCategory.keys) {
+      if (!seen.contains(name)) {
+        result.add(OmborCategory(id: 0, name: name));
+      }
+    }
+    return result;
+  }
+
+  // Kategoriya ichidagi mahsulotlar soni (ro'yxat subtitle uchun).
+  int productCount(String categoryName) =>
+      productsByCategory[categoryName]?.length ?? 0;
+
+  // Qidiruv uchun barcha mahsulotlar (kategoriya nomi bilan birga).
+  List<MapEntry<String, OmborProduct>> get allProductsWithCategory {
+    final result = <MapEntry<String, OmborProduct>>[];
+    productsByCategory.forEach((category, products) {
+      for (final p in products) {
+        result.add(MapEntry(category, p));
+      }
+    });
+    return result;
+  }
 
   // ─────────────────────── Savatcha holati ───────────────────────
   // product_id -> miqdor * 1000 ("milli-birlik", BUTUN son). Float emas:
@@ -63,7 +100,15 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      productsByCategory = await _service.fetchProducts();
+      // Mahsulotlar va kategoriyalar parallel yuklanadi. Kategoriyalar
+      // faqat rasm/tartib uchun — xatosi asosiy ro'yxatni to'xtatmaydi.
+      final productsFuture = _service.fetchProducts();
+      try {
+        allCategories = await _service.fetchCategories();
+      } catch (_) {
+        allCategories = [];
+      }
+      productsByCategory = await productsFuture;
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {

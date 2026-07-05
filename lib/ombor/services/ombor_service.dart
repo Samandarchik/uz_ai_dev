@@ -72,6 +72,39 @@ class OmborService {
     }
   }
 
+  // GET /api/categories -> kategoriyalar ro'yxati (rasm + nom, server tartibida).
+  // Admin paneldagi kabi kategoriya ro'yxatini ko'rsatish uchun.
+  Future<List<OmborCategory>> fetchCategories() async {
+    try {
+      final response = await dio.get(AppUrls.category);
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        final data = (body is Map) ? body['data'] : null;
+        if (data is List) {
+          return data
+              .map((e) => OmborCategory.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+        return <OmborCategory>[];
+      } else {
+        throw Exception(
+            'Kategoriyalarni yuklab bo\'lmadi: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Kategoriyalarni yuklashda kutilmagan xato: $e');
+    }
+  }
+
   // GET /api/orders -> ombor userning O'Z buyurtmalari ro'yxati.
   // Javob: {"success": true, "message": "...", "data": [ {order}, ... ]}
   Future<List<OmborOrder>> fetchMyOrders() async {

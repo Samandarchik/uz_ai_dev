@@ -55,6 +55,24 @@ class OmborProduct {
   }
 }
 
+// Kategoriya (GET /api/categories) — admin paneldagi kabi ro'yxat uchun:
+// dumaloq rasm + nom. Ombor ekranida kategoriya sahifasiga kirish uchun.
+class OmborCategory {
+  final int id;
+  final String name;
+  final String? imageUrl;
+
+  OmborCategory({required this.id, required this.name, this.imageUrl});
+
+  factory OmborCategory.fromJson(Map<String, dynamic> json) {
+    return OmborCategory(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      imageUrl: json['image_url'],
+    );
+  }
+}
+
 // Guruhlangan javobni ( data: Map<String, List> ) parse qilish.
 Map<String, List<OmborProduct>> parseOmborProducts(
     Map<String, dynamic> data) {

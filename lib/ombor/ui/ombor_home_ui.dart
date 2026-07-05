@@ -8,10 +8,11 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
 
-// Ombor roli uchun bosh ekran — bozor mahsulotlari ro'yxati.
-// Hozircha faqat ro'yxat (savatcha/buyurtma keyingi qadamda).
+// Ombor roli uchun bosh ekran — admin paneldagi kabi: avval kategoriyalar
+// ro'yxati, kategoriya bosilganda ichidagi mahsulotlar ochiladi.
 class OmborHomeUi extends StatefulWidget {
   const OmborHomeUi({super.key});
 
@@ -71,6 +72,17 @@ class _OmborHomeUiState extends State<OmborHomeUi>
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Admin paneldagi kabi qidiruv: barcha mahsulotlar bo'yicha.
+          IconButton(
+            onPressed: () {
+              final provider = context.read<OmborProvider>();
+              showSearch(
+                context: context,
+                delegate: _OmborProductSearchDelegate(provider),
+              );
+            },
+            icon: const Icon(Icons.search),
+          ),
           IconButton(
             onPressed: () {
               // Logout: avval socketni uzamiz.
@@ -96,7 +108,7 @@ class _OmborHomeUiState extends State<OmborHomeUi>
       body: TabBarView(
         controller: _tabController,
         children: const [
-          _OmborProductsTab(),
+          _OmborCategoriesTab(),
           OmborOrdersView(),
         ],
       ),
@@ -106,32 +118,19 @@ class _OmborHomeUiState extends State<OmborHomeUi>
         builder: (context, child) {
           final isProductsTab = (_tabController.animation!.value).round() == 0;
           if (!isProductsTab) return const SizedBox.shrink();
-          return const _OmborCartBar();
+          return const OmborCartBar();
         },
       ),
     );
   }
 }
 
-// "Mahsulotlar" tabи mazmuni: kategoriyalar bo'yicha mahsulotlar ro'yxati.
-class _OmborProductsTab extends StatefulWidget {
-  const _OmborProductsTab();
+// "Mahsulotlar" tabи mazmuni: admin paneldagi kabi kategoriyalar ro'yxati
+// (dumaloq rasm + nom + mahsulot soni). Bosilganda kategoriya sahifasi ochiladi.
+class _OmborCategoriesTab extends StatelessWidget {
+  const _OmborCategoriesTab();
 
-  @override
-  State<_OmborProductsTab> createState() => _OmborProductsTabState();
-}
-
-class _OmborProductsTabState extends State<_OmborProductsTab> {
   static const Color _accentColor = Color(0xFFC5A97B);
-
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,419 +170,179 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
           );
         }
 
-        final categories = provider.categories;
+        final categories = provider.orderedCategories;
         if (categories.isEmpty) {
           return const Center(child: Text('Mahsulotlar topilmadi'));
         }
 
-        final query = _searchQuery.toLowerCase();
+        return RefreshIndicator(
+          onRefresh: () => provider.fetchProducts(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final productCount = provider.productCount(category.name);
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Mahsulot qidirish...',
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          icon: const Icon(Icons.clear, color: Colors.grey),
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
-                padding: const EdgeInsets.only(bottom: 96),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final allProducts =
-                      provider.productsByCategory[category] ?? [];
-
-                  final products = query.isEmpty
-                      ? allProducts
-                      : allProducts.where((p) {
-                          return p.name.toLowerCase().contains(query) ||
-                              category.toLowerCase().contains(query);
-                        }).toList();
-
-                  if (products.isEmpty) return const SizedBox.shrink();
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          category,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      ...products.map((p) => _OmborProductTile(product: p)),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// Pastdagi savat paneli: nechta mahsulot tanlangani + "Buyurtma berish".
-class _OmborCartBar extends StatelessWidget {
-  const _OmborCartBar();
-
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  Future<void> _submit(BuildContext context, OmborProvider provider) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final message = await provider.submitOrder();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(message.isEmpty ? 'Buyurtma yuborildi' : message),
-          backgroundColor: Colors.green.shade700,
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<OmborProvider>(
-      builder: (context, provider, child) {
-        if (provider.cartItemCount == 0) {
-          return const SizedBox.shrink();
-        }
-
-        return SafeArea(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${provider.cartItemCount} ta mahsulot',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        'Jami: ${_formatMilli(provider.cartTotalMilli)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => provider.clearCart(),
-                  child: const Text(
-                    'Tozalash',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => _submit(context, provider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _accentColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                  ),
-                  child: provider.isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Buyurtma berish'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OmborProductTile extends StatelessWidget {
-  final OmborProduct product;
-  const _OmborProductTile({required this.product});
-
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  String get _subtitle {
-    final unit = (product.type != null && product.type!.isNotEmpty)
-        ? product.type!
-        : '';
-    // Ombor (bozor) ekranida pachka miqdori = bozor gramm; bo'lmasa mone gramm.
-    final qty = product.bozorGrams ?? product.grams;
-    if (qty == null) return unit;
-
-    final v = qty.toDouble();
-    final u = unit.toLowerCase();
-    final isKg = u == 'kg' || u == 'кг';
-    // 1 kg dan kam bo'lsa grammda ko'rsatamiz: 0.4 kg -> "400 gr".
-    if (isKg && v > 0 && v < 1) {
-      return '${(v * 1000).round()} gr';
-    }
-    // Ortiqcha nollarsiz: 0.4 -> "0.4", 2 -> "2".
-    final s = v == v.roundToDouble() ? v.toInt().toString() : v.toString();
-    return unit.isNotEmpty ? '$s $unit' : s;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage =
-        product.imageUrl != null && product.imageUrl!.isNotEmpty;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: hasImage
-                  ? CachedNetworkImage(
-                      imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: _accentColor,
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: ClipOval(
+                  child: GestureDetector(
+                    onTap: () {
+                      // Admin paneldagi kabi: rasm bosilsa katta ko'rinadi.
+                      if (category.imageUrl != null) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  "${AppUrls.baseUrl}${category.imageUrl}",
+                              fit: BoxFit.contain,
+                              errorWidget: (context, url, error) =>
+                                  const Icon(
+                                Icons.error,
+                                size: 40,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported,
-                            color: Colors.grey),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.inventory_2_outlined,
-                          color: Colors.grey),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
+                        );
+                      }
+                    },
+                    child: category.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl:
+                                "${AppUrls.baseUrl}${category.imageUrl}",
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.image_not_supported),
+                          )
+                        : Container(
+                            width: 55,
+                            height: 55,
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                  ),
+                ),
+                title: Text(
+                  category.name,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
-                if (_subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    _subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
+                subtitle: Text(
+                  '$productCount ta mahsulot',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
                   ),
-                ],
-                if (product.sourceLabel.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manba: ${product.sourceLabel}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: _accentColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          _QtyStepper(
-            productId: product.id,
-            // Bir qadam = bozor gramm * 1000 (milli-birlik, butun son).
-            // 0.4 kg -> 400; bo'lmasa 1 -> 1000.
-            stepMilli: ((product.bozorGrams ?? 1) * 1000).round(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Milli-birlikni (qiymat*1000) faqat butun son arifmetikasi bilan formatlash:
-// 1200 -> "1.2", 400 -> "0.4", 2000 -> "2". Float umuman ishlatilmaydi.
-String _formatMilli(int milli) {
-  final whole = milli ~/ 1000;
-  final frac = milli % 1000;
-  if (frac == 0) return '$whole';
-  final f = frac.toString().padLeft(3, '0').replaceAll(RegExp(r'0+$'), '');
-  return '$whole.$f';
-}
-
-// Mahsulot uchun miqdor tanlash (+/-). Ichkarida milli-birlik (butun son);
-// har qadam = stepMilli (bozor gramm * 1000). 0 bo'lsa faqat "+" ko'rinadi.
-class _QtyStepper extends StatelessWidget {
-  final int productId;
-  final int stepMilli;
-  const _QtyStepper({required this.productId, required this.stepMilli});
-
-  static const Color _accentColor = Color(0xFFC5A97B);
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<OmborProvider>(
-      builder: (context, provider, child) {
-        final milli = provider.countMilli(productId);
-
-        if (milli <= 0) {
-          return _circleButton(
-            icon: Icons.add,
-            background: _accentColor,
-            foreground: Colors.white,
-            onTap: () => provider.addToCart(productId, stepMilli),
-          );
-        }
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _circleButton(
-              icon: Icons.remove,
-              background: Colors.grey.shade200,
-              foreground: Colors.black87,
-              onTap: () => provider.decrement(productId, stepMilli),
-            ),
-            Container(
-              constraints: const BoxConstraints(minWidth: 32),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                _formatMilli(milli),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
-              ),
-            ),
-            _circleButton(
-              icon: Icons.add,
-              background: _accentColor,
-              foreground: Colors.white,
-              onTap: () => provider.addToCart(productId, stepMilli),
-            ),
-          ],
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                onTap: () {
+                  context.push(
+                    OmborCategoryProductsUi(categoryName: category.name),
+                  );
+                },
+              );
+            },
+          ),
         );
       },
     );
   }
+}
 
-  Widget _circleButton({
-    required IconData icon,
-    required Color background,
-    required Color foreground,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: background,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, size: 20, color: foreground),
+// Admin paneldagi kabi qidiruv oynasi. Natijadagi mahsulotni shu yerning
+// o'zida savatga qo'shish mumkin (+/- stepper saqlanadi).
+class _OmborProductSearchDelegate extends SearchDelegate<String> {
+  final OmborProvider provider;
+
+  _OmborProductSearchDelegate(this.provider)
+      : super(searchFieldLabel: 'Mahsulot qidirish...');
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          onPressed: () => query = '',
+          icon: const Icon(Icons.clear),
         ),
-      ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      onPressed: () => close(context, ''),
+      icon: const Icon(Icons.arrow_back),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildSearchList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildSearchList(context);
+
+  Widget _buildSearchList(BuildContext context) {
+    final q = query.toLowerCase();
+    final results = q.isEmpty
+        ? <MapEntry<String, OmborProduct>>[]
+        : provider.allProductsWithCategory.where((entry) {
+            return entry.value.name.toLowerCase().contains(q) ||
+                entry.key.toLowerCase().contains(q);
+          }).toList();
+
+    if (query.isEmpty) {
+      return const Center(
+        child: Text(
+          'Mahsulot nomini kiriting',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    if (results.isEmpty) {
+      return const Center(
+        child: Text(
+          'Hech narsa topilmadi',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final entry = results[index];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                entry.key,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+            OmborProductTile(product: entry.value),
+          ],
+        );
+      },
     );
   }
 }
