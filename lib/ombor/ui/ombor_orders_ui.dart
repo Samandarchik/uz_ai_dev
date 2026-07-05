@@ -200,19 +200,7 @@ class _OrderCardState extends State<_OrderCard> {
   final Map<int, String> _videos = {};
   // Har bir mahsulot uchun "Kelgan soni" (haqiqatda kelgan miqdor) controlleri.
   final Map<int, TextEditingController> _received = {};
-  // Uzoq bosish bilan qayta tahrirlashga ochilgan (allaqachon qabul qilingan)
-  // itemlar. Buyurtma to'liq yopilmaguncha omborchi xato kiritgan sonni
-  // shu yo'l bilan tuzatishi mumkin.
-  final Set<int> _reEditing = {};
-
   final ImagePicker _picker = ImagePicker();
-
-  // Qabul qilingan itemni uzoq bosib qayta tahrirlashga ochish.
-  void _startReEdit(OmborOrderItem item) {
-    _received.putIfAbsent(item.productId, () => TextEditingController());
-    _received[item.productId]!.text = _fmtQty(item.received);
-    setState(() => _reEditing.add(item.productId));
-  }
 
   @override
   void initState() {
@@ -451,12 +439,10 @@ class _OrderCardState extends State<_OrderCard> {
       );
       if (!mounted) return;
       // Yuborilgan lokal fayllar endi kerak emas — backenddan kelgan
-      // yangilangan order o'z URL'larini olib keladi. Qayta tahrirlash
-      // rejimi ham yopiladi.
+      // yangilangan order o'z URL'larini olib keladi.
       setState(() {
         _images.remove(productId);
         _videos.remove(productId);
-        _reEditing.remove(productId);
       });
     } catch (e) {
       messenger.showSnackBar(
@@ -545,11 +531,9 @@ class _OrderCardState extends State<_OrderCard> {
               (item) => Consumer<OmborProvider>(
                 builder: (ctx, p, _) => _MediaItemRow(
                   item: item,
-                  // Qabul qilingan item read-only, LEKIN buyurtma hali to'liq
-                  // yopilmagan bo'lsa uzoq bosib qayta ochish mumkin.
+                  // Qabul qilingan item read-only.
                   editable: (order.isPriced || order.isCreated) &&
-                      (!item.accepted ||
-                          _reEditing.contains(item.productId)),
+                      !item.accepted,
                   receivedController: _received[item.productId],
                   localImagePath: _images[item.productId],
                   localVideoPath: _videos[item.productId],
@@ -558,11 +542,6 @@ class _OrderCardState extends State<_OrderCard> {
                   onReceivedChanged: () => setState(() {}),
                   onTapMedia: () => _pickMedia(item.productId),
                   onAccept: () => _acceptItem(item),
-                  onLongPress: (order.isPriced || order.isCreated) &&
-                          item.accepted &&
-                          !_reEditing.contains(item.productId)
-                      ? () => _startReEdit(item)
-                      : null,
                 ),
               ),
             ),
@@ -892,9 +871,6 @@ class _MediaItemRow extends StatelessWidget {
   final VoidCallback onTapMedia;
   // Qabul tugmasi bosilganda itemni serverga yuboradi.
   final VoidCallback onAccept;
-  // Qabul qilingan qator uzoq bosilsa (long press) qayta tahrirlashga
-  // ochiladi (buyurtma to'liq yopilmagan bo'lsa). null -> ishlamaydi.
-  final VoidCallback? onLongPress;
 
   const _MediaItemRow({
     required this.item,
@@ -906,7 +882,6 @@ class _MediaItemRow extends StatelessWidget {
     required this.onReceivedChanged,
     required this.onTapMedia,
     required this.onAccept,
-    this.onLongPress,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -946,11 +921,7 @@ class _MediaItemRow extends StatelessWidget {
         shortage > 0 ? '-${_fmtQty(shortage)}' : '+${_fmtQty(shortage.abs())}';
     final shortColor = shortage > 0 ? _red : _green;
 
-    return GestureDetector(
-      // Qabul qilingan qatorni uzoq bosib qayta tahrirlashga ochish.
-      behavior: HitTestBehavior.translucent,
-      onLongPress: onLongPress,
-      child: Padding(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1033,7 +1004,6 @@ class _MediaItemRow extends StatelessWidget {
           // Qabul tugmasi (yoki qabul qilingan bo'lsa yashil check).
           Expanded(flex: 2, child: _acceptCell()),
         ],
-      ),
       ),
     );
   }
