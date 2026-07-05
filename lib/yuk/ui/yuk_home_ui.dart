@@ -450,7 +450,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
       // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
       // (yuborilgan) qiymat ko'rsatiladi. Omborchi qabul qilgan itemda lokal
       // qoralama bo'sh (0) bo'lsa, omborchi kiritgan kelgan soni bilan
-      // to'ldiriladi — keyin yuk keltiruvchi xohlasa tahrirlaydi.
+      // to'ldiriladi (maydon qulf — qabul qilingan son yakuniy).
       final existing = provider.getItemPrice(order.id, item.productId);
       final draftTaken = existing?.taken;
       final taken0 = (draftTaken != null && draftTaken > 0)
@@ -488,9 +488,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
   }
 
   // Ombor biror itemni qabul qilganda (socket orqali keladi) uning kelgan
-  // soni "Nechta olgani" maydoniga AVTO to'ldiriladi. Keyin yuk keltiruvchi
-  // xohlasa uni tahrirlashi mumkin — faqat to'liq yuborilgach (narxlandi)
-  // maydonlar butunlay yopiladi.
+  // soni "Nechta olgani" maydoniga AVTO to'ldiriladi va maydon QULFLANADI —
+  // qabul qilingan son yakuniy, yuk keltiruvchi uni o'zgartira olmaydi.
   @override
   void didUpdateWidget(covariant YukOrderCard oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -571,10 +570,9 @@ class _YukOrderCardState extends State<YukOrderCard> {
   void _onItemChanged(YukOrderItem item) {
     final provider = context.read<YukProvider>();
     final productId = item.productId;
-    // Kelgan soni maydoni to'liq yuborilgunga qadar tahrirlanadi — qiymat
-    // har doim maydonning o'zidan (controller) olinadi. Ombor qabul qilganda
-    // maydon avto to'ldiriladi (didUpdateWidget), lekin yuk keltiruvchi uni
-    // o'zgartira oladi.
+    // Qiymat maydonning o'zidan (controller) olinadi. Qabul qilingan itemda
+    // maydon qulf — controller'da omborchi tasdiqlagan son turadi (backend
+    // ham accepted itemning taken'ini o'zgartirmaydi).
     final taken = _parse(_takenControllers[productId]?.text ?? '');
     final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
     provider.setItemPrice(order.id, productId, taken, subtotal);
@@ -1427,10 +1425,9 @@ class _YukOrderCardState extends State<YukOrderCard> {
                           hint: '0',
                           // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
                           decimal: _isKg(item.type),
-                          // To'liq yuborilgunga qadar tahrirlanadi (ombor
-                          // qabul qilgan bo'lsa avto to'lgan, lekin yuk
-                          // keltiruvchi o'zgartirishi mumkin).
-                          enabled: !done,
+                          // Ombor qabul qilgan itemning soni QULFLANADI —
+                          // omborchi tasdiqlagan kelgan soni yakuniy.
+                          enabled: !done && !item.accepted,
                           onChanged: (_) => _onItemChanged(item),
                         ),
                       ),
