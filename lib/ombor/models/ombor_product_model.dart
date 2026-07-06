@@ -1,6 +1,32 @@
 // Bozor (ombor) mahsuloti modeli.
-// Backend javobi seller /products1 bilan bir xil guruhlangan shaklda keladi:
-// { "success": true, "message": "...", "data": { "Kategoriya": [ {...}, ... ] } }
+// Backend javobi source (manba) bo'yicha guruhlangan shaklda keladi:
+// { "success": true, "message": "...", "data": { "samarqand": [ {...}, ... ], ... } }
+// Kalitlar — xom source kodlari: "samarqand", "toshkent", "zagranitsa",
+// hamda manbasi bo'sh/noma'lum mahsulotlar uchun "boshqa".
+
+// Guruhlarning qat'iy ko'rsatish tartibi.
+const List<String> omborSourceOrder = [
+  'samarqand',
+  'toshkent',
+  'zagranitsa',
+  'boshqa',
+];
+
+// Manba kodini foydalanuvchiga ko'rsatiladigan o'zbekcha nomga aylantirish.
+String omborSourceLabel(String code) {
+  switch (code) {
+    case 'samarqand':
+      return 'Samarqand';
+    case 'toshkent':
+      return 'Toshkent';
+    case 'zagranitsa':
+      return 'Zagranitsa';
+    case 'boshqa':
+      return 'Boshqa';
+    default:
+      return code;
+  }
+}
 
 class OmborProduct {
   final int id;
@@ -41,45 +67,17 @@ class OmborProduct {
   }
 
   // Manba kodini foydalanuvchiga ko'rsatiladigan matnga aylantirish.
-  String get sourceLabel {
-    switch (source) {
-      case 'samarqand':
-        return 'Samarqand';
-      case 'toshkent':
-        return 'Toshkent';
-      case 'zagranitsa':
-        return 'Zagranitsa';
-      default:
-        return source ?? '';
-    }
-  }
-}
-
-// Kategoriya (GET /api/categories) — admin paneldagi kabi ro'yxat uchun:
-// dumaloq rasm + nom. Ombor ekranida kategoriya sahifasiga kirish uchun.
-class OmborCategory {
-  final int id;
-  final String name;
-  final String? imageUrl;
-
-  OmborCategory({required this.id, required this.name, this.imageUrl});
-
-  factory OmborCategory.fromJson(Map<String, dynamic> json) {
-    return OmborCategory(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      imageUrl: json['image_url'],
-    );
-  }
+  String get sourceLabel => omborSourceLabel(source ?? '');
 }
 
 // Guruhlangan javobni ( data: Map<String, List> ) parse qilish.
+// Kalitlar — source kodlari (samarqand/toshkent/zagranitsa/boshqa).
 Map<String, List<OmborProduct>> parseOmborProducts(
     Map<String, dynamic> data) {
   final Map<String, List<OmborProduct>> result = {};
-  data.forEach((category, products) {
+  data.forEach((source, products) {
     if (products is List) {
-      result[category] = products
+      result[source] = products
           .map((item) =>
               OmborProduct.fromJson(Map<String, dynamic>.from(item)))
           .toList();
