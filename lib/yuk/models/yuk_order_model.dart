@@ -26,6 +26,10 @@ class YukOrderItem {
   // qo'shgan qo'shimcha mahsulot, 'rasxod' — xarajat/xizmat (ombor qabul
   // qilmaydi, chek oxirida alohida ko'rsatiladi).
   final String itemType;
+  // Omborchi qabul paytida olgan rasm/video (relativ /static/... URL,
+  // bo'sh bo'lishi mumkin). Ko'rsatishda AppUrls.baseUrl qo'shiladi.
+  final String imageUrl;
+  final String videoUrl;
 
   YukOrderItem({
     required this.productId,
@@ -37,10 +41,18 @@ class YukOrderItem {
     this.received = 0,
     this.accepted = false,
     this.itemType = '',
+    this.imageUrl = '',
+    this.videoUrl = '',
   });
 
   bool get isRasxod => itemType == 'rasxod';
   bool get isProche => itemType == 'proche';
+
+  // Qabul paytidagi media ro'yxati (bor bo'lganlari).
+  List<String> get acceptMedia => [
+        if (imageUrl.isNotEmpty) imageUrl,
+        if (videoUrl.isNotEmpty) videoUrl,
+      ];
 
   factory YukOrderItem.fromJson(Map<String, dynamic> json) {
     return YukOrderItem(
@@ -53,6 +65,8 @@ class YukOrderItem {
       received: (json['received'] ?? 0).toDouble(),
       accepted: json['accepted'] == true,
       itemType: json['item_type']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      videoUrl: json['video_url']?.toString() ?? '',
     );
   }
 
@@ -67,6 +81,8 @@ class YukOrderItem {
         'received': received,
         'accepted': accepted,
         'item_type': itemType,
+        'image_url': imageUrl,
+        'video_url': videoUrl,
       };
 }
 

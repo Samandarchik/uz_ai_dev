@@ -672,49 +672,63 @@ class _BugalterOrderCard extends StatelessWidget {
               ],
             ),
           ),
-          ...productItems.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      item.name,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
+          ...productItems.expand(
+            (item) => [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      _fmtQty(item.taken),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        _fmtQty(item.taken),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      '${_money(item.subtotal)} so\'m',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        '${_money(item.subtotal)} so\'m',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              // Omborchi qabul paytida olgan rasm/video (tugma yoqilganda).
+              if (showImages && item.acceptMedia.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: item.acceptMedia
+                        .map((e) => _AttachmentTile(entry: e, size: 56))
+                        .toList(),
+                  ),
+                ),
+            ],
           ),
           // Xarajatlar (rasxod) bloki.
           if (rasxodItems.isNotEmpty) ...[
@@ -875,7 +889,8 @@ class _BugalterOrderCard extends StatelessWidget {
 // video — play belgisi (bosilsa tashqi pleerda ochiladi).
 class _AttachmentTile extends StatelessWidget {
   final String entry;
-  const _AttachmentTile({required this.entry});
+  final double size;
+  const _AttachmentTile({required this.entry, this.size = 72});
 
   void _open(BuildContext context) {
     if (_isVideoPath(entry)) {
@@ -916,8 +931,8 @@ class _AttachmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVideo = _isVideoPath(entry);
     return SizedBox(
-      width: 72,
-      height: 72,
+      width: size,
+      height: size,
       child: GestureDetector(
         onTap: () => _open(context),
         child: ClipRRect(
