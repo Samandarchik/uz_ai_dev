@@ -16,6 +16,16 @@ class OrderSocketEvent {
   const OrderSocketEvent({required this.action, required this.order});
 }
 
+// Targovli tizimidan kelgan pul bo'yicha real-time hodisa.
+// action: "created" | "updated" | "deleted".
+// transfer: GET /api/yuk/transfers dagi element bilan bir xil shakldagi Map.
+class TransferSocketEvent {
+  final String action;
+  final Map<String, dynamic> transfer;
+
+  const TransferSocketEvent({required this.action, required this.transfer});
+}
+
 // Buyurtmalar uchun yagona (singleton) WebSocket ulanishi.
 // Ombor va Yuk provider'lari shu bitta ulanishga obuna bo'ladi; server
 // relevance bo'yicha filtrlab yuborgani uchun client har bir order'ni
@@ -34,6 +44,12 @@ class OrderSocket {
       StreamController<OrderSocketEvent>.broadcast();
 
   Stream<OrderSocketEvent> get events => _controller.stream;
+
+  // Targovli pul hodisalari — alohida stream (buyurtma oqimini buzmaslik uchun).
+  final StreamController<TransferSocketEvent> _transferController =
+      StreamController<TransferSocketEvent>.broadcast();
+
+  Stream<TransferSocketEvent> get transferEvents => _transferController.stream;
 
   // Foydalanuvchi (provider) connect chaqirganmi — reconnect faqat shunda davom etadi.
   bool _wantConnected = false;
@@ -94,10 +110,22 @@ class OrderSocket {
     try {
       final decoded = jsonDecode(raw.toString());
       if (decoded is! Map) return;
+      final action = decoded['action']?.toString() ?? '';
+      // Targovli tizimidan kelgan pul hodisasi — alohida stream'ga.
+      if (decoded['type'] == 'targovli_transfer') {
+        final transfer = decoded['transfer'];
+        if (transfer is! Map) return;
+        _transferController.add(
+          TransferSocketEvent(
+            action: action,
+            transfer: Map<String, dynamic>.from(transfer),
+          ),
+        );
+        return;
+      }
       if (decoded['type'] != 'order') return;
       final order = decoded['order'];
       if (order is! Map) return;
-      final action = decoded['action']?.toString() ?? '';
       _controller.add(
         OrderSocketEvent(
           action: action,

@@ -15,6 +15,7 @@ import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
@@ -109,6 +110,8 @@ class _YukHomeUiState extends State<YukHomeUi> {
       // kiritilgan narxlar yo'qolmasin), keyin serverdan ro'yxatni olamiz.
       await provider.loadDrafts();
       await provider.fetchOrders();
+      // Targovli tizimidan kelgan (qabul kutayotgan) pullar.
+      await provider.fetchTransfers();
       // Real-time: narxlash/buyurtma o'zgarishlari refresh'siz ko'rinishi uchun.
       provider.connectSocket();
     });
@@ -230,6 +233,13 @@ class _YukHomeUiState extends State<YukHomeUi> {
                 // Internet yo'q paytda ko'rsatiladigan eslatma. Ro'yxat oxirgi
                 // saqlangan keshdan, kiritilgan narxlar lokal saqlanadi.
                 if (provider.isOffline) const _OfflineBanner(),
+                // Targovli tizimidan kelgan, qabul kutayotgan pullar —
+                // barcha sklad tablarining tepasida ko'rinadi.
+                for (final t in provider.transfers)
+                  _TransferCard(
+                    key: ValueKey('transfer_${t.id}'),
+                    transfer: t,
+                  ),
                 Expanded(
                   child: TabBarView(
                     children: _sklads.map((id) {
@@ -237,7 +247,10 @@ class _YukHomeUiState extends State<YukHomeUi> {
                       // (yuborilganlar AppBar'dagi tarix ekranida).
                       final orders = provider.pendingForSklad(id);
                       return RefreshIndicator(
-                        onRefresh: () => provider.fetchOrders(),
+                        onRefresh: () async {
+                          await provider.fetchOrders();
+                          await provider.fetchTransfers();
+                        },
                         child: orders.isEmpty
                             ? ListView(
                                 children: const [
@@ -327,6 +340,194 @@ class _OfflineBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Targovli tizimidan kelgan, qabul kutayotgan bitta pul kartasi.
+// «Qabul qilish» — summa kunlik hisob daftariga (Prixod) tushadi va targovli
+// tomonga "qabul qilindi" qaytariladi. «Rad etish» — sabab yoziladi (majburiy),
+// kassir uni ko'rib qayta yuborishi mumkin.
+class _TransferCard extends StatelessWidget {
+  final YukTransfer transfer;
+  const _TransferCard({super.key, required this.transfer});
+
+  Future<void> _reject(BuildContext context) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rad etish'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          minLines: 1,
+          decoration: const InputDecoration(
+            labelText: 'Sabab (majburiy)',
+            hintText: 'Nima uchun rad etyapsiz?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Bekor'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Rad etish',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    if (reason.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Rad etish uchun sabab yozing'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    await _decide(context, accept: false, reason: reason);
+  }
+
+  Future<void> _decide(
+    BuildContext context, {
+    required bool accept,
+    String reason = '',
+  }) async {
+    final provider = context.read<YukProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await provider.decideTransfer(
+        transfer.id,
+        accept: accept,
+        reason: reason,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(accept
+              ? 'Pul qabul qilindi ✓ (hisobingizga tushdi)'
+              : 'Pul rad etildi'),
+          backgroundColor: accept ? Colors.green.shade700 : Colors.orange,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$e'.replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final deciding =
+        context.watch<YukProvider>().decidingTransferId == transfer.id;
+    final dateStr = transfer.created == null
+        ? ''
+        : DateFormat('dd.MM.yyyy HH:mm').format(transfer.created!.toLocal());
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      color: const Color(0xFFFFFDE7),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.amber.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet_outlined,
+                    size: 18, color: Colors.amber.shade800),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'Sizga pul yuborildi (Targovli)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (dateStr.isNotEmpty)
+                  Text(
+                    dateStr,
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.black45),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_formatMoney(transfer.amount)} so\'m',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            if (transfer.senderName.isNotEmpty)
+              Text(
+                'Yubordi: ${transfer.senderName}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            if (transfer.comment.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  transfer.comment,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                    ),
+                    onPressed: deciding
+                        ? null
+                        : () => _decide(context, accept: true),
+                    icon: deciding
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check, size: 18),
+                    label: const Text('Qabul qilish'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade300),
+                    ),
+                    onPressed: deciding ? null : () => _reject(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Rad etish'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

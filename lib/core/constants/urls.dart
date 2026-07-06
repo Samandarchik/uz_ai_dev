@@ -21,6 +21,10 @@ abstract final class AppUrls {
   static String yukUsers = '$baseUrl/api/yuk-users';
   // Bugalter yuk keltiruvchiga pul berishi (prixod yozuvi)
   static String payments = '$baseUrl/api/payments';
+  // Targovli (qilinadigan_ishlar) tizimidan yuborilgan pullar —
+  // yuk keltiruvchi qabul qiladi/rad etadi (accept/reject POST'lari ham
+  // shu bazaviy yo'l ostida: /{id}/accept, /{id}/reject).
+  static String yukTransfers = '$baseUrl/api/yuk/transfers';
 
   // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
   // buyurtmalari.

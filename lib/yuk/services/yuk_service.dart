@@ -3,6 +3,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 
 // Yuk keltiruvchi sklad buyurtmalari uchun Dio servis.
 // Bearer token avtomatik ravishda Dio interceptor orqali qo'shiladi.
@@ -197,6 +198,65 @@ class YukService {
       throw Exception('Tarmoq xatosi: ${e.message}');
     } catch (e) {
       throw Exception('Qaytarib olishda kutilmagan xato: $e');
+    }
+  }
+
+  // GET /api/yuk/transfers?status=pending -> targovli tizimidan yuborilgan
+  // pullar (o'zimga tegishlilari). Javob: { "success": true, "data": [ ... ] }
+  Future<List<YukTransfer>> fetchTransfers({String? status}) async {
+    try {
+      final response = await dio.get(
+        AppUrls.yukTransfers,
+        queryParameters: status == null ? null : {'status': status},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) return parseYukTransfers(body['data']);
+        return [];
+      }
+      throw Exception('Pullarni yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  // POST /api/yuk/transfers/{id}/accept -> pulni qabul qilish. Server avval
+  // targovli tizimini xabardor qiladi, keyin ledger'ga prixod yozadi.
+  // POST /api/yuk/transfers/{id}/reject -> rad etish (sabab MAJBURIY).
+  Future<YukTransfer?> decideTransfer(
+    int id, {
+    required bool accept,
+    String reason = '',
+  }) async {
+    try {
+      final response = await dio.post(
+        '${AppUrls.yukTransfers}/$id/${accept ? 'accept' : 'reject'}',
+        data: accept ? null : {'reason': reason},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return YukTransfer.fromJson(Map<String, dynamic>.from(body['data']));
+        }
+        return null;
+      }
+      throw Exception('Saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
     }
   }
 }

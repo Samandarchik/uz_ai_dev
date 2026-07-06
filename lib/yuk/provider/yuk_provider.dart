@@ -7,6 +7,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
 // Bitta item uchun lokal holat: olingan miqdor va jami summa.
@@ -648,11 +649,14 @@ class YukProvider extends ChangeNotifier {
 
   // ─────────────────────── Real-time (WebSocket) ───────────────────────
   StreamSubscription<OrderSocketEvent>? _socketSub;
+  StreamSubscription<TransferSocketEvent>? _transferSocketSub;
 
   // WebSocket'ga ulanib, buyurtma hodisalarini tinglaymiz. fetchOrders bilan
   // birga ishlaydi (u boshlang'ich sync, bu — real-time yangilanish).
   void connectSocket() {
     _socketSub ??= OrderSocket.instance.events.listen(_onSocketEvent);
+    _transferSocketSub ??=
+        OrderSocket.instance.transferEvents.listen(_onTransferSocketEvent);
     OrderSocket.instance.connect();
   }
 
@@ -660,6 +664,8 @@ class YukProvider extends ChangeNotifier {
   void disconnectSocket() {
     _socketSub?.cancel();
     _socketSub = null;
+    _transferSocketSub?.cancel();
+    _transferSocketSub = null;
     OrderSocket.instance.disconnect();
   }
 
@@ -711,6 +717,56 @@ class YukProvider extends ChangeNotifier {
         if (!_disposed) _refreshLedgerSilently();
       });
     }
+  }
+
+  // ────────────── Targovli'dan kelgan pullar (qabul qilish) ──────────────
+
+  // Bosh ekranda ko'rsatiladigan KUTILAYOTGAN pullar (status=pending).
+  List<YukTransfer> transfers = [];
+  // Hozir qaror qilinayotgan pul id (tugma spinner'i uchun).
+  int? decidingTransferId;
+
+  // Kutilayotgan pullarni serverdan olish (bosh ekran ochilganda va
+  // pull-to-refresh'da chaqiriladi). Xato bo'lsa jim qolamiz — pul bloki
+  // asosiy buyurtmalar oqimini to'sib qo'ymasin.
+  Future<void> fetchTransfers() async {
+    try {
+      transfers = await _service.fetchTransfers(status: 'pending');
+      if (!_disposed) notifyListeners();
+    } catch (_) {}
+  }
+
+  // Pulni qabul qilish yoki rad etish. Muvaffaqiyatda ro'yxatdan chiqadi;
+  // qabul bo'lsa ledger prixodi ham yangilanadi. Xatoda Exception otiladi
+  // (UI snackbar ko'rsatadi).
+  Future<void> decideTransfer(
+    int id, {
+    required bool accept,
+    String reason = '',
+  }) async {
+    decidingTransferId = id;
+    notifyListeners();
+    try {
+      await _service.decideTransfer(id, accept: accept, reason: reason);
+      transfers.removeWhere((t) => t.id == id);
+      if (accept && _ledgerLoadedOnce) {
+        _refreshLedgerSilently();
+      }
+    } finally {
+      decidingTransferId = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  // Real-time: pul keldi/o'zgardi/o'chirildi — pending ro'yxatini yangilaymiz.
+  void _onTransferSocketEvent(TransferSocketEvent event) {
+    final t = YukTransfer.fromJson(event.transfer);
+    if (t.id == 0) return;
+    transfers.removeWhere((x) => x.id == t.id);
+    if (event.action != 'deleted' && t.isPending) {
+      transfers.insert(0, t);
+    }
+    if (!_disposed) notifyListeners();
   }
 
   // Ledgerni spinner ko'rsatmasdan (jim) yangilash — socket hodisalari uchun.
