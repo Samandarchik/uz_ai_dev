@@ -58,15 +58,22 @@ if errorlevel 1 (
 )
 echo.
 
-REM --- 1/4: ASCII papkaga ko'chirish (build, .git, .dart_tool va eski zip tashlanadi) ---
+REM --- 1/4: ASCII papkaga ko'chirish (build, .git, .dart_tool, ephemeral va eski zip tashlanadi) ---
+REM ESLATMA: "ephemeral" ichida .plugin_symlinks bor - u ko'chirilsa flutter
+REM yangi symlink yarata olmay "errno = 183" xatosi bilan yiqiladi.
 echo [1/4] Loyiha %DEST% ga ko'chirilmoqda...
 if not exist "%DEST%" mkdir "%DEST%"
-robocopy "%SRC%" "%DEST%" /E /XD "build" ".git" ".dart_tool" /XF "*.zip" /NFL /NDL /NJH /NJS /NP /R:1 /W:1 >nul
+robocopy "%SRC%" "%DEST%" /E /XD "build" ".git" ".dart_tool" "ephemeral" /XF "*.zip" /NFL /NDL /NJH /NJS /NP /R:1 /W:1 >nul
 REM robocopy 0..7 = muvaffaqiyat, 8+ = xato
 if %errorlevel% geq 8 (
     echo [XATO] Nusxa ko'chirishda xatolik ^(robocopy=%errorlevel%^).
     goto :fail
 )
+
+REM --- DEST da oldingi ko'chirishdan qolgan eski ephemeral papkalarni tozalash ---
+if exist "%DEST%\windows\flutter\ephemeral" rd /s /q "%DEST%\windows\flutter\ephemeral"
+if exist "%DEST%\linux\flutter\ephemeral" rd /s /q "%DEST%\linux\flutter\ephemeral"
+if exist "%DEST%\macos\Flutter\ephemeral" rd /s /q "%DEST%\macos\Flutter\ephemeral"
 
 REM --- ASCII papkaga o'tib build ---
 pushd "%DEST%"
