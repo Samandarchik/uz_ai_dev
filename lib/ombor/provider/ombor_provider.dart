@@ -10,29 +10,46 @@ import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
 class OmborProvider extends ChangeNotifier {
   final OmborService _service = OmborService();
 
-  // Mahsulotlar source (manba) bo'yicha guruhlangan:
-  // kalitlar — "samarqand", "toshkent", "zagranitsa", "boshqa".
-  Map<String, List<OmborProduct>> productsBySource = {};
+  Map<String, List<OmborProduct>> productsByCategory = {};
+  // GET /api/categories dan kelgan ro'yxat (rasm + server tartibi).
+  List<OmborCategory> allCategories = [];
   bool isLoading = false;
   String? errorMessage;
 
-  // Ko'rsatiladigan source guruhlari QAT'IY tartibda:
-  // samarqand, toshkent, zagranitsa, boshqa — faqat mahsuloti borlari.
-  // Kutilmagan kalit kelsa ham yo'qolmasligi uchun oxiriga qo'shiladi.
-  List<String> get orderedSources {
-    final result = <String>[];
-    for (final code in omborSourceOrder) {
-      final products = productsBySource[code];
-      if (products != null && products.isNotEmpty) {
-        result.add(code);
+  List<String> get categories => productsByCategory.keys.toList();
+
+  // Admin paneldagi kabi ko'rsatiladigan kategoriyalar: server tartibida,
+  // faqat bozor mahsuloti borlari. /api/categories da topilmagan guruh
+  // nomlari ham yo'qolmasligi uchun oxiriga (rasmsiz) qo'shiladi.
+  List<OmborCategory> get orderedCategories {
+    final result = <OmborCategory>[];
+    final seen = <String>{};
+    for (final c in allCategories) {
+      if (productsByCategory.containsKey(c.name)) {
+        result.add(c);
+        seen.add(c.name);
       }
     }
-    for (final code in productsBySource.keys) {
-      if (!result.contains(code) &&
-          (productsBySource[code]?.isNotEmpty ?? false)) {
-        result.add(code);
+    for (final name in productsByCategory.keys) {
+      if (!seen.contains(name)) {
+        result.add(OmborCategory(id: 0, name: name));
       }
     }
+    return result;
+  }
+
+  // Kategoriya ichidagi mahsulotlar soni (ro'yxat subtitle uchun).
+  int productCount(String categoryName) =>
+      productsByCategory[categoryName]?.length ?? 0;
+
+  // Qidiruv uchun barcha mahsulotlar (kategoriya nomi bilan birga).
+  List<MapEntry<String, OmborProduct>> get allProductsWithCategory {
+    final result = <MapEntry<String, OmborProduct>>[];
+    productsByCategory.forEach((category, products) {
+      for (final p in products) {
+        result.add(MapEntry(category, p));
+      }
+    });
     return result;
   }
 
@@ -94,7 +111,15 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      productsBySource = await _service.fetchProducts();
+      // Mahsulotlar va kategoriyalar parallel yuklanadi. Kategoriyalar
+      // faqat rasm/tartib uchun — xatosi asosiy ro'yxatni to'xtatmaydi.
+      final productsFuture = _service.fetchProducts();
+      try {
+        allCategories = await _service.fetchCategories();
+      } catch (_) {
+        allCategories = [];
+      }
+      productsByCategory = await productsFuture;
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {

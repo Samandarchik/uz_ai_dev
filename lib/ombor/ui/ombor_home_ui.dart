@@ -4,14 +4,12 @@ import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
-import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
 
 // Ombor roli uchun bosh ekran — user panelidagi kabi: tepada qidiruv,
-// har source (Samarqand/Toshkent/Zagranitsa/Boshqa) guruhi sarlavha +
-// "barchasi" tugmasi + gorizontal kartochkalar.
+// har kategoriya sarlavha + "barchasi" tugmasi + gorizontal kartochkalar.
 class OmborHomeUi extends StatefulWidget {
   const OmborHomeUi({super.key});
 
@@ -122,7 +120,7 @@ class _OmborHomeUiState extends State<OmborHomeUi>
 }
 
 // "Mahsulotlar" tabи — user panelidagi bosh ekran kabi: qidiruv maydoni,
-// source guruhi sarlavhasi + "barchasi" tugmasi va gorizontal kartochkalar.
+// kategoriya sarlavhasi + "barchasi" tugmasi va gorizontal kartochkalar.
 class _OmborProductsTab extends StatefulWidget {
   const _OmborProductsTab();
 
@@ -179,8 +177,8 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
           );
         }
 
-        final sources = provider.orderedSources;
-        if (sources.isEmpty) {
+        final categories = provider.orderedCategories;
+        if (categories.isEmpty) {
           return const Center(child: Text('Mahsulotlar topilmadi'));
         }
 
@@ -228,18 +226,17 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
                 child: ListView.builder(
                   // Pastdagi savat paneli mahsulotlarni to'smasligi uchun joy.
                   padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: sources.length,
+                  itemCount: categories.length,
                   itemBuilder: (context, index) {
-                    final sourceCode = sources[index];
-                    final sourceName = omborSourceLabel(sourceCode);
+                    final category = categories[index];
                     final allProducts =
-                        provider.productsBySource[sourceCode] ?? [];
+                        provider.productsByCategory[category.name] ?? [];
 
                     final products = query.isEmpty
                         ? allProducts
                         : allProducts.where((p) {
                             return p.name.toLowerCase().contains(query) ||
-                                sourceName.toLowerCase().contains(query);
+                                category.name.toLowerCase().contains(query);
                           }).toList();
 
                     if (products.isEmpty) return const SizedBox.shrink();
@@ -256,22 +253,9 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
                               mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
                               children: [
-                                // Source'ning rasmi yo'q — neytral dumaloq
-                                // avatar (joylashuv ikonkasi) ko'rsatiladi.
-                                CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor:
-                                      _accentColor.withValues(alpha: 0.18),
-                                  child: const Icon(
-                                    Icons.location_on_outlined,
-                                    color: _accentColor,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    sourceName,
+                                    category.name,
                                     style: const TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.bold,
@@ -282,7 +266,7 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
                                 TextButton(
                                   onPressed: () {
                                     context.push(OmborCategoryProductsUi(
-                                      sourceCode: sourceCode,
+                                      categoryName: category.name,
                                     ));
                                   },
                                   style: TextButton.styleFrom(

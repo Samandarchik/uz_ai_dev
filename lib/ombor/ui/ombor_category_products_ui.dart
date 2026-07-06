@@ -6,12 +6,11 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
-// Bitta source (manba) guruhidagi bozor mahsulotlari — user panelidagi
+// Bitta kategoriya ichidagi bozor mahsulotlari — user panelidagi
 // ProductsScreen kabi GRID ko'rinishda.
 class OmborCategoryProductsUi extends StatelessWidget {
-  // Source kodi: "samarqand" / "toshkent" / "zagranitsa" / "boshqa".
-  final String sourceCode;
-  const OmborCategoryProductsUi({super.key, required this.sourceCode});
+  final String categoryName;
+  const OmborCategoryProductsUi({super.key, required this.categoryName});
 
   static const Color _bgColor = Color(0xFFFAF6F1);
 
@@ -22,11 +21,11 @@ class OmborCategoryProductsUi extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: _bgColor,
         elevation: 0,
-        title: Text(omborSourceLabel(sourceCode)),
+        title: Text(categoryName),
       ),
       body: Consumer<OmborProvider>(
         builder: (context, provider, child) {
-          final products = provider.productsBySource[sourceCode] ?? [];
+          final products = provider.productsByCategory[categoryName] ?? [];
 
           if (products.isEmpty) {
             return const Center(child: Text('Mahsulotlar topilmadi'));
@@ -206,8 +205,9 @@ class OmborProductCard extends StatelessWidget {
     } else {
       qtyText = unit;
     }
-    // Guruhning o'zi source bo'lgani uchun kartochkada source yozilmaydi.
-    return qtyText;
+    final source = product.sourceLabel;
+    if (qtyText.isNotEmpty && source.isNotEmpty) return '$qtyText • $source';
+    return qtyText.isNotEmpty ? qtyText : source;
   }
 
   // Uzoq bosilganda miqdorni qo'lda kiritish oynasi: xohlagancha buyurtma
