@@ -19,6 +19,7 @@ import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_transfer_history_ui.dart';
 
 // Sklad nomlari (loyihaning boshqa joylarida ham shu hardcode map ishlatiladi).
 const Map<int, String> kSkladNames = {
@@ -296,6 +297,13 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        // Targovli'dan kelgan pullar tarixi (qabul qilingan/rad etilgan/
+        // kutilayotgan — jami summalar bilan).
+        IconButton(
+          onPressed: () => context.push(const YukTransferHistoryUi()),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          tooltip: 'Pullar tarixi',
+        ),
         // Yuborilgan buyurtmalar tarixi.
         IconButton(
           onPressed: () => context.push(YukHistoryUi(sklads: _sklads)),
