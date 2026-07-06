@@ -743,6 +743,19 @@ class _BugalterOrderCard extends StatelessWidget {
                 ),
                 SizedBox(width: 6),
                 Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Turi',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Expanded(
                   flex: 3,
                   child: Text(
                     'Summa',
@@ -794,6 +807,19 @@ class _BugalterOrderCard extends StatelessWidget {
                             ? '${_money(item.subtotal / item.taken)} so\'m'
                             : '-',
                         textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Turi (o'lchov birligi: кг, шт...).
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        (item.type ?? '').isNotEmpty ? item.type! : '-',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade700,
