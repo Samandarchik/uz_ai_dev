@@ -33,6 +33,7 @@ class _EditUserPageState extends State<EditUserPage> {
   bool _isAdmin = false;
   int? _selectedFilialId;
   List<int> _selectedSklads = [];
+  List<String> _selectedSources = [];
   String _selectedRole = AppRoles.seller;
   late List<String> _roleOptions;
   // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar (hozircha hardcode).
@@ -41,6 +42,12 @@ class _EditUserPageState extends State<EditUserPage> {
     2: 'Sardor Sklat',
     3: 'Fresco Sklat',
     4: 'Personal Sklad',
+  };
+  // Yuk keltiruvchi roli uchun mahsulot manbalari (kategoriya o'rniga).
+  static const Map<String, String> _sourceOptions = {
+    'samarqand': 'Samarqand',
+    'toshkent': 'Toshkent',
+    'zagranitsa': 'Zagranitsa',
   };
   bool _isLoading = false;
   bool _isLoadingFilials = false;
@@ -64,6 +71,7 @@ class _EditUserPageState extends State<EditUserPage> {
     final fid = widget.user?.filial?.id ?? widget.user?.filialId;
     _selectedFilialId = (fid == null || fid == 0) ? null : fid;
     _selectedSklads = List.from(widget.user?.sklads ?? []);
+    _selectedSources = List.from(widget.user?.sources ?? []);
     _categoryIds = widget.user?.categoryIds ?? [];
 
     // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
@@ -251,6 +259,11 @@ class _EditUserPageState extends State<EditUserPage> {
               : null,
           categoryIds: _categoryIds,
           sklads: _selectedSklads,
+          // sources faqat yuk_keltiruvchi roli uchun yuboriladi;
+          // boshqa rollarda kalit yuborilmaydi (backenddagi qiymat saqlanadi).
+          sources: _selectedRole == AppRoles.yukKeltiruvchi
+              ? _selectedSources
+              : null,
           telegramGroupId: _telegramGroupController.text.trim(),
         );
 
@@ -267,6 +280,9 @@ class _EditUserPageState extends State<EditUserPage> {
           filialId: filialId,
           categoryIds: _categoryIds,
           sklads: _selectedSklads,
+          sources: _selectedRole == AppRoles.yukKeltiruvchi
+              ? _selectedSources
+              : null,
           telegramGroupId: _telegramGroupController.text.trim(),
         );
 
@@ -395,6 +411,63 @@ class _EditUserPageState extends State<EditUserPage> {
                       ),
                   ],
                 ),
+        ),
+      ],
+    );
+  }
+
+  // Yuk keltiruvchi uchun "Yuk qayerdan keladi" tanlovi (kategoriya o'rniga).
+  // Hech biri tanlanmasa — cheklov yo'q, hammasini ko'radi.
+  Widget _buildSourceSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Yuk qayerdan keladi',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Tanlanmasa hammasi ko\'rinadi',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              for (final entry in _sourceOptions.entries)
+                CheckboxListTile(
+                  value: _selectedSources.contains(entry.key),
+                  title: Text(entry.value),
+                  activeColor: Colors.blue.shade600,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  onChanged: (checked) {
+                    setState(() {
+                      if (checked == true) {
+                        if (!_selectedSources.contains(entry.key)) {
+                          _selectedSources.add(entry.key);
+                        }
+                      } else {
+                        _selectedSources.remove(entry.key);
+                      }
+                    });
+                  },
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -940,8 +1013,12 @@ class _EditUserPageState extends State<EditUserPage> {
                 const SizedBox(height: 20),
               ],
 
-              // Category Selector
-              _buildCategorySelector(),
+              // Yuk keltiruvchi: kategoriya o'rniga manba (source) tanlovi.
+              // Boshqa rollar: avvalgidek kategoriya tanlovi.
+              if (_selectedRole == AppRoles.yukKeltiruvchi)
+                _buildSourceSelector()
+              else
+                _buildCategorySelector(),
               const SizedBox(height: 32),
 
               // Save Button

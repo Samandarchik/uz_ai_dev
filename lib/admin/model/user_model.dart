@@ -9,6 +9,9 @@ class User {
   final String? password;
   final List<int>? categoryIds;
   final List<int> sklads;
+  // yuk_keltiruvchi uchun mahsulot manbalari ("samarqand"/"toshkent"/"zagranitsa").
+  // Bo'sh — cheklov yo'q (hammasini ko'radi).
+  final List<String> sources;
   final String? telegramGroupId;
 
   User({
@@ -22,6 +25,7 @@ class User {
     this.password,
     this.categoryIds,
     this.sklads = const [],
+    this.sources = const [],
     this.telegramGroupId,
   });
 
@@ -38,6 +42,8 @@ class User {
           ?.map((e) => e as int)
           .toList(),
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
+      sources:
+          (json['sources'] as List?)?.map((e) => e.toString()).toList() ?? [],
       telegramGroupId: json['telegram_group_id'],
     );
   }
@@ -51,6 +57,7 @@ class User {
       'role': role,
       'filial_id': filialId,
       'sklads': sklads,
+      'sources': sources,
       if (password != null) 'password': password,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };
@@ -66,6 +73,7 @@ class User {
     Filial? filial,
     String? password,
     List<int>? sklads,
+    List<String>? sources,
     String? telegramGroupId,
   }) {
     return User(
@@ -78,6 +86,7 @@ class User {
       filial: filial ?? this.filial,
       password: password ?? this.password,
       sklads: sklads ?? this.sklads,
+      sources: sources ?? this.sources,
       telegramGroupId: telegramGroupId ?? this.telegramGroupId,
     );
   }
@@ -130,6 +139,8 @@ class UpdateUserRequest {
   final String? password;
   final List<int>? categoryIds;
   final List<int>? sklads;
+  // null — yuborilmaydi (backenddagi qiymat o'zgarmaydi).
+  final List<String>? sources;
   final String? telegramGroupId;
 
   UpdateUserRequest({
@@ -141,6 +152,7 @@ class UpdateUserRequest {
     this.password,
     this.categoryIds,
     this.sklads,
+    this.sources,
     this.telegramGroupId,
   });
 
@@ -154,6 +166,7 @@ class UpdateUserRequest {
     if (password != null && password!.isNotEmpty) data['password'] = password;
     if (categoryIds != null) data['category_list'] = categoryIds;
     if (sklads != null) data['sklads'] = sklads;
+    if (sources != null) data['sources'] = sources;
     // Bo'sh string ham yuboriladi — backend bo'sh qiymatda tozalaydi.
     if (telegramGroupId != null) data['telegram_group_id'] = telegramGroupId;
     return data;
@@ -169,6 +182,7 @@ class CreateUserRequest {
   final int? filialId;
   final List<int>? categoryIds;
   final List<int> sklads;
+  final List<String>? sources;
   final String? telegramGroupId;
 
   CreateUserRequest({
@@ -180,6 +194,7 @@ class CreateUserRequest {
     this.filialId,
     this.categoryIds,
     this.sklads = const [],
+    this.sources,
     this.telegramGroupId,
   });
 
@@ -193,6 +208,7 @@ class CreateUserRequest {
       if (filialId != null) 'filial_id': filialId,
       'category_list': categoryIds,
       'sklads': sklads,
+      if (sources != null) 'sources': sources,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };
   }
