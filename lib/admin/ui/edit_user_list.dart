@@ -251,6 +251,11 @@ class _EditUserPageState extends State<EditUserPage> {
     // filial_id faqat seller uchun yuboriladi; ombor/yuk uchun null.
     final int? filialId = _selectedRole == AppRoles.seller ? _selectedFilialId : null;
 
+    // Bugalter kategoriya bilan cheklanmaydi — bo'sh ro'yxat yuboriladi,
+    // rol almashtirilganda eski tanlov qolib ketmasligi uchun.
+    final List<int> categoryIds =
+        _selectedRole == AppRoles.bugalter ? [] : _categoryIds;
+
     setState(() => _isLoading = true);
 
     try {
@@ -265,7 +270,7 @@ class _EditUserPageState extends State<EditUserPage> {
           password: _passwordController.text.isNotEmpty
               ? _passwordController.text
               : null,
-          categoryIds: _categoryIds,
+          categoryIds: categoryIds,
           sklads: _selectedSklads,
           // sources faqat yuk_keltiruvchi roli uchun yuboriladi;
           // boshqa rollarda kalit yuborilmaydi (backenddagi qiymat saqlanadi).
@@ -286,7 +291,7 @@ class _EditUserPageState extends State<EditUserPage> {
           isAdmin: _isAdmin,
           role: _selectedRole,
           filialId: filialId,
-          categoryIds: _categoryIds,
+          categoryIds: categoryIds,
           sklads: _selectedSklads,
           sources: _selectedRole == AppRoles.yukKeltiruvchi
               ? _selectedSources
@@ -1022,10 +1027,11 @@ class _EditUserPageState extends State<EditUserPage> {
               ],
 
               // Yuk keltiruvchi: kategoriya o'rniga manba (source) tanlovi.
+              // Bugalter: kategoriya so'ralmaydi — hammasini ko'radi.
               // Boshqa rollar: avvalgidek kategoriya tanlovi.
               if (_selectedRole == AppRoles.yukKeltiruvchi)
                 _buildSourceSelector()
-              else
+              else if (_selectedRole != AppRoles.bugalter)
                 _buildCategorySelector(),
               const SizedBox(height: 32),
 
