@@ -142,6 +142,9 @@ class YukOrder {
   // Yuk keltiruvchi narxlashda biriktirgan rasm/video URL'lari
   // (relativ /static/yuk/...). Ko'rsatishda AppUrls.baseUrl qo'shiladi.
   final List<String> attachments;
+  // Buyurtmani narxlagan yuk keltiruvchining user ID'si.
+  // 0 — eski buyurtmalar (backend yozmagan).
+  final int pricedBy;
 
   YukOrder({
     required this.id,
@@ -156,6 +159,7 @@ class YukOrder {
     required this.created,
     required this.items,
     this.attachments = const [],
+    this.pricedBy = 0,
   });
 
   factory YukOrder.fromJson(Map<String, dynamic> json) {
@@ -192,6 +196,7 @@ class YukOrder {
       created: json['created']?.toString() ?? '',
       items: items,
       attachments: attachments,
+      pricedBy: json['priced_by'] ?? 0,
     );
   }
 
@@ -209,6 +214,7 @@ class YukOrder {
         'created': created,
         'items': items.map((e) => e.toJson()).toList(),
         'attachments': attachments,
+        'priced_by': pricedBy,
       };
 }
 

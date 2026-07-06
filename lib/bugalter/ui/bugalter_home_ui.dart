@@ -44,11 +44,18 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
   // rasm/videolarni kartada ko'rsatish.
   bool _showImages = false;
 
+  // Yuk keltiruvchi bo'yicha filtr (null -> hammasi). Buyurtma priced_by
+  // maydoni bilan solishtiriladi.
+  int? _selectedYukUserId;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<BugalterProvider>().fetchOrders();
+      if (!mounted) return;
+      context.read<BugalterProvider>().fetchOrders();
+      // Tepadagi filtr chiplari uchun yuk keltiruvchilar ro'yxati.
+      context.read<BugalterProvider>().fetchYukUsers();
     });
   }
 
@@ -75,6 +82,57 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
 
   String _tabName(int? id) =>
       id == null ? 'Hammasi' : (_skladNames[id] ?? 'Sklad $id');
+
+  // Sklad tablari tepasidagi yuk keltiruvchi filtri: "Hammasi" + har bir
+  // yuk keltiruvchi nomi. Tanlanganda buyurtmalar priced_by bo'yicha
+  // filtrlanadi.
+  Widget _buildYukUserChips() {
+    return Consumer<BugalterProvider>(
+      builder: (context, provider, _) {
+        if (provider.yukUsers.isEmpty) return const SizedBox(height: 44);
+        return SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            children: [
+              for (final entry in <int?, String>{
+                null: 'Hammasi',
+                for (final u in provider.yukUsers) u.id: u.name,
+              }.entries)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(entry.value),
+                    selected: _selectedYukUserId == entry.key,
+                    onSelected: (_) =>
+                        setState(() => _selectedYukUserId = entry.key),
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedYukUserId == entry.key
+                          ? Colors.white
+                          : Colors.black54,
+                    ),
+                    selectedColor: _accentColor,
+                    backgroundColor: Colors.white,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(
+                      color: _selectedYukUserId == entry.key
+                          ? _accentColor
+                          : Colors.grey.shade300,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,12 +168,20 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
               icon: const Icon(Icons.logout),
             ),
           ],
-          bottom: TabBar(
-            isScrollable: true,
-            labelColor: _accentColor,
-            unselectedLabelColor: Colors.black54,
-            indicatorColor: _accentColor,
-            tabs: _tabs.map((id) => Tab(text: _tabName(id))).toList(),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(kTextTabBarHeight + 44),
+            child: Column(
+              children: [
+                _buildYukUserChips(),
+                TabBar(
+                  isScrollable: true,
+                  labelColor: _accentColor,
+                  unselectedLabelColor: Colors.black54,
+                  indicatorColor: _accentColor,
+                  tabs: _tabs.map((id) => Tab(text: _tabName(id))).toList(),
+                ),
+              ],
+            ),
           ),
         ),
         body: Consumer<BugalterProvider>(
@@ -156,7 +222,13 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
 
             return TabBarView(
               children: _tabs.map((id) {
-                final orders = provider.forSklad(id);
+                var orders = provider.forSklad(id);
+                // Yuk keltiruvchi filtri (tepadagi chiplar).
+                if (_selectedYukUserId != null) {
+                  orders = orders
+                      .where((o) => o.pricedBy == _selectedYukUserId)
+                      .toList();
+                }
                 return RefreshIndicator(
                   color: _accentColor,
                   onRefresh: () => provider.fetchOrders(),
