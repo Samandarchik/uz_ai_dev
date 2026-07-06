@@ -50,7 +50,9 @@ class _EditUserPageState extends State<EditUserPage> {
     'zagranitsa': 'Zagranitsa',
   };
   bool _isLoading = false;
-  bool _isLoadingFilials = false;
+  // true — _loadFilials post-frame'da boshlanguncha birinchi freymda
+  // "filial yo'q" ko'rinib qolmasligi uchun.
+  bool _isLoadingFilials = true;
   bool _obscurePassword = true;
 
   List<Filial> _filials = [];
@@ -88,8 +90,14 @@ class _EditUserPageState extends State<EditUserPage> {
       _roleOptions = [_selectedRole, ..._roleOptions];
     }
 
-    _loadFilials();
-    _loadCategories();
+    // Bu ikkisi provider/setState orqali darhol notify qiladi; initState esa
+    // build fazasida ishlaydi — "markNeedsBuild called during build" xatosi
+    // chiqmasligi uchun keyingi freymga qoldiramiz.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadFilials();
+      _loadCategories();
+    });
   }
 
   String _roleLabel(String role) {
