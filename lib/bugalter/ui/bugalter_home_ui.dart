@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -37,6 +39,10 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
 
   // Tablar: null -> "Hammasi", keyin skladlar.
   static final List<int?> _tabs = [null, ..._skladNames.keys];
+
+  // AppBar'dagi tugma bilan yoqiladi: buyurtmaga biriktirilgan
+  // rasm/videolarni kartada ko'rsatish.
+  bool _showImages = false;
 
   @override
   void initState() {
@@ -84,6 +90,16 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
+            IconButton(
+              tooltip: _showImages
+                  ? 'Rasmlarni yashirish'
+                  : 'Rasmlarni ko\'rsatish',
+              onPressed: () => setState(() => _showImages = !_showImages),
+              icon: Icon(
+                _showImages ? Icons.image : Icons.image_outlined,
+                color: _showImages ? _accentColor : null,
+              ),
+            ),
             IconButton(
               tooltip: 'Pul berish',
               onPressed: _openPaymentSheet,
@@ -168,6 +184,7 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                             return _BugalterOrderCard(
                               key: ValueKey(order.id),
                               order: order,
+                              showImages: _showImages,
                             );
                           },
                         ),
@@ -508,11 +525,28 @@ class _TabSummary extends StatelessWidget {
   }
 }
 
+// Fayl/URL video ekanini kengaytmasidan aniqlash (yuk_home_ui bilan bir xil).
+bool _isVideoPath(String p) {
+  final ext = p.split('.').last.toLowerCase();
+  return const {'mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', '3gp'}.contains(ext);
+}
+
+// Relativ /static/... URL'ni to'liq manzilga aylantirish.
+String _attachmentUrl(String url) =>
+    url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
+
 // Bitta buyurtma kartasi: sarlavha (order_id, sklad, sana, status),
 // mahsulotlar jadvali, xarajatlar bloki va chek yakuni.
 class _BugalterOrderCard extends StatelessWidget {
   final YukOrder order;
-  const _BugalterOrderCard({super.key, required this.order});
+  // true bo'lsa buyurtmaga biriktirilgan rasm/videolar ko'rsatiladi
+  // (AppBar'dagi tugma bilan boshqariladi).
+  final bool showImages;
+  const _BugalterOrderCard({
+    super.key,
+    required this.order,
+    this.showImages = false,
+  });
 
   static const Color _accent = Color(0xFFC5A97B);
   static const Color _green = Color(0xFF2E7D32);
@@ -581,6 +615,17 @@ class _BugalterOrderCard extends StatelessWidget {
               ),
             ],
           ),
+          // Biriktirilgan rasm/videolar (AppBar tugmasi yoqilganda).
+          if (showImages && order.attachments.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: order.attachments
+                  .map((e) => _AttachmentTile(entry: e))
+                  .toList(),
+            ),
+          ],
           const Divider(height: 18),
           // Jadval sarlavhasi.
           const Padding(
@@ -820,6 +865,82 @@ class _BugalterOrderCard extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+// Bitta biriktirma plitkasi (72x72): rasm — thumbnail (bosilsa to'liq ekran),
+// video — play belgisi (bosilsa tashqi pleerda ochiladi).
+class _AttachmentTile extends StatelessWidget {
+  final String entry;
+  const _AttachmentTile({required this.entry});
+
+  void _open(BuildContext context) {
+    if (_isVideoPath(entry)) {
+      launchUrl(
+        Uri.parse(_attachmentUrl(entry)),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Center(
+                child: Image.network(_attachmentUrl(entry)),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () =>
+                    Navigator.of(dialogContext, rootNavigator: true).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = _isVideoPath(entry);
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: GestureDetector(
+        onTap: () => _open(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: isVideo
+              ? Container(
+                  color: Colors.black87,
+                  child: const Center(
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                )
+              : Image.network(
+                  _attachmentUrl(entry),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFFF5F1EA),
+                    child: const Icon(Icons.broken_image, color: Colors.black26),
+                  ),
+                ),
         ),
       ),
     );
