@@ -633,7 +633,7 @@ class _BugalterOrderCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  flex: 5,
+                  flex: 4,
                   child: Text(
                     'Mahsulot',
                     style: TextStyle(
@@ -649,6 +649,19 @@ class _BugalterOrderCard extends StatelessWidget {
                   child: Text(
                     'Soni',
                     textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Donasi',
+                    textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -679,7 +692,7 @@ class _BugalterOrderCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      flex: 5,
+                      flex: 4,
                       child: Text(
                         item.name,
                         style: const TextStyle(
@@ -694,6 +707,21 @@ class _BugalterOrderCard extends StatelessWidget {
                       child: Text(
                         _fmtQty(item.taken),
                         textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Donasi (birlik narx) = summa / soni.
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        item.taken > 0 && item.subtotal > 0
+                            ? '${_money(item.subtotal / item.taken)} so\'m'
+                            : '-',
+                        textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade700,
