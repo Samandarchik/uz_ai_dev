@@ -627,6 +627,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
   final Map<String, TextEditingController> _takenControllers = {};
   final Map<String, TextEditingController> _subtotalControllers = {};
   final Map<String, FocusNode> _takenFocusNodes = {};
+  // Summa maydoni fokusda turganda socketdan kelgan qiymat uni bosib
+  // qo'ymasligi uchun summaga ham FocusNode kerak.
+  final Map<String, FocusNode> _subtotalFocusNodes = {};
 
   // Boshlang'ich qiymatlari tayyorlangan buyurtmalar (socket orqali yangi
   // buyurtma kelsa didUpdateWidget'da faqat yangilari init bo'ladi).
@@ -740,6 +743,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
       _takenControllers[k] = TextEditingController(text: _fmtQty(taken0));
       _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
       _takenFocusNodes[k] = FocusNode();
+      _subtotalFocusNodes[k] = FocusNode();
       // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
       // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz. BOSHQA yuk
       // keltiruvchi boshlagan qoralama (priced_by boshqa) seed QILINMAYDI —
@@ -765,12 +769,15 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Ombor biror itemni qabul qilganda (socket orqali keladi) uning kelgan
   // soni "Nechta olgani" maydoniga AVTO to'ldiriladi va maydon QULFLANADI.
+  // Shuningdek boshqa qurilma/yuk keltiruvchi yozgan miqdor-summalar ham
+  // socketdan kelib maydonlarga JONLI tushiriladi ("Yuborish"siz).
   @override
   void didUpdateWidget(covariant YukSkladCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final oldAccepted = <String, bool>{
+    final provider = context.read<YukProvider>();
+    final oldItems = <String, YukOrderItem>{
       for (final o in oldWidget.orders)
-        for (final i in o.items) _key(o.id, i.productId): i.accepted,
+        for (final i in o.items) _key(o.id, i.productId): i,
     };
     // didUpdateWidget build fazasida ishlaydi — provider'ga yozish
     // (notifyListeners) shu yerda chaqirilsa "setState during build" xatosi
@@ -779,12 +786,45 @@ class _YukSkladCardState extends State<YukSkladCard> {
     for (final o in widget.orders) {
       // Kun davomida yangi kelgan buyurtma — controllerlarini hozir yaratamiz.
       _initOrder(o);
+      final done = _isDoneOrder(o);
       for (final item in o.items) {
         final k = _key(o.id, item.productId);
-        if (item.accepted && !(oldAccepted[k] ?? false)) {
+        final old = oldItems[k];
+        if (item.accepted && !(old?.accepted ?? false)) {
           final v = item.received > 0 ? item.received : item.taken;
           _takenCtrlFor(o, item).text = _fmtQty(v);
           deferred.add(() => _onItemChanged(o, item));
+          continue;
+        }
+        // ─── REAL-TIME sinxronlash ───
+        // Qiymat o'zgarmagan, buyurtma yopiq/qabul qilingan yoki item endi
+        // paydo bo'lgan bo'lsa tegmaymiz.
+        if (done || item.accepted || old == null) continue;
+        if (old.taken == item.taken && old.subtotal == item.subtotal) {
+          continue;
+        }
+        // O'zimning hali serverga yetib bormagan (debounce kutayotgan)
+        // qoralamam bor — socketdagi eski qiymat uni bosib qo'ymasin.
+        if (provider.draftSaveScheduled(o.id)) continue;
+        final takenFocused = _takenFocusNodes[k]?.hasFocus ?? false;
+        final sumFocused = _subtotalFocusNodes[k]?.hasFocus ?? false;
+        if (old.taken != item.taken && !takenFocused) {
+          final ctrl = _takenCtrlFor(o, item);
+          if (_parse(ctrl.text) != item.taken) {
+            ctrl.text = _fmtQty(item.taken);
+          }
+        }
+        if (old.subtotal != item.subtotal && !sumFocused) {
+          final ctrl = _subtotalCtrlFor(o, item);
+          if (_parse(ctrl.text) != item.subtotal) {
+            ctrl.text = _fmt(item.subtotal);
+          }
+        }
+        // O'z buyurtmamda (masalan ikkinchi qurilmam yozgan) lokal narxni
+        // ham sinxronlaymiz — flush baribir no-op (server bilan teng).
+        if (provider.canSeedOrder(o) && !takenFocused && !sumFocused) {
+          provider.seedItemPrice(
+              o.id, item.productId, item.taken, item.subtotal);
         }
       }
     }
@@ -832,6 +872,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     for (final f in _takenFocusNodes.values) {
       f.dispose();
     }
+    for (final f in _subtotalFocusNodes.values) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -851,6 +894,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   FocusNode _takenFocusFor(YukOrder order, YukOrderItem item) =>
       _takenFocusNodes.putIfAbsent(
+          _key(order.id, item.productId), () => FocusNode());
+
+  FocusNode _subtotalFocusFor(YukOrder order, YukOrderItem item) =>
+      _subtotalFocusNodes.putIfAbsent(
           _key(order.id, item.productId), () => FocusNode());
 
   void _onItemChanged(YukOrder order, YukOrderItem item) {
@@ -1318,11 +1365,61 @@ class _YukSkladCardState extends State<YukSkladCard> {
     );
   }
 
+  // Begona buyurtmaning serverdagi proche itemi — o'chirib bo'lmaydigan qator
+  // (kim boshlagan bo'lsa o'sha o'chiradi; bizda faqat ko'rinadi).
+  Widget _remoteProcheRow(YukOrderItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: _nameFlex,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Qo\'shimcha',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _accentColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _qtyFlex,
+            child: _addedValueBox(_fmtQty(item.taken)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _sumFlex,
+            child: _addedValueBox(_formatMoney(item.subtotal)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // "Xarajatlar" bloki: HAMMA buyurtmalarning rasxod yozuvlari birga.
+  // Begona (boshqa yuk user boshlagan) ochiq buyurtmaning rasxodlari
+  // serverdagi itemlardan READ-ONLY ko'rsatiladi (real-time socketdan tushadi).
   Widget _buildRasxodBlock(YukProvider provider, List<YukOrder> orders) {
     final rows = <Widget>[];
     for (final order in orders) {
       if (_isDoneOrder(order)) {
+        for (final item in order.items.where((i) => i.isRasxod)) {
+          rows.add(_rasxodRow(item.name, item.subtotal));
+        }
+      } else if (!provider.canSeedOrder(order)) {
         for (final item in order.items.where((i) => i.isRasxod)) {
           rows.add(_rasxodRow(item.name, item.subtotal));
         }
@@ -1566,6 +1663,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
             flex: _sumFlex,
             child: _inlineField(
               controller: _subtotalCtrlFor(order, item),
+              focusNode: _subtotalFocusFor(order, item),
               hint: '0',
               enabled: !done,
               onChanged: (_) => _onItemChanged(order, item),
@@ -1648,15 +1746,34 @@ class _YukSkladCardState extends State<YukSkladCard> {
             ? provider.undoRemainingForSklad(widget.skladId).inSeconds
             : 0;
 
-        // Jami summalar: yuborilganlari backenddan, ochiqlari lokal hisobdan.
+        // Jami summalar: yuborilganlari backenddan; ochiqlari — lokal
+        // kiritilgan qiymat, bo'lmasa serverdagi (boshqa qurilma/yuk user
+        // yozgani socketdan tushadi) qiymat. Begona (boshqa user boshlagan)
+        // buyurtmaning proche/rasxodi serverdagi itemlardan olinadi.
         var mahsulot = 0.0;
         var xarajat = 0.0;
         for (final o in orders) {
           if (_isDoneOrder(o)) {
             mahsulot += o.total.toDouble();
             xarajat += o.expensesTotal;
-          } else {
-            mahsulot += provider.orderTotal(o.id);
+            continue;
+          }
+          final mine = provider.canSeedOrder(o);
+          for (final item in o.items) {
+            if (item.itemType.isEmpty) {
+              mahsulot +=
+                  provider.getItemPrice(o.id, item.productId)?.subtotal ??
+                      item.subtotal;
+            } else if (!mine) {
+              if (item.isRasxod) {
+                xarajat += item.subtotal;
+              } else {
+                mahsulot += item.subtotal;
+              }
+            }
+          }
+          if (mine) {
+            mahsulot += provider.addedProductsTotal(o.id);
             xarajat += provider.addedExpensesTotal(o.id);
           }
         }
@@ -1732,6 +1849,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
                         ? !i.isRasxod
                         : i.itemType.isEmpty)
                     .map((item) => _itemRow(provider, order, item)),
+                // Begona (boshqa yuk user boshlagan) ochiq buyurtmaning
+                // serverdagi proche itemlari — read-only, real-time.
+                if (!_isDoneOrder(order) && !provider.canSeedOrder(order))
+                  ...order.items
+                      .where((i) => i.isProche)
+                      .map(_remoteProcheRow),
                 if (!_isDoneOrder(order))
                   ...provider
                       .addedItemsFor(order.id)

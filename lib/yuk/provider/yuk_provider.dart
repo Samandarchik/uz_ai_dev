@@ -96,6 +96,11 @@ class YukProvider extends ChangeNotifier {
   bool canSeedOrder(YukOrder order) =>
       order.pricedBy == 0 || order.pricedBy == myUserId;
 
+  // Shu buyurtma uchun hali serverga yuborilmagan (debounce kutayotgan)
+  // qoralama bormi — bor bo'lsa socketdan kelgan eski qiymat maydonlarni
+  // bosib qo'ymasligi kerak (real-time sinxronlashda ishlatiladi).
+  bool draftSaveScheduled(int orderId) => _draftTimers.containsKey(orderId);
+
   // Hozir yuborilayotgan buyurtma id (spinner uchun). null bo'lsa hech nima.
   int? submittingOrderId;
 
