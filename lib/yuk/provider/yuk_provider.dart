@@ -70,6 +70,32 @@ class YukProvider extends ChangeNotifier {
   // (UI'da "offline" eslatmasi ko'rsatish uchun).
   bool isOffline = false;
 
+  // Joriy user ID (SharedPreferences'dagi 'user' JSON'dan, bir marta o'qiladi).
+  // Begona (boshqa yuk keltiruvchi boshlagan, priced_by boshqa) qoralamani
+  // seed qilmaslik uchun ishlatiladi — aks holda flushDrafts uni qayta yuborib
+  // buyurtma egaligini adashtirib yuborishi mumkin.
+  int? _myUserId;
+  int get myUserId {
+    if (_myUserId != null) return _myUserId!;
+    try {
+      final raw = _storage.getString(key: 'user');
+      if (raw.isNotEmpty) {
+        final u = jsonDecode(raw);
+        if (u is Map && u['id'] is num) {
+          _myUserId = (u['id'] as num).toInt();
+        }
+      }
+    } catch (_) {
+      // Buzuq JSON — 0 qaytaramiz (hech kimga mos kelmaydi).
+    }
+    return _myUserId ?? 0;
+  }
+
+  // Shu buyurtmaning qoralamasini seed qilish menga joizmi: hali hech kim
+  // boshlamagan (priced_by=0) yoki o'zim boshlagan bo'lsa — ha.
+  bool canSeedOrder(YukOrder order) =>
+      order.pricedBy == 0 || order.pricedBy == myUserId;
+
   // Hozir yuborilayotgan buyurtma id (spinner uchun). null bo'lsa hech nima.
   int? submittingOrderId;
 
@@ -158,6 +184,11 @@ class YukProvider extends ChangeNotifier {
       _persistOrders();
       // Yuborilgan buyurtmalarning eski lokal qoralamasini tozalaymiz.
       _pruneDoneDrafts();
+      // Ro'yxatda umuman yo'q buyurtmalarning qoralamalari ham o'chadi —
+      // eskirib qolgan lokal qoralama flushDrafts bilan qayta serverga
+      // ketib yurmasin (masalan source filtri bilan yashiringan yoki
+      // allaqachon yopilgan buyurtmalar).
+      _pruneMissingDrafts();
       // Internet bor — kutib turgan lokal qoralamalarni backendga yuboramiz.
       unawaited(flushDrafts());
     } catch (e) {
@@ -406,6 +437,30 @@ class YukProvider extends ChangeNotifier {
           _addedItems.remove(o.id);
           addedChanged = true;
         }
+      }
+    }
+    if (changed) _persistDrafts();
+    if (addedChanged) _persistAddedItems();
+  }
+
+  // Serverdan kelgan (pending) ro'yxatda YO'Q buyurtmalarning lokal
+  // qoralamalarini tozalash. Faqat fetchOrders muvaffaqiyatli bo'lganda
+  // chaqiriladi (offline'da kesh saqlanadi).
+  void _pruneMissingDrafts() {
+    final ids = orders.map((o) => o.id).toSet();
+    var changed = false;
+    var addedChanged = false;
+    for (final id in _prices.keys.toList()) {
+      if (!ids.contains(id)) {
+        _prices.remove(id);
+        _draftTimers.remove(id)?.cancel();
+        changed = true;
+      }
+    }
+    for (final id in _addedItems.keys.toList()) {
+      if (!ids.contains(id)) {
+        _addedItems.remove(id);
+        addedChanged = true;
       }
     }
     if (changed) _persistDrafts();

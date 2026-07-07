@@ -741,8 +741,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
       _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
       _takenFocusNodes[k] = FocusNode();
       // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
-      // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz.
+      // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz. BOSHQA yuk
+      // keltiruvchi boshlagan qoralama (priced_by boshqa) seed QILINMAYDI —
+      // aks holda flushDrafts uni bizning nomimizdan qayta yuborib, hisoblar
+      // aralashib ketadi.
       if (!done &&
+          provider.canSeedOrder(order) &&
           existing == null &&
           item.itemType.isEmpty &&
           (taken0 > 0 || subtotal0 > 0)) {
@@ -751,10 +755,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
     }
     // Qaytarib olingan buyurtmaning serverda qolgan biriktirma va
     // proche/rasxod itemlarini lokal ro'yxatlarga tiklaymiz.
-    if (!done && order.attachments.isNotEmpty) {
-      provider.seedAttachments(order.id, order.attachments);
-    }
-    if (!done) {
+    if (!done && provider.canSeedOrder(order)) {
+      if (order.attachments.isNotEmpty) {
+        provider.seedAttachments(order.id, order.attachments);
+      }
       provider.seedAddedItems(order.id, order.items);
     }
   }
@@ -2061,21 +2065,23 @@ class _YukOrderCardState extends State<YukOrderCard> {
       // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
       // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz.
       // proche/rasxod itemlar bunga kirmaydi — ular added_items orqali ketadi.
+      // BOSHQA yuk keltiruvchi boshlagan qoralama seed QILINMAYDI (flushDrafts
+      // uni bizning nomimizdan qayta yubormasin — hisoblar aralashmasin).
       if (!_isDone &&
+          provider.canSeedOrder(order) &&
           existing == null &&
           item.itemType.isEmpty &&
           (taken0 > 0 || subtotal0 > 0)) {
         provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
       }
     }
-    // Qaytarib olingan buyurtmaning serverda qolgan biriktirmalarini lokal
-    // ro'yxatga tiklaymiz (qayta yuborishda yo'qolmasligi uchun).
-    if (!_isDone && order.attachments.isNotEmpty) {
-      provider.seedAttachments(order.id, order.attachments);
-    }
-    // Qaytarib olingan buyurtmaning proche/rasxod itemlarini lokal qo'shilgan
-    // yozuvlar ro'yxatiga tiklaymiz (qayta yuborishda yo'qolmasligi uchun).
-    if (!_isDone) {
+    // Qaytarib olingan buyurtmaning serverda qolgan biriktirma va
+    // proche/rasxod itemlarini lokal ro'yxatlarga tiklaymiz (qayta
+    // yuborishda yo'qolmasligi uchun; faqat o'zimizniki bo'lsa).
+    if (!_isDone && provider.canSeedOrder(order)) {
+      if (order.attachments.isNotEmpty) {
+        provider.seedAttachments(order.id, order.attachments);
+      }
       provider.seedAddedItems(order.id, order.items);
     }
     _maybeStartUndoTicker();
