@@ -527,6 +527,29 @@ class YukProvider extends ChangeNotifier {
     return _prices[orderId]?[productId];
   }
 
+  // Yozuv TO'LIQ to'ldirilganmi: soni ham (taken), summa ham (subtotal)
+  // kiritilgan. Faqat shundaylar yuboriladi; chala (faqat soni yoki faqat
+  // summa) yozuvlar pending'da qoladi.
+  static bool _isFilled(ItemPrice p) => p.taken > 0 && p.subtotal > 0;
+
+  // Buyurtmaning to'liq to'ldirilgan (yuborishga tayyor) yozuvlari.
+  Map<int, ItemPrice> _filledPrices(int orderId) {
+    final map = _prices[orderId];
+    if (map == null || map.isEmpty) return const {};
+    return {
+      for (final e in map.entries)
+        if (_isFilled(e.value)) e.key: e.value,
+    };
+  }
+
+  // Buyurtmada yuboriladigan narsa bormi: kamida bitta to'liq to'ldirilgan
+  // yozuv YOKI qo'shilgan proche/rasxod.
+  bool _hasSubmittable(int orderId) {
+    if (_filledPrices(orderId).isNotEmpty) return true;
+    final added = _addedItems[orderId];
+    return added != null && added.isNotEmpty;
+  }
+
   // Katalogdagi (buyurtmadagi) itemlar uchun kiritilgan subtotal yig'indisi.
   double _catalogTotal(int orderId) {
     final map = _prices[orderId];
@@ -545,17 +568,13 @@ class YukProvider extends ChangeNotifier {
     return _catalogTotal(orderId) + addedProductsTotal(orderId);
   }
 
-  // Kamida bitta item narxlanganmi yoki qo'shimcha yozuv qo'shilganmi
-  // (yuborish tugmasi uchun).
-  bool hasAnyPrice(int orderId) {
-    final map = _prices[orderId];
-    if (map != null && map.isNotEmpty) return true;
-    final added = _addedItems[orderId];
-    return added != null && added.isNotEmpty;
-  }
+  // Yuborish tugmasi uchun: kamida bitta TO'LIQ to'ldirilgan yozuv (soni ham,
+  // summa ham) yoki qo'shimcha yozuv bormi. Chala yozuvning o'zi (faqat soni
+  // yozilgan) yuborishni yoqmaydi.
+  bool hasAnyPrice(int orderId) => _hasSubmittable(orderId);
 
-  // Skladning yuborilmagan buyurtmalaridan birortasida narx kiritilgan yoki
-  // qo'shimcha yozuv bormi (jamlangan "Yuborish" tugmasi uchun).
+  // Skladning yuborilmagan buyurtmalaridan birortasida to'liq to'ldirilgan
+  // yozuv yoki qo'shimcha yozuv bormi (jamlangan "Yuborish" tugmasi uchun).
   bool hasAnyPriceForSklad(int skladId) => orders.any(
       (o) => o.skladId == skladId && !_isDone(o) && hasAnyPrice(o.id));
 
@@ -614,28 +633,37 @@ class YukProvider extends ChangeNotifier {
     _persistAddedItems();
   }
 
-  // Bitta buyurtmani backendga yuborish (narxlash) — yadro. Hech narsa
-  // kiritilmagan buyurtma ham yuborilishi mumkin: itemlari taken=0/subtotal=0
-  // bilan ketadi va backendda "olinmagan" sifatida yopiladi (kunlik achot
-  // yopishda kerak). Xato bo'lsa Exception otadi.
+  // Bitta buyurtmani backendga yuborish (narxlash) — yadro. FAQAT to'liq
+  // to'ldirilgan (taken>0 va subtotal>0) itemlar yuboriladi; backend ularni
+  // yangi `narxlandi` buyurtmaga ajratadi, chala/bo'sh itemlar esa ASL
+  // buyurtmada (o'sha id bilan) pending bo'lib qoladi — lokal qoralamalari
+  // saqlanadi. Xato bo'lsa Exception otadi.
   Future<void> _submitOne(int orderId) async {
-    final map = _prices[orderId] ?? const <int, ItemPrice>{};
+    final filled = _filledPrices(orderId);
     final added = _addedItems[orderId] ?? const <YukAddedItem>[];
 
+    // Yuboriladigan hech narsa bo'lmasa API chaqirmaymiz (chaqiruvchi
+    // filtrlashi kerak, bu — himoya).
+    if (filled.isEmpty && added.isEmpty) return;
+
     // Kutib turgan qoralama saqlash bo'lsa bekor qilamiz — endi yakuniy narx
-    // yuborilmoqda.
+    // yuborilmoqda. (Qolgan chala yozuvlar keyingi o'zgarishda yoki
+    // flushDrafts'da qayta saqlanadi.)
     _draftTimers.remove(orderId)?.cancel();
 
-    final items = map.entries
+    final items = filled.entries
         .map((e) => <String, dynamic>{
               'product_id': e.key,
               'taken': e.value.taken,
               'subtotal': e.value.subtotal,
             })
         .toList();
-    // Mahsulot jami (katalog + proche); rasxod totalga kirmaydi — backend
-    // uni expenses_total sifatida alohida hisoblaydi.
-    final total = orderTotal(orderId);
+    // Yuboriladigan mahsulot jami: FAQAT to'liq to'ldirilgan itemlar + proche.
+    // (orderTotal() UI'dagi jonli hisob uchun o'zgarishsiz qoladi.)
+    var total = addedProductsTotal(orderId);
+    for (final v in filled.values) {
+      total += v.subtotal;
+    }
 
     // Avval biriktirilgan lokal fayllarni (rasm/video) serverga yuklaymiz;
     // serverda allaqachon bor URL'lar (qaytarib olingandan qolgan) o'z
@@ -657,31 +685,45 @@ class YukProvider extends ChangeNotifier {
       addedItems: added.map((e) => e.toJson()).toList(),
     );
 
-    // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
-    // vaqtini belgila va ro'yxatni yangila.
-    _prices.remove(orderId);
+    // Yuborilgach FAQAT yuborilgan (to'liq to'ldirilgan) yozuvlarni tozalaymiz
+    // — chala qoralamalar asl (pending qolgan) buyurtmada ko'rinib,
+    // tahrirlanadigan bo'lib qoladi. Qo'shilganlar va biriktirmalar yuborildi
+    // — ular tozalanadi.
+    final remaining = _prices[orderId];
+    if (remaining != null) {
+      for (final pid in filled.keys) {
+        remaining.remove(pid);
+      }
+      if (remaining.isEmpty) _prices.remove(orderId);
+    }
     _addedItems.remove(orderId);
     _attachments.remove(orderId);
     _persistDrafts();
     _persistAddedItems();
-    _submittedAt[orderId] = DateTime.now();
+    // Backend buyurtmani ajratsa javob YANGI id bilan keladi — "qaytarib
+    // olish" oynasi o'sha (yuborilgan) buyurtma id'siga bog'lanadi.
+    _submittedAt[updated?.id ?? orderId] = DateTime.now();
     // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
     // asosiy sahifada undo oynasi davomida "Yuborilgan" ko'rinishida qoladi,
-    // tarixga esa darhol tushadi.
+    // tarixga esa darhol tushadi. Split'da bu butunlay yangi buyurtma —
+    // ro'yxatda yo'q bo'lsa qo'shamiz (undo tugmasi ko'rinishi uchun).
     if (updated != null) {
       final i = orders.indexWhere((o) => o.id == updated.id);
-      if (i >= 0) orders[i] = updated;
+      if (i >= 0) {
+        orders[i] = updated;
+      } else {
+        orders.add(updated);
+      }
       historyOrders.removeWhere((o) => o.id == updated.id);
       historyOrders.insert(0, updated);
     }
   }
 
   // Narxlangan buyurtmani backendga yuborish (omborga qaytarish).
+  // Faqat to'liq to'ldirilgan itemlar ketadi; chalalari pending'da qoladi.
   Future<bool> submitPrices(int orderId) async {
-    final map = _prices[orderId] ?? const <int, ItemPrice>{};
-    final added = _addedItems[orderId] ?? const <YukAddedItem>[];
-    if (map.isEmpty && added.isEmpty) {
-      errorMessage = 'Hech qanday narx kiritilmagan';
+    if (!_hasSubmittable(orderId)) {
+      errorMessage = 'Yuboriladigan narx kiritilmagan';
       notifyListeners();
       return false;
     }
@@ -708,14 +750,17 @@ class YukProvider extends ChangeNotifier {
     }
   }
 
-  // Skladning HAMMA yuborilmagan buyurtmalarini birdan yuborish — kunlik
-  // achotni yopish. Buyurtmalar sana tartibida ketadi; narx kiritilmagan
-  // itemlar taken=0/subtotal=0 bilan "olinmagan" bo'lib yopiladi.
+  // Skladning yuborsa bo'ladigan (kamida bitta to'liq to'ldirilgan yozuvi
+  // yoki qo'shilgan itemi bor) buyurtmalarini birdan yuborish — kunlik
+  // achotni yopish. Buyurtmalar sana tartibida ketadi; to'liq to'ldirilmagan
+  // itemlar YUBORILMAYDI — ular asl buyurtmada pending bo'lib qoladi
+  // (hech narsasi yo'q buyurtma jimgina o'tkazib yuboriladi).
   // O'rtada xato chiqsa to'xtaydi (yuborilganlari yuborilgan bo'lib qoladi,
   // qolganini qayta "Yuborish" bilan davom ettirsa bo'ladi).
   Future<bool> submitAllForSklad(int skladId) async {
     final targets = orders
-        .where((o) => o.skladId == skladId && !_isDone(o))
+        .where((o) =>
+            o.skladId == skladId && !_isDone(o) && _hasSubmittable(o.id))
         .toList()
       ..sort((a, b) {
         final da = DateTime.tryParse(a.created) ?? DateTime(2000);
@@ -723,7 +768,7 @@ class YukProvider extends ChangeNotifier {
         return da.compareTo(db);
       });
     if (targets.isEmpty) {
-      errorMessage = 'Yuboriladigan buyurtma yo\'q';
+      errorMessage = 'Yuboriladigan narx kiritilmagan';
       notifyListeners();
       return false;
     }

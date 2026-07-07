@@ -145,6 +145,10 @@ class YukOrder {
   // Buyurtmani narxlagan yuk keltiruvchining user ID'si.
   // 0 — eski buyurtmalar (backend yozmagan).
   final int pricedBy;
+  // Buyurtma narxlangan (yuborilgan) vaqt. Backend Go time.Time'ni omitempty'siz
+  // yozadi — narxlanmagan buyurtmada "0001-01-01T00:00:00Z" keladi; bunday
+  // (yil <= 1) yoki parse bo'lmaydigan qiymat null deb olinadi.
+  final DateTime? pricedAt;
 
   YukOrder({
     required this.id,
@@ -160,7 +164,19 @@ class YukOrder {
     required this.items,
     this.attachments = const [],
     this.pricedBy = 0,
+    this.pricedAt,
   });
+
+  // Go time.Time qiymatini parse qilish: bo'sh yoki "nol" vaqt
+  // ("0001-01-01T00:00:00Z", yil <= 1) — null.
+  static DateTime? _parseTime(dynamic raw) {
+    if (raw == null) return null;
+    final s = raw.toString();
+    if (s.isEmpty) return null;
+    final dt = DateTime.tryParse(s);
+    if (dt == null || dt.year <= 1) return null;
+    return dt;
+  }
 
   factory YukOrder.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
@@ -197,6 +213,7 @@ class YukOrder {
       items: items,
       attachments: attachments,
       pricedBy: json['priced_by'] ?? 0,
+      pricedAt: _parseTime(json['priced_at']),
     );
   }
 
@@ -215,6 +232,7 @@ class YukOrder {
         'items': items.map((e) => e.toJson()).toList(),
         'attachments': attachments,
         'priced_by': pricedBy,
+        'priced_at': pricedAt?.toIso8601String(),
       };
 }
 

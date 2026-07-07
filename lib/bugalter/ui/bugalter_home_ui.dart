@@ -229,10 +229,15 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                       .where((o) => o.pricedBy == _selectedYukUserId)
                       .toList();
                 }
+                // Buyurtmalar KUNLIK kartalarga jamlanadi (buyurtma IDlarisiz):
+                // hech narsa ko'rsatmaydigan (bo'sh) buyurtmalar tashlanadi,
+                // qolganlari lokal kalendar kuni bo'yicha guruhlanadi.
+                final days =
+                    _groupByDay(orders.where(_orderContributes).toList());
                 return RefreshIndicator(
                   color: _accentColor,
                   onRefresh: () => provider.fetchOrders(),
-                  child: orders.isEmpty
+                  child: days.isEmpty
                       ? ListView(
                           children: const [
                             SizedBox(height: 120),
@@ -246,17 +251,21 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: orders.length + 1,
+                          itemCount: days.length + 1,
                           itemBuilder: (context, index) {
                             // Tepada tab bo'yicha qisqa yig'indi.
                             if (index == 0) {
                               return _TabSummary(orders: orders);
                             }
-                            final order = orders[index - 1];
-                            return _BugalterOrderCard(
-                              key: ValueKey(order.id),
-                              order: order,
+                            final day = days[index - 1];
+                            return _BugalterDayCard(
+                              key: ValueKey(day.day),
+                              day: day.day,
+                              orders: day.orders,
                               showImages: _showImages,
+                              // "Hammasi" tabida sklad almashganda kichik
+                              // sklad nomi yorlig'i ko'rsatiladi.
+                              showSkladLabels: id == null,
                             );
                           },
                         ),
@@ -521,11 +530,47 @@ String _fmtQty(double v) {
   return s;
 }
 
-String _formatDate(String raw) {
-  if (raw.isEmpty) return '';
-  final dt = DateTime.tryParse(raw);
-  if (dt == null) return raw;
-  return DateFormat('dd.MM.yyyy HH:mm').format(dt.toLocal());
+// ─────────────── Kunlik guruhlash yordamchilari ───────────────
+
+// Bir kunlik guruh: lokal kalendar kuni va shu kunga tegishli buyurtmalar.
+class _DayGroup {
+  final DateTime day;
+  final List<YukOrder> orders;
+  _DayGroup(this.day, this.orders);
+}
+
+// Buyurtma qaysi kunga tegishli: narxlangan vaqti (priced_at), bo'lmasa
+// yaratilgan vaqti — LOKAL kalendar kuni sifatida.
+DateTime _orderDay(YukOrder o) {
+  final dt = o.pricedAt ?? DateTime.tryParse(o.created);
+  if (dt == null) return DateTime(2000);
+  final local = dt.toLocal();
+  return DateTime(local.year, local.month, local.day);
+}
+
+// Buyurtmaning ko'rsatiladigan mahsulot qatorlari: rasxod emas va
+// "olinmagan"/bo'sh (taken == 0 && subtotal == 0) qatorlar tashlanadi.
+List<YukOrderItem> _visibleProducts(YukOrder o) => o.items
+    .where((i) => !i.isRasxod && !(i.taken == 0 && i.subtotal == 0))
+    .toList();
+
+// Buyurtma kunlik kartaga biror narsa qo'shadimi: ko'rinadigan mahsulot
+// qatori, rasxod yoki nol bo'lmagan summa bo'lsa — ha. Hammasi bo'sh
+// buyurtma umuman ko'rsatilmaydi.
+bool _orderContributes(YukOrder o) =>
+    _visibleProducts(o).isNotEmpty ||
+    o.items.any((i) => i.isRasxod) ||
+    o.total != 0;
+
+// Buyurtmalarni kunlar bo'yicha guruhlash; kunlar kamayuvchi tartibda
+// (eng yangi kun birinchi). Kun ichida kelgan tartib saqlanadi.
+List<_DayGroup> _groupByDay(List<YukOrder> orders) {
+  final map = <DateTime, List<YukOrder>>{};
+  for (final o in orders) {
+    map.putIfAbsent(_orderDay(o), () => []).add(o);
+  }
+  final keys = map.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [for (final k in keys) _DayGroup(k, map[k]!)];
 }
 
 // Tab tepasidagi yig'indi: shu tabdagi jami mahsulot va jami xarajat.
@@ -607,37 +652,55 @@ bool _isVideoPath(String p) {
 String _attachmentUrl(String url) =>
     url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
 
-// Bitta buyurtma kartasi: sarlavha (order_id, sklad, sana, status),
-// mahsulotlar jadvali, xarajatlar bloki va chek yakuni.
-class _BugalterOrderCard extends StatelessWidget {
-  final YukOrder order;
-  // true bo'lsa buyurtmaga biriktirilgan rasm/videolar ko'rsatiladi
+// Bitta KUN kartasi: sarlavha — faqat sana (dd.MM.yyyy, buyurtma ID va
+// statussiz), shu kunning barcha buyurtmalari mahsulot qatorlari bitta
+// jadvalda (jamlanmaydi, ketma-ket), xarajatlar (rasxod) kun bo'yicha
+// jamlangan blok va kun yakuni (Mahsulot/Xarajat/Jami).
+class _BugalterDayCard extends StatelessWidget {
+  final DateTime day;
+  // Shu kunga tegishli (bo'sh bo'lmagan) buyurtmalar.
+  final List<YukOrder> orders;
+  // true bo'lsa buyurtmalarga biriktirilgan rasm/videolar ko'rsatiladi
   // (AppBar'dagi tugma bilan boshqariladi).
   final bool showImages;
-  const _BugalterOrderCard({
+  // "Hammasi" tabida sklad almashganda kichik sklad nomi yorlig'i chiqadi;
+  // aniq sklad tabida kerak emas.
+  final bool showSkladLabels;
+  const _BugalterDayCard({
     super.key,
-    required this.order,
+    required this.day,
+    required this.orders,
     this.showImages = false,
+    this.showSkladLabels = false,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
   static const Color _green = Color(0xFF2E7D32);
   static const Color _red = Color(0xFFC62828);
-  static const Color _blue = Color(0xFF1565C0);
-
-  bool get _isAccepted => order.status == 'qabul_qilindi';
 
   @override
   Widget build(BuildContext context) {
-    // Mahsulot qatorlari (rasxod chek oxirida alohida).
-    final productItems = order.items.where((i) => !i.isRasxod).toList();
-    final rasxodItems = order.items.where((i) => i.isRasxod).toList();
-
-    final received = order.receivedTotal;
-    final reduced = received > 0 && (received - order.total).abs() > 0.0001;
-    final effectiveMahsulot = reduced ? received : order.total.toDouble();
-    final expenses = order.expensesTotal;
-    final grandTotal = effectiveMahsulot + expenses;
+    // Kun bo'yicha jami: totalSum — narxlangan to'liq summa; effectiveSum —
+    // ombor kam qabul qilgan buyurtmada receivedTotal, aks holda total.
+    double totalSum = 0, effectiveSum = 0, expenses = 0;
+    var hasProducts = false;
+    for (final o in orders) {
+      final received = o.receivedTotal;
+      final orderReduced =
+          received > 0 && (received - o.total).abs() > 0.0001;
+      totalSum += o.total.toDouble();
+      effectiveSum += orderReduced ? received : o.total.toDouble();
+      expenses += o.expensesTotal;
+      if (_visibleProducts(o).isNotEmpty) hasProducts = true;
+    }
+    // Kun darajasida kamaygan bo'lsa — eski summa ustidan chizilib,
+    // yangisi yashil ko'rsatiladi.
+    final reduced = (effectiveSum - totalSum).abs() > 0.0001;
+    // Kunning barcha buyurtmalaridagi rasxod (xarajat) qatorlari — bitta blok.
+    final rasxodItems = [
+      for (final o in orders) ...o.items.where((i) => i.isRasxod),
+    ];
+    final grandTotal = effectiveSum + expenses;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -649,57 +712,25 @@ class _BugalterOrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Sarlavha: faqat kun sanasi (buyurtma ID va status ko'rsatilmaydi).
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  '#${order.orderId}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              _statusChip(),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.store_outlined, size: 16, color: _accent),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  order.skladName.isNotEmpty
-                      ? order.skladName
-                      : (_skladNames[order.skladId] ?? 'Sklad ${order.skladId}'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
+              const Icon(Icons.calendar_today_outlined,
+                  size: 16, color: _accent),
+              const SizedBox(width: 6),
               Text(
-                _formatDate(order.created),
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                DateFormat('dd.MM.yyyy').format(day),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),
-          // Biriktirilgan rasm/videolar (AppBar tugmasi yoqilganda).
-          if (showImages && order.attachments.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: order.attachments
-                  .map((e) => _AttachmentTile(entry: e))
-                  .toList(),
-            ),
-          ],
           const Divider(height: 18),
-          // Jadval sarlavhasi.
+          // Jadval sarlavhasi (mahsulot qatorlari bo'lsa).
+          if (hasProducts)
           const Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Row(
@@ -770,92 +801,9 @@ class _BugalterOrderCard extends StatelessWidget {
               ],
             ),
           ),
-          ...productItems.expand(
-            (item) => [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        _fmtQty(item.taken),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Donasi (birlik narx) = summa / soni.
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        item.taken > 0 && item.subtotal > 0
-                            ? '${_money(item.subtotal / item.taken)} so\'m'
-                            : '-',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Turi (o'lchov birligi: кг, шт...).
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        (item.type ?? '').isNotEmpty ? item.type! : '-',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        '${_money(item.subtotal)} so\'m',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Omborchi qabul paytida olgan rasm/video (tugma yoqilganda).
-              if (showImages && item.acceptMedia.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: item.acceptMedia
-                        .map((e) => _AttachmentTile(entry: e, size: 56))
-                        .toList(),
-                  ),
-                ),
-            ],
-          ),
+          // Kunning barcha buyurtmalari qatorlari (sklad yorlig'i,
+          // biriktirmalar va mahsulotlar — kelgan tartibda, jamlanmasdan).
+          ..._buildDayRows(),
           // Xarajatlar (rasxod) bloki.
           if (rasxodItems.isNotEmpty) ...[
             const Divider(height: 18),
@@ -896,7 +844,8 @@ class _BugalterOrderCard extends StatelessWidget {
             ),
           ],
           const Divider(height: 18),
-          // Chek yakuni: Mahsulot / Xarajat (bo'lsa) / Jami.
+          // Kun yakuni: Mahsulot / Xarajat (bo'lsa) / Jami. Ombor kam qabul
+          // qilgan bo'lsa eski summa chizilib, effektiv summa yashil chiqadi.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -906,7 +855,7 @@ class _BugalterOrderCard extends StatelessWidget {
               ),
               if (!reduced)
                 Text(
-                  '${_money(order.total)} so\'m',
+                  '${_money(effectiveSum)} so\'m',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -918,7 +867,7 @@ class _BugalterOrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${_money(order.total)} so\'m',
+                      '${_money(totalSum)} so\'m',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -930,7 +879,7 @@ class _BugalterOrderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_money(received)} so\'m',
+                      '${_money(effectiveSum)} so\'m',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -987,25 +936,148 @@ class _BugalterOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _statusChip() {
-    final bg = _isAccepted
-        ? _green.withValues(alpha: 0.12)
-        : _blue.withValues(alpha: 0.12);
-    final fg = _isAccepted ? _green : _blue;
-    final label = _isAccepted ? 'Qabul qilindi' : 'Narxlandi';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
+  // Kun kartasining ichki qatorlari: har buyurtma uchun (kelgan tartibda)
+  // — "Hammasi" tabida sklad almashsa kichik sklad yorlig'i, buyurtma
+  // biriktirmalari (rasm tugmasi yoqiq bo'lsa) va mahsulot qatorlari
+  // (har qator ostida omborchi qabul paytidagi media — acceptMedia).
+  List<Widget> _buildDayRows() {
+    final out = <Widget>[];
+    String? lastSklad;
+    for (final order in orders) {
+      final products = _visibleProducts(order);
+      final skladName = order.skladName.isNotEmpty
+          ? order.skladName
+          : (_skladNames[order.skladId] ?? 'Sklad ${order.skladId}');
+      // Sklad yorlig'i faqat "Hammasi" tabida va sklad almashganda.
+      if (showSkladLabels && skladName != lastSklad) {
+        out.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 2),
+            child: Row(
+              children: [
+                const Icon(Icons.store_outlined, size: 14, color: _accent),
+                const SizedBox(width: 4),
+                Text(
+                  skladName,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _accent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        lastSklad = skladName;
+      }
+      // Buyurtmaga biriktirilgan rasm/videolar (AppBar tugmasi yoqilganda).
+      if (showImages && order.attachments.isNotEmpty) {
+        out.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: order.attachments
+                  .map((e) => _AttachmentTile(entry: e))
+                  .toList(),
+            ),
+          ),
+        );
+      }
+      for (final item in products) {
+        out.add(_productRow(item));
+        // Omborchi qabul paytida olgan rasm/video (tugma yoqilganda).
+        if (showImages && item.acceptMedia.isNotEmpty) {
+          out.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: item.acceptMedia
+                    .map((e) => _AttachmentTile(entry: e, size: 56))
+                    .toList(),
+              ),
+            ),
+          );
+        }
+      }
+    }
+    return out;
+  }
+
+  // Bitta mahsulot qatori: Mahsulot / Soni / Donasi / Turi / Summa.
+  Widget _productRow(YukOrderItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              item.name,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 2,
+            child: Text(
+              _fmtQty(item.taken),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Donasi (birlik narx) = summa / soni.
+          Expanded(
+            flex: 3,
+            child: Text(
+              item.taken > 0 && item.subtotal > 0
+                  ? '${_money(item.subtotal / item.taken)} so\'m'
+                  : '-',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Turi (o'lchov birligi: кг, шт...).
+          Expanded(
+            flex: 2,
+            child: Text(
+              (item.type ?? '').isNotEmpty ? item.type! : '-',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '${_money(item.subtotal)} so\'m',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

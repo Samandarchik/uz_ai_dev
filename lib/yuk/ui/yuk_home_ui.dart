@@ -1674,8 +1674,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     );
   }
 
-  // Yuborishdan oldin tasdiq: hech narsa kiritilmagan qatorlar bo'lsa
-  // ogohlantiramiz — ular "olinmagan" deb yopiladi.
+  // Yuborishdan oldin tasdiq: soni va narxi TO'LIQ kiritilmagan qatorlar
+  // bo'lsa ogohlantiramiz — ular YUBORILMAYDI, ro'yxatda (pending) qoladi.
+  // Hammasi to'liq bo'lsa dialogsiz darhol yuboriladi.
   Future<void> _confirmAndSubmit(
     YukProvider provider,
     List<YukOrder> pending,
@@ -1686,7 +1687,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
         final k = _key(o.id, item.productId);
         final taken = _parse(_takenControllers[k]?.text ?? '');
         final subtotal = _parse(_subtotalControllers[k]?.text ?? '');
-        if (taken <= 0 && subtotal <= 0) unfilled++;
+        // To'liq to'ldirilgan = soni ham, summa ham > 0; aks holda qoladi.
+        if (taken <= 0 || subtotal <= 0) unfilled++;
       }
     }
     if (unfilled > 0) {
@@ -1695,8 +1697,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
         builder: (ctx) => AlertDialog(
           title: const Text('Achotni yopish'),
           content: Text(
-            '$unfilled ta mahsulotga hech narsa kiritilmagan — ular '
-            '«olinmagan» deb yopiladi. Yuborilsinmi?',
+            '$unfilled ta mahsulotga soni va narx to\'liq kiritilmagan — '
+            'ular yuborilmaydi, ro\'yxatda qoladi. Davom etasizmi?',
           ),
           actions: [
             TextButton(
