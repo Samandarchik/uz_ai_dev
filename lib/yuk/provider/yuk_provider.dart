@@ -76,6 +76,11 @@ class YukProvider extends ChangeNotifier {
   // Hozir qaytarib olinayotgan buyurtma id (spinner uchun).
   int? revertingOrderId;
 
+  // Jamlangan kunlik ro'yxatning bitta "Yuborish"/"Qaytarib olish" tugmasi
+  // uchun: hozir qaysi skladning buyurtmalari yuborilyapti/qaytarilyapti.
+  int? submittingSkladId;
+  int? revertingSkladId;
+
   // Buyurtma shu sessiyada qachon yuborilgani — "qaytarib olish" oynasi uchun.
   final Map<int, DateTime> _submittedAt = {};
 
@@ -88,6 +93,18 @@ class YukProvider extends ChangeNotifier {
     if (t == null) return Duration.zero;
     final left = undoWindow - DateTime.now().difference(t);
     return left.isNegative ? Duration.zero : left;
+  }
+
+  // Sklad bo'yicha eng katta qolgan undo vaqti — jamlangan kartaning bitta
+  // "Qaytarib olish" tugmasi sanog'i uchun.
+  Duration undoRemainingForSklad(int skladId) {
+    var max = Duration.zero;
+    for (final o in orders) {
+      if (o.skladId != skladId || !_isDone(o)) continue;
+      final left = undoRemaining(o.id);
+      if (left > max) max = left;
+    }
+    return max;
   }
 
   // Buyurtma "tugagan"mi — narxlangan yoki omborchi qabul qilgan.
@@ -477,6 +494,11 @@ class YukProvider extends ChangeNotifier {
     return added != null && added.isNotEmpty;
   }
 
+  // Skladning yuborilmagan buyurtmalaridan birortasida narx kiritilgan yoki
+  // qo'shimcha yozuv bormi (jamlangan "Yuborish" tugmasi uchun).
+  bool hasAnyPriceForSklad(int skladId) => orders.any(
+      (o) => o.skladId == skladId && !_isDone(o) && hasAnyPrice(o.id));
+
   // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
 
   // Entry serverdagi URL'mi (lokal fayl emas).
@@ -532,6 +554,68 @@ class YukProvider extends ChangeNotifier {
     _persistAddedItems();
   }
 
+  // Bitta buyurtmani backendga yuborish (narxlash) — yadro. Hech narsa
+  // kiritilmagan buyurtma ham yuborilishi mumkin: itemlari taken=0/subtotal=0
+  // bilan ketadi va backendda "olinmagan" sifatida yopiladi (kunlik achot
+  // yopishda kerak). Xato bo'lsa Exception otadi.
+  Future<void> _submitOne(int orderId) async {
+    final map = _prices[orderId] ?? const <int, ItemPrice>{};
+    final added = _addedItems[orderId] ?? const <YukAddedItem>[];
+
+    // Kutib turgan qoralama saqlash bo'lsa bekor qilamiz — endi yakuniy narx
+    // yuborilmoqda.
+    _draftTimers.remove(orderId)?.cancel();
+
+    final items = map.entries
+        .map((e) => <String, dynamic>{
+              'product_id': e.key,
+              'taken': e.value.taken,
+              'subtotal': e.value.subtotal,
+            })
+        .toList();
+    // Mahsulot jami (katalog + proche); rasxod totalga kirmaydi — backend
+    // uni expenses_total sifatida alohida hisoblaydi.
+    final total = orderTotal(orderId);
+
+    // Avval biriktirilgan lokal fayllarni (rasm/video) serverga yuklaymiz;
+    // serverda allaqachon bor URL'lar (qaytarib olingandan qolgan) o'z
+    // holicha ketadi. Birortasi yuklanmasa — butun yuborish to'xtaydi.
+    final attachmentUrls = <String>[];
+    for (final entry in _attachments[orderId] ?? const <String>[]) {
+      if (isRemoteAttachment(entry)) {
+        attachmentUrls.add(entry);
+      } else {
+        attachmentUrls.add(await _service.uploadFile(entry));
+      }
+    }
+
+    final updated = await _service.priceOrder(
+      orderId,
+      items,
+      total,
+      attachments: attachmentUrls,
+      addedItems: added.map((e) => e.toJson()).toList(),
+    );
+
+    // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
+    // vaqtini belgila va ro'yxatni yangila.
+    _prices.remove(orderId);
+    _addedItems.remove(orderId);
+    _attachments.remove(orderId);
+    _persistDrafts();
+    _persistAddedItems();
+    _submittedAt[orderId] = DateTime.now();
+    // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
+    // asosiy sahifada undo oynasi davomida "Yuborilgan" ko'rinishida qoladi,
+    // tarixga esa darhol tushadi.
+    if (updated != null) {
+      final i = orders.indexWhere((o) => o.id == updated.id);
+      if (i >= 0) orders[i] = updated;
+      historyOrders.removeWhere((o) => o.id == updated.id);
+      historyOrders.insert(0, updated);
+    }
+  }
+
   // Narxlangan buyurtmani backendga yuborish (omborga qaytarish).
   Future<bool> submitPrices(int orderId) async {
     final map = _prices[orderId] ?? const <int, ItemPrice>{};
@@ -542,63 +626,12 @@ class YukProvider extends ChangeNotifier {
       return false;
     }
 
-    // Kutib turgan qoralama saqlash bo'lsa bekor qilamiz — endi yakuniy narx
-    // yuborilmoqda.
-    _draftTimers.remove(orderId)?.cancel();
-
     submittingOrderId = orderId;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final items = map.entries
-          .map((e) => <String, dynamic>{
-                'product_id': e.key,
-                'taken': e.value.taken,
-                'subtotal': e.value.subtotal,
-              })
-          .toList();
-      // Mahsulot jami (katalog + proche); rasxod totalga kirmaydi — backend
-      // uni expenses_total sifatida alohida hisoblaydi.
-      final total = orderTotal(orderId);
-
-      // Avval biriktirilgan lokal fayllarni (rasm/video) serverga yuklaymiz;
-      // serverda allaqachon bor URL'lar (qaytarib olingandan qolgan) o'z
-      // holicha ketadi. Birortasi yuklanmasa — butun yuborish to'xtaydi.
-      final attachmentUrls = <String>[];
-      for (final entry in _attachments[orderId] ?? const <String>[]) {
-        if (isRemoteAttachment(entry)) {
-          attachmentUrls.add(entry);
-        } else {
-          attachmentUrls.add(await _service.uploadFile(entry));
-        }
-      }
-
-      final updated = await _service.priceOrder(
-        orderId,
-        items,
-        total,
-        attachments: attachmentUrls,
-        addedItems: added.map((e) => e.toJson()).toList(),
-      );
-
-      // Yuborilgach lokal narxni tozala (lokal xotiradan ham), "qaytarib olish"
-      // vaqtini belgila va ro'yxatni yangila.
-      _prices.remove(orderId);
-      _addedItems.remove(orderId);
-      _attachments.remove(orderId);
-      _persistDrafts();
-      _persistAddedItems();
-      _submittedAt[orderId] = DateTime.now();
-      // Serverdan qaytgan (narxlangan) buyurtmani lokal ro'yxatlarga qo'llaymiz:
-      // asosiy sahifada undo oynasi davomida "Yuborilgan" ko'rinishida qoladi,
-      // tarixga esa darhol tushadi.
-      if (updated != null) {
-        final i = orders.indexWhere((o) => o.id == updated.id);
-        if (i >= 0) orders[i] = updated;
-        historyOrders.removeWhere((o) => o.id == updated.id);
-        historyOrders.insert(0, updated);
-      }
+      await _submitOne(orderId);
       submittingOrderId = null;
       // Undo oynasi tugagach ro'yxatni qayta filtrlaymiz — karta asosiy
       // sahifadan tarixga o'tishi uchun.
@@ -613,6 +646,91 @@ class YukProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // Skladning HAMMA yuborilmagan buyurtmalarini birdan yuborish — kunlik
+  // achotni yopish. Buyurtmalar sana tartibida ketadi; narx kiritilmagan
+  // itemlar taken=0/subtotal=0 bilan "olinmagan" bo'lib yopiladi.
+  // O'rtada xato chiqsa to'xtaydi (yuborilganlari yuborilgan bo'lib qoladi,
+  // qolganini qayta "Yuborish" bilan davom ettirsa bo'ladi).
+  Future<bool> submitAllForSklad(int skladId) async {
+    final targets = orders
+        .where((o) => o.skladId == skladId && !_isDone(o))
+        .toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a.created) ?? DateTime(2000);
+        final db = DateTime.tryParse(b.created) ?? DateTime(2000);
+        return da.compareTo(db);
+      });
+    if (targets.isEmpty) {
+      errorMessage = 'Yuboriladigan buyurtma yo\'q';
+      notifyListeners();
+      return false;
+    }
+
+    submittingSkladId = skladId;
+    errorMessage = null;
+    notifyListeners();
+
+    var okAll = true;
+    for (final o in targets) {
+      try {
+        await _submitOne(o.id);
+        notifyListeners();
+      } catch (e) {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        okAll = false;
+        break;
+      }
+    }
+
+    submittingSkladId = null;
+    Timer(undoWindow + const Duration(seconds: 1), () {
+      if (!_disposed) notifyListeners();
+    });
+    await fetchOrders();
+    return okAll;
+  }
+
+  // Endigina yopilgan achotni butunlay qaytarib olish: skladning undo oynasi
+  // hali ochiq bo'lgan hamma yuborilgan buyurtmalari qaytariladi.
+  Future<bool> revertAllForSklad(int skladId) async {
+    final targets = orders
+        .where((o) =>
+            o.skladId == skladId &&
+            _isDone(o) &&
+            undoRemaining(o.id) > Duration.zero)
+        .toList();
+    if (targets.isEmpty) return false;
+
+    revertingSkladId = skladId;
+    errorMessage = null;
+    notifyListeners();
+
+    var okAll = true;
+    for (final o in targets) {
+      try {
+        final updated = await _service.revertOrder(o.id);
+        _submittedAt.remove(o.id);
+        historyOrders.removeWhere((x) => x.id == o.id);
+        if (updated != null) {
+          final i = orders.indexWhere((x) => x.id == updated.id);
+          if (i >= 0) {
+            orders[i] = updated;
+          } else {
+            orders.insert(0, updated);
+          }
+          seedAttachments(updated.id, updated.attachments);
+        }
+      } catch (e) {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        okAll = false;
+      }
+    }
+
+    revertingSkladId = null;
+    await fetchOrders();
+    return okAll;
   }
 
   // Yuborilgan buyurtmani qaytarib olish (qayta tahrirlanadigan holatga).

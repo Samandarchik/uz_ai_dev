@@ -264,16 +264,19 @@ class _YukHomeUiState extends State<YukHomeUi> {
                                   ),
                                 ],
                               )
-                            : ListView.builder(
+                            : ListView(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8),
-                                itemCount: orders.length,
-                                itemBuilder: (context, index) => YukOrderCard(
-                                  // Ro'yxatdan karta chiqib ketganda (yuborilib
-                                  // tarixga o'tganda) state adashmasligi uchun.
-                                  key: ValueKey(orders[index].id),
-                                  order: orders[index],
-                                ),
+                                children: [
+                                  // Skladning HAMMA yuborilmagan buyurtmalari
+                                  // bitta jamlangan kunlik ro'yxat (buyurtma
+                                  // IDlarisiz), pastda bitta "Yuborish".
+                                  YukSkladCard(
+                                    key: ValueKey('sklad_$id'),
+                                    skladId: id,
+                                    orders: orders,
+                                  ),
+                                ],
                               ),
                       );
                     }).toList(),
@@ -588,6 +591,1376 @@ String _formatMoney(num v) {
     buf.write(s[i]);
   }
   return buf.toString();
+}
+
+// ═══════════ Sklad bo'yicha JAMLANGAN kunlik ro'yxat (achot) ═══════════
+// Asosiy sahifada buyurtma IDlari ko'rsatilmaydi: skladning hamma
+// yuborilmagan buyurtmalari bitta ro'yxat bo'lib chiqadi. Bir sklad 2 marta
+// buyurtma bersa itemlari ALOHIDA qator bo'lib qo'shiladi (jamlanmaydi) —
+// orasida kichik vaqt chizig'i turadi. Yuk kun davomida miqdor/summa yozib
+// boradi, kechqurun BITTA "Yuborish" bilan hammasi yopiladi (achot yopiladi).
+// Ichkarida har buyurtma backendda alohida saqlanadi — ombor qabuli, kamomad
+// va ledger hisoblari o'zgarmaydi.
+class YukSkladCard extends StatefulWidget {
+  final int skladId;
+  final List<YukOrder> orders;
+  const YukSkladCard({
+    super.key,
+    required this.skladId,
+    required this.orders,
+  });
+
+  @override
+  State<YukSkladCard> createState() => _YukSkladCardState();
+}
+
+class _YukSkladCardState extends State<YukSkladCard> {
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  // Jadval ustunlari uchun nisbatlar — sarlavha va qatorlar bir xil ishlatadi.
+  static const int _nameFlex = 5;
+  static const int _qtyFlex = 3;
+  static const int _sumFlex = 3;
+
+  // Controllerlar buyurtma+mahsulot juftligi bo'yicha ('<orderId>_<productId>')
+  // — bir xil mahsulot ikki buyurtmada kelsa qatorlar aralashmaydi.
+  final Map<String, TextEditingController> _takenControllers = {};
+  final Map<String, TextEditingController> _subtotalControllers = {};
+  final Map<String, FocusNode> _takenFocusNodes = {};
+
+  // Boshlang'ich qiymatlari tayyorlangan buyurtmalar (socket orqali yangi
+  // buyurtma kelsa didUpdateWidget'da faqat yangilari init bo'ladi).
+  final Set<int> _initedOrders = {};
+
+  final ImagePicker _picker = ImagePicker();
+  Timer? _undoTicker;
+
+  String _key(int orderId, int productId) => '${orderId}_$productId';
+
+  static bool _isDoneOrder(YukOrder o) =>
+      o.status == 'narxlandi' || o.status == 'qabul_qilindi';
+
+  // Buyurtmalar sana bo'yicha o'sish tartibida (birinchi kelgani tepada).
+  List<YukOrder> get _sorted {
+    final list = List<YukOrder>.of(widget.orders);
+    list.sort((a, b) {
+      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
+      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
+      return da.compareTo(db);
+    });
+    return list;
+  }
+
+  // Yangi qo'shimcha yozuv (proche/rasxod) va rasm/video biriktiriladigan
+  // buyurtma — eng birinchi yuborilmagan buyurtma (kun davomida barqaror).
+  YukOrder? get _anchor {
+    for (final o in _sorted) {
+      if (!_isDoneOrder(o)) return o;
+    }
+    return null;
+  }
+
+  String _fmt(double v) {
+    if (v == 0) return '';
+    return _formatMoney(v);
+  }
+
+  String _fmtQty(double v) {
+    if (v == 0) return '';
+    var s = v.toStringAsFixed(3);
+    if (s.contains('.')) {
+      s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    return s;
+  }
+
+  bool _isKg(String? type) {
+    if (type == null) return false;
+    final t = type.toLowerCase();
+    return t.contains('kg') || t.contains('кг');
+  }
+
+  double _parse(String raw) {
+    final cleaned = raw.trim().replaceAll(' ', '').replaceAll(',', '.');
+    if (cleaned.isEmpty) return 0;
+    final v = double.tryParse(cleaned);
+    if (v == null || v < 0) return 0;
+    return v;
+  }
+
+  String _formatCount(num v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
+  }
+
+  String _formatTime(String raw) {
+    if (raw.isEmpty) return '';
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
+    return DateFormat('dd.MM HH:mm').format(dt.toLocal());
+  }
+
+  static bool _isVideoPath(String p) {
+    final ext = p.split('.').last.toLowerCase();
+    return const {'mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', '3gp'}
+        .contains(ext);
+  }
+
+  static String _fullUrl(String url) =>
+      url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
+
+  @override
+  void initState() {
+    super.initState();
+    for (final o in widget.orders) {
+      _initOrder(o);
+    }
+    _maybeStartUndoTicker();
+  }
+
+  // Bitta buyurtma itemlari uchun controllerlarni yaratish va boshlang'ich
+  // qiymatlarni tiklash (YukOrderCard.initState'dagi mantiq bilan bir xil).
+  void _initOrder(YukOrder order) {
+    if (!_initedOrders.add(order.id)) return;
+    final provider = context.read<YukProvider>();
+    final done = _isDoneOrder(order);
+    for (final item in order.items) {
+      final k = _key(order.id, item.productId);
+      // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
+      // qiymat. Omborchi qabul qilgan itemda lokal qoralama bo'sh bo'lsa,
+      // omborchi kiritgan kelgan soni bilan to'ldiriladi (maydon qulf).
+      final existing = provider.getItemPrice(order.id, item.productId);
+      final draftTaken = existing?.taken;
+      final taken0 = (draftTaken != null && draftTaken > 0)
+          ? draftTaken
+          : (item.accepted && item.received > 0
+              ? item.received
+              : item.taken);
+      final subtotal0 = existing?.subtotal ?? item.subtotal;
+      _takenControllers[k] = TextEditingController(text: _fmtQty(taken0));
+      _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
+      _takenFocusNodes[k] = FocusNode();
+      // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
+      // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz.
+      if (!done &&
+          existing == null &&
+          item.itemType.isEmpty &&
+          (taken0 > 0 || subtotal0 > 0)) {
+        provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
+      }
+    }
+    // Qaytarib olingan buyurtmaning serverda qolgan biriktirma va
+    // proche/rasxod itemlarini lokal ro'yxatlarga tiklaymiz.
+    if (!done && order.attachments.isNotEmpty) {
+      provider.seedAttachments(order.id, order.attachments);
+    }
+    if (!done) {
+      provider.seedAddedItems(order.id, order.items);
+    }
+  }
+
+  // Ombor biror itemni qabul qilganda (socket orqali keladi) uning kelgan
+  // soni "Nechta olgani" maydoniga AVTO to'ldiriladi va maydon QULFLANADI.
+  @override
+  void didUpdateWidget(covariant YukSkladCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldAccepted = <String, bool>{
+      for (final o in oldWidget.orders)
+        for (final i in o.items) _key(o.id, i.productId): i.accepted,
+    };
+    for (final o in widget.orders) {
+      // Kun davomida yangi kelgan buyurtma — controllerlarini hozir yaratamiz.
+      _initOrder(o);
+      for (final item in o.items) {
+        final k = _key(o.id, item.productId);
+        if (item.accepted && !(oldAccepted[k] ?? false)) {
+          final v = item.received > 0 ? item.received : item.taken;
+          _takenCtrlFor(o, item).text = _fmtQty(v);
+          _onItemChanged(o, item);
+        }
+      }
+    }
+    _maybeStartUndoTicker();
+  }
+
+  // Achot endigina yopilgan bo'lsa "Qaytarib olish" sanog'ini har soniyada
+  // yangilab turamiz; muddat tugashi bilan timer to'xtaydi.
+  void _maybeStartUndoTicker() {
+    final provider = context.read<YukProvider>();
+    if (provider.undoRemainingForSklad(widget.skladId) == Duration.zero) {
+      return;
+    }
+    _undoTicker?.cancel();
+    _undoTicker = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {});
+      if (context.read<YukProvider>().undoRemainingForSklad(widget.skladId) ==
+          Duration.zero) {
+        t.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _undoTicker?.cancel();
+    for (final c in _takenControllers.values) {
+      c.dispose();
+    }
+    for (final c in _subtotalControllers.values) {
+      c.dispose();
+    }
+    for (final f in _takenFocusNodes.values) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  // Controllerlarni kerak bo'lganda yaratish (masalan buyurtma yuborilgach
+  // serverdan yangi proche/rasxod itemlar kelsa) — null crash bo'lmasin.
+  TextEditingController _takenCtrlFor(YukOrder order, YukOrderItem item) =>
+      _takenControllers.putIfAbsent(
+        _key(order.id, item.productId),
+        () => TextEditingController(text: _fmtQty(item.taken)),
+      );
+
+  TextEditingController _subtotalCtrlFor(YukOrder order, YukOrderItem item) =>
+      _subtotalControllers.putIfAbsent(
+        _key(order.id, item.productId),
+        () => TextEditingController(text: _fmt(item.subtotal)),
+      );
+
+  FocusNode _takenFocusFor(YukOrder order, YukOrderItem item) =>
+      _takenFocusNodes.putIfAbsent(
+          _key(order.id, item.productId), () => FocusNode());
+
+  void _onItemChanged(YukOrder order, YukOrderItem item) {
+    final provider = context.read<YukProvider>();
+    final k = _key(order.id, item.productId);
+    final taken = _parse(_takenControllers[k]?.text ?? '');
+    final subtotal = _parse(_subtotalControllers[k]?.text ?? '');
+    provider.setItemPrice(order.id, item.productId, taken, subtotal);
+  }
+
+  // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
+
+  Future<void> _pickFromCamera(int orderId, {required bool video}) async {
+    try {
+      final XFile? file = video
+          ? await _picker.pickVideo(source: ImageSource.camera)
+          : await _picker.pickImage(source: ImageSource.camera);
+      if (file == null || !mounted) return;
+      context.read<YukProvider>().addAttachments(orderId, [file.path]);
+    } catch (_) {
+      // Ruxsat berilmagan/bekor qilingan — jim.
+    }
+  }
+
+  Future<void> _pickFromGallery(int orderId) async {
+    try {
+      final List<XFile> files = await _picker.pickMultipleMedia();
+      if (files.isEmpty || !mounted) return;
+      context
+          .read<YukProvider>()
+          .addAttachments(orderId, files.map((f) => f.path).toList());
+    } catch (_) {
+      // Ruxsat berilmagan/bekor qilingan — jim.
+    }
+  }
+
+  void _showAddAttachmentSheet(int orderId) {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera, color: _accentColor),
+              title: const Text('Kamera — rasm'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromCamera(orderId, video: false);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam, color: _accentColor),
+              title: const Text('Kamera — video'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromCamera(orderId, video: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: _accentColor),
+              title: const Text('Galereya (rasm/video)'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromGallery(orderId);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openAttachment(String entry) {
+    final isRemote = YukProvider.isRemoteAttachment(entry);
+    if (_isVideoPath(entry)) {
+      if (isRemote) {
+        launchUrl(Uri.parse(_fullUrl(entry)),
+            mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Center(
+                child: isRemote
+                    ? Image.network(_fullUrl(entry))
+                    : Image.file(File(entry)),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _attachmentTile(String entry, {VoidCallback? onRemove}) {
+    final isRemote = YukProvider.isRemoteAttachment(entry);
+    final isVideo = _isVideoPath(entry);
+
+    Widget content;
+    if (isVideo) {
+      content = Container(
+        color: Colors.black87,
+        child: const Center(
+          child:
+              Icon(Icons.play_circle_outline, color: Colors.white, size: 28),
+        ),
+      );
+    } else if (isRemote) {
+      content = Image.network(
+        _fullUrl(entry),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFF5F1EA),
+          child: const Icon(Icons.broken_image, color: Colors.black26),
+        ),
+      );
+    } else {
+      content = Image.file(File(entry), fit: BoxFit.cover);
+    }
+
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            onTap: () => _openAttachment(entry),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: content,
+            ),
+          ),
+          if (onRemove != null)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Yuborishdan oldin: hamma ochiq buyurtmalarning biriktirmalari + qo'shish
+  // tugmasi (yangi rasm/video anchor buyurtmaga biriktiriladi).
+  Widget _buildAttachmentsEditor(
+    YukProvider provider,
+    List<YukOrder> pending,
+    YukOrder? anchor,
+  ) {
+    final tiles = <Widget>[];
+    for (final o in pending) {
+      for (final e in provider.attachmentsFor(o.id)) {
+        tiles.add(_attachmentTile(
+          e,
+          onRemove: () => provider.removeAttachment(o.id, e),
+        ));
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ...tiles,
+          if (anchor != null)
+            GestureDetector(
+              onTap: () => _showAddAttachmentSheet(anchor.id),
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _accentColor),
+                  color: _accentColor.withValues(alpha: 0.06),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_outlined,
+                        color: _accentColor, size: 22),
+                    SizedBox(height: 2),
+                    Text(
+                      'Rasm/video',
+                      style: TextStyle(fontSize: 9, color: _accentColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Yopilgan achotda: biriktirmalarni faqat ko'rish.
+  Widget _buildAttachmentsViewer(List<YukOrder> orders) {
+    final entries = <String>[
+      for (final o in orders) ...o.attachments,
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: entries.map(_attachmentTile).toList(),
+      ),
+    );
+  }
+
+  // ─────────── Qo'shimcha yozuv (proche mahsulot / rasxod) qo'shish ───────────
+
+  void _showAddEntrySheet(int orderId, {required bool rasxod}) {
+    FocusScope.of(context).unfocus();
+    final nameController = TextEditingController();
+    final qtyController = TextEditingController(text: '1');
+    final sumController = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              rasxod ? 'Xarajat qo\'shish' : 'Mahsulot qo\'shish',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              rasxod
+                  ? 'Masalan: yetkazib berish xizmati. Ombor qabul qilmaydi, '
+                      'chek oxirida alohida ko\'rsatiladi.'
+                  : 'Buyurtmada yo\'q qo\'shimcha mahsulot (masalan gaz plitasi).',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: nameController,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Nomi',
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _accentColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (!rasxod) ...[
+              TextField(
+                controller: qtyController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [DecimalInputFormatter()],
+                decoration: InputDecoration(
+                  labelText: 'Soni',
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _accentColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: sumController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [ThousandsSeparatorInputFormatter()],
+              decoration: InputDecoration(
+                labelText: 'Jami summa',
+                suffixText: 'so\'m',
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _accentColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final subtotal = _parse(sumController.text);
+                  final taken = rasxod ? 0.0 : _parse(qtyController.text);
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      const SnackBar(content: Text('Nomini kiriting')),
+                    );
+                    return;
+                  }
+                  if (subtotal <= 0) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      const SnackBar(content: Text('Summani kiriting')),
+                    );
+                    return;
+                  }
+                  context.read<YukProvider>().addAddedItem(
+                        orderId,
+                        YukAddedItem(
+                          itemType: rasxod ? 'rasxod' : 'proche',
+                          name: name,
+                          taken: rasxod ? 0 : (taken > 0 ? taken : 1),
+                          subtotal: subtotal,
+                        ),
+                      );
+                  Navigator.pop(sheetContext);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Qo\'shish'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _addedValueBox(String text) {
+    return Container(
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1EA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, color: Colors.black87),
+      ),
+    );
+  }
+
+  Widget _addedProcheRow(
+    YukProvider provider,
+    int orderId,
+    int index,
+    YukAddedItem item,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: _nameFlex,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Qo\'shimcha',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => provider.removeAddedItem(orderId, index),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child:
+                        Icon(Icons.close, size: 16, color: Color(0xFFC62828)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _qtyFlex,
+            child: _addedValueBox(_fmtQty(item.taken)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _sumFlex,
+            child: _addedValueBox(_formatMoney(item.subtotal)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // "Xarajatlar" bloki: HAMMA buyurtmalarning rasxod yozuvlari birga.
+  Widget _buildRasxodBlock(YukProvider provider, List<YukOrder> orders) {
+    final rows = <Widget>[];
+    for (final order in orders) {
+      if (_isDoneOrder(order)) {
+        for (final item in order.items.where((i) => i.isRasxod)) {
+          rows.add(_rasxodRow(item.name, item.subtotal));
+        }
+      } else {
+        final added = provider.addedItemsFor(order.id);
+        for (var i = 0; i < added.length; i++) {
+          if (!added[i].isRasxod) continue;
+          final index = i;
+          rows.add(_rasxodRow(
+            added[i].name,
+            added[i].subtotal,
+            onRemove: () => provider.removeAddedItem(order.id, index),
+          ));
+        }
+      }
+    }
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 18),
+        const Text(
+          'Xarajatlar',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 4),
+        ...rows,
+      ],
+    );
+  }
+
+  Widget _rasxodRow(String name, double subtotal, {VoidCallback? onRemove}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
+            ),
+          ),
+          Text(
+            '${_formatMoney(subtotal)} so\'m',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          if (onRemove != null)
+            GestureDetector(
+              onTap: onRemove,
+              child: const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.close, size: 16, color: Color(0xFFC62828)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Inline kichik narx maydoni (jadval ustuni ichida).
+  Widget _inlineField({
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+    FocusNode? focusNode,
+    String? hint,
+    bool decimal = false,
+    bool enabled = true,
+  }) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      enabled: enabled,
+      keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+      inputFormatters: [
+        decimal
+            ? DecimalInputFormatter()
+            : ThousandsSeparatorInputFormatter(),
+      ],
+      onChanged: onChanged,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 13,
+        color: enabled ? Colors.black87 : Colors.black54,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+        isDense: true,
+        filled: !enabled,
+        fillColor: const Color(0xFFF5F1EA),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _accentColor),
+        ),
+      ),
+    );
+  }
+
+  // Ikki buyurtma orasidagi yupqa vaqt chizig'i (ID ko'rsatilmaydi —
+  // faqat qachon va kim yuborgani).
+  Widget _batchLabel(YukOrder order) {
+    final label = [
+      _formatTime(order.created),
+      if (order.username.isNotEmpty) order.username,
+    ].join(' • ');
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 2),
+      child: Row(
+        children: [
+          const Expanded(child: Divider()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+          ),
+          const Expanded(child: Divider()),
+        ],
+      ),
+    );
+  }
+
+  // Bitta katalog/proche item qatori (YukOrderCard'dagi bilan bir xil ko'rinish,
+  // faqat controllerlar buyurtma+mahsulot bo'yicha).
+  Widget _itemRow(YukProvider provider, YukOrder order, YukOrderItem item) {
+    final done = _isDoneOrder(order);
+    final priced = provider.getItemPrice(order.id, item.productId);
+    final takenCtrl = _takenControllers[_key(order.id, item.productId)];
+    final takenVal = (!done && takenCtrl != null)
+        ? _parse(takenCtrl.text)
+        : (priced?.taken ?? item.taken);
+    final subtotalVal = priced?.subtotal ?? item.subtotal;
+    final unitPrice =
+        (takenVal > 0 && subtotalVal > 0) ? subtotalVal / takenVal : null;
+    final unitLabel = unitPrice != null
+        ? '${_fmtQty(takenVal)} * ${_formatMoney(unitPrice)}'
+        : '';
+    final diff = takenVal - item.count;
+    final showDiff =
+        !item.isProche && takenVal > 0 && diff.abs() > 0.0001;
+    final diffText =
+        diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
+    final diffColor =
+        diff > 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: _nameFlex,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        item.isProche
+                            ? 'Qo\'shimcha'
+                            : '${_formatCount(item.count)}'
+                                '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      if (showDiff) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          diffText,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: diffColor,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (unitPrice != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      unitLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _qtyFlex,
+            child: _inlineField(
+              controller: _takenCtrlFor(order, item),
+              focusNode: _takenFocusFor(order, item),
+              hint: '0',
+              decimal: _isKg(item.type),
+              // Ombor qabul qilgan itemning soni QULFLANADI.
+              enabled: !done && !item.accepted,
+              onChanged: (_) => _onItemChanged(order, item),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: _sumFlex,
+            child: _inlineField(
+              controller: _subtotalCtrlFor(order, item),
+              hint: '0',
+              enabled: !done,
+              onChanged: (_) => _onItemChanged(order, item),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Yuborishdan oldin tasdiq: hech narsa kiritilmagan qatorlar bo'lsa
+  // ogohlantiramiz — ular "olinmagan" deb yopiladi.
+  Future<void> _confirmAndSubmit(
+    YukProvider provider,
+    List<YukOrder> pending,
+  ) async {
+    var unfilled = 0;
+    for (final o in pending) {
+      for (final item in o.items.where((i) => i.itemType.isEmpty)) {
+        final k = _key(o.id, item.productId);
+        final taken = _parse(_takenControllers[k]?.text ?? '');
+        final subtotal = _parse(_subtotalControllers[k]?.text ?? '');
+        if (taken <= 0 && subtotal <= 0) unfilled++;
+      }
+    }
+    if (unfilled > 0) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Achotni yopish'),
+          content: Text(
+            '$unfilled ta mahsulotga hech narsa kiritilmagan — ular '
+            '«olinmagan» deb yopiladi. Yuborilsinmi?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Bekor'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Yuborish'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await provider.submitAllForSklad(widget.skladId);
+    if (ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Yuborildi — achot yopildi')),
+      );
+    } else if (provider.errorMessage != null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    _maybeStartUndoTicker();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<YukProvider>(
+      builder: (context, provider, child) {
+        final orders = _sorted;
+        final pending =
+            orders.where((o) => !_isDoneOrder(o)).toList();
+        final allDone = orders.isNotEmpty && pending.isEmpty;
+        final anchor = _anchor;
+        final submitting = provider.submittingSkladId == widget.skladId;
+        final reverting = provider.revertingSkladId == widget.skladId;
+        final hasAnyPrice = provider.hasAnyPriceForSklad(widget.skladId);
+        final undoLeft = allDone
+            ? provider.undoRemainingForSklad(widget.skladId).inSeconds
+            : 0;
+
+        // Jami summalar: yuborilganlari backenddan, ochiqlari lokal hisobdan.
+        var mahsulot = 0.0;
+        var xarajat = 0.0;
+        for (final o in orders) {
+          if (_isDoneOrder(o)) {
+            mahsulot += o.total.toDouble();
+            xarajat += o.expensesTotal;
+          } else {
+            mahsulot += provider.orderTotal(o.id);
+            xarajat += provider.addedExpensesTotal(o.id);
+          }
+        }
+        final grandTotal = mahsulot + xarajat;
+
+        // Bitta buyurtma bo'lsa vaqt chizig'i shart emas; ikki va undan ko'p
+        // bo'lsa har guruh alohida ko'rinadi (itemlar JAMLANMAYDI).
+        final showBatchLabels = orders.length > 1;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: allDone
+                ? Border.all(color: const Color(0xFF4CAF50), width: 1)
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Jadval sarlavhasi (ustun nomlari).
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      flex: _nameFlex,
+                      child: Text(
+                        'Mahsulot',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      flex: _qtyFlex,
+                      child: Text(
+                        'Nechta olgani',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      flex: _sumFlex,
+                      child: Text(
+                        'Jami summa',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Har buyurtma itemlari alohida qator bo'lib ketma-ket chiqadi.
+              for (final order in orders) ...[
+                if (showBatchLabels) _batchLabel(order),
+                ...order.items
+                    .where((i) => _isDoneOrder(order)
+                        ? !i.isRasxod
+                        : i.itemType.isEmpty)
+                    .map((item) => _itemRow(provider, order, item)),
+                if (!_isDoneOrder(order))
+                  ...provider
+                      .addedItemsFor(order.id)
+                      .asMap()
+                      .entries
+                      .where((e) => e.value.isProche)
+                      .map((e) => _addedProcheRow(
+                          provider, order.id, e.key, e.value)),
+              ],
+              // Qo'shimcha mahsulot / xarajat qo'shish tugmalari.
+              if (anchor != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _showAddEntrySheet(anchor.id, rasxod: false),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text(
+                            'Mahsulot qo\'shish',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _accentColor,
+                            side: const BorderSide(color: _accentColor),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _showAddEntrySheet(anchor.id, rasxod: true),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text(
+                            'Xarajat qo\'shish',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF8D6E63),
+                            side: const BorderSide(color: Color(0xFF8D6E63)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // Xarajatlar (rasxod) bloki — Jami'dan oldin.
+              _buildRasxodBlock(provider, orders),
+              const Divider(height: 18),
+              // Achot yakuni: Mahsulot / Xarajat (bo'lsa) / Jami.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Mahsulot:',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                  Text(
+                    '${_formatMoney(mahsulot)} so\'m',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              if (xarajat > 0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Xarajat:',
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    Text(
+                      '${_formatMoney(xarajat)} so\'m',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Jami:',
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  Text(
+                    '${_formatMoney(grandTotal)} so\'m',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Yuborish tugmasi tepasida rasm/video biriktirish joyi.
+              if (!allDone)
+                _buildAttachmentsEditor(provider, pending, anchor)
+              else
+                _buildAttachmentsViewer(orders),
+              // Achot yopilgan bo'lsa "Yuborilgan" belgisi va (30 soniya
+              // ichida) "Qaytarib olish"; aks holda bitta "Yuborish".
+              if (allDone)
+                Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color:
+                            const Color(0xFF4CAF50).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 18, color: Color(0xFF2E7D32)),
+                          SizedBox(width: 6),
+                          Text(
+                            'Yuborilgan — achot yopildi',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (undoLeft > 0) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: reverting
+                              ? null
+                              : () async {
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final ok = await provider
+                                      .revertAllForSklad(widget.skladId);
+                                  if (ok) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Qaytarib olindi'),
+                                      ),
+                                    );
+                                  } else if (provider.errorMessage != null) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text(provider.errorMessage!),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: reverting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFC62828),
+                                  ),
+                                )
+                              : const Icon(Icons.undo, size: 18),
+                          label: Text(
+                            reverting
+                                ? 'Qaytarilmoqda...'
+                                : 'Qaytarib olish ($undoLeft s)',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFC62828),
+                            side:
+                                const BorderSide(color: Color(0xFFC62828)),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: (!hasAnyPrice || submitting)
+                        ? null
+                        : () => _confirmAndSubmit(provider, pending),
+                    icon: submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send, size: 18),
+                    label: Text(submitting ? 'Yuborilmoqda...' : 'Yuborish'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.

@@ -46,3 +46,4 @@ app.*.map.json
 
 # Simulyator skrinshotlari (repo ildizi va lib/ ichiga tushib qoladi)
 simulator_screenshot_*.png
+lib/Simulator Screenshot*.png
