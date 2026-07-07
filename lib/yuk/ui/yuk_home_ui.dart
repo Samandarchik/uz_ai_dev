@@ -768,6 +768,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
       for (final o in oldWidget.orders)
         for (final i in o.items) _key(o.id, i.productId): i.accepted,
     };
+    // didUpdateWidget build fazasida ishlaydi — provider'ga yozish
+    // (notifyListeners) shu yerda chaqirilsa "setState during build" xatosi
+    // chiqadi; shuning uchun yozuvlar keyingi freymga qoldiriladi.
+    final deferred = <void Function()>[];
     for (final o in widget.orders) {
       // Kun davomida yangi kelgan buyurtma — controllerlarini hozir yaratamiz.
       _initOrder(o);
@@ -776,9 +780,17 @@ class _YukSkladCardState extends State<YukSkladCard> {
         if (item.accepted && !(oldAccepted[k] ?? false)) {
           final v = item.received > 0 ? item.received : item.taken;
           _takenCtrlFor(o, item).text = _fmtQty(v);
-          _onItemChanged(o, item);
+          deferred.add(() => _onItemChanged(o, item));
         }
       }
+    }
+    if (deferred.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        for (final apply in deferred) {
+          apply();
+        }
+      });
     }
     _maybeStartUndoTicker();
   }
@@ -2078,13 +2090,24 @@ class _YukOrderCardState extends State<YukOrderCard> {
     final oldAccepted = {
       for (final i in oldWidget.order.items) i.productId: i.accepted,
     };
+    // Provider yozuvlari (notifyListeners) build fazasida chaqirilmasligi
+    // uchun keyingi freymga qoldiriladi ("setState during build" xatosi).
+    final deferred = <void Function()>[];
     for (final item in order.items) {
       if (item.accepted && !(oldAccepted[item.productId] ?? false)) {
         final v = item.received > 0 ? item.received : item.taken;
         _takenCtrlFor(item).text = _fmtQty(v);
-        // Providerga ham yozamiz — "1 *" birlik narx darhol qayta hisoblanadi.
-        _onItemChanged(item);
+        // Providerga ham yozamiz — "1 *" birlik narx qayta hisoblanadi.
+        deferred.add(() => _onItemChanged(item));
       }
+    }
+    if (deferred.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        for (final apply in deferred) {
+          apply();
+        }
+      });
     }
   }
 
