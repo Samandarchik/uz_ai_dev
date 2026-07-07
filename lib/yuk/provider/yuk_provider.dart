@@ -11,7 +11,10 @@ import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 
 // Bitta item uchun lokal holat: olingan miqdor va jami summa.
-typedef ItemPrice = ({double taken, double subtotal});
+// `zero` — foydalanuvchi IKKALA maydonga ham ataylab 0 yozgan degani
+// (bo'sh qoldirilganidan farqi shu): bunday yozuv 0/0 bilan YUBORILADI,
+// backend uni "olinmagan" deb yopadi.
+typedef ItemPrice = ({double taken, double subtotal, bool zero});
 
 // Yuk keltiruvchi bosh ekrani uchun holat boshqaruvchi.
 class YukProvider extends ChangeNotifier {
@@ -274,14 +277,17 @@ class YukProvider extends ChangeNotifier {
   }
 
   // Bitta item holatini saqlash (olingan miqdor + jami summa).
+  // `zero: true` — foydalanuvchi ikkala maydonga ham ataylab 0 yozgan
+  // (UI controller matnidan aniqlanadi); bunday yozuv 0/0 bilan yuboriladi.
   void setItemPrice(
     int orderId,
     int productId,
     double taken,
-    double subtotal,
-  ) {
+    double subtotal, {
+    bool zero = false,
+  }) {
     final map = _prices.putIfAbsent(orderId, () => {});
-    map[productId] = (taken: taken, subtotal: subtotal);
+    map[productId] = (taken: taken, subtotal: subtotal, zero: zero);
     notifyListeners();
     // 1) Lokal xotiraga DARHOL yozamiz (offline'da ham yo'qolmaydi).
     _persistDrafts();
@@ -378,6 +384,7 @@ class YukProvider extends ChangeNotifier {
         m['$pid'] = {
           'taken': v.taken,
           'subtotal': v.subtotal,
+          'zero': v.zero,
         };
       });
       out['$orderId'] = m;
@@ -408,7 +415,10 @@ class YukProvider extends ChangeNotifier {
           if (pid == null || v is! Map) return;
           final taken = (v['taken'] as num?)?.toDouble() ?? 0;
           final subtotal = (v['subtotal'] as num?)?.toDouble() ?? 0;
-          map[pid] = (taken: taken, subtotal: subtotal);
+          // Eski (zero'siz saqlangan) qoralamalar ham o'qilishi uchun
+          // kalit bo'lmasa false olinadi.
+          final zero = v['zero'] == true;
+          map[pid] = (taken: taken, subtotal: subtotal, zero: zero);
         });
       });
       notifyListeners();
@@ -519,7 +529,8 @@ class YukProvider extends ChangeNotifier {
     double subtotal,
   ) {
     final map = _prices.putIfAbsent(orderId, () => {});
-    map[productId] = (taken: taken, subtotal: subtotal);
+    // Seed (server/socket qiymati) hech qachon "ataylab 0" emas.
+    map[productId] = (taken: taken, subtotal: subtotal, zero: false);
   }
 
   // Bitta item holatini olish (yo'q bo'lsa null).
@@ -528,9 +539,18 @@ class YukProvider extends ChangeNotifier {
   }
 
   // Yozuv TO'LIQ to'ldirilganmi: soni ham (taken), summa ham (subtotal)
-  // kiritilgan. Faqat shundaylar yuboriladi; chala (faqat soni yoki faqat
-  // summa) yozuvlar pending'da qoladi.
-  static bool _isFilled(ItemPrice p) => p.taken > 0 && p.subtotal > 0;
+  // kiritilgan, YOKI foydalanuvchi ikkala maydonga ham ataylab 0 yozgan
+  // (zero — backend "olinmagan" deb yopadi). Faqat shundaylar yuboriladi;
+  // chala (faqat soni yoki faqat summa) yozuvlar pending'da qoladi.
+  static bool _isFilled(ItemPrice p) =>
+      (p.taken > 0 && p.subtotal > 0) || p.zero;
+
+  // UI uchun: shu qator yuborishga tayyormi (to'liq to'ldirilgan yoki
+  // ataylab 0/0 yozilgan). Yozuv umuman bo'lmasa — tayyor emas.
+  bool isRowSubmittable(int orderId, int productId) {
+    final p = _prices[orderId]?[productId];
+    return p != null && _isFilled(p);
+  }
 
   // Buyurtmaning to'liq to'ldirilgan (yuborishga tayyor) yozuvlari.
   Map<int, ItemPrice> _filledPrices(int orderId) {
@@ -634,7 +654,8 @@ class YukProvider extends ChangeNotifier {
   }
 
   // Bitta buyurtmani backendga yuborish (narxlash) — yadro. FAQAT to'liq
-  // to'ldirilgan (taken>0 va subtotal>0) itemlar yuboriladi; backend ularni
+  // to'ldirilgan (taken>0 va subtotal>0, yoki ataylab 0/0 yozilgan — zero)
+  // itemlar yuboriladi; backend ularni
   // yangi `narxlandi` buyurtmaga ajratadi, chala/bo'sh itemlar esa ASL
   // buyurtmada (o'sha id bilan) pending bo'lib qoladi — lokal qoralamalari
   // saqlanadi. Xato bo'lsa Exception otadi.

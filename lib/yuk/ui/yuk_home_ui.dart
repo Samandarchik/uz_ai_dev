@@ -903,9 +903,20 @@ class _YukSkladCardState extends State<YukSkladCard> {
   void _onItemChanged(YukOrder order, YukOrderItem item) {
     final provider = context.read<YukProvider>();
     final k = _key(order.id, item.productId);
-    final taken = _parse(_takenControllers[k]?.text ?? '');
-    final subtotal = _parse(_subtotalControllers[k]?.text ?? '');
-    provider.setItemPrice(order.id, item.productId, taken, subtotal);
+    final takenText = _takenControllers[k]?.text ?? '';
+    final subtotalText = _subtotalControllers[k]?.text ?? '';
+    final taken = _parse(takenText);
+    final subtotal = _parse(subtotalText);
+    // "Ataylab 0": ikkala maydonga ham QO'LDA nimadir yozilgan-u, qiymati 0.
+    // Sonini matndan tekshiramiz — _parse('') ham 0 qaytaradi, bo'sh maydon
+    // bilan yozilgan 0 ni faqat matn ajratadi. Bunday yozuv 0/0 bilan
+    // yuboriladi (backend "olinmagan" deb yopadi); bo'sh qolgani yuborilmaydi.
+    final zero = takenText.trim().isNotEmpty &&
+        subtotalText.trim().isNotEmpty &&
+        taken == 0 &&
+        subtotal == 0;
+    provider.setItemPrice(order.id, item.productId, taken, subtotal,
+        zero: zero);
   }
 
   // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
@@ -1676,7 +1687,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Yuborishdan oldin tasdiq: soni va narxi TO'LIQ kiritilmagan qatorlar
   // bo'lsa ogohlantiramiz — ular YUBORILMAYDI, ro'yxatda (pending) qoladi.
-  // Hammasi to'liq bo'lsa dialogsiz darhol yuboriladi.
+  // Ikkala maydonga ham ataylab 0 yozilgan qator esa YUBORILADI (backend
+  // "olinmagan" deb yopadi) — u sanalmaydi. Hammasi to'liq bo'lsa dialogsiz
+  // darhol yuboriladi.
   Future<void> _confirmAndSubmit(
     YukProvider provider,
     List<YukOrder> pending,
@@ -1684,11 +1697,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     var unfilled = 0;
     for (final o in pending) {
       for (final item in o.items.where((i) => i.itemType.isEmpty)) {
-        final k = _key(o.id, item.productId);
-        final taken = _parse(_takenControllers[k]?.text ?? '');
-        final subtotal = _parse(_subtotalControllers[k]?.text ?? '');
-        // To'liq to'ldirilgan = soni ham, summa ham > 0; aks holda qoladi.
-        if (taken <= 0 || subtotal <= 0) unfilled++;
+        // Provider haqiqati: to'liq to'ldirilgan yoki ataylab 0/0 yozilgan
+        // qator YUBORILADI (sanalmaydi); qolganlari ro'yxatda qoladi.
+        if (!provider.isRowSubmittable(o.id, item.productId)) unfilled++;
       }
     }
     if (unfilled > 0) {
@@ -2309,9 +2320,18 @@ class _YukOrderCardState extends State<YukOrderCard> {
     // Qiymat maydonning o'zidan (controller) olinadi. Qabul qilingan itemda
     // maydon qulf — controller'da omborchi tasdiqlagan son turadi (backend
     // ham accepted itemning taken'ini o'zgartirmaydi).
-    final taken = _parse(_takenControllers[productId]?.text ?? '');
-    final subtotal = _parse(_subtotalControllers[productId]?.text ?? '');
-    provider.setItemPrice(order.id, productId, taken, subtotal);
+    final takenText = _takenControllers[productId]?.text ?? '';
+    final subtotalText = _subtotalControllers[productId]?.text ?? '';
+    final taken = _parse(takenText);
+    final subtotal = _parse(subtotalText);
+    // "Ataylab 0": ikkala maydonga ham QO'LDA nimadir yozilgan-u, qiymati 0
+    // (_parse('') ham 0 — shuning uchun matn tekshiriladi). Bunday yozuv 0/0
+    // bilan yuboriladi; bo'sh qoldirilgani yuborilmaydi.
+    final zero = takenText.trim().isNotEmpty &&
+        subtotalText.trim().isNotEmpty &&
+        taken == 0 &&
+        subtotal == 0;
+    provider.setItemPrice(order.id, productId, taken, subtotal, zero: zero);
   }
 
   String _formatCount(num v) {
