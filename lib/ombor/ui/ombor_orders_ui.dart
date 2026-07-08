@@ -593,15 +593,17 @@ class _SkladDayCardState extends State<_SkladDayCard> {
   Widget _itemRow(OmborOrder order, OmborOrderItem item) {
     final key = _keyOf(order.id, item.productId);
     // O'chirish mumkin: faqat katalog item (proche/rasxod emas), hali qabul
-    // qilinmagan va narxlanmagan (subtotal 0, received 0), order yopilmagan
-    // (qabul_qilindi emas). Tarix (acceptedOnly) ekranida hamma order
-    // isAccepted — u yerda ikonka chiqmaydi. Ombor UI'da pul ko'rsatilmaydi,
-    // subtotal faqat shu shart uchun ishlatiladi.
+    // qilinmagan (mahsulot kelmagan) va order yopilmagan. PENDING buyurtmada
+    // yuk summa yozib qo'ygan bo'lsa ham o'chiriladi (backend summani nolga
+    // qaytaradi); yopiq (narxlandi) chekda esa faqat summasiz item — pul
+    // ledgerga tushgan. Tarix (acceptedOnly) ekranida hamma order isAccepted
+    // — u yerda ikonka chiqmaydi. Ombor UI'da pul ko'rsatilmaydi, subtotal
+    // faqat shu shart uchun ishlatiladi.
     final deletable = !order.isAccepted &&
         !item.accepted &&
         !item.deleted &&
         item.itemType.isEmpty &&
-        item.subtotal <= 0 &&
+        (order.isCreated || item.subtotal <= 0) &&
         item.received <= 0;
     return Consumer<OmborProvider>(
       builder: (ctx, p, _) => _MediaItemRow(
