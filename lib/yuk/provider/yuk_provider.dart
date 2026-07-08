@@ -99,6 +99,39 @@ class YukProvider extends ChangeNotifier {
   bool canSeedOrder(YukOrder order) =>
       order.pricedBy == 0 || order.pricedBy == myUserId;
 
+  // Shu buyurtmadagi shu mahsulot ombor tomonidan O'CHIRILGANMI (soft-delete).
+  // O'chirilgan item hech qachon narxlanmaydi: submit items[]ga ham,
+  // draftga ham kirmaydi.
+  bool _isDeletedItem(int orderId, int productId) {
+    for (final o in orders) {
+      if (o.id != orderId) continue;
+      for (final i in o.items) {
+        if (i.productId == productId) return i.deleted;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  // Ombor o'chirgan itemlarning lokal narx qoralamalarini tozalash —
+  // fetchOrders va socket upsert'dan keyin chaqiriladi, o'chirilgan item
+  // SharedPreferences draftida ham qolib ketmasin.
+  void _pruneDeletedItemPrices() {
+    var changed = false;
+    for (final o in orders) {
+      final map = _prices[o.id];
+      if (map == null) continue;
+      for (final item in o.items) {
+        if (item.deleted && map.containsKey(item.productId)) {
+          map.remove(item.productId);
+          changed = true;
+        }
+      }
+      if (map.isEmpty) _prices.remove(o.id);
+    }
+    if (changed) _persistDrafts();
+  }
+
   // Shu buyurtma uchun hali serverga yuborilmagan (debounce kutayotgan)
   // qoralama bormi — bor bo'lsa socketdan kelgan eski qiymat maydonlarni
   // bosib qo'ymasligi kerak (real-time sinxronlashda ishlatiladi).
@@ -192,6 +225,8 @@ class YukProvider extends ChangeNotifier {
       _persistOrders();
       // Yuborilgan buyurtmalarning eski lokal qoralamasini tozalaymiz.
       _pruneDoneDrafts();
+      // Ombor o'chirgan itemlarning qoralamalari ham tozalanadi.
+      _pruneDeletedItemPrices();
       // Ro'yxatda umuman yo'q buyurtmalarning qoralamalari ham o'chadi —
       // eskirib qolgan lokal qoralama flushDrafts bilan qayta serverga
       // ketib yurmasin (masalan source filtri bilan yashiringan yoki
@@ -286,6 +321,8 @@ class YukProvider extends ChangeNotifier {
     double subtotal, {
     bool zero = false,
   }) {
+    // O'chirilgan itemga narx yozilmaydi (UI'da maydon ham yo'q — himoya).
+    if (_isDeletedItem(orderId, productId)) return;
     final map = _prices.putIfAbsent(orderId, () => {});
     map[productId] = (taken: taken, subtotal: subtotal, zero: zero);
     notifyListeners();
@@ -499,7 +536,9 @@ class YukProvider extends ChangeNotifier {
     // Narx ham, qo'shilgan item ham bo'lmasa yuboradigan narsa yo'q.
     if (map.isEmpty && added.isEmpty) return;
     try {
+      // O'chirilgan itemlar draftga ham kirmaydi.
       final items = map.entries
+          .where((e) => !_isDeletedItem(orderId, e.key))
           .map((e) => <String, dynamic>{
                 'product_id': e.key,
                 'taken': e.value.taken,
@@ -528,6 +567,8 @@ class YukProvider extends ChangeNotifier {
     double taken,
     double subtotal,
   ) {
+    // O'chirilgan item seed qilinmaydi — draftga qayta kirib qolmasin.
+    if (_isDeletedItem(orderId, productId)) return;
     final map = _prices.putIfAbsent(orderId, () => {});
     // Seed (server/socket qiymati) hech qachon "ataylab 0" emas.
     map[productId] = (taken: taken, subtotal: subtotal, zero: false);
@@ -545,19 +586,23 @@ class YukProvider extends ChangeNotifier {
   static bool _isFilled(ItemPrice p) => p.subtotal > 0 || p.zero;
 
   // UI uchun: shu qator yuborishga tayyormi (to'liq to'ldirilgan yoki
-  // ataylab 0/0 yozilgan). Yozuv umuman bo'lmasa — tayyor emas.
+  // ataylab 0/0 yozilgan). Yozuv umuman bo'lmasa yoki item o'chirilgan
+  // bo'lsa — tayyor emas.
   bool isRowSubmittable(int orderId, int productId) {
+    if (_isDeletedItem(orderId, productId)) return false;
     final p = _prices[orderId]?[productId];
     return p != null && _isFilled(p);
   }
 
   // Buyurtmaning to'liq to'ldirilgan (yuborishga tayyor) yozuvlari.
+  // Ombor o'chirgan itemlar HECH QACHON kirmaydi.
   Map<int, ItemPrice> _filledPrices(int orderId) {
     final map = _prices[orderId];
     if (map == null || map.isEmpty) return const {};
     return {
       for (final e in map.entries)
-        if (_isFilled(e.value)) e.key: e.value,
+        if (_isFilled(e.value) && !_isDeletedItem(orderId, e.key))
+          e.key: e.value,
     };
   }
 
@@ -570,12 +615,14 @@ class YukProvider extends ChangeNotifier {
   }
 
   // Katalogdagi (buyurtmadagi) itemlar uchun kiritilgan subtotal yig'indisi.
+  // O'chirilgan itemlarning (eski) qoralamasi hisobga KIRMAYDI.
   double _catalogTotal(int orderId) {
     final map = _prices[orderId];
     if (map == null) return 0;
     var sum = 0.0;
-    for (final v in map.values) {
-      sum += v.subtotal;
+    for (final e in map.entries) {
+      if (_isDeletedItem(orderId, e.key)) continue;
+      sum += e.value.subtotal;
     }
     return sum;
   }
@@ -639,7 +686,7 @@ class YukProvider extends ChangeNotifier {
     if (_addedItems.containsKey(orderId)) return;
     final list = <YukAddedItem>[
       for (final it in items)
-        if (it.isProche || it.isRasxod)
+        if ((it.isProche || it.isRasxod) && !it.deleted)
           YukAddedItem(
             itemType: it.itemType,
             name: it.name,
@@ -947,6 +994,9 @@ class YukProvider extends ChangeNotifier {
     isOffline = false;
     // Buyurtma yuborilgan bo'lsa eski lokal qoralamani tozalaymiz.
     _pruneDoneDrafts();
+    // Ombor itemni o'chirgan bo'lsa ('item_deleted' upsert) uning lokal
+    // narx qoralamasi ham o'chadi — draft/submit'ga qayta kirmasin.
+    _pruneDeletedItemPrices();
     // Yangilangan ro'yxatni keshlaymiz.
     _persistOrders();
     notifyListeners();

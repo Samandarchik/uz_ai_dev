@@ -30,6 +30,10 @@ class YukOrderItem {
   // bo'sh bo'lishi mumkin). Ko'rsatishda AppUrls.baseUrl qo'shiladi.
   final String imageUrl;
   final String videoUrl;
+  // Omborchi shu mahsulotni buyurtmadan o'chirganmi (soft-delete).
+  // O'chirilgan item qizil chizilgan holda ko'rinadi, narxlanmaydi va
+  // hech qachon yuborilmaydi (submit/draft'ga kirmaydi).
+  final bool deleted;
 
   YukOrderItem({
     required this.productId,
@@ -43,6 +47,7 @@ class YukOrderItem {
     this.itemType = '',
     this.imageUrl = '',
     this.videoUrl = '',
+    this.deleted = false,
   });
 
   bool get isRasxod => itemType == 'rasxod';
@@ -67,6 +72,7 @@ class YukOrderItem {
       itemType: json['item_type']?.toString() ?? '',
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',
+      deleted: json['deleted'] == true,
     );
   }
 
@@ -83,6 +89,7 @@ class YukOrderItem {
         'item_type': itemType,
         'image_url': imageUrl,
         'video_url': videoUrl,
+        'deleted': deleted,
       };
 }
 

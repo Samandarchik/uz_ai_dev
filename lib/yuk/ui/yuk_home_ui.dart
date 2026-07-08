@@ -729,6 +729,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final provider = context.read<YukProvider>();
     final done = _isDoneOrder(order);
     for (final item in order.items) {
+      // Ombor o'chirgan item uchun controller ham, seed ham YO'Q — qator
+      // faqat qizil chizilgan (read-only) ko'rinishda chiqadi.
+      if (item.deleted) continue;
       final k = _key(order.id, item.productId);
       // Soni maydoni QULF — omborchi buyurtma qilgan son (item.count) doim
       // ko'rsatiladi va pul hisobiga asos bo'ladi (taken=count). Yuk faqat
@@ -782,9 +785,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
         final k = _key(o.id, item.productId);
         final old = oldItems[k];
         // ─── REAL-TIME sinxronlash (faqat SUMMA; soni maydoni QULF=count) ───
-        // Buyurtma yopiq/qabul qilingan, item endi paydo bo'lgan yoki summa
-        // o'zgarmagan bo'lsa tegmaymiz.
-        if (done || item.accepted || old == null) continue;
+        // Buyurtma yopiq/qabul qilingan, item o'chirilgan ('item_deleted'
+        // socket hodisasi — qator chizilgan ko'rinishga o'tadi, sync shart
+        // emas), endi paydo bo'lgan yoki summa o'zgarmagan bo'lsa tegmaymiz.
+        if (done || item.accepted || item.deleted || old == null) continue;
         if (old.subtotal == item.subtotal) continue;
         // O'zimning hali serverga yetib bormagan (debounce kutayotgan)
         // qoralamam bor — socketdagi eski qiymat uni bosib qo'ymasin.
@@ -1530,9 +1534,86 @@ class _YukSkladCardState extends State<YukSkladCard> {
     );
   }
 
+  // Ombor o'chirgan item qatori: nomi va soni qizil chizilgan, summa maydoni
+  // O'RNIDA qizil "O'chirildi" belgisi — butunlay read-only. Yuk keltiruvchi
+  // shu qatordan itemning o'chirilganini biladi.
+  Widget _deletedItemRow(YukOrderItem item) {
+    const deletedStyle = TextStyle(
+      color: Colors.red,
+      decoration: TextDecoration.lineThrough,
+      decorationColor: Colors.red,
+    );
+    const red = Color(0xFFC62828);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: _nameFlex,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: deletedStyle.copyWith(fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(
+                  '${_formatCount(item.count)}'
+                  '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
+                  style: deletedStyle.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Soni ustuni: buyurtma soni qizil chizilgan holda.
+          Expanded(
+            flex: _qtyFlex,
+            child: Container(
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: red.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: red.withValues(alpha: 0.35)),
+              ),
+              child: Text(
+                _formatCount(item.count),
+                style: deletedStyle.copyWith(fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Summa maydoni YO'Q — o'rnida "O'chirildi" belgisi.
+          Expanded(
+            flex: _sumFlex,
+            child: Container(
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: red.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: red.withValues(alpha: 0.35)),
+              ),
+              child: const Text(
+                'O\'chirildi',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: red,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Bitta katalog/proche item qatori (YukOrderCard'dagi bilan bir xil ko'rinish,
   // faqat controllerlar buyurtma+mahsulot bo'yicha).
   Widget _itemRow(YukProvider provider, YukOrder order, YukOrderItem item) {
+    // Ombor o'chirgan item — chizilgan read-only qator, maydonlarsiz.
+    if (item.deleted) return _deletedItemRow(item);
     final done = _isDoneOrder(order);
     final priced = provider.getItemPrice(order.id, item.productId);
     final takenCtrl = _takenControllers[_key(order.id, item.productId)];
@@ -1655,7 +1736,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
   ) async {
     var unfilled = 0;
     for (final o in pending) {
-      for (final item in o.items.where((i) => i.itemType.isEmpty)) {
+      // O'chirilgan itemlar sanalmaydi — ular baribir yuborilmaydi.
+      for (final item
+          in o.items.where((i) => i.itemType.isEmpty && !i.deleted)) {
         // Provider haqiqati: to'liq to'ldirilgan yoki ataylab 0/0 yozilgan
         // qator YUBORILADI (sanalmaydi); qolganlari ro'yxatda qoladi.
         if (!provider.isRowSubmittable(o.id, item.productId)) unfilled++;
@@ -1732,6 +1815,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
           }
           final mine = provider.canSeedOrder(o);
           for (final item in o.items) {
+            // O'chirilgan item summaga kirmaydi.
+            if (item.deleted) continue;
             if (item.itemType.isEmpty) {
               mahsulot +=
                   provider.getItemPrice(o.id, item.productId)?.subtotal ??
@@ -2140,6 +2225,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
     super.initState();
     final provider = context.read<YukProvider>();
     for (final item in order.items) {
+      // Ombor o'chirgan item ko'rsatilmaydi — controller/seed ham yo'q.
+      if (item.deleted) continue;
       // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
       // (yuborilgan) qiymat ko'rsatiladi. Omborchi qabul qilgan itemda lokal
       // qoralama bo'sh (0) bo'lsa, omborchi kiritgan kelgan soni bilan
@@ -3033,7 +3120,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
               // ro'yxatdan alohida chiqadi); yuborilganда rasxoddan tashqari
               // hammasi (proche oddiy qator sifatida).
               ...order.items
-                  .where((i) => done ? !i.isRasxod : i.itemType.isEmpty)
+                  .where((i) =>
+                      (done ? !i.isRasxod : i.itemType.isEmpty) && !i.deleted)
                   .map((item) {
                 // Bittasining narxi = jami summa / olingan miqdor.
                 // Tahrirlanadigan qatorda qiymat maydonning O'ZIDAN olinadi —

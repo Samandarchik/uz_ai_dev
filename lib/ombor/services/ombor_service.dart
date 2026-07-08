@@ -188,4 +188,37 @@ class OmborService {
       throw Exception('Qabul qilishda kutilmagan xato: $e');
     }
   }
+
+  // DELETE /api/orders/{id}/items/{productId} -> BITTA mahsulotni buyurtmadan
+  // o'chirish (soft-delete: item deleted=true bo'lib qoladi). Faqat katalog
+  // item (item_type bo'sh), qabul qilinmagan, narxlanmagan (subtotal=0,
+  // received=0) va order statusi 'qabul_qilindi' bo'lmaganda ishlaydi.
+  // Javob: {"success": true, "message": "...", "data": {to'liq yangilangan order}}
+  Future<OmborOrder> deleteOrderItem(int orderId, int productId) async {
+    try {
+      final response = await dio.delete(
+        '${AppUrls.orders}/$orderId/items/$productId',
+      );
+      final status = response.statusCode ?? 0;
+      final body = response.data;
+      if (status >= 200 && status < 300) {
+        final data = (body is Map) ? body['data'] : null;
+        if (data is Map) {
+          return OmborOrder.fromJson(Map<String, dynamic>.from(data));
+        }
+      }
+      throw Exception('O\'chirib bo\'lmadi: $status');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('O\'chirishda kutilmagan xato: $e');
+    }
+  }
 }

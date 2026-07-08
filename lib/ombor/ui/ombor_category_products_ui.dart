@@ -211,7 +211,7 @@ class OmborProductCard extends StatelessWidget {
   }
 
   // Uzoq bosilganda miqdorni qo'lda kiritish oynasi: xohlagancha buyurtma
-  // berish mumkin. "." yoki "," bilan kasr kiritilsa butun songa yaxlitlanadi.
+  // berish mumkin. "." yoki "," bilan kasr kiritilsa kasr saqlanadi (0.5 -> 0.5).
   Future<void> _showQtyInputDialog(BuildContext context) async {
     final provider = context.read<OmborProvider>();
     final controller = TextEditingController();
@@ -223,8 +223,8 @@ class OmborProductCard extends StatelessWidget {
       if (raw.isEmpty) return;
       final value = double.tryParse(raw);
       if (value == null) return;
-      // Kasr bo'lsa butun songa yaxlitlanadi: 2.5 -> 3, 2.4 -> 2.
-      Navigator.pop(dialogContext, value.round() * 1000);
+      // Kasr saqlanadi: 0.5 -> 500 milli, 2.5 -> 2500 milli.
+      Navigator.pop(dialogContext, (value * 1000).round());
     }
 
     final milli = await showDialog<int>(

@@ -274,6 +274,8 @@ class _SkladDayCardState extends State<_SkladDayCard> {
       for (final item in order.items) {
         // Rasxod (xarajat) va allaqachon qabul qilingan itemlar read-only.
         if (item.isRasxod || item.accepted) continue;
+        // O'chirilgan item read-only (chizilgan) — controller ochilmaydi.
+        if (item.deleted) continue;
         // Narxlangan buyurtmada umuman olib kelmagan mahsulot (taken 0,
         // summa 0) qabul qilinmaydi — controller ochilmaydi.
         if (order.isPriced && item.taken <= 0 && item.subtotal <= 0) continue;
@@ -505,6 +507,54 @@ class _SkladDayCardState extends State<_SkladDayCard> {
     }
   }
 
+  // Bitta mahsulotni buyurtmadan o'chirish: avval tasdiq dialogi, keyin
+  // provider orqali serverga DELETE. Xato bo'lsa SnackBar ko'rsatiladi.
+  Future<void> _deleteItem(OmborOrder order, OmborOrderItem item) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final provider = context.read<OmborProvider>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Mahsulotni o\'chirish',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: Text('"${item.name}" buyurtmadan o\'chirilsinmi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'Bekor',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('O\'chirish'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await provider.deleteOrderItem(order.id, item.productId);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // Buyurtma vaqti (soat:daqiqa) — _formatDate dan olinadi.
   String _orderTime(String created) {
     final f = _formatDate(created); // "2026-06-20 12:34"
@@ -542,6 +592,17 @@ class _SkladDayCardState extends State<_SkladDayCard> {
   // qarab hisoblanadi. isAccepting order-scoped (order.id + productId).
   Widget _itemRow(OmborOrder order, OmborOrderItem item) {
     final key = _keyOf(order.id, item.productId);
+    // O'chirish mumkin: faqat katalog item (proche/rasxod emas), hali qabul
+    // qilinmagan va narxlanmagan (subtotal 0, received 0), order yopilmagan
+    // (qabul_qilindi emas). Tarix (acceptedOnly) ekranida hamma order
+    // isAccepted — u yerda ikonka chiqmaydi. Ombor UI'da pul ko'rsatilmaydi,
+    // subtotal faqat shu shart uchun ishlatiladi.
+    final deletable = !order.isAccepted &&
+        !item.accepted &&
+        !item.deleted &&
+        item.itemType.isEmpty &&
+        item.subtotal <= 0 &&
+        item.received <= 0;
     return Consumer<OmborProvider>(
       builder: (ctx, p, _) => _MediaItemRow(
         item: item,
@@ -551,20 +612,25 @@ class _SkladDayCardState extends State<_SkladDayCard> {
             !item.accepted &&
             item.taken <= 0 &&
             item.subtotal <= 0,
-        // Qabul qilingan item read-only.
+        // Qabul qilingan (yoki o'chirilgan) item read-only.
         editable: (order.isPriced || order.isCreated) &&
             !item.accepted &&
+            !item.deleted &&
             !(order.isPriced &&
                 item.taken <= 0 &&
                 item.subtotal <= 0),
+        deletable: deletable,
         receivedController: _received[key],
         localImagePath: _images[key],
         localVideoPath: _videos[key],
         isAccepting: p.acceptingItemOrderId == order.id &&
             p.acceptingItemProductId == item.productId,
+        isDeleting: p.deletingItemOrderId == order.id &&
+            p.deletingItemProductId == item.productId,
         onReceivedChanged: () => setState(() {}),
         onTapMedia: () => _pickMedia(key),
         onAccept: () => _acceptItem(order, item),
+        onDelete: () => _deleteItem(order, item),
       ),
     );
   }
@@ -706,28 +772,37 @@ class _MediaItemRow extends StatelessWidget {
   // Yuk yuborgandan keyin umuman olib kelinmagan mahsulot — qatorda
   // "Olinmagan" belgisi ko'rinadi, qabul qilinmaydi.
   final bool notBrought;
+  // Omborchi shu itemni buyurtmadan o'chira oladimi (qizil o'chirish ikonkasi).
+  final bool deletable;
   final TextEditingController? receivedController;
   final String? localImagePath;
   final String? localVideoPath;
   // Shu item hozir serverga yuborilmoqda (tugmada spinner).
   final bool isAccepting;
+  // Shu item hozir serverdan o'chirilmoqda (ikonka o'rnida spinner).
+  final bool isDeleting;
   final VoidCallback onReceivedChanged;
   // Rasm/Video katakchasi bosilganda tanlov dialogini ochadi.
   final VoidCallback onTapMedia;
   // Qabul tugmasi bosilganda itemni serverga yuboradi.
   final VoidCallback onAccept;
+  // O'chirish ikonkasi bosilganda tasdiq dialogini ochadi.
+  final VoidCallback onDelete;
 
   const _MediaItemRow({
     required this.item,
     required this.editable,
     this.notBrought = false,
+    this.deletable = false,
     required this.receivedController,
     required this.localImagePath,
     required this.localVideoPath,
     required this.isAccepting,
+    this.isDeleting = false,
     required this.onReceivedChanged,
     required this.onTapMedia,
     required this.onAccept,
+    required this.onDelete,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -754,6 +829,62 @@ class _MediaItemRow extends StatelessWidget {
         ? 'Qo\'shimcha'
         : '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
 
+    // O'chirilgan item: nom + miqdor qizil chizilgan, o'ng tomonda
+    // "O'chirildi" belgisi. Maydon/kamera/qabul tugmasi YO'Q.
+    if (item.deleted) {
+      const deletedStyle = TextStyle(
+        color: Colors.red,
+        decoration: TextDecoration.lineThrough,
+        decorationColor: Colors.red,
+      );
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: deletedStyle.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(qtyLabel, style: deletedStyle.copyWith(fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              flex: 7,
+              child: Container(
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _red.withValues(alpha: 0.35)),
+                ),
+                child: const Text(
+                  'O\'chirildi',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _red,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Kelgan soni (haqiqatda kelgan) va taken (yuk keltiruvchi aytgan) farqi.
     final received =
         editable ? _parse(receivedController?.text ?? '') : item.received;
@@ -768,43 +899,68 @@ class _MediaItemRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Nom + ma'lumot.
+          // Nom + ma'lumot (+ o'chirish mumkin bo'lsa qizil ikonka).
           Expanded(
             flex: 5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      qtyLabel,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    if (showDiff) ...[
-                      const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        diffText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: diffColor,
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            qtyLabel,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                          if (showDiff) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              diffText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: diffColor,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      // Omborchi narx ko'rmaydi — birlik narx qatori ataylab yo'q.
                     ],
-                  ],
+                  ),
                 ),
-                // Omborchi narx ko'rmaydi — birlik narx qatori ataylab yo'q.
+                if (deletable)
+                  GestureDetector(
+                    onTap: isDeleting ? null : onDelete,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: isDeleting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: _red,
+                              ),
+                            )
+                          : const Icon(Icons.delete_outline,
+                              size: 19, color: _red),
+                    ),
+                  ),
               ],
             ),
           ),

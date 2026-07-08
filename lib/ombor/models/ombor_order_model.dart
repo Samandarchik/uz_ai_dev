@@ -98,6 +98,9 @@ class OmborOrderItem {
   // Omborchi shu mahsulotni alohida qabul qilganmi (item darajasida).
   // Hamma item qabul bo'lsa backend order statusini 'qabul_qilindi' qiladi.
   final bool accepted;
+  // Omborchi shu mahsulotni buyurtmadan o'chirganmi (soft-delete).
+  // O'chirilgan item qizil chizilgan holda ko'rsatiladi, qabul qilinmaydi.
+  final bool deleted;
 
   OmborOrderItem({
     required this.productId,
@@ -111,6 +114,7 @@ class OmborOrderItem {
     this.videoUrl = '',
     this.itemType = '',
     this.accepted = false,
+    this.deleted = false,
   });
 
   bool get isRasxod => itemType == 'rasxod';
@@ -129,6 +133,7 @@ class OmborOrderItem {
       videoUrl: json['video_url']?.toString() ?? '',
       itemType: json['item_type']?.toString() ?? '',
       accepted: json['accepted'] == true,
+      deleted: json['deleted'] == true,
     );
   }
 }

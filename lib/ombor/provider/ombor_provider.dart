@@ -138,6 +138,11 @@ class OmborProvider extends ChangeNotifier {
   int? acceptingItemOrderId;
   int? acceptingItemProductId;
 
+  // Hozir o'chirilayotgan item (order id + product id) — qatordagi o'chirish
+  // ikonkasida spinner ko'rsatish uchun.
+  int? deletingItemOrderId;
+  int? deletingItemProductId;
+
   // GET /api/orders -> ombor userning o'z buyurtmalari.
   // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
   Future<void> fetchMyOrders() async {
@@ -214,6 +219,27 @@ class OmborProvider extends ChangeNotifier {
     } finally {
       acceptingItemOrderId = null;
       acceptingItemProductId = null;
+      notifyListeners();
+    }
+  }
+
+  // Bitta mahsulotni buyurtmadan o'chirish (soft-delete). Muvaffaqiyatda
+  // backend qaytargan TO'LIQ yangilangan order myOrders'da id bo'yicha
+  // almashtiriladi (qayta GET shart emas). Xato bo'lsa Exception otadi
+  // (UI uni ushlab SnackBar ko'rsatadi).
+  Future<void> deleteOrderItem(int orderId, int productId) async {
+    deletingItemOrderId = orderId;
+    deletingItemProductId = productId;
+    notifyListeners();
+    try {
+      final updated = await _service.deleteOrderItem(orderId, productId);
+      final index = myOrders.indexWhere((o) => o.id == updated.id);
+      if (index >= 0) {
+        myOrders[index] = updated;
+      }
+    } finally {
+      deletingItemOrderId = null;
+      deletingItemProductId = null;
       notifyListeners();
     }
   }
