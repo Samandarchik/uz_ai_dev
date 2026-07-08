@@ -47,3 +47,8 @@ app.*.map.json
 # Simulyator skrinshotlari (repo ildizi va lib/ ichiga tushib qoladi)
 simulator_screenshot_*.png
 lib/Simulator Screenshot*.png
+
+# Foydalanuvchi namuna/skrinshot fayllari va android build chiqindilari
+*.xlsx
+Screenshot*.png
+/android/build/

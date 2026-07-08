@@ -73,6 +73,46 @@ class YukService {
     }
   }
 
+  // GET /api/yuk/ledger/day?date=YYYY-MM-DD[&user_id=N] -> bitta kunning
+  // xarajat tafsiloti: yuborilgan buyurtmalar (itemlari bilan) + o'sha kuni
+  // yangilangan qoralamalar. Javob: { "success": true, "data": {...} }
+  Future<LedgerDayDetail> fetchLedgerDay(String date, {int? userId}) async {
+    try {
+      final response = await dio.get(
+        AppUrls.yukLedgerDay,
+        queryParameters: {
+          'date': date,
+          if (userId != null) 'user_id': userId,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return LedgerDayDetail.fromJson(
+              Map<String, dynamic>.from(body['data']));
+        }
+        // Himoya: server data'siz to'g'ridan-to'g'ri obyekt qaytarsa ham o'qiymiz.
+        if (body is Map && body['date'] != null) {
+          return LedgerDayDetail.fromJson(Map<String, dynamic>.from(body));
+        }
+      }
+      throw Exception('Kun tafsilotini yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Kun tafsilotini yuklashda kutilmagan xato: $e');
+    }
+  }
+
   // POST /api/yuk/upload -> rasm yoki video faylni yuklash (multipart, "file").
   // Javob: { "success": true, "data": { "url": "/static/yuk/<fayl>" } }
   // Qaytgan relativ URL priceOrder'ning attachments ro'yxatiga qo'shiladi.

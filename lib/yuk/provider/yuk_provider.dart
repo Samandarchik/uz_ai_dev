@@ -290,6 +290,11 @@ class YukProvider extends ChangeNotifier {
     }
   }
 
+  // Bitta kunning xarajat tafsiloti (profil jadvalidagi kun bosilganda
+  // ochiladigan bottom sheet uchun). Holat saqlanmaydi — sheet o'zi kutadi.
+  Future<LedgerDayDetail> fetchLedgerDay(String date) =>
+      _service.fetchLedgerDay(date);
+
   // Joriy ro'yxatni JSON sifatida lokal saqlash.
   void _persistOrders() {
     try {

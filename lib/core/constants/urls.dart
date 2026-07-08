@@ -17,6 +17,8 @@ abstract final class AppUrls {
   static String yukUpload = '$baseUrl/api/yuk/upload';
   // Yuk keltiruvchining kunlik hisob daftari (ostatok/rasxod/prixod)
   static String yukLedger = '$baseUrl/api/yuk/ledger';
+  // Bitta kunning xarajat tafsiloti (?date=YYYY-MM-DD[&user_id=N])
+  static String yukLedgerDay = '$baseUrl/api/yuk/ledger/day';
   // Yuk keltiruvchi foydalanuvchilar ro'yxati (bugalter pul berishi uchun)
   static String yukUsers = '$baseUrl/api/yuk-users';
   // Bugalter yuk keltiruvchiga pul berishi (prixod yozuvi)
