@@ -1012,11 +1012,16 @@ class _YukSkladCardState extends State<YukSkladCard> {
         insetPadding: const EdgeInsets.all(8),
         child: Stack(
           children: [
-            InteractiveViewer(
-              child: Center(
-                child: isRemote
-                    ? Image.network(_fullUrl(entry))
-                    : Image.file(File(entry)),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // Rasm ustiga yana bir bosilsa yopiladi.
+              onTap: () => Navigator.of(context, rootNavigator: true).pop(),
+              child: InteractiveViewer(
+                child: Center(
+                  child: isRemote
+                      ? Image.network(_fullUrl(entry))
+                      : Image.file(File(entry)),
+                ),
               ),
             ),
             Positioned(
@@ -1745,14 +1750,28 @@ class _YukSkladCardState extends State<YukSkladCard> {
           const SizedBox(width: 6),
           Expanded(
             flex: _qtyFlex,
-            child: _inlineField(
-              controller: _takenCtrlFor(order, item),
-              hint: '0',
-              decimal: _isKg(item.type),
-              // Soni maydoni QULF — omborchi buyurtma qilgan son ko'rinadi,
-              // yuk faqat summani kiritadi (soni omborchi qabulda belgilaydi).
-              enabled: false,
-              onChanged: (_) {},
+            // Soni ustiga bosilsa omborchi qabulda yuborgan rasm katta
+            // ochiladi (rasm ustiga yana bosilsa yopiladi); faqat video
+            // bo'lsa tashqi pleerda ochiladi.
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: item.acceptMedia.isEmpty
+                  ? null
+                  : () => _openAttachment(
+                        item.imageUrl.isNotEmpty
+                            ? item.imageUrl
+                            : item.videoUrl,
+                      ),
+              child: _inlineField(
+                controller: _takenCtrlFor(order, item),
+                hint: '0',
+                decimal: _isKg(item.type),
+                // Soni maydoni QULF — omborchi buyurtma qilgan son ko'rinadi,
+                // yuk faqat summani kiritadi (soni omborchi qabulda
+                // belgilaydi).
+                enabled: false,
+                onChanged: (_) {},
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -2854,11 +2873,17 @@ class _YukOrderCardState extends State<YukOrderCard> {
         insetPadding: const EdgeInsets.all(8),
         child: Stack(
           children: [
-            InteractiveViewer(
-              child: Center(
-                child: isRemote
-                    ? Image.network(_fullUrl(entry))
-                    : Image.file(File(entry)),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // Rasm ustiga yana bir bosilsa yopiladi.
+              onTap: () =>
+                  Navigator.of(context, rootNavigator: true).pop(),
+              child: InteractiveViewer(
+                child: Center(
+                  child: isRemote
+                      ? Image.network(_fullUrl(entry))
+                      : Image.file(File(entry)),
+                ),
               ),
             ),
             Positioned(
@@ -3295,16 +3320,30 @@ class _YukOrderCardState extends State<YukOrderCard> {
                       const SizedBox(width: 6),
                       Expanded(
                         flex: _qtyFlex,
-                        child: _inlineField(
-                          controller: _takenCtrlFor(item),
-                          focusNode: _takenFocusFor(item),
-                          hint: '0',
-                          // kg mahsulot bo'lsa o'nlik (8.500) kiritsa bo'ladi.
-                          decimal: _isKg(item.type),
-                          // Ombor qabul qilgan itemning soni QULFLANADI —
-                          // omborchi tasdiqlagan kelgan soni yakuniy.
-                          enabled: !done && !item.accepted,
-                          onChanged: (_) => _onItemChanged(item),
+                        // Soni ustiga bosilsa omborchi qabulda yuborgan rasm
+                        // katta ochiladi (rasm ustiga yana bosilsa yopiladi);
+                        // faqat video bo'lsa tashqi pleerda ochiladi.
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: item.acceptMedia.isEmpty
+                              ? null
+                              : () => _openAttachment(
+                                    item.imageUrl.isNotEmpty
+                                        ? item.imageUrl
+                                        : item.videoUrl,
+                                  ),
+                          child: _inlineField(
+                            controller: _takenCtrlFor(item),
+                            focusNode: _takenFocusFor(item),
+                            hint: '0',
+                            // kg mahsulot bo'lsa o'nlik (8.500) kiritsa
+                            // bo'ladi.
+                            decimal: _isKg(item.type),
+                            // Ombor qabul qilgan itemning soni QULFLANADI —
+                            // omborchi tasdiqlagan kelgan soni yakuniy.
+                            enabled: !done && !item.accepted,
+                            onChanged: (_) => _onItemChanged(item),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
