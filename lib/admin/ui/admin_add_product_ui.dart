@@ -7,6 +7,7 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 
 class AddProductPage extends StatefulWidget {
@@ -19,7 +20,7 @@ class AddProductPage extends StatefulWidget {
 class _AddProductPageState extends State<AddProductPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _typeController = TextEditingController();
+  String? _selectedType;
   final ingredientsControlle = TextEditingController();
   final grammController = TextEditingController(text: '1');
   final bozorGrammController = TextEditingController();
@@ -264,17 +265,12 @@ class _AddProductPageState extends State<AddProductPage> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _typeController,
-              decoration: const InputDecoration(
-                labelText: 'Тип (например: шт., литры, кг)',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Введите тип';
-                }
-                return null;
+            ProductTypeRadioGroup(
+              value: _selectedType,
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value;
+                });
               },
             ),
             SizedBox(
@@ -516,6 +512,12 @@ class _AddProductPageState extends State<AddProductPage> {
                       ? null
                       : () async {
                           if (_formKey.currentState!.validate()) {
+                            if (_selectedType == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Выберите тип')),
+                              );
+                              return;
+                            }
                             if (_moneApp && _selectedFilials.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -556,7 +558,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               id: 0,
                               name: _nameController.text,
                               categoryId: _selectedCategoryId!,
-                              type: _typeController.text,
+                              type: _selectedType!,
                               categoryName: '',
                               grams: grammController.text.isEmpty
                                   ? null
@@ -614,7 +616,6 @@ class _AddProductPageState extends State<AddProductPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _typeController.dispose();
     ingredientsControlle.dispose();
     grammController.dispose();
     bozorGrammController.dispose();

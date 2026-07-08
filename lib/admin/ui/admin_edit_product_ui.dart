@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
@@ -26,7 +27,7 @@ class _EditProductPageState extends State<EditProductPage> {
   final ImagePicker _picker = ImagePicker();
 
   late TextEditingController _nameController;
-  late TextEditingController _typeController;
+  String? _selectedType;
   late TextEditingController companyController;
   late TextEditingController ingredientsController;
   late TextEditingController grammControlle;
@@ -69,7 +70,8 @@ class _EditProductPageState extends State<EditProductPage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.product.name);
-    _typeController = TextEditingController(text: widget.product.type);
+    final normalizedType = normalizeProductType(widget.product.type);
+    _selectedType = normalizedType.isEmpty ? null : normalizedType;
     ingredientsController =
         TextEditingController(text: widget.product.ingredients);
     companyController = TextEditingController(text: widget.product.companyName);
@@ -359,17 +361,12 @@ class _EditProductPageState extends State<EditProductPage> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _typeController,
-              decoration: const InputDecoration(
-                labelText: 'Тип',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Введите тип';
-                }
-                return null;
+            ProductTypeRadioGroup(
+              value: _selectedType,
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value;
+                });
               },
             ),
             SizedBox(
@@ -621,6 +618,12 @@ class _EditProductPageState extends State<EditProductPage> {
                       ? null
                       : () async {
                           if (_formKey.currentState!.validate()) {
+                            if (_selectedType == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Выберите тип')),
+                              );
+                              return;
+                            }
                             if (_moneApp && _selectedFilials.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -671,7 +674,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                   : double.parse(bozorGrammController.text),
                               categoryId: _selectedCategoryId,
                               companyName: companyController.text,
-                              type: _typeController.text,
+                              type: _selectedType!,
                               ingredients: ingredientsController.text,
                               filials: _selectedFilials,
                               imageUrl: imageUrl,
@@ -723,7 +726,6 @@ class _EditProductPageState extends State<EditProductPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _typeController.dispose();
     ingredientsController.dispose();
     grammControlle.dispose();
     bozorGrammController.dispose();
