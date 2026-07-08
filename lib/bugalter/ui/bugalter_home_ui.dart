@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
@@ -10,8 +9,6 @@ import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
-import 'package:uz_ai_dev/yuk/ui/yuk_home_ui.dart'
-    show ThousandsSeparatorInputFormatter;
 
 // Sklad nomlari (yuk_home_ui dagi kSkladNames bilan bir xil).
 const Map<int, String> _skladNames = {
@@ -63,21 +60,6 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
     tokenStorage.removeToken();
     tokenStorage.removeRefreshToken();
     context.push(LoginPage());
-  }
-
-  // "Pul berish" bottom sheet'ini ochish (yuk keltiruvchiga to'lov).
-  void _openPaymentSheet() {
-    // Dropdown uchun yuk keltiruvchilar ro'yxatini yangilab olamiz.
-    context.read<BugalterProvider>().fetchYukUsers();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-      ),
-      builder: (_) => const _PaymentSheet(),
-    );
   }
 
   String _tabName(int? id) =>
@@ -157,11 +139,6 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                 _showImages ? Icons.image : Icons.image_outlined,
                 color: _showImages ? _accentColor : null,
               ),
-            ),
-            IconButton(
-              tooltip: 'Pul berish',
-              onPressed: _openPaymentSheet,
-              icon: const Icon(Icons.payments_outlined),
             ),
             IconButton(
               onPressed: _logout,
@@ -274,237 +251,6 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-// "Pul berish" bottom sheet'i: yuk keltiruvchi tanlanadi, summa va
-// ixtiyoriy izoh kiritiladi, "Berish" bosilganda POST /api/payments ketadi.
-class _PaymentSheet extends StatefulWidget {
-  const _PaymentSheet();
-
-  @override
-  State<_PaymentSheet> createState() => _PaymentSheetState();
-}
-
-class _PaymentSheetState extends State<_PaymentSheet> {
-  static const Color _accent = Color(0xFFC5A97B);
-
-  YukUser? _selectedUser;
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _commentController = TextEditingController();
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  // "1 234 567" -> 1234567 (probellarni olib tashlab parse qilamiz).
-  int get _amount =>
-      int.tryParse(_amountController.text.replaceAll(' ', '')) ?? 0;
-
-  Future<void> _submit() async {
-    final user = _selectedUser;
-    final amount = _amount;
-    if (user == null) {
-      _showSnack('Yuk keltiruvchini tanlang', isError: true);
-      return;
-    }
-    if (amount <= 0) {
-      _showSnack('Summani kiriting', isError: true);
-      return;
-    }
-
-    final provider = context.read<BugalterProvider>();
-    // Sheet yopilgandan keyin ham snackbar ko'rinishi uchun messenger'ni
-    // await'dan OLDIN olib qo'yamiz (pop'dan keyin context ishlamaydi).
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final message = await provider.submitPayment(
-        userId: user.id,
-        amount: amount,
-        comment: _commentController.text.trim(),
-      );
-      if (mounted) Navigator.of(context).pop();
-      messenger.showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.green),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _showSnack(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Klaviatura ochilganda sheet ko'tarilishi uchun.
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Consumer<BugalterProvider>(
-        builder: (context, provider, _) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Pul berish',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Yuk keltiruvchi tanlash.
-              if (provider.isLoadingYukUsers)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
-                    child: CircularProgressIndicator.adaptive(),
-                  ),
-                )
-              else if (provider.yukUsersError != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          provider.yukUsersError!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => provider.fetchYukUsers(),
-                        child: const Text(
-                          'Qayta urinish',
-                          style: TextStyle(color: _accent),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                DropdownButtonFormField<YukUser>(
-                  initialValue: _selectedUser,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'Yuk keltiruvchi',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _accent, width: 2),
-                    ),
-                  ),
-                  items: provider.yukUsers
-                      .map(
-                        (u) => DropdownMenuItem(
-                          value: u,
-                          child: Text(
-                            u.phone.isNotEmpty
-                                ? '${u.name} (${u.phone})'
-                                : u.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedUser = v),
-                ),
-              const SizedBox(height: 12),
-              // Summa (faqat raqam, ming ajratuvchi probel bilan).
-              TextField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-                decoration: InputDecoration(
-                  labelText: 'Summa',
-                  suffixText: 'so\'m',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _accent, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Izoh (ixtiyoriy).
-              TextField(
-                controller: _commentController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: 'Izoh (ixtiyoriy)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _accent, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: provider.isSubmittingPayment ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: provider.isSubmittingPayment
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Berish',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
