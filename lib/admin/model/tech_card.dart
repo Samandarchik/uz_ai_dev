@@ -125,10 +125,18 @@ class TechBase {
   final int weightG; // server avto hisoblaydi
   final List<TechItem> ingredients;
 
+  // Excel'dagi blok sarlavhasi rangi: "#RRGGBB" yoki '' (standart kulrang).
+  final String color;
+
+  // Blok rasmi: "/static/<fayl>" yoki '' (rasm yo'q). JSON kaliti: image_url.
+  final String imageUrl;
+
   const TechBase({
     required this.name,
     this.weightG = 0,
     this.ingredients = const [],
+    this.color = '',
+    this.imageUrl = '',
   });
 
   factory TechBase.fromJson(Map<String, dynamic> json) {
@@ -136,6 +144,8 @@ class TechBase {
       name: json['name']?.toString() ?? '',
       weightG: _asInt(json['weight_g']),
       ingredients: TechItem.listFromJson(json['ingredients']),
+      color: json['color']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
     );
   }
 
@@ -149,17 +159,23 @@ class TechBase {
         // Saqlashda mahalliy hisoblangan qiymatni yuboramiz (server qayta hisoblaydi).
         'weight_g': computedWeightG,
         'ingredients': ingredients.map((e) => e.toJson()).toList(),
+        'color': color,
+        'image_url': imageUrl,
       };
 
   TechBase copyWith({
     String? name,
     int? weightG,
     List<TechItem>? ingredients,
+    String? color,
+    String? imageUrl,
   }) {
     return TechBase(
       name: name ?? this.name,
       weightG: weightG ?? this.weightG,
       ingredients: ingredients ?? this.ingredients,
+      color: color ?? this.color,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
