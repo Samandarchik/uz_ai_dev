@@ -26,6 +26,14 @@ class TransferSocketEvent {
   const TransferSocketEvent({required this.action, required this.transfer});
 }
 
+// Ishlab chiqarish (production) buyurtmasi bo'yicha real-time hodisa.
+// Shef/ombor ekranlari shu hodisada ro'yxatni jim yangilaydi.
+class ProductionSocketEvent {
+  final String action;
+
+  const ProductionSocketEvent({required this.action});
+}
+
 // Buyurtmalar uchun yagona (singleton) WebSocket ulanishi.
 // Ombor va Yuk provider'lari shu bitta ulanishga obuna bo'ladi; server
 // relevance bo'yicha filtrlab yuborgani uchun client har bir order'ni
@@ -50,6 +58,13 @@ class OrderSocket {
       StreamController<TransferSocketEvent>.broadcast();
 
   Stream<TransferSocketEvent> get transferEvents => _transferController.stream;
+
+  // Ishlab chiqarish hodisalari — alohida stream (shef ekrani obuna bo'ladi).
+  final StreamController<ProductionSocketEvent> _productionController =
+      StreamController<ProductionSocketEvent>.broadcast();
+
+  Stream<ProductionSocketEvent> get productionEvents =>
+      _productionController.stream;
 
   // Foydalanuvchi (provider) connect chaqirganmi — reconnect faqat shunda davom etadi.
   bool _wantConnected = false;
@@ -121,6 +136,12 @@ class OrderSocket {
             transfer: Map<String, dynamic>.from(transfer),
           ),
         );
+        return;
+      }
+      // Ishlab chiqarish hodisasi — obunachilar ro'yxatni o'zi qayta oladi
+      // (payload shakli muhim emas, faqat signal).
+      if (decoded['type'] == 'production' || action == 'production') {
+        _productionController.add(ProductionSocketEvent(action: action));
         return;
       }
       if (decoded['type'] != 'order') return;

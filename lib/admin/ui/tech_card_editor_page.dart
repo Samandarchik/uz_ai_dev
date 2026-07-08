@@ -199,6 +199,196 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
+  // ---- Bo'limlar (bosqichlar) amallari ----
+
+  // Bazaning ko'rsatiladigan bo'lim raqami (1-based, noto'g'ri qiymat = 1).
+  int _stageOfBase(TechBase base) {
+    if (base.stage < 1) return 1;
+    if (c.stages.isNotEmpty && base.stage > c.stages.length) return 1;
+    return base.stage;
+  }
+
+  // Diapazondan chiqib ketgan bo'lim raqamlarini 1 ga tushiradi.
+  void _clampBaseStages() {
+    for (int i = 0; i < c.bases.length; i++) {
+      final s = c.bases[i].stage;
+      if (s < 1 || (c.stages.isNotEmpty && s > c.stages.length)) {
+        c.bases[i] = c.bases[i].copyWith(stage: 1);
+      }
+    }
+  }
+
+  Future<void> _addStage() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _TextFieldDialog(
+        title: 'Yangi bo\'lim',
+        label: 'Bo\'lim nomi',
+        initial: '',
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    setState(() {
+      c.stages.add(TechStage(name: name));
+      _clampBaseStages();
+    });
+  }
+
+  Future<void> _renameStage(int index) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => _TextFieldDialog(
+        title: 'Bo\'lim nomi',
+        label: 'Bo\'lim nomi',
+        initial: c.stages[index].name,
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    setState(() => c.stages[index] = TechStage(name: name));
+  }
+
+  // Bo'limni chapga (delta=-1) yoki o'ngga (delta=+1) siljitish.
+  // Bazalarning stage raqamlari ham mos ravishda almashtiriladi.
+  void _moveStage(int index, int delta) {
+    final target = index + delta;
+    if (target < 0 || target >= c.stages.length) return;
+    setState(() {
+      final tmp = c.stages[index];
+      c.stages[index] = c.stages[target];
+      c.stages[target] = tmp;
+      // stage — 1-based: index+1 <-> target+1 almashadi.
+      for (int i = 0; i < c.bases.length; i++) {
+        final s = c.bases[i].stage;
+        if (s == index + 1) {
+          c.bases[i] = c.bases[i].copyWith(stage: target + 1);
+        } else if (s == target + 1) {
+          c.bases[i] = c.bases[i].copyWith(stage: index + 1);
+        }
+      }
+    });
+  }
+
+  Future<void> _deleteStage(int index) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bo\'limni o\'chirish'),
+        content: Text(
+          '«${index + 1}. ${c.stages[index].name}» o\'chirilsinmi?\n'
+          'Bu bo\'limdagi bazalar 1-bo\'limga o\'tadi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      c.stages.removeAt(index);
+      final deleted = index + 1; // o'chirilgan bo'limning 1-based raqami
+      for (int i = 0; i < c.bases.length; i++) {
+        final s = c.bases[i].stage;
+        if (s == deleted) {
+          // O'chirilgan bo'limning bazalari 1-bo'limga tushadi.
+          c.bases[i] = c.bases[i].copyWith(stage: 1);
+        } else if (s > deleted) {
+          // Yuqoridagi bo'limlar bittaga suriladi.
+          c.bases[i] = c.bases[i].copyWith(stage: s - 1);
+        }
+      }
+      _clampBaseStages();
+    });
+  }
+
+  // Bo'lim chipida long-press menyusi.
+  Future<void> _showStageMenu(int index) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Nomini tahrirlash'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _renameStage(index);
+              },
+            ),
+            if (index > 0)
+              ListTile(
+                leading: const Icon(Icons.arrow_back),
+                title: const Text('Chapga siljitish'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _moveStage(index, -1);
+                },
+              ),
+            if (index < c.stages.length - 1)
+              ListTile(
+                leading: const Icon(Icons.arrow_forward),
+                title: const Text('O\'ngga siljitish'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _moveStage(index, 1);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text(
+                'O\'chirish',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _deleteStage(index);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Baza uchun bo'lim tanlash dialogi (faqat stages bo'sh bo'lmaganda).
+  Future<void> _pickBaseStage(int baseIndex) async {
+    final current = _stageOfBase(c.bases[baseIndex]);
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Bo\'limni tanlash'),
+        children: [
+          RadioGroup<int>(
+            groupValue: current,
+            onChanged: (v) => Navigator.pop(ctx, v),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < c.stages.length; i++)
+                  RadioListTile<int>(
+                    value: i + 1,
+                    title: Text('${i + 1}. ${c.stages[i].name}'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() =>
+        c.bases[baseIndex] = c.bases[baseIndex].copyWith(stage: picked));
+  }
+
   // ---- Baza amallari ----
 
   Future<void> _addBase() async {
@@ -278,6 +468,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 _pickBaseColor(index);
               },
             ),
+            if (c.stages.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.account_tree_outlined),
+                title: const Text('Bo\'limni tanlash'),
+                subtitle: Text(
+                  'Hozir: ${_stageOfBase(base)}-bo\'lim',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickBaseStage(index);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: Text(hasImage ? 'Rasmni o\'zgartirish' : 'Rasm qo\'shish'),
@@ -544,6 +747,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               children: [
                 _productPhoto(),
                 _headerTables(wide),
+                _stagesRow(),
                 const SizedBox(height: 12),
                 _blocksArea(wide),
                 const SizedBox(height: 4),
@@ -710,6 +914,50 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
+  // --- «Bo'limlar» qatori: raqamlangan chiplar + «+ Bo'lim» ---
+  // Tap — nomini tahrirlash; long-press — menyu (tahrir/siljitish/o'chirish).
+
+  Widget _stagesRow() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const Text('Bo\'limlar:', style: _kCellBold),
+          if (c.stages.isEmpty)
+            Chip(
+              label: Text(
+                'Bo\'lim qo\'shilmagan (hammasi 1-bo\'lim)',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey[600]),
+              ),
+              backgroundColor: Colors.grey[100],
+              visualDensity: VisualDensity.compact,
+            ),
+          for (int i = 0; i < c.stages.length; i++)
+            GestureDetector(
+              onLongPress: () => _showStageMenu(i),
+              child: ActionChip(
+                label: Text(
+                  '${i + 1}. ${c.stages[i].name}',
+                  style: const TextStyle(fontSize: 12.5),
+                ),
+                onPressed: () => _renameStage(i),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ActionChip(
+            avatar: const Icon(Icons.add, size: 16),
+            label: const Text('Bo\'lim', style: TextStyle(fontSize: 12.5)),
+            onPressed: _addStage,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- Bloklar maydoni: keng ekranda 2 ustun, telefonda 1 ustun ---
 
   Widget _blocksArea(bool wide) {
@@ -781,7 +1029,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                               child: Padding(
                                 padding: _kCellPad,
                                 child: Text(
-                                  '${base.name} ( на ${c.batchQty} тортов )',
+                                  c.stages.isEmpty
+                                      ? '${base.name} ( на ${c.batchQty} тортов )'
+                                      : '[${_stageOfBase(base)}] ${base.name} '
+                                          '( на ${c.batchQty} тортов )',
                                   style: _kCellBold,
                                 ),
                               ),

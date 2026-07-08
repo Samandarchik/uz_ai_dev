@@ -83,6 +83,7 @@ class _EditUserPageState extends State<EditUserPage> {
       AppRoles.ombor,
       AppRoles.yukKeltiruvchi,
       AppRoles.bugalter,
+      AppRoles.shef,
     ];
     final r = widget.user?.role ?? AppRoles.seller;
     _selectedRole = r.isEmpty ? AppRoles.seller : r;
@@ -110,6 +111,8 @@ class _EditUserPageState extends State<EditUserPage> {
         return 'Yuk keltiruvchi';
       case AppRoles.bugalter:
         return 'Bugalter';
+      case AppRoles.shef:
+        return 'Shef (ishlab chiqarish)';
       case AppRoles.superAdmin:
         return 'Superadmin';
       case AppRoles.admin:
@@ -219,7 +222,9 @@ class _EditUserPageState extends State<EditUserPage> {
       if (_selectedFilialId == null) {
         message = 'Выберите ветку';
       }
-    } else if (_selectedRole == AppRoles.ombor) {
+    } else if (_selectedRole == AppRoles.ombor ||
+        _selectedRole == AppRoles.shef) {
+      // Shef ham ombor kabi bitta sklad bilan ishlaydi (filial talab qilinmaydi).
       if (_selectedSklads.length != 1) {
         message = 'Выберите один склад';
       }
@@ -251,10 +256,12 @@ class _EditUserPageState extends State<EditUserPage> {
     // filial_id faqat seller uchun yuboriladi; ombor/yuk uchun null.
     final int? filialId = _selectedRole == AppRoles.seller ? _selectedFilialId : null;
 
-    // Bugalter kategoriya bilan cheklanmaydi — bo'sh ro'yxat yuboriladi,
+    // Bugalter/shef kategoriya bilan cheklanmaydi — bo'sh ro'yxat yuboriladi,
     // rol almashtirilganda eski tanlov qolib ketmasligi uchun.
     final List<int> categoryIds =
-        _selectedRole == AppRoles.bugalter ? [] : _categoryIds;
+        (_selectedRole == AppRoles.bugalter || _selectedRole == AppRoles.shef)
+            ? []
+            : _categoryIds;
 
     setState(() => _isLoading = true);
 
@@ -354,10 +361,11 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   // Rolga qarab sklad tanlovi:
-  // - ombor          → bitta sklad (radio)
+  // - ombor / shef    → bitta sklad (radio)
   // - yuk_keltiruvchi → bir nechta sklad (checkbox)
   Widget _buildSkladSelector() {
-    final bool isOmbor = _selectedRole == AppRoles.ombor;
+    final bool isOmbor = _selectedRole == AppRoles.ombor ||
+        _selectedRole == AppRoles.shef;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -985,7 +993,8 @@ class _EditUserPageState extends State<EditUserPage> {
               if (_selectedRole == AppRoles.seller)
                 _buildFilialSelector()
               else if (_selectedRole == AppRoles.ombor ||
-                  _selectedRole == AppRoles.yukKeltiruvchi)
+                  _selectedRole == AppRoles.yukKeltiruvchi ||
+                  _selectedRole == AppRoles.shef)
                 _buildSkladSelector(),
               const SizedBox(height: 20),
 
@@ -1027,11 +1036,12 @@ class _EditUserPageState extends State<EditUserPage> {
               ],
 
               // Yuk keltiruvchi: kategoriya o'rniga manba (source) tanlovi.
-              // Bugalter: kategoriya so'ralmaydi — hammasini ko'radi.
+              // Bugalter/shef: kategoriya so'ralmaydi.
               // Boshqa rollar: avvalgidek kategoriya tanlovi.
               if (_selectedRole == AppRoles.yukKeltiruvchi)
                 _buildSourceSelector()
-              else if (_selectedRole != AppRoles.bugalter)
+              else if (_selectedRole != AppRoles.bugalter &&
+                  _selectedRole != AppRoles.shef)
                 _buildCategorySelector(),
               const SizedBox(height: 32),
 

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
+import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
@@ -130,6 +131,12 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
+            // Ishlab chiqarish buyurtmalari (o'chirish + status — faqat bugalter).
+            IconButton(
+              tooltip: 'Ishlab chiqarish',
+              onPressed: () => context.push(const BugalterProductionUi()),
+              icon: const Icon(Icons.factory_outlined),
+            ),
             IconButton(
               tooltip: _showImages
                   ? 'Rasmlarni yashirish'

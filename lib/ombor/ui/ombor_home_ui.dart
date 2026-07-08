@@ -7,6 +7,8 @@ import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_production_ui.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_stock_ui.dart';
 
 // Ombor roli uchun bosh ekran — user panelidagi kabi: tepada qidiruv,
 // har kategoriya sarlavha + "barchasi" tugmasi + gorizontal kartochkalar.
@@ -69,6 +71,22 @@ class _OmborHomeUiState extends State<OmborHomeUi>
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Ishlab chiqarish buyurtmalari (shef → ombor masalliq berish).
+          IconButton(
+            onPressed: () {
+              context.push(const OmborProductionUi());
+            },
+            tooltip: 'Ishlab chiqarish',
+            icon: const Icon(Icons.factory_outlined),
+          ),
+          // Sklad qoldig'i (inventar) sahifasi.
+          IconButton(
+            onPressed: () {
+              context.push(const OmborStockUi());
+            },
+            tooltip: 'Qoldiq',
+            icon: const Icon(Icons.inventory_2_outlined),
+          ),
           // Qabul qilingan buyurtmalar tarixi (yuk keltiruvchidagi kabi).
           IconButton(
             onPressed: () {

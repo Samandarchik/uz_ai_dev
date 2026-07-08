@@ -6,6 +6,7 @@ import 'package:uz_ai_dev/bugalter/ui/bugalter_home_ui.dart';
 import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
+import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_home_ui.dart';
 import 'package:uz_ai_dev/user/services/info_piuls.dart';
 import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
@@ -167,6 +168,8 @@ class _LoginPageState extends State<LoginPage> {
       context.pushAndRemove(const YukHomeUi());
     } else if (role == AppRoles.bugalter) {
       context.pushAndRemove(const BugalterHomeUi());
+    } else if (role == AppRoles.shef) {
+      context.pushAndRemove(const ShefHomeUi());
     } else if (role == "customer" || role == "bringer") {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi
       final prefs = await SharedPreferences.getInstance();

@@ -119,6 +119,30 @@ class TechItem {
   }
 }
 
+// Ishlab chiqarish bo'limi (bosqichi): Бисквит, Крем, Безаш...
+// Tartibi = ishlab chiqarish tartibi. Har baza bitta bo'limga biriktiriladi.
+class TechStage {
+  final String name;
+
+  const TechStage({required this.name});
+
+  factory TechStage.fromJson(Map<String, dynamic> json) {
+    return TechStage(name: json['name']?.toString() ?? '');
+  }
+
+  Map<String, dynamic> toJson() => {'name': name};
+
+  static List<TechStage> listFromJson(dynamic data) {
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => TechStage.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [];
+  }
+}
+
 // Yarim tayyor blok (biskvit, krem, sироп, ...).
 class TechBase {
   final String name;
@@ -131,21 +155,28 @@ class TechBase {
   // Blok rasmi: "/static/<fayl>" yoki '' (rasm yo'q). JSON kaliti: image_url.
   final String imageUrl;
 
+  // Nechanchi bo'limga (TechCard.stages, 1-based) tegishli.
+  // 0 yoki noto'g'ri qiymat = 1-bo'lim deb olinadi.
+  final int stage;
+
   const TechBase({
     required this.name,
     this.weightG = 0,
     this.ingredients = const [],
     this.color = '',
     this.imageUrl = '',
+    this.stage = 1,
   });
 
   factory TechBase.fromJson(Map<String, dynamic> json) {
+    final rawStage = _asInt(json['stage']);
     return TechBase(
       name: json['name']?.toString() ?? '',
       weightG: _asInt(json['weight_g']),
       ingredients: TechItem.listFromJson(json['ingredients']),
       color: json['color']?.toString() ?? '',
       imageUrl: json['image_url']?.toString() ?? '',
+      stage: rawStage < 1 ? 1 : rawStage,
     );
   }
 
@@ -161,6 +192,7 @@ class TechBase {
         'ingredients': ingredients.map((e) => e.toJson()).toList(),
         'color': color,
         'image_url': imageUrl,
+        'stage': stage < 1 ? 1 : stage,
       };
 
   TechBase copyWith({
@@ -169,6 +201,7 @@ class TechBase {
     List<TechItem>? ingredients,
     String? color,
     String? imageUrl,
+    int? stage,
   }) {
     return TechBase(
       name: name ?? this.name,
@@ -176,6 +209,7 @@ class TechBase {
       ingredients: ingredients ?? this.ingredients,
       color: color ?? this.color,
       imageUrl: imageUrl ?? this.imageUrl,
+      stage: stage ?? this.stage,
     );
   }
 
@@ -196,6 +230,8 @@ class TechCard {
   final int batchWeightG; // server avto hisoblaydi
   final int pieceWeightG; // server avto hisoblaydi
   final int? diameterCm; // tort uchun ixtiyoriy
+  // Bo'limlar (bosqichlar) ro'yxati; bo'sh bo'lsa hammasi 1 ta bo'lim deb olinadi.
+  final List<TechStage> stages;
   final List<TechBase> bases;
   final List<TechItem> consumables; // qadoqlash materiallari
 
@@ -204,6 +240,7 @@ class TechCard {
     this.batchWeightG = 0,
     this.pieceWeightG = 0,
     this.diameterCm,
+    this.stages = const [],
     this.bases = const [],
     this.consumables = const [],
   });
@@ -215,6 +252,7 @@ class TechCard {
       pieceWeightG: _asInt(json['piece_weight_g']),
       diameterCm:
           json['diameter_cm'] == null ? null : _asInt(json['diameter_cm']),
+      stages: TechStage.listFromJson(json['stages']),
       bases: TechBase.listFromJson(json['bases']),
       consumables: TechItem.listFromJson(json['consumables']),
     );
@@ -234,6 +272,7 @@ class TechCard {
         'batch_weight_g': computedBatchWeightG,
         'piece_weight_g': computedPieceWeightG,
         'diameter_cm': diameterCm,
+        'stages': stages.map((e) => e.toJson()).toList(),
         'bases': bases.map((e) => e.toJson()).toList(),
         'consumables': consumables.map((e) => e.toJson()).toList(),
       };
@@ -244,6 +283,7 @@ class TechCard {
     int? pieceWeightG,
     int? diameterCm,
     bool clearDiameter = false,
+    List<TechStage>? stages,
     List<TechBase>? bases,
     List<TechItem>? consumables,
   }) {
@@ -252,6 +292,7 @@ class TechCard {
       batchWeightG: batchWeightG ?? this.batchWeightG,
       pieceWeightG: pieceWeightG ?? this.pieceWeightG,
       diameterCm: clearDiameter ? null : (diameterCm ?? this.diameterCm),
+      stages: stages ?? this.stages,
       bases: bases ?? this.bases,
       consumables: consumables ?? this.consumables,
     );

@@ -6,6 +6,8 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
@@ -80,11 +82,33 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'production',
+                child: ListTile(
+                  leading: Icon(Icons.factory_outlined),
+                  title: Text('Ishlab chiqarish'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'stock',
+                child: ListTile(
+                  leading: Icon(Icons.inventory_2_outlined),
+                  title: Text('Sklad qoldiqlari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
                 case 'categories':
                   context.push(const CategoryManagementScreen());
+                  break;
+                case 'production':
+                  context.push(const AdminProductionUi());
+                  break;
+                case 'stock':
+                  context.push(const AdminStockUi());
                   break;
               }
             },

@@ -8,6 +8,9 @@ import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
+import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
+import 'package:uz_ai_dev/production/provider/stock_provider.dart';
+import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/splash_screen.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
@@ -23,6 +26,12 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => OmborProvider()),
         ChangeNotifierProvider(create: (_) => YukProvider()),
         ChangeNotifierProvider(create: (_) => BugalterProvider()),
+        ChangeNotifierProvider(create: (_) => ShefProvider()),
+        // Ishlab chiqarish (ombor/admin/bugalter) + sklad qoldig'i.
+        ChangeNotifierProvider(create: (_) => OmborProductionProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProductionProvider()),
+        ChangeNotifierProvider(create: (_) => BugalterProductionProvider()),
+        ChangeNotifierProvider(create: (_) => StockProvider()),
         ChangeNotifierProvider(create: (_) => ProductProviderAdmin()),
         ChangeNotifierProvider(create: (_) => CategoryProviderAdmin()),
         ChangeNotifierProvider(create: (_) => FilialProviderAdmin()),

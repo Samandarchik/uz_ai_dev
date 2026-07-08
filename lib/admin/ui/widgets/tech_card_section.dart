@@ -9,12 +9,15 @@ import 'package:uz_ai_dev/admin/ui/consumables_editor_page.dart';
 class TechCardController {
   int batchQty;
   int? diameterCm;
+  // Bo'limlar (bosqichlar) — tex karta muharriridagi «Bo'limlar» qatori.
+  final List<TechStage> stages;
   final List<TechBase> bases;
   final List<TechItem> consumables;
 
   TechCardController([TechCard? initial])
       : batchQty = (initial?.batchQty ?? 1) < 1 ? 1 : (initial?.batchQty ?? 1),
         diameterCm = initial?.diameterCm,
+        stages = List<TechStage>.from(initial?.stages ?? const []),
         bases = List<TechBase>.from(initial?.bases ?? const []),
         consumables = List<TechItem>.from(initial?.consumables ?? const []);
 
@@ -22,6 +25,7 @@ class TechCardController {
   TechCard build() => TechCard(
         batchQty: batchQty < 1 ? 1 : batchQty,
         diameterCm: diameterCm,
+        stages: List<TechStage>.from(stages),
         bases: List<TechBase>.from(bases),
         consumables: List<TechItem>.from(consumables),
       );

@@ -1,0 +1,103 @@
+import 'package:dio/dio.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/shef/model/production_model.dart';
+
+// Ishlab chiqarish buyurtmalari — ombor/admin/bugalter tomoni uchun Dio
+// servis. Server ro'yxatni rolga qarab filtrlaydi: ombor — o'z skladlari,
+// admin/bugalter — hammasi. Modellari shef bilan umumiy
+// (lib/shef/model/production_model.dart).
+class ProductionService {
+  final Dio dio = sl<Dio>();
+
+  // DioException'dan foydalanuvchiga ko'rsatiladigan xabar yasash.
+  Never _throwDio(DioException e, String fallback) {
+    if (e.response != null) {
+      final body = e.response!.data;
+      final msg = (body is Map && body['message'] != null)
+          ? body['message'].toString()
+          : 'Server xatosi: ${e.response!.statusCode}';
+      throw Exception(msg);
+    }
+    throw Exception('Tarmoq xatosi: ${e.message ?? fallback}');
+  }
+
+  // GET /api/production/orders -> rolga mos buyurtmalar ro'yxati.
+  Future<List<ProductionOrder>> fetchOrders() async {
+    try {
+      final response = await dio.get(AppUrls.productionOrders);
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) return ProductionOrder.listFromJson(body['data']);
+        return [];
+      }
+      throw Exception(
+          'Buyurtmalarni yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'buyurtmalar yuklanmadi');
+    }
+  }
+
+  // GET /api/production/orders/{id} -> bitta buyurtma (to'liq).
+  Future<ProductionOrder?> fetchOrder(int id) async {
+    try {
+      final response = await dio.get('${AppUrls.productionOrders}/$id');
+      if (response.statusCode == 200) return _orderFromBody(response.data);
+      throw Exception('Buyurtmani yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'buyurtma yuklanmadi');
+    }
+  }
+
+  // POST .../{id}/items/{pi}/stages/{si}/issue — ombor «Berdim»:
+  // chiqim + material_status=berildi. pi/si — 0-based indekslar.
+  Future<ProductionOrder?> issueStage(int orderId, int pi, int si) async {
+    try {
+      final response = await dio.post(
+        '${AppUrls.productionOrders}/$orderId/items/$pi/stages/$si/issue',
+      );
+      if (response.statusCode == 200) return _orderFromBody(response.data);
+      throw Exception('Saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'berish saqlanmadi');
+    }
+  }
+
+  // DELETE /api/production/orders/{id} — FAQAT bugalter o'chira oladi.
+  Future<void> deleteOrder(int id) async {
+    try {
+      final response = await dio.delete('${AppUrls.productionOrders}/$id');
+      if (response.statusCode == 200) return;
+      throw Exception('O\'chirilmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'o\'chirilmadi');
+    }
+  }
+
+  // PUT /api/production/orders/{id}/status — FAQAT bugalter statusni qo'lda
+  // almashtiradi. Body: {status: yangi|jarayonda|tayyor}.
+  Future<ProductionOrder?> updateStatus(int id, String status) async {
+    try {
+      final response = await dio.put(
+        '${AppUrls.productionOrders}/$id/status',
+        data: {'status': status},
+      );
+      if (response.statusCode == 200) return _orderFromBody(response.data);
+      throw Exception('Status saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'status saqlanmadi');
+    }
+  }
+
+  // Javob body'sidan buyurtmani o'qish: { data: {order} } yoki to'g'ridan-
+  // to'g'ri obyekt. Topilmasa null (chaqiruvchi refetch qiladi).
+  ProductionOrder? _orderFromBody(dynamic body) {
+    if (body is Map && body['data'] is Map) {
+      return ProductionOrder.fromJson(Map<String, dynamic>.from(body['data']));
+    }
+    if (body is Map && body['id'] != null) {
+      return ProductionOrder.fromJson(Map<String, dynamic>.from(body));
+    }
+    return null;
+  }
+}

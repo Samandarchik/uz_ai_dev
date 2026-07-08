@@ -32,6 +32,24 @@ abstract final class AppUrls {
   // buyurtmalari.
   static String bugalterOrders = '$baseUrl/api/bugalter/orders';
 
+  // Ishlab chiqarish (производство) — shef roli.
+  // Tex kartasi bor mahsulotlar ro'yxati (buyurtma yaratish uchun).
+  static String productionProducts = '$baseUrl/api/production/products';
+  // Ishlab chiqarish buyurtmalari. Ost-yo'llar:
+  //   /{id}                                   — bitta buyurtma
+  //   /{id}/items/{pi}/stages/{si}/accept     — shef masalliqni qabul qildi
+  //   /{id}/items/{pi}/stages/{si}/reject     — rad etdi (body: {comment})
+  //   /{id}/items/{pi}/stages/{si}/progress   — done_qty kiritish (PUT)
+  // pi/si — 0-based item/stage indekslari.
+  static String productionOrders = '$baseUrl/api/production/orders';
+
+  // Sklad qoldig'i (to'liq inventar). GET ?sklad_id=N — qoldiqlar ro'yxati.
+  static String stock = '$baseUrl/api/stock';
+  // POST {sklad_id, product_id, qty(+/-), comment} — qo'lda korreksiya.
+  static String stockAdjust = '$baseUrl/api/stock/adjust';
+  // GET ?sklad_id=N[&product_id=M][&limit=K] — harakatlar tarixi (desc).
+  static String stockMoves = '$baseUrl/api/stock/moves';
+
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';
 
