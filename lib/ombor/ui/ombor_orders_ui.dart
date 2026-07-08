@@ -69,6 +69,8 @@ class OmborOrdersHistoryUi extends StatelessWidget {
 // yuklanadi; loading/error/bo'sh/pull-to-refresh holatlari shu yerda.
 // acceptedOnly=false (default): faqat hali qabul qilinmagan (yuborilgan)
 // buyurtmalar; acceptedOnly=true: faqat qabul qilinganlar (tarix ekrani).
+// Buyurtmalar sklad bo'yicha guruhlanib, har sklad uchun BITTA jamlangan
+// karta chiqadi (order_id ko'rsatilmaydi).
 class OmborOrdersView extends StatefulWidget {
   final bool acceptedOnly;
   const OmborOrdersView({super.key, this.acceptedOnly = false});
@@ -161,14 +163,26 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           );
         }
 
+        // Sklad nomi bo'yicha guruhlash — birinchi ko'ringan tartibni
+        // saqlaymiz (myOrders id bo'yicha kamayuvchi, ya'ni eng yangisi
+        // yuqorida). Har sklad uchun bitta jamlangan karta.
+        final groups = <String, List<OmborOrder>>{};
+        for (final o in orders) {
+          groups.putIfAbsent(o.skladName, () => <OmborOrder>[]).add(o);
+        }
+        final entries = groups.entries.toList();
+
         return RefreshIndicator(
           color: _accentColor,
           onRefresh: () => provider.fetchMyOrders(),
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: orders.length,
-            itemBuilder: (context, index) =>
-                _OrderCard(order: orders[index]),
+            itemCount: entries.length,
+            itemBuilder: (context, index) => _SkladDayCard(
+              key: ValueKey(entries[index].key),
+              skladName: entries[index].key,
+              orders: entries[index].value,
+            ),
           ),
         );
       },
@@ -205,44 +219,79 @@ String _formatDate(String raw) {
   return '$datePart $timePart';
 }
 
-class _OrderCard extends StatefulWidget {
-  final OmborOrder order;
-  const _OrderCard({required this.order});
+// Bitta sklad uchun jamlangan karta: o'sha skladga tegishli barcha
+// buyurtmalarning (rasxod bo'lmagan) mahsulotlari BITTA kartada. Sarlavhada
+// faqat sklad nomi (order_id ko'rsatilmaydi), so'ng bitta jadval sarlavhasi
+// va hamma buyurtmalarning mahsulot qatorlari. >1 buyurtma bo'lsa ularning
+// orasida buyurtma vaqti bilan ingichka ajratuvchi chiqadi.
+class _SkladDayCard extends StatefulWidget {
+  final String skladName;
+  final List<OmborOrder> orders;
+  const _SkladDayCard({super.key, required this.skladName, required this.orders});
 
   @override
-  State<_OrderCard> createState() => _OrderCardState();
+  State<_SkladDayCard> createState() => _SkladDayCardState();
 }
 
-class _OrderCardState extends State<_OrderCard> {
-  OmborOrder get order => widget.order;
+class _SkladDayCardState extends State<_SkladDayCard> {
+  static const Color _accent = Color(0xFFC5A97B);
 
-  // Har bir mahsulot (product_id) uchun olingan rasm/video lokal fayl yo'li.
-  final Map<int, String> _images = {};
-  final Map<int, String> _videos = {};
-  // Har bir mahsulot uchun "Kelgan soni" (haqiqatda kelgan miqdor) controlleri.
-  final Map<int, TextEditingController> _received = {};
+  // Kalitlar KOMPOZIT: '${order.id}_${item.productId}'. Bitta kartada bir
+  // nechta buyurtma bo'lgani uchun bir xil product_id turli buyurtmalarда
+  // uchrashi mumkin — int product_id bilan kalitlash to'qnashardi. Har item
+  // shu tariqa o'z buyurtmasiga bog'liq qoladi.
+  final Map<String, String> _images = {};
+  final Map<String, String> _videos = {};
+  // Har (buyurtma, mahsulot) uchun "Kelgan soni" controlleri.
+  final Map<String, TextEditingController> _received = {};
   final ImagePicker _picker = ImagePicker();
+
+  String _keyOf(int orderId, int productId) => '${orderId}_$productId';
 
   @override
   void initState() {
     super.initState();
-    // "Kelgan soni" maydoni: narxlangan buyurtmada yuk keltiruvchi aytgan
-    // miqdor (taken) bilan to'ldiriladi; hali narxlanmagan (created)
-    // buyurtmada BO'SH turadi — omborchi haqiqatda kelganini o'zi yozadi
-    // (buyurtma soni defolt qilib qo'yilmaydi).
-    // Rasxod (xarajat) itemlari va allaqachon qabul qilingan itemlar uchun
-    // controller ochilmaydi (ular read-only ko'rinadi).
-    if (order.isPriced || order.isCreated) {
+    _syncControllers();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SkladDayCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Real-time (socket) yangi buyurtma kelishi yoki item qabul qilinishi
+    // bilan kerakli controllerlarni qo'shamiz, keraksizlarini tozalaymiz.
+    _syncControllers();
+  }
+
+  // Har bir tahrirlanadigan item (qabul qilinmagan, rasxod bo'lmagan,
+  // olib kelingan) uchun "Kelgan soni" controlleri borligini ta'minlaydi.
+  // "Kelgan soni" maydoni: narxlangan buyurtmada yuk keltiruvchi aytgan
+  // miqdor (taken) bilan to'ldiriladi; hali narxlanmagan (created)
+  // buyurtmada BO'SH turadi — omborchi haqiqatda kelganini o'zi yozadi.
+  void _syncControllers() {
+    final valid = <String>{};
+    for (final order in widget.orders) {
+      if (!(order.isPriced || order.isCreated)) continue;
       for (final item in order.items) {
+        // Rasxod (xarajat) va allaqachon qabul qilingan itemlar read-only.
         if (item.isRasxod || item.accepted) continue;
-        // Narxlangan buyurtmada yuk umuman olib kelmagan mahsulot (taken 0,
-        // summa 0) qabul qilinmaydi — controller ham ochilmaydi (read-only
-        // "Olinmagan" ko'rinadi).
+        // Narxlangan buyurtmada umuman olib kelmagan mahsulot (taken 0,
+        // summa 0) qabul qilinmaydi — controller ochilmaydi.
         if (order.isPriced && item.taken <= 0 && item.subtotal <= 0) continue;
-        _received[item.productId] = TextEditingController(
-          text: order.isPriced ? _fmtQty(item.taken) : '',
+        final k = _keyOf(order.id, item.productId);
+        valid.add(k);
+        _received.putIfAbsent(
+          k,
+          () => TextEditingController(
+            text: order.isPriced ? _fmtQty(item.taken) : '',
+          ),
         );
       }
+    }
+    // Endi kerak bo'lmagan (item qabul qilingan / buyurtma o'chgan)
+    // controllerlarni tozalash.
+    final stale = _received.keys.where((k) => !valid.contains(k)).toList();
+    for (final k in stale) {
+      _received.remove(k)?.dispose();
     }
   }
 
@@ -263,7 +312,7 @@ class _OrderCardState extends State<_OrderCard> {
 
   // Kamera katakchasi bosilganda: "Rasm olish" yoki "Video olish" tanlovi.
   // Tanlovga qarab _captureImage yoki _captureVideo ishlaydi.
-  Future<void> _pickMedia(int productId) async {
+  Future<void> _pickMedia(String key) async {
     final choice = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -294,26 +343,26 @@ class _OrderCardState extends State<_OrderCard> {
     );
     if (!mounted || choice == null) return;
     if (choice == 'image') {
-      await _captureImage(productId);
+      await _captureImage(key);
     } else {
-      await _captureVideo(productId);
+      await _captureVideo(key);
     }
   }
 
   // Mahsulot uchun rasm olish (kamera).
-  Future<void> _captureImage(int productId) async {
+  Future<void> _captureImage(String key) async {
     final x = await _picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 70,
     );
     if (x != null) {
       if (!mounted) return;
-      setState(() => _images[productId] = x.path);
+      setState(() => _images[key] = x.path);
     }
   }
 
   // Mahsulot uchun aylana video yozish.
-  Future<void> _captureVideo(int productId) async {
+  Future<void> _captureVideo(String key) async {
     final segments = await Navigator.of(context).push<List<XFile>>(
       PageRouteBuilder(
         opaque: false,
@@ -334,14 +383,14 @@ class _OrderCardState extends State<_OrderCard> {
       );
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // dialogni yopish
-      setState(() => _videos[productId] = processedPath);
+      setState(() => _videos[key] = processedPath);
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // dialogni yopish
       // Qayta ishlash muvaffaqiyatsiz bo'lsa ham video yuborilsin:
       // xom (qayta ishlanmagan) birinchi segment ishlatiladi. Ilovada baribir
       // aylana (ClipOval) ko'rinishda chiqadi, faqat hajmi kattaroq bo'ladi.
-      setState(() => _videos[productId] = segments.first.path);
+      setState(() => _videos[key] = segments.first.path);
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
@@ -376,13 +425,14 @@ class _OrderCardState extends State<_OrderCard> {
 
   // Bitta mahsulotni qabul qilish: kelgan soni + rasm/video yuboriladi.
   // Rasm ham video ham bo'lmasa yuborilmaydi (kamida bittasi majburiy).
-  Future<void> _acceptItem(OmborOrderItem item) async {
+  // Item O'Z buyurtmasi (order) bilan yuboriladi — kompozit kalit orqali.
+  Future<void> _acceptItem(OmborOrder order, OmborOrderItem item) async {
     final messenger = ScaffoldMessenger.of(context);
     final provider = context.read<OmborProvider>();
-    final productId = item.productId;
+    final key = _keyOf(order.id, item.productId);
 
-    final imagePath = _images[productId];
-    final videoPath = _videos[productId];
+    final imagePath = _images[key];
+    final videoPath = _videos[key];
     // Yangi media majburiy — faqat itemda avvaldan saqlangan rasm/video
     // bo'lmasa (qayta tahrirlashda eski rasm yetarli).
     final hasExistingMedia =
@@ -394,8 +444,8 @@ class _OrderCardState extends State<_OrderCard> {
       return;
     }
 
-    final received = _received.containsKey(productId)
-        ? _parseQty(_received[productId]!.text)
+    final received = _received.containsKey(key)
+        ? _parseQty(_received[key]!.text)
         : 0.0;
 
     // Kelgan soni kiritilmagan yoki 0 bo'lsa qabul yuborilmaydi —
@@ -433,7 +483,7 @@ class _OrderCardState extends State<_OrderCard> {
     try {
       await provider.acceptOrderItem(
         order.id,
-        productId,
+        item.productId,
         received,
         imagePath,
         videoPath,
@@ -442,8 +492,8 @@ class _OrderCardState extends State<_OrderCard> {
       // Yuborilgan lokal fayllar endi kerak emas — backenddan kelgan
       // yangilangan order o'z URL'larini olib keladi.
       setState(() {
-        _images.remove(productId);
-        _videos.remove(productId);
+        _images.remove(key);
+        _videos.remove(key);
       });
     } catch (e) {
       messenger.showSnackBar(
@@ -455,8 +505,91 @@ class _OrderCardState extends State<_OrderCard> {
     }
   }
 
+  // Buyurtma vaqti (soat:daqiqa) — _formatDate dan olinadi.
+  String _orderTime(String created) {
+    final f = _formatDate(created); // "2026-06-20 12:34"
+    final parts = f.split(' ');
+    return parts.length > 1 ? parts.last : f;
+  }
+
+  // Bir kartadagi ikki buyurtma orasidagi ingichka ajratuvchi — o'rtasida
+  // buyurtma vaqti (masalan "04:20") ko'rsatiladi.
+  Widget _orderSeparator(OmborOrder order) {
+    final time = _orderTime(order.created);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Divider(height: 1, color: Colors.grey.shade300)),
+          if (time.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
+            const SizedBox(width: 3),
+            Text(
+              time,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Divider(height: 1, color: Colors.grey.shade300)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Bitta mahsulot qatori — o'z buyurtmasi (order) bilan bog'langan.
+  // notBrought/editable per-item mantiq o'sha itemning buyurtma statusiga
+  // qarab hisoblanadi. isAccepting order-scoped (order.id + productId).
+  Widget _itemRow(OmborOrder order, OmborOrderItem item) {
+    final key = _keyOf(order.id, item.productId);
+    return Consumer<OmborProvider>(
+      builder: (ctx, p, _) => _MediaItemRow(
+        item: item,
+        // Yuk yuborgandan keyin umuman olib kelinmagan mahsulot
+        // (taken 0, summa 0) — qabul qilinmaydi, "Olinmagan" ko'rinadi.
+        notBrought: !order.isCreated &&
+            !item.accepted &&
+            item.taken <= 0 &&
+            item.subtotal <= 0,
+        // Qabul qilingan item read-only.
+        editable: (order.isPriced || order.isCreated) &&
+            !item.accepted &&
+            !(order.isPriced &&
+                item.taken <= 0 &&
+                item.subtotal <= 0),
+        receivedController: _received[key],
+        localImagePath: _images[key],
+        localVideoPath: _videos[key],
+        isAccepting: p.acceptingItemOrderId == order.id &&
+            p.acceptingItemProductId == item.productId,
+        onReceivedChanged: () => setState(() {}),
+        onTapMedia: () => _pickMedia(key),
+        onAccept: () => _acceptItem(order, item),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final orders = widget.orders;
+    // Tarix (hammasi qabul qilingan) bo'lsa pastda bitta "Qabul qilindi"
+    // belgisi chiqadi.
+    final allAccepted = orders.isNotEmpty && orders.every((o) => o.isAccepted);
+
+    // Guruhdagi har buyurtmaning rasxod bo'lmagan itemlari ketma-ket;
+    // buyurtmalar orasida (>1 bo'lsa) vaqt bilan ajratuvchi.
+    final rows = <Widget>[];
+    var first = true;
+    for (final order in orders) {
+      final visible = order.items.where((it) => !it.isRasxod).toList();
+      if (visible.isEmpty) continue;
+      if (!first) rows.add(_orderSeparator(order));
+      first = false;
+      for (final item in visible) {
+        rows.add(_itemRow(order, item));
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       padding: const EdgeInsets.all(14),
@@ -467,12 +600,15 @@ class _OrderCardState extends State<_OrderCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sarlavha qatori: order_id + status badge.
+          // Sarlavha: sklad nomi (do'kon ikonkasi + nom). Order ID YO'Q,
+          // per-order status badge ham yo'q.
           Row(
             children: [
+              const Icon(Icons.store_outlined, size: 18, color: _accent),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '#${order.orderId}',
+                  widget.skladName.isEmpty ? 'Buyurtma' : widget.skladName,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -480,97 +616,15 @@ class _OrderCardState extends State<_OrderCard> {
                   ),
                 ),
               ),
-              _StatusBadge(status: order.status),
             ],
           ),
-          const SizedBox(height: 6),
-          if (order.skladName.isNotEmpty)
-            Row(
-              children: [
-                const Icon(Icons.store_outlined,
-                    size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    order.skladName,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (order.created.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.access_time,
-                    size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  _formatDate(order.created),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ],
           const Divider(height: 20),
-          // Itemlar. Narxlangan/yangi (created)/qabul qilingan bo'lsa —
-          // jadval: Mahsulot | Kelgan soni | Rasm/Video | Qabul;
-          // aks holda oddiy ro'yxat.
-          if (order.isPriced || order.isCreated || order.isAccepted) ...[
-            const _MediaTableHeader(),
-            // Rasxod (xarajat) itemlari jadvalga kirmaydi — ular pastdagi
-            // "Xarajatlar" blokida (qabul qilinmaydi, rasm/video yo'q).
-            // Har mahsulot alohida qabul qilinadi; item.accepted bo'lsa
-            // qatori read-only bo'lib qoladi.
-            ...order.items.where((i) => !i.isRasxod).map(
-              (item) => Consumer<OmborProvider>(
-                builder: (ctx, p, _) => _MediaItemRow(
-                  item: item,
-                  // Yuk yuborgandan keyin umuman olib kelinmagan mahsulot
-                  // (taken 0, summa 0) — qabul qilinmaydi, "Olinmagan"
-                  // ko'rinadi va buyurtma yopilishini to'smaydi.
-                  notBrought: !order.isCreated &&
-                      !item.accepted &&
-                      item.taken <= 0 &&
-                      item.subtotal <= 0,
-                  // Qabul qilingan item read-only.
-                  editable: (order.isPriced || order.isCreated) &&
-                      !item.accepted &&
-                      !(order.isPriced &&
-                          item.taken <= 0 &&
-                          item.subtotal <= 0),
-                  receivedController: _received[item.productId],
-                  localImagePath: _images[item.productId],
-                  localVideoPath: _videos[item.productId],
-                  isAccepting: p.acceptingItemOrderId == order.id &&
-                      p.acceptingItemProductId == item.productId,
-                  onReceivedChanged: () => setState(() {}),
-                  onTapMedia: () => _pickMedia(item.productId),
-                  onAccept: () => _acceptItem(item),
-                ),
-              ),
-            ),
-            // Eslatma: "Xarajatlar" (rasxod) bloki omborchiga umuman
-            // ko'rsatilmaydi — rasxod itemlari yuk keltiruvchi/bugalterga
-            // tegishli.
-          ] else
-            ...order.items
-                .where((i) => !i.isRasxod)
-                .map((item) => _OrderItemRow(item: item)),
-          // Eslatma: omborchi pul summalarini ko'rmaydi — chek yakuni
-          // (Mahsulot/Xarajat/Jami) bloki ataylab yo'q.
-          // Eslatma: buyurtma darajasidagi katta "Qabul qiling" tugmasi yo'q —
-          // omborchi har mahsulotni qatoridagi tugma bilan alohida qabul
-          // qiladi; hamma item qabul bo'lsa backend statusni o'zi
-          // 'qabul_qilindi' qiladi.
-          // Qabul qilingan buyurtma -> belgi.
-          if (order.isAccepted) ...[
+          // Jadval sarlavhasi bir marta: Mahsulot | Kelgan soni | Rasm/Video
+          // | Qabul.
+          const _MediaTableHeader(),
+          ...rows,
+          // Hammasi qabul qilingan (tarix) -> belgi.
+          if (allAccepted) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -596,46 +650,6 @@ class _OrderCardState extends State<_OrderCard> {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _OrderItemRow extends StatelessWidget {
-  final OmborOrderItem item;
-  const _OrderItemRow({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final qtyLabel =
-        '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
-    final priced = item.taken > 0;
-
-    // Omborchi pul summalarini ko'rmaydi — faqat miqdorlar ko'rinadi.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            item.name,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            priced
-                ? '$qtyLabel  •  ${_fmtQty(item.taken)} olindi'
-                : qtyLabel,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
-          ),
         ],
       ),
     );
@@ -1079,42 +1093,6 @@ class _MediaEmpty extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text('—', style: TextStyle(color: Colors.grey.shade500)),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    // narxlandi holatida badge ko'rsatilmaydi — uning o'rniga pastda
-    // "Qabul qiling" tugmasi chiqadi.
-    if (status == 'narxlandi') return const SizedBox.shrink();
-
-    final bool accepted = status == 'qabul_qilindi';
-    final Color bg = accepted
-        ? const Color(0xFF2E7D32).withValues(alpha: 0.12)
-        : const Color(0xFF1565C0).withValues(alpha: 0.12);
-    final Color fg =
-        accepted ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
-    final String label = accepted ? 'Qabul qilindi' : 'Yuborildi';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
-      ),
     );
   }
 }
