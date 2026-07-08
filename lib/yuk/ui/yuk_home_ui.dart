@@ -644,14 +644,24 @@ class _YukSkladCardState extends State<YukSkladCard> {
   static bool _isDoneOrder(YukOrder o) =>
       o.status == 'narxlandi' || o.status == 'qabul_qilindi';
 
-  // Soni ustunida ko'rsatiladigan (va pul hisobiga asos bo'ladigan) qiymat:
-  // ombor itemni qabul qilgan bo'lsa — omborchi kiritgan haqiqiy kelgan son
-  // (received), aks holda buyurtma qilingan son (count). Maydon baribir QULF,
-  // yuk uni tahrirlay olmaydi.
+  // Pul hisobiga asos bo'ladigan son: ombor itemni qabul qilgan bo'lsa —
+  // omborchi kiritgan haqiqiy kelgan son (received), aks holda buyurtma
+  // qilingan son (count). Maydon baribir QULF, yuk uni tahrirlay olmaydi.
   static double _qtyBasis(YukOrderItem item) =>
       (item.accepted && item.received > 0)
           ? item.received
           : item.count.toDouble();
+
+  // Soni maydonida KO'RSATILADIGAN matn: ombor qabul qilib kelgan sonini
+  // kiritgan bo'lsa — o'sha son; yopilgan buyurtmada — hisob asosi (taken);
+  // aks holda BO'SH. Buyurtma qilingan son maydonga YOZILMAYDI (u nom
+  // ostidagi "1 кг" yorlig'ida turibdi) — ombor "kelgan" deb yozmaguncha
+  // son tasdiqlanmagan.
+  String _qtyText(YukOrder order, YukOrderItem item) {
+    if (item.accepted && item.received > 0) return _fmtQty(item.received);
+    if (_isDoneOrder(order)) return _fmtQty(item.taken);
+    return '';
+  }
 
   // Buyurtmalar sana bo'yicha o'sish tartibida (birinchi kelgani tepada).
   List<YukOrder> get _sorted {
@@ -742,14 +752,15 @@ class _YukSkladCardState extends State<YukSkladCard> {
       // faqat qizil chizilgan (read-only) ko'rinishda chiqadi.
       if (item.deleted) continue;
       final k = _key(order.id, item.productId);
-      // Soni maydoni QULF — buyurtma qilingan son, ombor qabul qilgan bo'lsa
-      // omborchi kiritgan haqiqiy son (received) ko'rsatiladi va pul hisobiga
-      // asos bo'ladi. Yuk faqat summani kiritadi. Summa: shu sessiyada
+      // Soni maydoni QULF — ombor qabul qilgan bo'lsa omborchi kiritgan
+      // haqiqiy son ko'rinadi, aks holda bo'sh. Pul hisobi asosi (taken0)
+      // esa count/received. Yuk faqat summani kiritadi. Summa: shu sessiyada
       // kiritilgan qiymat, bo'lmasa backenddan kelgan qiymat.
       final existing = provider.getItemPrice(order.id, item.productId);
       final taken0 = _qtyBasis(item);
       final subtotal0 = existing?.subtotal ?? item.subtotal;
-      _takenControllers[k] = TextEditingController(text: _fmtQty(taken0));
+      _takenControllers[k] =
+          TextEditingController(text: _qtyText(order, item));
       _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
       _subtotalFocusNodes[k] = FocusNode();
       // Summasi bor katalog itemini lokal narxga tiklaymiz: qaytarib olingan
@@ -793,6 +804,15 @@ class _YukSkladCardState extends State<YukSkladCard> {
       for (final item in o.items) {
         final k = _key(o.id, item.productId);
         final old = oldItems[k];
+        // Buyurtma yopilgach (pending→narxlandi socket/submit) soni maydoni
+        // hisob asosini (taken, qabulda received) ko'rsatib turadi —
+        // pendingdagi bo'sh ko'rinish yopiq chekda qolib ketmasin.
+        if (done && !item.deleted) {
+          final t = _qtyText(o, item);
+          final ctrl = _takenCtrlFor(o, item);
+          if (ctrl.text != t) ctrl.text = t;
+          continue;
+        }
         // Ombor itemni qabul qildi (socket) — omborchi kiritgan haqiqiy son
         // qulf maydonga tushadi (masalan 10 → 11.5), farq badge va birlik
         // narx shu songa o'tadi. Lokal narx yozuvi bo'lsa basis ham
@@ -875,12 +895,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Controllerlarni kerak bo'lganda yaratish (masalan buyurtma yuborilgach
   // serverdan yangi proche/rasxod itemlar kelsa) — null crash bo'lmasin.
-  // Soni maydoni QULF — buyurtma qilingan son (qabul qilingan bo'lsa
-  // omborchi kiritgan haqiqiy son) ko'rsatiladi.
+  // Soni maydoni QULF — qabul qilingan bo'lsa omborchi kiritgan haqiqiy son,
+  // aks holda bo'sh ko'rinadi.
   TextEditingController _takenCtrlFor(YukOrder order, YukOrderItem item) =>
       _takenControllers.putIfAbsent(
         _key(order.id, item.productId),
-        () => TextEditingController(text: _fmtQty(_qtyBasis(item))),
+        () => TextEditingController(text: _qtyText(order, item)),
       );
 
   TextEditingController _subtotalCtrlFor(YukOrder order, YukOrderItem item) =>
@@ -1643,10 +1663,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     if (item.deleted) return _deletedItemRow(item);
     final done = _isDoneOrder(order);
     final priced = provider.getItemPrice(order.id, item.productId);
-    final takenCtrl = _takenControllers[_key(order.id, item.productId)];
-    final takenVal = (!done && takenCtrl != null)
-        ? _parse(takenCtrl.text)
-        : (priced?.taken ?? item.taken);
+    // Birlik narx/farq hisobi maydon matniga emas (u qabulgacha bo'sh),
+    // hisob asosiga tayanadi: qabulda received, aks holda count/taken.
+    final takenVal = done ? (priced?.taken ?? item.taken) : _qtyBasis(item);
     final subtotalVal = priced?.subtotal ?? item.subtotal;
     final unitPrice =
         (takenVal > 0 && subtotalVal > 0) ? subtotalVal / takenVal : null;
