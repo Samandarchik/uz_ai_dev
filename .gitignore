@@ -52,3 +52,4 @@ lib/Simulator Screenshot*.png
 *.xlsx
 Screenshot*.png
 /android/build/
+IMAGE *.jpg
