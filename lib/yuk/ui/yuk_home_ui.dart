@@ -1756,20 +1756,47 @@ class _YukSkladCardState extends State<YukSkladCard> {
   // ogohlantiramiz — ular YUBORILMAYDI, ro'yxatda (pending) qoladi. Summaga
   // ataylab 0 yozilgan qator esa YUBORILADI (backend "olinmagan" deb yopadi)
   // — u sanalmaydi. Hammasiga summa kiritilgan bo'lsa dialogsiz darhol
-  // yuboriladi.
+  // yuboriladi. LEKIN ombor grami (kelgan soni) kiritib QABUL QILGAN item
+  // summasiz qolsa — yuborish umuman BLOKlanadi: bunday item keyin summasiz
+  // yopilib, pul hisobida teshik qoldiradi (received>0, subtotal=0).
   Future<void> _confirmAndSubmit(
     YukProvider provider,
     List<YukOrder> pending,
   ) async {
     var unfilled = 0;
+    final blocked = <String>[];
     for (final o in pending) {
       // O'chirilgan itemlar sanalmaydi — ular baribir yuborilmaydi.
       for (final item
           in o.items.where((i) => i.itemType.isEmpty && !i.deleted)) {
         // Provider haqiqati: to'liq to'ldirilgan yoki ataylab 0/0 yozilgan
         // qator YUBORILADI (sanalmaydi); qolganlari ro'yxatda qoladi.
-        if (!provider.isRowSubmittable(o.id, item.productId)) unfilled++;
+        if (!provider.isRowSubmittable(o.id, item.productId)) {
+          unfilled++;
+          if (item.accepted && item.received > 0) blocked.add(item.name);
+        }
       }
+    }
+    if (blocked.isNotEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Summa kiritilmagan'),
+          content: Text(
+            'Quyidagi mahsulotlarning grami (soni) kiritilgan, '
+            'lekin summasi yozilmagan:\n\n'
+            '• ${blocked.join('\n• ')}\n\n'
+            'Summasini kiriting, shundan keyin yuborish mumkin bo\'ladi.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tushunarli'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
     if (unfilled > 0) {
       final ok = await showDialog<bool>(
