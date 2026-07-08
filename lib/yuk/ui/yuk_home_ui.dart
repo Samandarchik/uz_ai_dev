@@ -624,11 +624,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Controllerlar buyurtma+mahsulot juftligi bo'yicha ('<orderId>_<productId>')
   // — bir xil mahsulot ikki buyurtmada kelsa qatorlar aralashmaydi.
+  // Soni ustuni QULF (omborchi buyurtma qilgan son ko'rsatiladi) — controller
+  // faqat ko'rsatish uchun; fokus kerak emas. Yuk faqat summani tahrirlaydi.
   final Map<String, TextEditingController> _takenControllers = {};
   final Map<String, TextEditingController> _subtotalControllers = {};
-  final Map<String, FocusNode> _takenFocusNodes = {};
   // Summa maydoni fokusda turganda socketdan kelgan qiymat uni bosib
-  // qo'ymasligi uchun summaga ham FocusNode kerak.
+  // qo'ymasligi uchun summaga FocusNode kerak.
   final Map<String, FocusNode> _subtotalFocusNodes = {};
 
   // Boshlang'ich qiymatlari tayyorlangan buyurtmalar (socket orqali yangi
@@ -729,31 +730,25 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final done = _isDoneOrder(order);
     for (final item in order.items) {
       final k = _key(order.id, item.productId);
-      // Avval shu sessiyada kiritilgan qiymat, bo'lmasa backenddan kelgan
-      // qiymat. Omborchi qabul qilgan itemda lokal qoralama bo'sh bo'lsa,
-      // omborchi kiritgan kelgan soni bilan to'ldiriladi (maydon qulf).
+      // Soni maydoni QULF — omborchi buyurtma qilgan son (item.count) doim
+      // ko'rsatiladi va pul hisobiga asos bo'ladi (taken=count). Yuk faqat
+      // summani kiritadi. Summa: shu sessiyada kiritilgan qiymat, bo'lmasa
+      // backenddan kelgan qiymat.
       final existing = provider.getItemPrice(order.id, item.productId);
-      final draftTaken = existing?.taken;
-      final taken0 = (draftTaken != null && draftTaken > 0)
-          ? draftTaken
-          : (item.accepted && item.received > 0
-              ? item.received
-              : item.taken);
+      final taken0 = item.count.toDouble();
       final subtotal0 = existing?.subtotal ?? item.subtotal;
       _takenControllers[k] = TextEditingController(text: _fmtQty(taken0));
       _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
-      _takenFocusNodes[k] = FocusNode();
       _subtotalFocusNodes[k] = FocusNode();
-      // Qaytarib olingan (pending bo'lib qolgan) buyurtmada oldingi qiymatlar
-      // qayta yuborilishi uchun lokal narxga tiklab qo'yamiz. BOSHQA yuk
-      // keltiruvchi boshlagan qoralama (priced_by boshqa) seed QILINMAYDI —
-      // aks holda flushDrafts uni bizning nomimizdan qayta yuborib, hisoblar
-      // aralashib ketadi.
+      // Summasi bor katalog itemini lokal narxga tiklaymiz: qaytarib olingan
+      // buyurtma qiymatlari qayta yuborilishi VA eski qoralamalardagi taken
+      // count'ga normallashishi uchun. BOSHQA yuk keltiruvchi boshlagan
+      // qoralama (priced_by boshqa) seed QILINMAYDI — aks holda flushDrafts
+      // uni bizning nomimizdan qayta yuborib, hisoblar aralashib ketadi.
       if (!done &&
           provider.canSeedOrder(order) &&
-          existing == null &&
           item.itemType.isEmpty &&
-          (taken0 > 0 || subtotal0 > 0)) {
+          subtotal0 > 0) {
         provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
       }
     }
@@ -779,10 +774,6 @@ class _YukSkladCardState extends State<YukSkladCard> {
       for (final o in oldWidget.orders)
         for (final i in o.items) _key(o.id, i.productId): i,
     };
-    // didUpdateWidget build fazasida ishlaydi — provider'ga yozish
-    // (notifyListeners) shu yerda chaqirilsa "setState during build" xatosi
-    // chiqadi; shuning uchun yozuvlar keyingi freymga qoldiriladi.
-    final deferred = <void Function()>[];
     for (final o in widget.orders) {
       // Kun davomida yangi kelgan buyurtma — controllerlarini hozir yaratamiz.
       _initOrder(o);
@@ -790,31 +781,16 @@ class _YukSkladCardState extends State<YukSkladCard> {
       for (final item in o.items) {
         final k = _key(o.id, item.productId);
         final old = oldItems[k];
-        if (item.accepted && !(old?.accepted ?? false)) {
-          final v = item.received > 0 ? item.received : item.taken;
-          _takenCtrlFor(o, item).text = _fmtQty(v);
-          deferred.add(() => _onItemChanged(o, item));
-          continue;
-        }
-        // ─── REAL-TIME sinxronlash ───
-        // Qiymat o'zgarmagan, buyurtma yopiq/qabul qilingan yoki item endi
-        // paydo bo'lgan bo'lsa tegmaymiz.
+        // ─── REAL-TIME sinxronlash (faqat SUMMA; soni maydoni QULF=count) ───
+        // Buyurtma yopiq/qabul qilingan, item endi paydo bo'lgan yoki summa
+        // o'zgarmagan bo'lsa tegmaymiz.
         if (done || item.accepted || old == null) continue;
-        if (old.taken == item.taken && old.subtotal == item.subtotal) {
-          continue;
-        }
+        if (old.subtotal == item.subtotal) continue;
         // O'zimning hali serverga yetib bormagan (debounce kutayotgan)
         // qoralamam bor — socketdagi eski qiymat uni bosib qo'ymasin.
         if (provider.draftSaveScheduled(o.id)) continue;
-        final takenFocused = _takenFocusNodes[k]?.hasFocus ?? false;
         final sumFocused = _subtotalFocusNodes[k]?.hasFocus ?? false;
-        if (old.taken != item.taken && !takenFocused) {
-          final ctrl = _takenCtrlFor(o, item);
-          if (_parse(ctrl.text) != item.taken) {
-            ctrl.text = _fmtQty(item.taken);
-          }
-        }
-        if (old.subtotal != item.subtotal && !sumFocused) {
+        if (!sumFocused) {
           final ctrl = _subtotalCtrlFor(o, item);
           if (_parse(ctrl.text) != item.subtotal) {
             ctrl.text = _fmt(item.subtotal);
@@ -822,19 +798,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
         }
         // O'z buyurtmamda (masalan ikkinchi qurilmam yozgan) lokal narxni
         // ham sinxronlaymiz — flush baribir no-op (server bilan teng).
-        if (provider.canSeedOrder(o) && !takenFocused && !sumFocused) {
+        // Basis sifatida taken=count yuboriladi.
+        if (provider.canSeedOrder(o) && !sumFocused) {
           provider.seedItemPrice(
-              o.id, item.productId, item.taken, item.subtotal);
+              o.id, item.productId, item.count.toDouble(), item.subtotal);
         }
       }
-    }
-    if (deferred.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        for (final apply in deferred) {
-          apply();
-        }
-      });
     }
     _maybeStartUndoTicker();
   }
@@ -869,9 +838,6 @@ class _YukSkladCardState extends State<YukSkladCard> {
     for (final c in _subtotalControllers.values) {
       c.dispose();
     }
-    for (final f in _takenFocusNodes.values) {
-      f.dispose();
-    }
     for (final f in _subtotalFocusNodes.values) {
       f.dispose();
     }
@@ -880,10 +846,11 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Controllerlarni kerak bo'lganda yaratish (masalan buyurtma yuborilgach
   // serverdan yangi proche/rasxod itemlar kelsa) — null crash bo'lmasin.
+  // Soni maydoni QULF — omborchi buyurtma qilgan son (item.count) ko'rsatiladi.
   TextEditingController _takenCtrlFor(YukOrder order, YukOrderItem item) =>
       _takenControllers.putIfAbsent(
         _key(order.id, item.productId),
-        () => TextEditingController(text: _fmtQty(item.taken)),
+        () => TextEditingController(text: _fmtQty(item.count.toDouble())),
       );
 
   TextEditingController _subtotalCtrlFor(YukOrder order, YukOrderItem item) =>
@@ -892,10 +859,6 @@ class _YukSkladCardState extends State<YukSkladCard> {
         () => TextEditingController(text: _fmt(item.subtotal)),
       );
 
-  FocusNode _takenFocusFor(YukOrder order, YukOrderItem item) =>
-      _takenFocusNodes.putIfAbsent(
-          _key(order.id, item.productId), () => FocusNode());
-
   FocusNode _subtotalFocusFor(YukOrder order, YukOrderItem item) =>
       _subtotalFocusNodes.putIfAbsent(
           _key(order.id, item.productId), () => FocusNode());
@@ -903,18 +866,14 @@ class _YukSkladCardState extends State<YukSkladCard> {
   void _onItemChanged(YukOrder order, YukOrderItem item) {
     final provider = context.read<YukProvider>();
     final k = _key(order.id, item.productId);
-    final takenText = _takenControllers[k]?.text ?? '';
     final subtotalText = _subtotalControllers[k]?.text ?? '';
-    final taken = _parse(takenText);
     final subtotal = _parse(subtotalText);
-    // "Ataylab 0": ikkala maydonga ham QO'LDA nimadir yozilgan-u, qiymati 0.
-    // Sonini matndan tekshiramiz — _parse('') ham 0 qaytaradi, bo'sh maydon
-    // bilan yozilgan 0 ni faqat matn ajratadi. Bunday yozuv 0/0 bilan
-    // yuboriladi (backend "olinmagan" deb yopadi); bo'sh qolgani yuborilmaydi.
-    final zero = takenText.trim().isNotEmpty &&
-        subtotalText.trim().isNotEmpty &&
-        taken == 0 &&
-        subtotal == 0;
+    // Soni maydoni QULF — basis sifatida omborchi buyurtma qilgan son (count).
+    // "Ataylab 0": yuk summa maydoniga QO'LDA 0 yozsa item "olinmagan" bo'lib
+    // yuboriladi (taken=0, subtotal=0 → backend "zeroed" deb yopadi). Bo'sh
+    // summa esa yuborilmaydi (pending qoladi).
+    final zero = subtotalText.trim().isNotEmpty && subtotal == 0;
+    final taken = zero ? 0.0 : item.count.toDouble();
     provider.setItemPrice(order.id, item.productId, taken, subtotal,
         zero: zero);
   }
@@ -1661,12 +1620,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
             flex: _qtyFlex,
             child: _inlineField(
               controller: _takenCtrlFor(order, item),
-              focusNode: _takenFocusFor(order, item),
               hint: '0',
               decimal: _isKg(item.type),
-              // Ombor qabul qilgan itemning soni QULFLANADI.
-              enabled: !done && !item.accepted,
-              onChanged: (_) => _onItemChanged(order, item),
+              // Soni maydoni QULF — omborchi buyurtma qilgan son ko'rinadi,
+              // yuk faqat summani kiritadi (soni omborchi qabulda belgilaydi).
+              enabled: false,
+              onChanged: (_) {},
             ),
           ),
           const SizedBox(width: 6),
@@ -1685,11 +1644,11 @@ class _YukSkladCardState extends State<YukSkladCard> {
     );
   }
 
-  // Yuborishdan oldin tasdiq: soni va narxi TO'LIQ kiritilmagan qatorlar
-  // bo'lsa ogohlantiramiz — ular YUBORILMAYDI, ro'yxatda (pending) qoladi.
-  // Ikkala maydonga ham ataylab 0 yozilgan qator esa YUBORILADI (backend
-  // "olinmagan" deb yopadi) — u sanalmaydi. Hammasi to'liq bo'lsa dialogsiz
-  // darhol yuboriladi.
+  // Yuborishdan oldin tasdiq: summasi kiritilmagan qatorlar bo'lsa
+  // ogohlantiramiz — ular YUBORILMAYDI, ro'yxatda (pending) qoladi. Summaga
+  // ataylab 0 yozilgan qator esa YUBORILADI (backend "olinmagan" deb yopadi)
+  // — u sanalmaydi. Hammasiga summa kiritilgan bo'lsa dialogsiz darhol
+  // yuboriladi.
   Future<void> _confirmAndSubmit(
     YukProvider provider,
     List<YukOrder> pending,
@@ -1708,7 +1667,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
         builder: (ctx) => AlertDialog(
           title: const Text('Achotni yopish'),
           content: Text(
-            '$unfilled ta mahsulotga soni va narx to\'liq kiritilmagan — '
+            '$unfilled ta mahsulotga summa kiritilmagan — '
             'ular yuborilmaydi, ro\'yxatda qoladi. Davom etasizmi?',
           ),
           actions: [
@@ -1829,7 +1788,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                     const Expanded(
                       flex: _qtyFlex,
                       child: Text(
-                        'Nechta olgani',
+                        'Soni',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
@@ -3044,7 +3003,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
                     const Expanded(
                       flex: _qtyFlex,
                       child: Text(
-                        'Nechta olgani',
+                        'Soni',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

@@ -538,12 +538,11 @@ class YukProvider extends ChangeNotifier {
     return _prices[orderId]?[productId];
   }
 
-  // Yozuv TO'LIQ to'ldirilganmi: soni ham (taken), summa ham (subtotal)
-  // kiritilgan, YOKI foydalanuvchi ikkala maydonga ham ataylab 0 yozgan
-  // (zero — backend "olinmagan" deb yopadi). Faqat shundaylar yuboriladi;
-  // chala (faqat soni yoki faqat summa) yozuvlar pending'da qoladi.
-  static bool _isFilled(ItemPrice p) =>
-      (p.taken > 0 && p.subtotal > 0) || p.zero;
+  // Yozuv yuborishga tayyormi: yuk faqat SUMMA (subtotal) kiritadi — soni
+  // maydoni qulf (omborchi buyurtma qilgan son = taken). Summa > 0 bo'lsa
+  // yuboriladi; YOKI foydalanuvchi summaga ataylab 0 yozgan (zero — backend
+  // "olinmagan" deb yopadi). Bo'sh summa pending'da qoladi.
+  static bool _isFilled(ItemPrice p) => p.subtotal > 0 || p.zero;
 
   // UI uchun: shu qator yuborishga tayyormi (to'liq to'ldirilgan yoki
   // ataylab 0/0 yozilgan). Yozuv umuman bo'lmasa — tayyor emas.
