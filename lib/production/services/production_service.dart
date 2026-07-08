@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/production/models/production_cost_model.dart';
+import 'package:uz_ai_dev/production/models/production_stats_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 
 // Ishlab chiqarish buyurtmalari — ombor/admin/bugalter tomoni uchun Dio
@@ -86,6 +88,51 @@ class ProductionService {
       throw Exception('Status saqlanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'status saqlanmadi');
+    }
+  }
+
+  // GET /api/production/cost?product_id=N — mahsulot tannarxi (1 partiya +
+  // 1 dona, masalliqlar ro'yxati bilan). Faqat admin/bugalter.
+  Future<ProductionCost> fetchCost(int productId) async {
+    try {
+      final response = await dio.get(
+        AppUrls.productionCost,
+        queryParameters: {'product_id': productId},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return ProductionCost.fromJson(
+              Map<String, dynamic>.from(body['data']));
+        }
+      }
+      throw Exception('Tannarx yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'tannarx yuklanmadi');
+    }
+  }
+
+  // GET /api/production/stats?from=&to= — ishlab chiqarish statistikasi
+  // (admin/bugalter). Sanalar YYYY-MM-DD; berilmasa backend default (30 kun).
+  Future<ProductionStats> fetchStats({String? from, String? to}) async {
+    try {
+      final response = await dio.get(
+        AppUrls.productionStats,
+        queryParameters: {
+          if (from != null) 'from': from,
+          if (to != null) 'to': to,
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return ProductionStats.fromJson(
+              Map<String, dynamic>.from(body['data']));
+        }
+      }
+      throw Exception('Statistika yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'statistika yuklanmadi');
     }
   }
 

@@ -63,6 +63,8 @@ class StockRow {
   final String name;
   final String type; // mahsulotning o'z birligi: кг | литр | шт | м ...
   final double qty; // manfiy bo'lishi mumkin (qizil ko'rsatiladi)
+  final double minQty; // minimal chegara (0 — o'rnatilmagan)
+  final bool low; // backend: qty <= min_qty (kam qolgan)
 
   const StockRow({
     required this.skladId,
@@ -70,6 +72,8 @@ class StockRow {
     this.name = '',
     this.type = '',
     this.qty = 0,
+    this.minQty = 0,
+    this.low = false,
   });
 
   factory StockRow.fromJson(Map<String, dynamic> json) {
@@ -79,6 +83,8 @@ class StockRow {
       name: json['name']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       qty: _asDouble(json['qty']),
+      minQty: _asDouble(json['min_qty']),
+      low: json['low'] == true,
     );
   }
 
@@ -98,6 +104,7 @@ abstract final class StockReason {
   static const String omborQabul = 'ombor_qabul';
   static const String ishlabChiqarish = 'ishlab_chiqarish';
   static const String korreksiya = 'korreksiya';
+  static const String tayyorMahsulot = 'tayyor_mahsulot';
 }
 
 // Sabab kodini foydalanuvchiga ko'rsatiladigan matnga aylantirish.
@@ -109,6 +116,8 @@ String stockReasonLabel(String reason) {
       return 'Ishlab chiqarish';
     case StockReason.korreksiya:
       return 'Korreksiya';
+    case StockReason.tayyorMahsulot:
+      return 'Tayyor mahsulot';
     default:
       return reason;
   }

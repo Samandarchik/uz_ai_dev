@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
+import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 import 'package:uz_ai_dev/production/ui/widgets/production_order_widgets.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart' show productionStatusChip;
 
@@ -226,6 +227,23 @@ class _AdminProductionDetailUiState extends State<AdminProductionDetailUi> {
                     order: order,
                     stockQtyOf: (productId) =>
                         stockProvider.qtyFor(order.skladId, productId),
+                    // Har mahsulot uchun tannarx sheet'i (F3).
+                    itemAction: (item) => TextButton.icon(
+                      onPressed: () => showProductionCostSheet(
+                        context,
+                        productId: item.productId,
+                        productName: item.name,
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: kProductionAccent,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: const Icon(Icons.payments_outlined, size: 16),
+                      label: const Text(
+                        'Tannarx',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                    ),
                   ),
                 ),
         );

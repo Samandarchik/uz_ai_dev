@@ -13,6 +13,7 @@ import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_item_editor.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 
 // Mahsulot tex kartasini (тех карта) Excel «тех карта» varag'iga 1:1 o'xshash
 // ko'rinishda tahrirlash sahifasi. Ro'yxatda double-tap orqali ochiladi.
@@ -721,6 +722,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       appBar: AppBar(
         title: Text(widget.product.name),
         actions: [
+          // Tannarx (1 dona / 1 partiya) — GET /api/production/cost.
+          IconButton(
+            icon: const Icon(Icons.payments_outlined),
+            tooltip: 'Tannarx',
+            onPressed: () => showProductionCostSheet(
+              context,
+              productId: widget.product.id,
+              productName: widget.product.name,
+            ),
+          ),
           _saving
               ? const Padding(
                   padding: EdgeInsets.all(14),

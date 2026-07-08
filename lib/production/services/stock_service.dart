@@ -68,6 +68,59 @@ class StockService {
     }
   }
 
+  // POST /api/stock/min — mahsulot uchun minimal qoldiq chegarasi.
+  Future<String> setMin({
+    required int skladId,
+    required int productId,
+    required double minQty,
+  }) async {
+    try {
+      final response = await dio.post(
+        AppUrls.stockMin,
+        data: {
+          'sklad_id': skladId,
+          'product_id': productId,
+          'min_qty': minQty,
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['message'] != null) {
+          return body['message'].toString();
+        }
+        return 'Min chegara saqlandi';
+      }
+      throw Exception('Min chegara saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'min chegara saqlanmadi');
+    }
+  }
+
+  // POST /api/stock/inventory — inventarizatsiya: real sanab chiqilgan
+  // qoldiqlar. Farqlar korreksiya bo'lib yoziladi; nechta qator
+  // o'zgargani (changed) qaytadi.
+  Future<int> inventory({
+    required int skladId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final response = await dio.post(
+        AppUrls.stockInventory,
+        data: {'sklad_id': skladId, 'items': items},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        final data = (body is Map) ? body['data'] : null;
+        final changed = (data is Map) ? data['changed'] : null;
+        if (changed is num) return changed.toInt();
+        return int.tryParse(changed?.toString() ?? '') ?? 0;
+      }
+      throw Exception('Inventarizatsiya saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'inventarizatsiya saqlanmadi');
+    }
+  }
+
   // GET /api/stock/moves?sklad_id=N[&product_id=M][&limit=K] — harakatlar
   // tarixi (created bo'yicha kamayuvchi).
   Future<List<StockMove>> fetchMoves(

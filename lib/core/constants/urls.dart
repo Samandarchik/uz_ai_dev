@@ -49,6 +49,17 @@ abstract final class AppUrls {
   static String stockAdjust = '$baseUrl/api/stock/adjust';
   // GET ?sklad_id=N[&product_id=M][&limit=K] — harakatlar tarixi (desc).
   static String stockMoves = '$baseUrl/api/stock/moves';
+  // POST {sklad_id, product_id, min_qty} — minimal qoldiq chegarasi.
+  static String stockMin = '$baseUrl/api/stock/min';
+  // POST {sklad_id, items:[{product_id, actual_qty}]} — inventarizatsiya
+  // (real sanab chiqilgan qoldiqlar; farqlar korreksiya bo'lib yoziladi).
+  static String stockInventory = '$baseUrl/api/stock/inventory';
+
+  // Tannarx: GET ?product_id=N — mahsulot tex kartasi bo'yicha 1 partiya /
+  // 1 dona tannarxi (admin/bugalter).
+  static String productionCost = '$baseUrl/api/production/cost';
+  // Statistika: GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (admin/bugalter).
+  static String productionStats = '$baseUrl/api/production/stats';
 
   static const String users = '$baseUrl/api/users';
   static String orders = '$baseUrl/api/orders';

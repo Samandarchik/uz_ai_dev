@@ -6,6 +6,7 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
+import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
@@ -91,6 +92,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'production_stats',
+                child: ListTile(
+                  leading: Icon(Icons.query_stats),
+                  title: Text('Ishlab chiqarish statistikasi'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'stock',
                 child: ListTile(
                   leading: Icon(Icons.inventory_2_outlined),
@@ -106,6 +115,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'production':
                   context.push(const AdminProductionUi());
+                  break;
+                case 'production_stats':
+                  context.push(const AdminProductionStatsUi());
                   break;
                 case 'stock':
                   context.push(const AdminStockUi());

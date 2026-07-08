@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
+import 'package:uz_ai_dev/production/ui/inventory_page.dart';
 import 'package:uz_ai_dev/production/ui/widgets/stock_widgets.dart';
 
 // Admin: sklad qoldiqlari — har sklad uchun tab (loyihadagi boshqa
@@ -25,6 +26,25 @@ class AdminStockUi extends StatelessWidget {
             'Sklad qoldiqlari',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          actions: [
+            // Joriy tab skladi uchun inventarizatsiya.
+            Builder(
+              builder: (tabContext) => IconButton(
+                tooltip: 'Inventarizatsiya',
+                icon: const Icon(Icons.fact_check_outlined),
+                onPressed: () {
+                  final index = DefaultTabController.of(tabContext).index;
+                  Navigator.push(
+                    tabContext,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          StockInventoryPage(skladId: skladIds[index]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           bottom: TabBar(
             isScrollable: true,
             indicatorColor: _accentColor,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
+import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 import 'package:uz_ai_dev/production/ui/widgets/production_order_widgets.dart';
@@ -158,6 +160,9 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
   // Qoldiq qaysi sklad uchun yuklangan (order kelgach bir marta).
   int? _stockLoadedFor;
 
+  // «Yetishmaganidan buyurtma» yuborilayotganda tugma spinner'i.
+  bool _orderingShort = false;
+
   @override
   void initState() {
     super.initState();
@@ -302,6 +307,119 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
     }
   }
 
+  // F2. «Yetishmaganidan buyurtma»: berilmagan/rad etilgan bo'limlardagi
+  // bog'langan masalliqlar bo'yicha short = kerak − qoldiq > 0 bo'lganlarga
+  // mavjud POST /api/orders orqali oddiy sklad-buyurtma yaratadi.
+  Future<void> _orderShortage() async {
+    final provider = context.read<OmborProductionProvider>();
+    final stockProvider = context.read<StockProvider>();
+    final order = provider.orderById(widget.orderId);
+    if (order == null || _orderingShort) return;
+
+    // Kutilayotgan bo'limlar bo'yicha mahsulotga jamlangan ehtiyoj.
+    final need = <int, double>{};
+    final names = <int, String>{};
+    final units = <int, String>{};
+    for (final item in order.items) {
+      for (final stage in item.stages) {
+        final pending = stage.materialStatus == MaterialStatus.none ||
+            stage.materialStatus == MaterialStatus.radEtildi;
+        if (!pending) continue;
+        for (final ing in stage.ingredients) {
+          if (!ing.linked || ing.productId == 0) continue;
+          need[ing.productId] = (need[ing.productId] ?? 0) + ing.stockAmount;
+          names[ing.productId] = ing.name;
+          units[ing.productId] = ing.stockUnit;
+        }
+      }
+    }
+
+    // short = kerak − qoldiq (yozuv yo'q — 0). Yuqoriga 2 xonaga yaxlitlash
+    // (epsilon — float shovqini ortiqcha 0.01 qo'shmasligi uchun).
+    final shorts = <int, double>{};
+    need.forEach((pid, total) {
+      final qoldiq = stockProvider.qtyFor(order.skladId, pid) ?? 0;
+      final short = total - qoldiq;
+      if (short > 0) {
+        shorts[pid] = (short * 100 - 1e-9).ceilToDouble() / 100;
+      }
+    });
+
+    if (shorts.isEmpty) {
+      _snack('Hammasi yetarli', error: false);
+      return;
+    }
+
+    final entries = shorts.entries.toList();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Yetishmaganidan buyurtma',
+            style: TextStyle(fontSize: 17)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Quyidagi masalliqlarga sklad-buyurtma yaratiladi:',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+                const SizedBox(height: 8),
+                for (final e in entries)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      '• ${names[e.key]} — yetishmayapti '
+                      '${fmtStockQty(e.value)} ${units[e.key] ?? ''}'.trim(),
+                      style: const TextStyle(fontSize: 13.5),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  'Jami: ${entries.length} ta mahsulot',
+                  style: const TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Bekor'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _orderingShort = true);
+    try {
+      final orderId = await OmborService().submitOrderReturningId([
+        for (final e in entries) {'product_id': e.key, 'count': e.value},
+      ]);
+      if (!mounted) return;
+      _snack('Buyurtma yaratildi: $orderId', error: false);
+    } catch (e) {
+      if (!mounted) return;
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _orderingShort = false);
+    }
+  }
+
   // «Berdim» tugmasi: material_status "" yoki rad_etildi bo'lganda.
   // (Consumer2 provider o'zgarishida butun body'ni qayta quradi, shuning
   // uchun bu yerda read yetarli.)
@@ -379,14 +497,44 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
           ),
           body: order == null
               ? const Center(child: CircularProgressIndicator.adaptive())
-              : RefreshIndicator(
-                  onRefresh: _refreshAll,
-                  child: ProductionOrderDetailBody(
-                    order: order,
-                    stockQtyOf: (productId) =>
-                        stockProvider.qtyFor(order.skladId, productId),
-                    stageAction: _stageAction,
-                  ),
+              : Column(
+                  children: [
+                    // F2: yetishmagan masalliqlarga sklad-buyurtma.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _orderingShort ? null : _orderShortage,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: kProductionAccent,
+                            side: const BorderSide(color: kProductionAccent),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: _orderingShort
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.add_shopping_cart, size: 18),
+                          label: const Text('Yetishmaganidan buyurtma'),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshAll,
+                        child: ProductionOrderDetailBody(
+                          order: order,
+                          stockQtyOf: (productId) =>
+                              stockProvider.qtyFor(order.skladId, productId),
+                          stageAction: _stageAction,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
         );
       },

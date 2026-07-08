@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
+import 'package:uz_ai_dev/production/ui/inventory_page.dart';
 import 'package:uz_ai_dev/production/ui/widgets/stock_widgets.dart';
 
 // Ombor: o'z skladi qoldiqlari sahifasi — qidiruv, qoldiqlar ro'yxati,
@@ -79,6 +80,18 @@ class _OmborStockUiState extends State<OmborStockUi> {
             'Qoldiq — ${productionSkladName(_sklads.first)}',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Inventarizatsiya',
+              icon: const Icon(Icons.fact_check_outlined),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StockInventoryPage(skladId: _sklads.first),
+                ),
+              ),
+            ),
+          ],
         ),
         body: StockSkladView(skladId: _sklads.first, canAdjust: true),
       );
@@ -96,6 +109,25 @@ class _OmborStockUiState extends State<OmborStockUi> {
             'Qoldiq',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          actions: [
+            // Joriy tab skladi uchun inventarizatsiya.
+            Builder(
+              builder: (tabContext) => IconButton(
+                tooltip: 'Inventarizatsiya',
+                icon: const Icon(Icons.fact_check_outlined),
+                onPressed: () {
+                  final index = DefaultTabController.of(tabContext).index;
+                  Navigator.push(
+                    tabContext,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          StockInventoryPage(skladId: _sklads[index]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           bottom: TabBar(
             isScrollable: _sklads.length > 2,
             indicatorColor: _accentColor,

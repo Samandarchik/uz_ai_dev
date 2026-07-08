@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -136,6 +137,12 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
               tooltip: 'Ishlab chiqarish',
               onPressed: () => context.push(const BugalterProductionUi()),
               icon: const Icon(Icons.factory_outlined),
+            ),
+            // Ishlab chiqarish statistikasi (backend bugalterga ham ochiq).
+            IconButton(
+              tooltip: 'Ishlab chiqarish statistikasi',
+              onPressed: () => context.push(const AdminProductionStatsUi()),
+              icon: const Icon(Icons.query_stats),
             ),
             IconButton(
               tooltip: _showImages

@@ -85,6 +85,51 @@ class StockProvider extends ChangeNotifier {
     }
   }
 
+  // Min chegara o'rnatish. Muvaffaqiyatda skladni jim yangilaydi va null
+  // qaytaradi; xatoda xabar matni qaytadi (UI snackbar ko'rsatadi).
+  Future<String?> setMin({
+    required int skladId,
+    required int productId,
+    required double minQty,
+  }) async {
+    isSubmitting = true;
+    notifyListeners();
+    try {
+      await _service.setMin(
+        skladId: skladId,
+        productId: productId,
+        minQty: minQty,
+      );
+      await refreshSilently(skladId);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isSubmitting = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  // Inventarizatsiya yuborish. Muvaffaqiyatda (changed, null) qaytadi va
+  // sklad jim yangilanadi; xatoda (null, xabar).
+  Future<(int?, String?)> submitInventory({
+    required int skladId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    isSubmitting = true;
+    notifyListeners();
+    try {
+      final changed = await _service.inventory(skladId: skladId, items: items);
+      await refreshSilently(skladId);
+      return (changed, null);
+    } catch (e) {
+      return (null, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      isSubmitting = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   // Harakatlar tarixi — keshlamasdan to'g'ridan-to'g'ri (bottom sheet o'zi
   // FutureBuilder bilan boshqaradi).
   Future<List<StockMove>> fetchMoves(

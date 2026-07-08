@@ -197,11 +197,16 @@ class ProductionOrderDetailBody extends StatelessWidget {
   // Bo'lim ostidagi amal vidjeti (masalan ombor «Berdim» tugmasi).
   final Widget? Function(ProductionItem item, int pi, int si)? stageAction;
 
+  // Mahsulot kartasi ichidagi (bo'limlardan oldin) qo'shimcha amal —
+  // masalan admin «Tannarx» havolasi.
+  final Widget? Function(ProductionItem item)? itemAction;
+
   const ProductionOrderDetailBody({
     super.key,
     required this.order,
     this.stockQtyOf,
     this.stageAction,
+    this.itemAction,
   });
 
   @override
@@ -219,6 +224,7 @@ class ProductionOrderDetailBody extends StatelessWidget {
             pi: pi,
             stockQtyOf: stockQtyOf,
             stageAction: stageAction,
+            itemAction: itemAction,
           ),
       ],
     );
@@ -311,6 +317,7 @@ class _ItemCard extends StatelessWidget {
   final int pi;
   final double? Function(int productId)? stockQtyOf;
   final Widget? Function(ProductionItem item, int pi, int si)? stageAction;
+  final Widget? Function(ProductionItem item)? itemAction;
 
   const _ItemCard({
     required this.order,
@@ -318,10 +325,12 @@ class _ItemCard extends StatelessWidget {
     required this.pi,
     this.stockQtyOf,
     this.stageAction,
+    this.itemAction,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Widget? extra = itemAction?.call(item);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       color: Colors.white,
@@ -350,6 +359,8 @@ class _ItemCard extends StatelessWidget {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
+          if (extra != null)
+            Align(alignment: Alignment.centerRight, child: extra),
           for (int si = 0; si < item.stages.length; si++)
             _StageBlock(
               item: item,

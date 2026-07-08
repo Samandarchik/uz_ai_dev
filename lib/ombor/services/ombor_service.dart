@@ -42,6 +42,45 @@ class OmborService {
     }
   }
 
+  // POST /api/orders -> buyurtma yaratib, yaratilgan buyurtmaning order_id
+  // sini qaytaradi (F2 «Yetishmaganidan buyurtma» snackbar'i uchun).
+  Future<String> submitOrderReturningId(
+      List<Map<String, dynamic>> items) async {
+    try {
+      final response = await dio.post(
+        AppUrls.orders,
+        data: {'items': items},
+      );
+
+      final status = response.statusCode ?? 0;
+      final body = response.data;
+      if (status >= 200 && status < 300) {
+        final data = (body is Map) ? body['data'] : null;
+        if (data is Map) {
+          final oid = data['order_id']?.toString() ?? '';
+          if (oid.isNotEmpty) return oid;
+          if (data['id'] != null) return '№${data['id']}';
+        }
+        if (body is Map && body['message'] != null) {
+          return body['message'].toString();
+        }
+        return '';
+      }
+      throw Exception('Buyurtma yuborib bo\'lmadi: $status');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Buyurtma yuborishda kutilmagan xato: $e');
+    }
+  }
+
   // GET /api/ombor/products -> kategoriya bo'yicha guruhlangan mahsulotlar
   Future<Map<String, List<OmborProduct>>> fetchProducts() async {
     try {

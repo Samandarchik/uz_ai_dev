@@ -31,6 +31,7 @@ class _StockSkladViewState extends State<StockSkladView>
     with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
+  bool _onlyLow = false; // faqat kam qolganlar filtri
 
   // Tab almashganda qayta yuklanmasin (admin sklad tablari).
   @override
@@ -121,10 +122,14 @@ class _StockSkladViewState extends State<StockSkladView>
         }
 
         final all = rows ?? const <StockRow>[];
+        final lowCount = all.where((r) => r.low).length;
         final q = _query.toLowerCase().trim();
-        final filtered = q.isEmpty
+        var filtered = q.isEmpty
             ? all
             : all.where((r) => r.name.toLowerCase().contains(q)).toList();
+        if (_onlyLow) {
+          filtered = filtered.where((r) => r.low).toList();
+        }
 
         return Column(
           children: [
@@ -180,6 +185,34 @@ class _StockSkladViewState extends State<StockSkladView>
                 ],
               ),
             ),
+            // «Kam qolganlar» filtri (min chegaradan tushganlar soni bilan).
+            if (lowCount > 0 || _onlyLow)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                  child: FilterChip(
+                    selected: _onlyLow,
+                    onSelected: (v) => setState(() => _onlyLow = v),
+                    avatar: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: _onlyLow ? Colors.white : Colors.orange.shade800,
+                    ),
+                    label: Text('Kam qolganlar ($lowCount)'),
+                    labelStyle: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: _onlyLow ? Colors.white : Colors.orange.shade800,
+                    ),
+                    selectedColor: Colors.orange.shade700,
+                    checkmarkColor: Colors.white,
+                    backgroundColor: Colors.orange.shade50,
+                    side: BorderSide(color: Colors.orange.shade300),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
             Expanded(
               child: RefreshIndicator(
                 color: _accent,
@@ -191,10 +224,13 @@ class _StockSkladViewState extends State<StockSkladView>
                           const SizedBox(height: 120),
                           Center(
                             child: Text(
-                              q.isEmpty
-                                  ? 'Qoldiq yozuvlari yo\'q.\nKirim yoki '
-                                      'korreksiya kiritilganda paydo bo\'ladi.'
-                                  : 'Hech narsa topilmadi',
+                              _onlyLow
+                                  ? 'Kam qolgan mahsulotlar yo\'q'
+                                  : q.isEmpty
+                                      ? 'Qoldiq yozuvlari yo\'q.\nKirim yoki '
+                                          'korreksiya kiritilganda paydo '
+                                          'bo\'ladi.'
+                                      : 'Hech narsa topilmadi',
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.black54),
                             ),
@@ -205,8 +241,10 @@ class _StockSkladViewState extends State<StockSkladView>
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                         itemCount: filtered.length,
-                        itemBuilder: (context, index) =>
-                            _StockRowTile(row: filtered[index]),
+                        itemBuilder: (context, index) => _StockRowTile(
+                          row: filtered[index],
+                          canSetMin: widget.canAdjust,
+                        ),
                       ),
               ),
             ),
@@ -217,24 +255,109 @@ class _StockSkladViewState extends State<StockSkladView>
   }
 }
 
-// Bitta qoldiq qatori: nomi | qty + birlik (manfiy — QIZIL). Bosilganda
-// shu mahsulotning harakatlar tarixi bottom sheet'da ochiladi.
+// Bitta qoldiq qatori: nomi | qty + birlik (manfiy — QIZIL, kam qolgan —
+// to'q sariq fon + ogohlantirish belgisi). Bosilganda harakatlar tarixi,
+// long-press'da «Min chegara» menyusi ochiladi.
 class _StockRowTile extends StatelessWidget {
   final StockRow row;
+  final bool canSetMin;
 
-  const _StockRowTile({required this.row});
+  const _StockRowTile({required this.row, this.canSetMin = false});
+
+  // Long-press menyusi: min chegara tahriri (+ tarix ham qulaylik uchun).
+  Future<void> _showRowMenu(BuildContext context) async {
+    final title = row.name.isEmpty ? 'Mahsulot #${row.productId}' : row.name;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                title,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Qoldiq: ${fmtStockQty(row.qty)} ${row.type}'
+                '${row.minQty > 0 ? ' • Min: ${fmtStockQty(row.minQty)}' : ''}',
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ),
+            const Divider(height: 1),
+            if (canSetMin)
+              ListTile(
+                leading: const Icon(Icons.vertical_align_bottom),
+                title: const Text('Min chegara'),
+                subtitle: Text(
+                  row.minQty > 0
+                      ? 'Hozir: ${fmtStockQty(row.minQty)} ${row.type}'
+                      : 'O\'rnatilmagan',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _editMin(context);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Harakatlar tarixi'),
+              onTap: () {
+                Navigator.pop(ctx);
+                showStockMovesSheet(
+                  context,
+                  skladId: row.skladId,
+                  productId: row.productId,
+                  title: row.name,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Min chegara son kiritish dialogi -> POST /api/stock/min -> refresh.
+  Future<void> _editMin(BuildContext context) async {
+    final provider = context.read<StockProvider>();
+    final value = await showDialog<double>(
+      context: context,
+      builder: (_) => _MinQtyDialog(row: row),
+    );
+    if (value == null || !context.mounted) return;
+    final err = await provider.setMin(
+      skladId: row.skladId,
+      productId: row.productId,
+      minQty: value,
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err ?? 'Min chegara saqlandi'),
+        backgroundColor: err == null ? Colors.green : Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final negative = row.qty < 0;
+    final low = row.low;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.white,
+      color: low ? Colors.orange.shade50 : Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: negative ? Colors.red.shade300 : Colors.grey.shade300,
+          color: negative
+              ? Colors.red.shade300
+              : low
+                  ? Colors.orange.shade300
+                  : Colors.grey.shade300,
         ),
       ),
       child: ListTile(
@@ -243,13 +366,36 @@ class _StockRowTile extends StatelessWidget {
           row.name.isEmpty ? 'Mahsulot #${row.productId}' : row.name,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
-        trailing: Text(
-          '${fmtStockQty(row.qty)} ${row.type}'.trim(),
-          style: TextStyle(
-            fontSize: 14.5,
-            fontWeight: FontWeight.bold,
-            color: negative ? Colors.red : Colors.black87,
-          ),
+        subtitle: row.minQty > 0
+            ? Text(
+                'Min: ${fmtStockQty(row.minQty)} ${row.type}'.trim(),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: low ? Colors.orange.shade800 : Colors.grey.shade600,
+                ),
+              )
+            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (low) ...[
+              Icon(Icons.warning_amber_rounded,
+                  size: 18, color: Colors.orange.shade800),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              '${fmtStockQty(row.qty)} ${row.type}'.trim(),
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.bold,
+                color: negative
+                    ? Colors.red
+                    : low
+                        ? Colors.orange.shade900
+                        : Colors.black87,
+              ),
+            ),
+          ],
         ),
         onTap: () => showStockMovesSheet(
           context,
@@ -257,7 +403,105 @@ class _StockRowTile extends StatelessWidget {
           productId: row.productId,
           title: row.name,
         ),
+        onLongPress: () => _showRowMenu(context),
       ),
+    );
+  }
+}
+
+// Min chegara kiritish dialogi. null — bekor; qiymat 0 bo'lishi mumkin
+// (chegara olib tashlanadi).
+class _MinQtyDialog extends StatefulWidget {
+  final StockRow row;
+
+  const _MinQtyDialog({required this.row});
+
+  @override
+  State<_MinQtyDialog> createState() => _MinQtyDialogState();
+}
+
+class _MinQtyDialogState extends State<_MinQtyDialog> {
+  late final TextEditingController _ctrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(
+      text: widget.row.minQty > 0 ? fmtStockQty(widget.row.minQty) : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final raw = _ctrl.text.trim().replaceAll(',', '.');
+    // Bo'sh — chegarani olib tashlash (0).
+    final value = raw.isEmpty ? 0.0 : double.tryParse(raw);
+    if (value == null || value < 0) {
+      setState(() => _error = 'Miqdorni to\'g\'ri kiriting');
+      return;
+    }
+    Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = widget.row;
+    return AlertDialog(
+      title: Text(
+        'Min chegara — ${row.name.isEmpty ? '#${row.productId}' : row.name}',
+        style: const TextStyle(fontSize: 16),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Qoldiq shu chegaraga tushganda qator «kam qolgan» deb '
+            'belgilanadi. Bo\'sh qoldirilsa chegara olib tashlanadi.',
+            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            decoration: InputDecoration(
+              labelText:
+                  'Min miqdor${row.type.isNotEmpty ? ' (${row.type})' : ''}',
+              border: const OutlineInputBorder(),
+              errorText: _error,
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Bekor'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _accent,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Saqlash'),
+        ),
+      ],
     );
   }
 }
