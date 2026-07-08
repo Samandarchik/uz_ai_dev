@@ -2254,7 +2254,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
 // Bitta buyurtma kartasi: order_id, ombor nomi (username), sana, items.
 // Har item qatorida INLINE maydonlar (Nechta olgani / Jami summa),
 // pastida "Chek bilan yuborish" tugmasi.
-// Public — tarix ekrani (yuk_history_ui.dart) ham shu kartani ishlatadi.
+// (Tarix ekrani endi buni emas, kunlik YukDayCard'ni ishlatadi.)
 class YukOrderCard extends StatefulWidget {
   final YukOrder order;
   const YukOrderCard({super.key, required this.order});

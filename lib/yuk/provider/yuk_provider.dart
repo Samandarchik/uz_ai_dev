@@ -189,6 +189,23 @@ class YukProvider extends ChangeNotifier {
         .toList();
   }
 
+  // Tarix ekrani (kunlik kartalar): faqat O'ZIM narxlagan yuborilgan
+  // buyurtmalar — priced_by mening ID'im yoki 0 (egasi yozilmagan eski
+  // yozuvlar). Barcha skladlar birga, yangisi tepada; kunlik guruhlash
+  // UI'da (groupYukOrdersByDay) qilinadi.
+  List<YukOrder> get myHistoryOrders {
+    final list = historyOrders
+        .where((o) =>
+            _isDone(o) && (o.pricedBy == 0 || o.pricedBy == myUserId))
+        .toList();
+    list.sort((a, b) {
+      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
+      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
+      return db.compareTo(da);
+    });
+    return list;
+  }
+
   // Tarix ekrani: berilgan skladning yuborilgan buyurtmalari, yangisi tepada.
   List<YukOrder> doneForSklad(int skladId) {
     final list =
