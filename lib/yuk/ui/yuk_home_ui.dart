@@ -18,6 +18,7 @@ import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_magazin_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_transfer_history_ui.dart';
 
@@ -300,6 +301,12 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        // Qarz daftari: bozorchi qaysi magazinchilarga qarzdorligini yuritadi.
+        IconButton(
+          onPressed: () => context.push(const YukMagazinUi()),
+          icon: const Icon(Icons.storefront_outlined),
+          tooltip: 'Qarz daftari',
+        ),
         // Targovli'dan kelgan pullar tarixi (qabul qilingan/rad etilgan/
         // kutilayotgan — jami summalar bilan).
         IconButton(

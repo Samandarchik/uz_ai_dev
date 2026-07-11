@@ -27,6 +27,11 @@ abstract final class AppUrls {
   // yuk keltiruvchi qabul qiladi/rad etadi (accept/reject POST'lari ham
   // shu bazaviy yo'l ostida: /{id}/accept, /{id}/reject).
   static String yukTransfers = '$baseUrl/api/yuk/transfers';
+  // Yuk keltiruvchining qarz daftari (magazinchilardan qarzlar). Ost-yo'llar:
+  //   /{id}                  — magazinni tahrirlash (PUT) / o'chirish (DELETE)
+  //   /{id}/debts            — qarz yozuvlari (GET ro'yxat, POST qo'shish)
+  //   /{id}/debts/{debtId}   — qarz yozuvini o'chirish (DELETE)
+  static String magazins = '$baseUrl/api/magazins';
 
   // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
   // buyurtmalari.
