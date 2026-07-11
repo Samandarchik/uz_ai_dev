@@ -33,6 +33,7 @@ class _MagazinListView extends StatelessWidget {
   static const Color _bg = Color(0xFFFAF6F1);
   static const Color _accent = Color(0xFFC5A97B);
   static const Color _red = Color(0xFFC62828);
+  static const Color _green = Color(0xFF2E7D32);
 
   @override
   Widget build(BuildContext context) {
@@ -127,8 +128,11 @@ class _MagazinListView extends StatelessWidget {
     );
   }
 
-  // Tepadagi "Jami qarz" kartasi.
+  // Tepadagi "Jami qarz" kartasi. Jami manfiy bo'lsa — qarzdan ortiq pul
+  // berilgan ("Avans berilgan"), yashil ko'rsatiladi.
   Widget _totalCard(double total) {
+    final isAvans = total < 0;
+    final color = isAvans ? _green : _red;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -136,34 +140,34 @@ class _MagazinListView extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _red.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: _red.withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.account_balance_wallet_outlined,
-                color: _red, size: 22),
+            child: Icon(Icons.account_balance_wallet_outlined,
+                color: color, size: 22),
           ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Jami qarz',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+              Text(
+                isAvans ? 'Avans berilgan' : 'Jami qarz',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
               const SizedBox(height: 2),
               Text(
-                '${formatMoney(total)} so\'m',
-                style: const TextStyle(
+                '${formatMoney(total.abs())} so\'m',
+                style: TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.w800,
-                  color: _red,
+                  color: color,
                 ),
               ),
             ],
@@ -182,6 +186,7 @@ class _MagazinCard extends StatelessWidget {
 
   static const Color _accent = Color(0xFFC5A97B);
   static const Color _red = Color(0xFFC62828);
+  static const Color _green = Color(0xFF2E7D32);
 
   @override
   Widget build(BuildContext context) {
@@ -247,12 +252,13 @@ class _MagazinCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              // Manfiy jami = avans berilgan (yashil).
               Text(
-                '${formatMoney(m.totalDebt)} so\'m',
-                style: const TextStyle(
+                '${formatMoney(m.totalDebt.abs())} so\'m',
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: _red,
+                  color: m.totalDebt < 0 ? _green : _red,
                 ),
               ),
             ],

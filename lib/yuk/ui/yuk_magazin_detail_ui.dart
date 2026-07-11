@@ -9,7 +9,10 @@ import 'package:uz_ai_dev/yuk/ui/widgets/yuk_day_cards.dart' show formatMoney;
 
 // Bitta magazinning tafsiloti: tepada rasm (bosilsa to'liq ekran), do'kon
 // nomi, egasi, telefon va shu magazinga JAMI qarz; ostida qarz yozuvlari
-// (eng yangisi birinchi). "Qarz qo'shish" FAB — summa + izoh bottom sheet.
+// (eng yangisi birinchi). Pastda ikkita tugma — "Qarz qo'shish" (musbat
+// yozuv) va "To'lov" (avans bergandagidek summa + izoh, manfiy yozuv bo'lib
+// saqlanadi, qarzni kamaytiradi). Jami manfiy bo'lsa — "Avans berilgan"
+// (yashil): magazinga qarzdan ortiq pul berilgan.
 // Yozuv uzoq bosilsa — tasdiq bilan o'chirish (xato kiritilgan yozuv uchun).
 // AppBar: tahrirlash (o'sha forma oldindan to'ldirilgan) va o'chirish.
 class YukMagazinDetailUi extends StatefulWidget {
@@ -113,8 +116,9 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
     }
   }
 
-  // Qarz qo'shish bottom sheet'i: Summa (faqat raqam) + Izoh (ixtiyoriy).
-  void _showAddDebtSheet() {
+  // Qarz qo'shish / to'lov bottom sheet'i: Summa (faqat raqam) + Izoh
+  // (ixtiyoriy). isPayment=true — summa manfiy bo'lib yuboriladi (to'lov).
+  void _showDebtSheet({required bool isPayment}) {
     final provider = context.read<MagazinProvider>();
     showModalBottomSheet(
       context: context,
@@ -129,6 +133,7 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
         child: _DebtFormSheet(
           provider: provider,
           magazinId: widget.magazin.id,
+          isPayment: isPayment,
         ),
       ),
     );
@@ -199,12 +204,28 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            backgroundColor: _accent,
-            foregroundColor: Colors.white,
-            onPressed: _showAddDebtSheet,
-            icon: const Icon(Icons.add),
-            label: const Text('Qarz qo\'shish'),
+          floatingActionButton: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // To'lov — magazinga pul berildi (qarz kamayadi).
+              FloatingActionButton.extended(
+                heroTag: 'magazin_tolov_fab',
+                backgroundColor: _green,
+                foregroundColor: Colors.white,
+                onPressed: () => _showDebtSheet(isPayment: true),
+                icon: const Icon(Icons.payments_outlined),
+                label: const Text('To\'lov'),
+              ),
+              const SizedBox(width: 10),
+              FloatingActionButton.extended(
+                heroTag: 'magazin_qarz_fab',
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+                onPressed: () => _showDebtSheet(isPayment: false),
+                icon: const Icon(Icons.add),
+                label: const Text('Qarz qo\'shish'),
+              ),
+            ],
           ),
           body: RefreshIndicator(
             color: _accent,
@@ -333,16 +354,16 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Jami qarz:',
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+              Text(
+                m.totalDebt < 0 ? 'Avans berilgan:' : 'Jami qarz:',
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
               Text(
-                '${formatMoney(m.totalDebt)} so\'m',
-                style: const TextStyle(
+                '${formatMoney(m.totalDebt.abs())} so\'m',
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: _red,
+                  color: m.totalDebt < 0 ? _green : _red,
                 ),
               ),
             ],
@@ -414,11 +435,18 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
   }
 }
 
-// Qarz qo'shish formasi: Summa (faqat raqam, majburiy) + Izoh (ixtiyoriy).
+// Qarz qo'shish / to'lov formasi: Summa (faqat raqam, majburiy) + Izoh
+// (ixtiyoriy). isPayment=true — to'lov rejimi: summa manfiy yozuv bo'lib
+// saqlanadi (magazinga pul berildi, qarz kamayadi).
 class _DebtFormSheet extends StatefulWidget {
   final MagazinProvider provider;
   final int magazinId;
-  const _DebtFormSheet({required this.provider, required this.magazinId});
+  final bool isPayment;
+  const _DebtFormSheet({
+    required this.provider,
+    required this.magazinId,
+    required this.isPayment,
+  });
 
   @override
   State<_DebtFormSheet> createState() => _DebtFormSheetState();
@@ -426,6 +454,7 @@ class _DebtFormSheet extends StatefulWidget {
 
 class _DebtFormSheetState extends State<_DebtFormSheet> {
   static const Color _accent = Color(0xFFC5A97B);
+  static const Color _green = Color(0xFF2E7D32);
 
   final TextEditingController _amountCtrl = TextEditingController();
   final TextEditingController _commentCtrl = TextEditingController();
@@ -449,9 +478,10 @@ class _DebtFormSheetState extends State<_DebtFormSheet> {
     }
     setState(() => _saving = true);
     try {
+      // To'lov rejimida summa manfiy yuboriladi — qarz kamayadi.
       await widget.provider.addDebt(
         widget.magazinId,
-        amount,
+        widget.isPayment ? -amount : amount,
         _commentCtrl.text.trim(),
       );
       if (!mounted) return;
@@ -474,10 +504,13 @@ class _DebtFormSheetState extends State<_DebtFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Qarz qo\'shish',
+            Text(
+              widget.isPayment ? 'To\'lov (pul berish)' : 'Qarz qo\'shish',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -497,17 +530,19 @@ class _DebtFormSheetState extends State<_DebtFormSheet> {
               minLines: 1,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Izoh (ixtiyoriy)',
-                hintText: 'Masalan: un 2 qop',
-                border: OutlineInputBorder(),
+                hintText: widget.isPayment
+                    ? 'Masalan: naqd berildi'
+                    : 'Masalan: un 2 qop',
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _accent,
+                backgroundColor: widget.isPayment ? _green : _accent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
