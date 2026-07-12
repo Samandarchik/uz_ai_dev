@@ -1117,6 +1117,9 @@ class _MediaItemRow extends StatelessWidget {
       decoration: InputDecoration(
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+        // Kiritilayotgan son yonida birlik (masalan "kg") ko'rinib turadi.
+        suffixText: item.type.isNotEmpty ? item.type : null,
+        suffixStyle: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1136,7 +1139,10 @@ class _MediaItemRow extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text(
-        notBrought ? '—' : _fmtQty(item.received),
+        notBrought
+            ? '—'
+            : '${_fmtQty(item.received)}'
+                '${item.type.isNotEmpty ? ' ${item.type}' : ''}',
         style: const TextStyle(fontSize: 13, color: Colors.black54),
       ),
     );
