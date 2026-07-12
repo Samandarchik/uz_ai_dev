@@ -19,6 +19,7 @@ import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_magazin_ui.dart';
+import 'package:uz_ai_dev/yuk/ui/yuk_product_photos_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_transfer_history_ui.dart';
 
@@ -301,6 +302,15 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        // Olib kelinadigan mahsulotlarning suratlari (katalog rasmlari) —
+        // bozorda nima olishni ko'z bilan taniydi.
+        IconButton(
+          onPressed: () => context.push(
+            YukProductPhotosUi(orders: context.read<YukProvider>().orders),
+          ),
+          icon: const Icon(Icons.photo_library_outlined),
+          tooltip: 'Mahsulot suratlari',
+        ),
         // Qarz daftari: bozorchi qaysi magazinchilarga qarzdorligini yuritadi.
         IconButton(
           onPressed: () => context.push(const YukMagazinUi()),
