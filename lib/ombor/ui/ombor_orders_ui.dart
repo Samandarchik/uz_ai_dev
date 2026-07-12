@@ -82,12 +82,93 @@ class OmborOrdersView extends StatefulWidget {
 class _OmborOrdersViewState extends State<OmborOrdersView> {
   static const Color _accentColor = Color(0xFFC5A97B);
 
+  // Tarix (acceptedOnly) ekrani: shu kunda qabul qilingan (kelgan)
+  // buyurtmalar ko'rsatiladi. Standart — bugun.
+  DateTime _selectedDate = _todayDate();
+
+  static DateTime _todayDate() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<OmborProvider>().fetchMyOrders();
     });
+  }
+
+  // "2026-07-12" — order.created bilan solishtirish uchun kalit.
+  String _dateKeyOf(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  // "12.07.2026" — sana navigatsiyasidagi yozuv.
+  String _dateLabelOf(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.'
+      '${d.month.toString().padLeft(2, '0')}.${d.year}';
+
+  // Buyurtma kuni — created ning YYYY-MM-DD qismi.
+  String _orderDateKey(OmborOrder o) =>
+      o.created.length >= 10 ? o.created.substring(0, 10) : o.created;
+
+  bool get _isToday => _dateKeyOf(_selectedDate) == _dateKeyOf(_todayDate());
+
+  void _setDate(DateTime d) =>
+      setState(() => _selectedDate = DateTime(d.year, d.month, d.day));
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: _todayDate(),
+    );
+    if (picked != null) _setDate(picked);
+  }
+
+  // Bozor ekranidagi kabi sana navigatsiyasi: ‹ 12.07.2026 › — o'rtaga
+  // bosilsa kalendardan sana tanlanadi, strelkalar kunni oldinga/orqaga.
+  Widget _dateNav() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: () =>
+              _setDate(_selectedDate.subtract(const Duration(days: 1))),
+        ),
+        InkWell(
+          onTap: _pickDate,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.calendar_today,
+                    size: 15, color: _accentColor),
+                const SizedBox(width: 8),
+                Text(
+                  _dateLabelOf(_selectedDate),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.chevron_right),
+          // Kelajak kunga o'tib bo'lmaydi.
+          onPressed: _isToday
+              ? null
+              : () => _setDate(_selectedDate.add(const Duration(days: 1))),
+        ),
+      ],
+    );
   }
 
   @override
@@ -130,62 +211,87 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
 
         // Asosiy tabда qabul qilinganlar ko'rinmaydi (ular tarixda),
         // tarix ekranida esa faqat qabul qilinganlar chiqadi.
-        final orders = provider.myOrders
+        var orders = provider.myOrders
             .where((o) => o.isAccepted == widget.acceptedOnly)
             .toList();
-        if (orders.isEmpty) {
-          return RefreshIndicator(
-            color: _accentColor,
-            onRefresh: () => provider.fetchMyOrders(),
-            child: ListView(
-              children: [
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.6,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.receipt_long,
-                            size: 56, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        Text(
-                          widget.acceptedOnly
-                              ? 'Qabul qilingan buyurtmalar yo\'q'
-                              : 'Hozircha buyurtmalar yo\'q',
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
 
-        // Sklad nomi bo'yicha guruhlash — birinchi ko'ringan tartibni
-        // saqlaymiz (myOrders id bo'yicha kamayuvchi, ya'ni eng yangisi
-        // yuqorida). Har sklad uchun bitta jamlangan karta.
-        final groups = <String, List<OmborOrder>>{};
-        for (final o in orders) {
-          groups.putIfAbsent(o.skladName, () => <OmborOrder>[]).add(o);
+        // Asosiy "Buyurtmalarim" tabi — sana filtrsiz (hamma yuborilgan
+        // buyurtma). Tarix (qabul qilinganlar) — tanlangan kun bo'yicha
+        // filtr + yuqorida sana navigatsiyasi (bozor ekranidagi kabi).
+        if (!widget.acceptedOnly) {
+          return _ordersList(context, provider, orders);
         }
-        final entries = groups.entries.toList();
-
-        return RefreshIndicator(
-          color: _accentColor,
-          onRefresh: () => provider.fetchMyOrders(),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: entries.length,
-            itemBuilder: (context, index) => _SkladDayCard(
-              key: ValueKey(entries[index].key),
-              skladName: entries[index].key,
-              orders: entries[index].value,
-            ),
-          ),
+        final dayKey = _dateKeyOf(_selectedDate);
+        orders = orders.where((o) => _orderDateKey(o) == dayKey).toList();
+        return Column(
+          children: [
+            const SizedBox(height: 4),
+            _dateNav(),
+            const Divider(height: 1),
+            Expanded(child: _ordersList(context, provider, orders)),
+          ],
         );
       },
+    );
+  }
+
+  // Sklad bo'yicha guruhlangan kartalar ro'yxati yoki bo'sh holat —
+  // ikkalasi ham pull-to-refresh bilan.
+  Widget _ordersList(
+    BuildContext context,
+    OmborProvider provider,
+    List<OmborOrder> orders,
+  ) {
+    if (orders.isEmpty) {
+      return RefreshIndicator(
+        color: _accentColor,
+        onRefresh: () => provider.fetchMyOrders(),
+        child: ListView(
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.receipt_long,
+                        size: 56, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.acceptedOnly
+                          ? 'Bu kunda qabul qilingan buyurtmalar yo\'q'
+                          : 'Hozircha buyurtmalar yo\'q',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Sklad nomi bo'yicha guruhlash — birinchi ko'ringan tartibni saqlaymiz
+    // (myOrders id bo'yicha kamayuvchi). Har sklad uchun bitta karta.
+    final groups = <String, List<OmborOrder>>{};
+    for (final o in orders) {
+      groups.putIfAbsent(o.skladName, () => <OmborOrder>[]).add(o);
+    }
+    final entries = groups.entries.toList();
+
+    return RefreshIndicator(
+      color: _accentColor,
+      onRefresh: () => provider.fetchMyOrders(),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: entries.length,
+        itemBuilder: (context, index) => _SkladDayCard(
+          key: ValueKey(entries[index].key),
+          skladName: entries[index].key,
+          orders: entries[index].value,
+        ),
+      ),
     );
   }
 }
