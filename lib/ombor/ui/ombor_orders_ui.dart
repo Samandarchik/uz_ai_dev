@@ -824,8 +824,11 @@ class _MediaItemRow extends StatelessWidget {
     // Proche (yuk keltiruvchi qo'shgan) mahsulotda buyurtma soni yo'q —
     // farq ko'rsatilmaydi.
     final showDiff = !item.isProche && taken > 0 && diff.abs() > 0.0001;
-    final diffText =
-        diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
+    // Ortiqcha/kam farqi yonida birlik (type) ham ko'rsatiladi: "+8.2 kg".
+    final diffUnit = item.type.isNotEmpty ? ' ${item.type}' : '';
+    final diffText = diff > 0
+        ? '+${_fmtQty(diff)}$diffUnit'
+        : '-${_fmtQty(diff.abs())}$diffUnit';
     final diffColor = diff > 0 ? _green : _red;
     final qtyLabel = item.isProche
         ? 'Qo\'shimcha'
