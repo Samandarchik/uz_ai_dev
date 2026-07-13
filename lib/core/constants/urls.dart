@@ -67,6 +67,12 @@ abstract final class AppUrls {
   static String productionStats = '$baseUrl/api/production/stats';
 
   static const String users = '$baseUrl/api/users';
+  // Login+parolni Telegram orqali yuborish:
+  //   POST $users/{id}/send-credentials — bitta foydalanuvchiga (service ichida quriladi)
+  //   POST quyidagi manzil — barcha foydalanuvchilarga birdan
+  static const String usersSendAllCredentials = '$users/send-all-credentials';
+  // GET — Telegram bot username'i ({"data":{"username":"..."}}).
+  static const String telegramBot = '$baseUrl/api/telegram-bot';
   static String orders = '$baseUrl/api/orders';
 
   // Real-time buyurtmalar uchun WebSocket. https->wss, http->ws avtomatik.

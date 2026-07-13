@@ -163,6 +163,67 @@ class UserManagementService {
     }
   }
 
+  // Bitta foydalanuvchiga login+parolni Telegram orqali yuborish
+  // POST /api/users/{id}/send-credentials
+  Future<void> sendCredentials(int id) async {
+    try {
+      final response = await dio.post('${AppUrls.users}/$id/send-credentials');
+      final responseData = response.data;
+      if (responseData is Map && responseData['success'] == true) return;
+      throw Exception(
+          (responseData is Map ? responseData['message'] : null) ??
+              'Telegram orqali yuborib bo\'lmadi');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        // 400 — Telegram bog'lanmagan, 502 — Telegram xatosi; backend
+        // xabarini bevosita ko'rsatamiz.
+        throw Exception(
+            parseDioError(e, fallback: 'Telegram orqali yuborib bo\'lmadi'));
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  // Barcha foydalanuvchilarga login+parolni Telegram orqali yuborish
+  // POST /api/users/send-all-credentials
+  Future<SendAllCredentialsResult> sendAllCredentials() async {
+    try {
+      final response = await dio.post(AppUrls.usersSendAllCredentials);
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic> &&
+          responseData['success'] == true) {
+        final data = responseData['data'];
+        return SendAllCredentialsResult.fromJson(
+            data is Map<String, dynamic> ? data : const {});
+      }
+      throw Exception(
+          (responseData is Map ? responseData['message'] : null) ??
+              'Telegram orqali yuborib bo\'lmadi');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(
+            parseDioError(e, fallback: 'Telegram orqali yuborib bo\'lmadi'));
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  // Telegram bot username'i — GET /api/telegram-bot.
+  // Xato bo'lsa standart bot nomi qaytadi (dialogdagi yo'riqnoma uchun).
+  Future<String> getTelegramBotUsername() async {
+    try {
+      final response = await dio.get(AppUrls.telegramBot);
+      final responseData = response.data;
+      if (responseData is Map && responseData['success'] == true) {
+        final username = (responseData['data'] as Map?)?['username'];
+        if (username is String && username.isNotEmpty) return username;
+      }
+    } catch (_) {
+      // Jim — fallback ishlatiladi.
+    }
+    return 'mone_order_bot';
+  }
+
   // Helper methods
   Future<List<User>> getAdminUsers() async {
     try {

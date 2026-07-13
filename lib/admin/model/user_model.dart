@@ -13,6 +13,10 @@ class User {
   // Bo'sh — cheklov yo'q (hammasini ko'radi).
   final List<String> sources;
   final String? telegramGroupId;
+  // Telegram bot orqali bog'langan shaxsiy chat ID (0 — bog'lanmagan).
+  final int telegramChatId;
+  // Adminga ko'rsatish uchun ochiq parol (bo'sh bo'lishi mumkin).
+  final String passwordPlain;
 
   User({
     required this.id,
@@ -27,6 +31,8 @@ class User {
     this.sklads = const [],
     this.sources = const [],
     this.telegramGroupId,
+    this.telegramChatId = 0,
+    this.passwordPlain = '',
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -45,6 +51,8 @@ class User {
       sources:
           (json['sources'] as List?)?.map((e) => e.toString()).toList() ?? [],
       telegramGroupId: json['telegram_group_id'],
+      telegramChatId: (json['telegram_chat_id'] as num?)?.toInt() ?? 0,
+      passwordPlain: json['password_plain'] ?? '',
     );
   }
 
@@ -170,6 +178,49 @@ class UpdateUserRequest {
     // Bo'sh string ham yuboriladi — backend bo'sh qiymatda tozalaydi.
     if (telegramGroupId != null) data['telegram_group_id'] = telegramGroupId;
     return data;
+  }
+}
+
+/// POST /api/users/send-all-credentials javobidagi `data` bo'limi.
+/// Maydonlar defensiv parse qilinadi — backend biror ro'yxatni yubormasa
+/// bo'sh ro'yxat sifatida qabul qilinadi.
+class SendAllCredentialsResult {
+  final int sent;
+  // Telegrami bog'lanmagani uchun o'tkazib yuborilgan foydalanuvchi ismlari.
+  final List<String> skipped;
+  final List<SendCredentialsFailure> failed;
+
+  SendAllCredentialsResult({
+    this.sent = 0,
+    this.skipped = const [],
+    this.failed = const [],
+  });
+
+  factory SendAllCredentialsResult.fromJson(Map<String, dynamic> json) {
+    return SendAllCredentialsResult(
+      sent: (json['sent'] as num?)?.toInt() ?? 0,
+      skipped: (json['skipped'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      failed: (json['failed'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SendCredentialsFailure.fromJson)
+              .toList() ??
+          const [],
+    );
+  }
+}
+
+class SendCredentialsFailure {
+  final String name;
+  final String error;
+
+  SendCredentialsFailure({this.name = '', this.error = ''});
+
+  factory SendCredentialsFailure.fromJson(Map<String, dynamic> json) {
+    return SendCredentialsFailure(
+      name: json['name']?.toString() ?? '',
+      error: json['error']?.toString() ?? '',
+    );
   }
 }
 
