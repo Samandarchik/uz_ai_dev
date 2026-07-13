@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,9 +18,9 @@ import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
+import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_magazin_ui.dart';
-import 'package:uz_ai_dev/yuk/ui/yuk_product_photos_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_transfer_history_ui.dart';
 
@@ -302,15 +303,6 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
-        // Olib kelinadigan mahsulotlarning suratlari (katalog rasmlari) —
-        // bozorda nima olishni ko'z bilan taniydi.
-        IconButton(
-          onPressed: () => context.push(
-            YukProductPhotosUi(orders: context.read<YukProvider>().orders),
-          ),
-          icon: const Icon(Icons.photo_library_outlined),
-          tooltip: 'Mahsulot suratlari',
-        ),
         // Qarz daftari: bozorchi qaysi magazinchilarga qarzdorligini yuritadi.
         IconButton(
           onPressed: () => context.push(const YukMagazinUi()),
@@ -654,11 +646,18 @@ class _YukSkladCardState extends State<YukSkladCard> {
   final Set<int> _initedOrders = {};
 
   final ImagePicker _picker = ImagePicker();
+  final YukService _service = YukService();
   Timer? _undoTicker;
 
   // Bosilgan rasm alohida ekranda emas, ro'yxat ostida ochiladi. Ochiq
   // turgan rasm shu yerda saqlanadi (yana bosilsa yopiladi, null bo'ladi).
   String? _expandedAttachment;
+
+  // Mahsulot katalog rasmlari (product_id -> relativ /static/... url). Endi
+  // alohida "Mahsulot suratlari" ekrani o'rniga har mahsulot nomi ostida shu
+  // ro'yxatda ko'rinadi. Bosilgan rasm o'sha joyda kattalashadi (_expandedPhotos).
+  Map<int, String> _catalogImages = {};
+  final Set<String> _expandedPhotos = {};
 
   String _key(int orderId, int productId) => '${orderId}_$productId';
 
@@ -760,6 +759,15 @@ class _YukSkladCardState extends State<YukSkladCard> {
       _initOrder(o);
     }
     _maybeStartUndoTicker();
+    _loadCatalogImages();
+  }
+
+  // Katalog rasmlarini bir marta yuklab olamiz (product_id -> /static/... url).
+  // Xato bo'lsa bo'sh xarita qaytadi — rasm ko'rsatilmaydi, ro'yxat ishlayveradi.
+  Future<void> _loadCatalogImages() async {
+    final imgs = await _service.fetchBozorProductImages();
+    if (!mounted || imgs.isEmpty) return;
+    setState(() => _catalogImages = imgs);
   }
 
   // Bitta buyurtma itemlari uchun controllerlarni yaratish va boshlang'ich
@@ -1072,6 +1080,54 @@ class _YukSkladCardState extends State<YukSkladCard> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Mahsulot nomi ostida ko'rinadigan katalog rasmi. Bosilsa o'sha joyda
+  // kattalashadi (yana bosilsa kichrayadi) — alohida ekran ochilmaydi.
+  // Rasmi yo'q mahsulot (yoki qo'shimcha/proche item) uchun hech narsa chizmaydi.
+  Widget _productPhoto(YukOrder order, YukOrderItem item) {
+    final rel = _catalogImages[item.productId];
+    if (rel == null || rel.isEmpty) return const SizedBox.shrink();
+    final rowKey = _key(order.id, item.productId);
+    final expanded = _expandedPhotos.contains(rowKey);
+    final double w = expanded ? double.infinity : 96;
+    final double h = expanded ? 200 : 64;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: GestureDetector(
+        onTap: () => setState(() {
+          if (expanded) {
+            _expandedPhotos.remove(rowKey);
+          } else {
+            _expandedPhotos.add(rowKey);
+          }
+        }),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: w,
+            height: h,
+            color: const Color(0xFFF5F1EA),
+            child: CachedNetworkImage(
+              imageUrl: _fullUrl(rel),
+              fit: expanded ? BoxFit.contain : BoxFit.cover,
+              placeholder: (_, __) => const Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _accentColor,
+                  ),
+                ),
+              ),
+              errorWidget: (_, __, ___) =>
+                  const Icon(Icons.broken_image, color: Colors.black26),
+            ),
+          ),
         ),
       ),
     );
@@ -1786,6 +1842,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       ),
                     ),
                   ],
+                  // Mahsulot katalog rasmi nom ostida (alohida ekran o'rniga).
+                  _productPhoto(order, item),
                 ],
               ),
             ),
