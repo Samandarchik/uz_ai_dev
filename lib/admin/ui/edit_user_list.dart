@@ -269,7 +269,10 @@ class _EditUserPageState extends State<EditUserPage> {
       if (widget.user != null) {
         // Mavjud foydalanuvchini yangilash - PUT /api/users/{id}
         final request = UpdateUserRequest(
-          name: _nameController.text.trim(),
+          // Bo'sh qoldirilsa eski ism saqlanadi (kalit yuborilmaydi).
+          name: _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : null,
           phone: _phoneController.text.trim(),
           isAdmin: _isAdmin,
           role: _selectedRole,
@@ -861,7 +864,7 @@ class _EditUserPageState extends State<EditUserPage> {
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  hintText: 'enter_Полное имя',
+                  hintText: 'Ixtiyoriy — bo\'sh qolsa telefon raqam yoziladi',
                   prefixIcon: const Icon(Icons.person_outline),
                   filled: true,
                   fillColor: Colors.white,
@@ -879,12 +882,7 @@ class _EditUserPageState extends State<EditUserPage> {
                         BorderSide(color: Colors.blue.shade600, width: 2),
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Полное имя_required';
-                  }
-                  return null;
-                },
+                // Ism ixtiyoriy — telefon + parol yetarli.
               ),
               const SizedBox(height: 20),
 
