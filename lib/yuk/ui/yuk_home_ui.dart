@@ -99,6 +99,10 @@ class _YukHomeUiState extends State<YukHomeUi> {
   List<int> _sklads = [];
   bool _loadingSklads = true;
 
+  // AppBar'dagi tugma bilan boshqariladi: bosilsa mahsulot katalog rasmlari
+  // ro'yxatda ko'rinadi, yana bosilsa yashiriladi.
+  bool _showImages = false;
+
   // dispose() ichida context.read() xavfsiz emas (widget deaktiv bo'lishi mumkin),
   // shuning uchun provider referensini didChangeDependencies'da saqlaymiz.
   YukProvider? _yukProvider;
@@ -278,6 +282,7 @@ class _YukHomeUiState extends State<YukHomeUi> {
                                     key: ValueKey('sklad_$id'),
                                     skladId: id,
                                     orders: orders,
+                                    showImages: _showImages,
                                   ),
                                 ],
                               ),
@@ -303,6 +308,15 @@ class _YukHomeUiState extends State<YukHomeUi> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
+        // Mahsulot katalog rasmlarini ko'rsatish/yashirish (toggle).
+        IconButton(
+          onPressed: () => setState(() => _showImages = !_showImages),
+          icon: Icon(
+            _showImages ? Icons.hide_image_outlined : Icons.image_outlined,
+            color: _showImages ? _accentColor : null,
+          ),
+          tooltip: _showImages ? 'Rasmlarni yashirish' : 'Rasmlarni ko\'rsatish',
+        ),
         // Qarz daftari: bozorchi qaysi magazinchilarga qarzdorligini yuritadi.
         IconButton(
           onPressed: () => context.push(const YukMagazinUi()),
@@ -613,10 +627,13 @@ String _formatMoney(num v) {
 class YukSkladCard extends StatefulWidget {
   final int skladId;
   final List<YukOrder> orders;
+  // AppBar'dagi tugma holati: true bo'lsa mahsulot katalog rasmlari ko'rinadi.
+  final bool showImages;
   const YukSkladCard({
     super.key,
     required this.skladId,
     required this.orders,
+    this.showImages = false,
   });
 
   @override
@@ -1089,6 +1106,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
   // kattalashadi (yana bosilsa kichrayadi) — alohida ekran ochilmaydi.
   // Rasmi yo'q mahsulot (yoki qo'shimcha/proche item) uchun hech narsa chizmaydi.
   Widget _productPhoto(YukOrder order, YukOrderItem item) {
+    // AppBar'dagi tugma o'chiq bo'lsa rasmlar umuman chizilmaydi.
+    if (!widget.showImages) return const SizedBox.shrink();
     final rel = _catalogImages[item.productId];
     if (rel == null || rel.isEmpty) return const SizedBox.shrink();
     final rowKey = _key(order.id, item.productId);
