@@ -656,6 +656,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
   final ImagePicker _picker = ImagePicker();
   Timer? _undoTicker;
 
+  // Bosilgan rasm alohida ekranda emas, ro'yxat ostida ochiladi. Ochiq
+  // turgan rasm shu yerda saqlanadi (yana bosilsa yopiladi, null bo'ladi).
+  String? _expandedAttachment;
+
   String _key(int orderId, int productId) => '${orderId}_$productId';
 
   static bool _isDoneOrder(YukOrder o) =>
@@ -1014,25 +1018,36 @@ class _YukSkladCardState extends State<YukSkladCard> {
   }
 
   void _openAttachment(String entry) {
-    final isRemote = YukProvider.isRemoteAttachment(entry);
     if (_isVideoPath(entry)) {
-      if (isRemote) {
+      // Video inline ko'rsatilmaydi — tashqi ilovada ochiladi.
+      if (YukProvider.isRemoteAttachment(entry)) {
         launchUrl(Uri.parse(_fullUrl(entry)),
             mode: LaunchMode.externalApplication);
       }
       return;
     }
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(8),
+    // Rasm: alohida ekran o'rniga ro'yxat ostida ochiladi. Bosilgan rasm
+    // qayta bosilsa yopiladi.
+    setState(() {
+      _expandedAttachment = _expandedAttachment == entry ? null : entry;
+    });
+  }
+
+  // Bosilgan rasm ro'yxat (thumbnail'lar) ostida shu yerda kattalashib ochiladi.
+  Widget _buildInlinePreview() {
+    final entry = _expandedAttachment;
+    if (entry == null || _isVideoPath(entry)) return const SizedBox.shrink();
+    final isRemote = YukProvider.isRemoteAttachment(entry);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              // Rasm ustiga yana bir bosilsa yopiladi.
-              onTap: () => Navigator.of(context, rootNavigator: true).pop(),
+            Container(
+              width: double.infinity,
+              color: Colors.black,
+              constraints: const BoxConstraints(maxHeight: 340),
               child: InteractiveViewer(
                 child: Center(
                   child: isRemote
@@ -1042,12 +1057,18 @@ class _YukSkladCardState extends State<YukSkladCard> {
               ),
             ),
             Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () =>
-                    Navigator.of(context, rootNavigator: true).pop(),
+              top: 6,
+              right: 6,
+              child: GestureDetector(
+                onTap: () => setState(() => _expandedAttachment = null),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 18, color: Colors.white),
+                ),
               ),
             ),
           ],
@@ -1129,7 +1150,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
       for (final e in provider.attachmentsFor(o.id)) {
         tiles.add(_attachmentTile(
           e,
-          onRemove: () => provider.removeAttachment(o.id, e),
+          onRemove: () {
+            provider.removeAttachment(o.id, e);
+            if (_expandedAttachment == e) {
+              setState(() => _expandedAttachment = null);
+            }
+          },
         ));
       }
     }
@@ -2143,6 +2169,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
                 _buildAttachmentsEditor(provider, pending, anchor)
               else
                 _buildAttachmentsViewer(orders),
+              // Bosilgan rasm ro'yxat ostida shu yerda ochiladi.
+              _buildInlinePreview(),
               // Achot yopilgan bo'lsa "Yuborilgan" belgisi va (30 soniya
               // ichida) "Qaytarib olish"; aks holda bitta "Yuborish".
               if (allDone)
