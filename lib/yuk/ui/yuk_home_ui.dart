@@ -605,6 +605,42 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
+// Katalog rasmi TO'LIQ EKRANDA: qora fon, pinch-zoom mumkin, ekranga bir
+// marta bosilsa yopiladi.
+class _FullscreenPhoto extends StatelessWidget {
+  final String url;
+  const _FullscreenPhoto({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.pop(context),
+        child: SizedBox.expand(
+          child: InteractiveViewer(
+            child: Center(
+              child: CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white70,
+                  ),
+                ),
+                errorWidget: (_, __, ___) =>
+                    const Icon(Icons.broken_image, color: Colors.white38),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // Summalarni chiroyli ko'rsatish: 1000 -> "1 000".
 String _formatMoney(num v) {
   final s = v.toStringAsFixed(0);
@@ -672,9 +708,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Mahsulot katalog rasmlari (product_id -> relativ /static/... url). Endi
   // alohida "Mahsulot suratlari" ekrani o'rniga har mahsulot nomi ostida shu
-  // ro'yxatda ko'rinadi. Bosilgan rasm o'sha joyda kattalashadi (_expandedPhotos).
+  // ro'yxatda ko'rinadi. Bosilgan rasm TO'LIQ EKRANDA ochiladi (ustiga bir
+  // marta bosilsa yopiladi).
   Map<int, String> _catalogImages = {};
-  final Set<String> _expandedPhotos = {};
 
   String _key(int orderId, int productId) => '${orderId}_$productId';
 
@@ -1102,37 +1138,31 @@ class _YukSkladCardState extends State<YukSkladCard> {
     );
   }
 
-  // Mahsulot nomi ostida ko'rinadigan katalog rasmi. Bosilsa o'sha joyda
-  // kattalashadi (yana bosilsa kichrayadi) — alohida ekran ochilmaydi.
+  // Mahsulot nomi ostida ko'rinadigan katalog rasmi. Bosilsa TO'LIQ EKRANDA
+  // ochiladi; ochilgan rasm ustiga bir marta bosilsa yopiladi.
   // Rasmi yo'q mahsulot (yoki qo'shimcha/proche item) uchun hech narsa chizmaydi.
-  Widget _productPhoto(YukOrder order, YukOrderItem item) {
+  Widget _productPhoto(YukOrderItem item) {
     // AppBar'dagi tugma o'chiq bo'lsa rasmlar umuman chizilmaydi.
     if (!widget.showImages) return const SizedBox.shrink();
     final rel = _catalogImages[item.productId];
     if (rel == null || rel.isEmpty) return const SizedBox.shrink();
-    final rowKey = _key(order.id, item.productId);
-    final expanded = _expandedPhotos.contains(rowKey);
-    final double w = expanded ? double.infinity : 96;
-    final double h = expanded ? 200 : 64;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: GestureDetector(
-        onTap: () => setState(() {
-          if (expanded) {
-            _expandedPhotos.remove(rowKey);
-          } else {
-            _expandedPhotos.add(rowKey);
-          }
-        }),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => _FullscreenPhoto(url: _fullUrl(rel)),
+          ),
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Container(
-            width: w,
-            height: h,
+            width: 96,
+            height: 64,
             color: const Color(0xFFF5F1EA),
             child: CachedNetworkImage(
               imageUrl: _fullUrl(rel),
-              fit: expanded ? BoxFit.contain : BoxFit.cover,
+              fit: BoxFit.cover,
               placeholder: (_, __) => const Center(
                 child: SizedBox(
                   width: 18,
@@ -1861,8 +1891,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       ),
                     ),
                   ],
-                  // Mahsulot katalog rasmi nom ostida (alohida ekran o'rniga).
-                  _productPhoto(order, item),
+                  // Mahsulot katalog rasmi nom ostida (bosilsa to'liq ekran).
+                  _productPhoto(item),
                 ],
               ),
             ),
