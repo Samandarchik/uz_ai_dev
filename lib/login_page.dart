@@ -28,63 +28,11 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? version;
   bool _obscurePassword = true;
-  List<Map<String, String>> _savedAccounts = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedAccounts();
     getAppVersion().then((v) => setState(() => version = v));
-  }
-
-  Future<void> _loadSavedAccounts() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? accounts = prefs.getStringList('saved_accounts');
-    if (accounts != null) {
-      if (!mounted) return;
-      setState(() {
-        _savedAccounts = accounts
-            .map((account) => Map<String, String>.from(jsonDecode(account)))
-            .toList();
-      });
-    }
-  }
-
-  Future<void> _saveAccount(String phone, String password) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    // Agar akkaunt allaqachon mavjud bo'lsa, uni o'chirish
-    _savedAccounts.removeWhere((account) => account['phone'] == phone);
-
-    // Yangi akkauntni boshiga qo'shish
-    _savedAccounts.insert(0, {'phone': phone, 'password': password});
-
-    // Faqat oxirgi 7 ta akkauntni saqlash
-    if (_savedAccounts.length > 7) {
-      _savedAccounts = _savedAccounts.sublist(0, 7);
-    }
-
-    List<String> accountsToSave =
-        _savedAccounts.map((account) => jsonEncode(account)).toList();
-
-    await prefs.setStringList('saved_accounts', accountsToSave);
-  }
-
-  Future<void> _deleteAccount(int index) async {
-    setState(() {
-      _savedAccounts.removeAt(index);
-    });
-
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> accountsToSave =
-        _savedAccounts.map((account) => jsonEncode(account)).toList();
-    await prefs.setStringList('saved_accounts', accountsToSave);
-  }
-
-  void _selectAccount(Map<String, String> account) {
-    setState(() {
-      _passwordController.text = account['password']!;
-    });
   }
 
   Future<void> _login() async {
@@ -106,11 +54,6 @@ class _LoginPageState extends State<LoginPage> {
       TextInput.finishAutofillContext();
 
       final user = result['data']['user'];
-      // Saqlangan akkauntlar ro'yxatida ko'rsatish uchun telefon serverdan
-      // kelgan profildan olinadi.
-      await _saveAccount(
-          (user['phone'] ?? user['name'] ?? '').toString(),
-          _passwordController.text);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
@@ -141,7 +84,6 @@ class _LoginPageState extends State<LoginPage> {
       TextInput.finishAutofillContext();
 
       final user = result['data']['user'];
-      await _saveAccount((user['phone'] ?? '').toString(), "112233");
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
@@ -367,56 +309,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                         SizedBox(height: 20),
-                        // Saqlangan akkauntlar ro'yxati
-                        if (_savedAccounts.isNotEmpty) ...[
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Ранее вошедшие в систему учетные записи:',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 10),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              itemCount: _savedAccounts.length,
-                              separatorBuilder: (context, index) =>
-                                  Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final account = _savedAccounts[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.blue.shade100,
-                                    child:
-                                        Icon(Icons.person, color: Colors.blue),
-                                  ),
-                                  title: Text(
-                                    account['phone']!,
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w500),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteAccount(index),
-                                  ),
-                                  onTap: () => _selectAccount(account),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                          Text(version ?? ""),
-                        ],
+                        Text(version ?? ""),
                       ],
                     ),
                   ),
