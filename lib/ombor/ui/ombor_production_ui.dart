@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
-import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 import 'package:uz_ai_dev/production/ui/widgets/production_order_widgets.dart';
@@ -372,8 +372,10 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text(
+                      // Qiymat API birlikda (кг/литр -> gramm) — UI'da kg.
                       '• ${names[e.key]} — yetishmayapti '
-                      '${fmtStockQty(e.value)} ${units[e.key] ?? ''}'.trim(),
+                      '${formatQty(e.value, units[e.key])} ${units[e.key] ?? ''}'
+                          .trim(),
                       style: const TextStyle(fontSize: 13.5),
                     ),
                   ),
@@ -407,8 +409,14 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
 
     setState(() => _orderingShort = true);
     try {
+      // short qiymatlari allaqachon API birlikda (кг/л -> gramm) — butun
+      // qiymat kasrsiz yuboriladi.
       final orderId = await OmborService().submitOrderReturningId([
-        for (final e in entries) {'product_id': e.key, 'count': e.value},
+        for (final e in entries)
+          {
+            'product_id': e.key,
+            'count': e.value % 1 == 0 ? e.value.toInt() : e.value,
+          },
       ]);
       if (!mounted) return;
       _snack('Buyurtma yaratildi: $orderId', error: false);

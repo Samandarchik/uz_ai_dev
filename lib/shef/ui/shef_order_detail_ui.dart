@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart';
@@ -366,7 +367,8 @@ class _ShefOrderDetailUiState extends State<ShefOrderDetailUi> {
                             ),
                           ),
                           Text(
-                            '${_fmtStock(ing.stockAmount)} ${ing.stockUnit}',
+                            // stock_amount API birlikda (кг/литр -> gr/ml).
+                            '${formatQty(ing.stockAmount, ing.stockUnit)} ${ing.stockUnit}',
                             style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -481,16 +483,6 @@ class _ShefOrderDetailUiState extends State<ShefOrderDetailUi> {
     );
   }
 
-  // Qoldiq miqdorini chiroyli ko'rsatish: 7.0 -> "7", 7.25 -> "7.25".
-  String _fmtStock(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    var s = v.toStringAsFixed(3);
-    while (s.endsWith('0')) {
-      s = s.substring(0, s.length - 1);
-    }
-    if (s.endsWith('.')) s = s.substring(0, s.length - 1);
-    return s;
-  }
 }
 
 // Rad etish izohi dialogi.
