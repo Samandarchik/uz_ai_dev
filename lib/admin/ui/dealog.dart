@@ -11,7 +11,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 class CategoryDialog extends StatefulWidget {
   final CategoryProductAdmin? category;
 
-  const CategoryDialog({Key? key, this.category}) : super(key: key);
+  const CategoryDialog({super.key, this.category});
 
   @override
   State<CategoryDialog> createState() => _CategoryDialogState();

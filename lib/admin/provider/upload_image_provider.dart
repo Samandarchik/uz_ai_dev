@@ -123,19 +123,19 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('🏗️ Creating category: ${category.name}');
+      debugPrint('🏗️ Creating category: ${category.name}');
 
       String? imageUrl;
 
       // Upload image if provided
       if (imageFile != null) {
-        print('📸 Image file provided, uploading...');
+        debugPrint('📸 Image file provided, uploading...');
         imageUrl = await uploadImage(imageFile);
         if (imageUrl == null) {
-          print('❌ Image upload failed');
+          debugPrint('❌ Image upload failed');
           throw Exception('Failed to upload image');
         }
-        print('✅ Image uploaded successfully: $imageUrl');
+        debugPrint('✅ Image uploaded successfully: $imageUrl');
       }
 
       // Create category with uploaded image URL
@@ -146,18 +146,18 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         imageUrl: imageUrl ?? category.imageUrl,
       );
 
-      print('💾 Saving category to database...');
+      debugPrint('💾 Saving category to database...');
       final newCategory = await _service.createCategory(categoryWithImage);
       _categories.add(newCategory);
       _isLoading = false;
       notifyListeners();
 
-      print('✅ Category created successfully: ${newCategory.name}');
+      debugPrint('✅ Category created successfully: ${newCategory.name}');
       return true;
     } catch (e, stackTrace) {
-      print('❌ Error creating category:');
-      print('Error: $e');
-      print('StackTrace: $stackTrace');
+      debugPrint('❌ Error creating category:');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
 
       _error = e.toString();
       _isLoading = false;
@@ -179,19 +179,19 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('✏️ Updating category: ${category.name}');
+      debugPrint('✏️ Updating category: ${category.name}');
 
       String? uploadedImageUrl;
 
       // Upload new image if provided
       if (imageFile != null) {
-        print('📸 New image file provided, uploading...');
+        debugPrint('📸 New image file provided, uploading...');
         uploadedImageUrl = await uploadImage(imageFile);
         if (uploadedImageUrl == null) {
-          print('❌ Image upload failed');
+          debugPrint('❌ Image upload failed');
           throw Exception('Failed to upload image');
         }
-        print('✅ Image uploaded successfully: $uploadedImageUrl');
+        debugPrint('✅ Image uploaded successfully: $uploadedImageUrl');
       }
 
       // Create updated category object with new values
@@ -202,7 +202,7 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
         imageUrl: uploadedImageUrl ?? newImageUrl ?? category.imageUrl,
       );
 
-      print('💾 Updating category in database...');
+      debugPrint('💾 Updating category in database...');
       // Call API service
       final result = await _service.updateCategory(updatedCategory);
 
@@ -215,12 +215,12 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      print('✅ Category updated successfully');
+      debugPrint('✅ Category updated successfully');
       return true;
     } catch (e, stackTrace) {
-      print('❌ Error updating category:');
-      print('Error: $e');
-      print('StackTrace: $stackTrace');
+      debugPrint('❌ Error updating category:');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
 
       _error = e.toString();
       _isLoading = false;

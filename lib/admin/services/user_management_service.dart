@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 // ================ SERVICES ================
 // services/user_management_service.dart
 
@@ -26,19 +27,19 @@ class UserManagementService {
           throw Exception(responseData['message'] ?? 'users_fetch_error');
         }
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        final errorMessage = e.response!.data['message'] ??
-            'server_error' + ': ${e.response!.statusCode}';
-        throw Exception(errorMessage);
+        // Body Map bo'lmasa (HTML 5xx, bo'sh javob) ham crash bo'lmasin.
+        throw Exception(parseDioError(e,
+            fallback: 'server_error: ${e.response!.statusCode}'));
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getAllUsers: $e');
-      throw Exception('unexpected_error_users' + ': $e');
+      debugPrint('Xatolik getAllUsers: $e');
+      throw Exception('unexpected_error_users: $e');
     }
   }
 
@@ -62,10 +63,10 @@ class UserManagementService {
       if (e.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('user_fetch_error' + ': ${e.message}');
+      throw Exception('user_fetch_error: ${e.message}');
     } catch (e) {
-      print('Xatolik getUserById: $e');
-      throw Exception('unexpected_error_user' + ': $e');
+      debugPrint('Xatolik getUserById: $e');
+      throw Exception('unexpected_error_user: $e');
     }
   }
 
@@ -86,18 +87,18 @@ class UserManagementService {
           throw Exception(responseData['message'] ?? 'user_create_error');
         }
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('user_create_error' + ': $errorMessage');
+        throw Exception('user_create_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik createUser: $e');
-      throw Exception('unexpected_error_create' + ': $e');
+      debugPrint('Xatolik createUser: $e');
+      throw Exception('unexpected_error_create: $e');
     }
   }
 
@@ -118,7 +119,7 @@ class UserManagementService {
           throw Exception(responseData['message'] ?? 'user_update_error');
         }
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
@@ -126,13 +127,13 @@ class UserManagementService {
           throw Exception('user_not_found');
         }
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('user_update_error' + ': $errorMessage');
+        throw Exception('user_update_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik updateUser: $e');
-      throw Exception('unexpected_error_update' + ': $e');
+      debugPrint('Xatolik updateUser: $e');
+      throw Exception('unexpected_error_update: $e');
     }
   }
 
@@ -153,13 +154,13 @@ class UserManagementService {
           throw Exception('user_not_found');
         }
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('user_delete_error' + ': $errorMessage');
+        throw Exception('user_delete_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik deleteUser: $e');
-      throw Exception('unexpected_error_delete' + ': $e');
+      debugPrint('Xatolik deleteUser: $e');
+      throw Exception('unexpected_error_delete: $e');
     }
   }
 
@@ -230,7 +231,7 @@ class UserManagementService {
       final allUsers = await getAllUsers();
       return allUsers.where((user) => user.isAdmin).toList();
     } catch (e) {
-      throw Exception('admin_users_error' + ': $e');
+      throw Exception('admin_users_error: $e');
     }
   }
 
@@ -239,7 +240,7 @@ class UserManagementService {
       final allUsers = await getAllUsers();
       return allUsers.where((user) => !user.isAdmin).toList();
     } catch (e) {
-      throw Exception('regular_users_error' + ': $e');
+      throw Exception('regular_users_error: $e');
     }
   }
 
@@ -253,7 +254,7 @@ class UserManagementService {
       final updateRequest = UpdateUserRequest(isAdmin: !user.isAdmin);
       return await updateUser(userId, updateRequest);
     } catch (e) {
-      throw Exception('toggle_admin_error' + ': $e');
+      throw Exception('toggle_admin_error: $e');
     }
   }
 }
@@ -276,19 +277,19 @@ class FilialService {
           throw Exception(responseData['message'] ?? 'filials_fetch_error');
         }
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        final errorMessage = e.response!.data['message'] ??
-            'server_error' + ': ${e.response!.statusCode}';
-        throw Exception(errorMessage);
+        // Body Map bo'lmasa (HTML 5xx, bo'sh javob) ham crash bo'lmasin.
+        throw Exception(parseDioError(e,
+            fallback: 'server_error: ${e.response!.statusCode}'));
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Xatolik getAllFilials: $e');
-      throw Exception('unexpected_error_filials' + ': $e');
+      debugPrint('Xatolik getAllFilials: $e');
+      throw Exception('unexpected_error_filials: $e');
     }
   }
 }

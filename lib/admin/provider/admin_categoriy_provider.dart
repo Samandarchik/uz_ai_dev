@@ -32,8 +32,9 @@ class CategoryProviderAdmin extends ChangeNotifier {
   }
 
   // Reorder categories
+  // Eslatma: onReorderItem callback'i newIndex'ni allaqachon to'g'irlab beradi,
+  // shuning uchun bu yerda qo'lda kompensatsiya kerak emas.
   Future<bool> reorderCategories(int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) newIndex--;
     final item = _categories.removeAt(oldIndex);
     _categories.insert(newIndex, item);
     notifyListeners();

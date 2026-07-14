@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 
@@ -74,11 +75,21 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
 
     setState(() => _submitting = true);
     final provider = context.read<StockProvider>();
+    // Maydonlarda UI birlik (kg/l) — API'ga butun gramm/ml yuboriladi.
+    final typeById = <int, String>{
+      for (final r in provider.stockFor(widget.skladId) ?? const <StockRow>[])
+        r.productId: r.type,
+    };
+    num toApi(int productId, double v) {
+      final api = qtyFromUi(v, typeById[productId]);
+      return api % 1 == 0 ? api.toInt() : api;
+    }
+
     final (changed, err) = await provider.submitInventory(
       skladId: widget.skladId,
       items: [
         for (final e in filled.entries)
-          {'product_id': e.key, 'actual_qty': e.value},
+          {'product_id': e.key, 'actual_qty': toApi(e.key, e.value)},
       ],
     );
     if (!mounted) return;
@@ -285,7 +296,7 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Joriy: ${fmtStockQty(row.qty)} ${row.type}'.trim(),
+                    'Joriy: ${formatQty(row.qty, row.type)} ${row.type}'.trim(),
                     style: TextStyle(
                       fontSize: 12,
                       color:
@@ -307,7 +318,8 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
                 ],
                 textAlign: TextAlign.right,
                 decoration: InputDecoration(
-                  hintText: fmtStockQty(row.qty),
+                  // Hint UI birlikda — foydalanuvchi ham kg/l kiritadi.
+                  hintText: formatQty(row.qty, row.type),
                   suffixText: row.type.isNotEmpty ? row.type : null,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(

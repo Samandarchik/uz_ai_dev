@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -15,7 +16,7 @@ class ApiPdfService {
   }) async {
     final main = Stopwatch()..start();
 
-    print("🚀 START PDF DOWNLOAD: $categoryId");
+    debugPrint("🚀 START PDF DOWNLOAD: $categoryId");
 
     // TEMP directory
     final directory = await getTemporaryDirectory();
@@ -25,7 +26,7 @@ class ApiPdfService {
     // Agar fayl mavjud bo'lsa, avval o'chirish
     if (await file.exists()) {
       await file.delete();
-      print("🗑️ Old PDF deleted");
+      debugPrint("🗑️ Old PDF deleted");
     }
 
     // Request setup (STREAM MODE)
@@ -39,7 +40,7 @@ class ApiPdfService {
           response.headers.value(Headers.contentLengthHeader) ?? "0";
       final total = int.tryParse(contentLength) ?? 0;
 
-      print("📦 Content-Length: $total bytes");
+      debugPrint("📦 Content-Length: $total bytes");
 
       // STREAM WRITER
       final sink = file.openWrite();
@@ -58,7 +59,7 @@ class ApiPdfService {
           if (total > 0) {
             final progress = (received / total * 100).toInt();
             if (progress % 25 == 0) {
-              print("⬇️ Progress: $progress%");
+              debugPrint("⬇️ Progress: $progress%");
             }
           }
         },
@@ -66,12 +67,12 @@ class ApiPdfService {
 
       await sink.close();
 
-      print("✅ File saved → $filePath");
-      print("⏱ TOTAL TIME: ${main.elapsedMilliseconds} ms");
+      debugPrint("✅ File saved → $filePath");
+      debugPrint("⏱ TOTAL TIME: ${main.elapsedMilliseconds} ms");
 
       return filePath;
     } catch (e) {
-      print("❌ ERROR: $e");
+      debugPrint("❌ ERROR: $e");
       throw Exception("PDF yuklab bo'lmadi");
     }
   }
@@ -84,7 +85,7 @@ class ApiPdfService {
   }) async {
     final main = Stopwatch()..start();
 
-    print("🚀 START PDF DOWNLOAD & SHARE: $categoryId");
+    debugPrint("🚀 START PDF DOWNLOAD & SHARE: $categoryId");
 
     try {
       // 1. Download
@@ -95,23 +96,23 @@ class ApiPdfService {
 
       // 2. Share
       final shareStopwatch = Stopwatch()..start();
-      print("📤 Sharing PDF...");
+      debugPrint("📤 Sharing PDF...");
 
       final xFile = XFile(filePath);
-      await Share.shareXFiles(
-        [xFile],
+      await SharePlus.instance.share(ShareParams(
+        files: [xFile],
         text: shareText ?? 'Mahsulot katalogi',
         subject: 'PDF Katalog',
-      );
+      ));
 
       shareStopwatch.stop();
-      print("✅ Share dialog opened");
-      print("⏱ Share time: ${shareStopwatch.elapsedMilliseconds} ms");
+      debugPrint("✅ Share dialog opened");
+      debugPrint("⏱ Share time: ${shareStopwatch.elapsedMilliseconds} ms");
 
       main.stop();
-      print("⏱ TOTAL TIME (with share): ${main.elapsedMilliseconds} ms");
+      debugPrint("⏱ TOTAL TIME (with share): ${main.elapsedMilliseconds} ms");
     } catch (e) {
-      print("❌ ERROR in downloadAndSharePdf: $e");
+      debugPrint("❌ ERROR in downloadAndSharePdf: $e");
       throw Exception("PDF yuklash yoki ulashishda xatolik");
     }
   }
@@ -128,13 +129,13 @@ class ApiPdfService {
             file.path.contains('category_') &&
             file.path.endsWith('.pdf')) {
           await file.delete();
-          print("🗑️ Deleted old PDF: ${file.path}");
+          debugPrint("🗑️ Deleted old PDF: ${file.path}");
         }
       }
 
-      print("✅ Cleanup completed");
+      debugPrint("✅ Cleanup completed");
     } catch (e) {
-      print("⚠️ Cleanup error: $e");
+      debugPrint("⚠️ Cleanup error: $e");
       // Xatolikni ignore qilamiz, chunki bu critical emas
     }
   }
@@ -148,10 +149,10 @@ class ApiPdfService {
 
       if (await file.exists()) {
         await file.delete();
-        print("🗑️ Deleted PDF for category $categoryId");
+        debugPrint("🗑️ Deleted PDF for category $categoryId");
       }
     } catch (e) {
-      print("⚠️ Delete error: $e");
+      debugPrint("⚠️ Delete error: $e");
     }
   }
 }

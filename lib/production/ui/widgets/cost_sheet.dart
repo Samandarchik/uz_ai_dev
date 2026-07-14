@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/production_cost_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 
@@ -18,17 +19,6 @@ String fmtCostMoney(num v) {
     buf.write(s[i]);
   }
   return buf.toString();
-}
-
-// Miqdorni chiroyli ko'rsatish: 7.0 -> "7", 7.25 -> "7.25".
-String _fmtAmount(double v) {
-  if (v == v.roundToDouble()) return v.toInt().toString();
-  var s = v.toStringAsFixed(3);
-  while (s.endsWith('0')) {
-    s = s.substring(0, s.length - 1);
-  }
-  if (s.endsWith('.')) s = s.substring(0, s.length - 1);
-  return s;
 }
 
 // Tannarx sheet'ini ochish. productName — sarlavha uchun (javob kelguncha).
@@ -333,7 +323,9 @@ class _CostItemRow extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              '${_fmtAmount(item.amount)} ${item.stockUnit}'.trim(),
+              // amount API birlikda (кг/л -> gramm) — UI'da kg/l ko'rinadi.
+              '${formatQty(item.amount, item.stockUnit)} ${item.stockUnit}'
+                  .trim(),
               textAlign: TextAlign.right,
               style: TextStyle(fontSize: 12.5, color: textColor),
             ),
@@ -341,7 +333,12 @@ class _CostItemRow extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              grey ? '—' : fmtCostMoney(item.unitPrice),
+              // unit_price кг/л uchun 1 gr/ml narxi — UI'da 1 kg/l narxi
+              // (x1000) ko'rsatiladi.
+              grey
+                  ? '—'
+                  : fmtCostMoney(
+                      item.unitPrice * qtyUnitFactor(item.stockUnit)),
               textAlign: TextAlign.right,
               style: TextStyle(fontSize: 12.5, color: textColor),
             ),

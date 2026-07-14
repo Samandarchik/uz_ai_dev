@@ -21,8 +21,8 @@ class VersionChecker {
       BuildContext context) async {
     try {
       final response = await http.get(Uri.parse(_endpoint));
-      print(response.statusCode);
-      print(response.body);
+      debugPrint(response.statusCode.toString());
+      debugPrint(response.body);
 
       if (response.statusCode != 200) {
         debugPrint("⚠️ Server status: ${response.statusCode}");
@@ -64,7 +64,9 @@ class VersionChecker {
       debugPrint("🔍 Versions match: $versionsMatch");
 
       if (requiresUpdate) {
-        _showUpdateDialog(context, storeUrl);
+        if (context.mounted) {
+          _showUpdateDialog(context, storeUrl);
+        }
         return {'needsUpdate': true, 'versionsMatch': false};
       }
 

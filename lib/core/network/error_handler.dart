@@ -7,7 +7,14 @@ import 'package:dio/dio.dart';
 /// matnini qaytaradi.
 String parseDioError(DioException e, {String fallback = 'Noma\'lum server xatosi'}) {
   if (e.response != null) {
-    return e.response?.data['message'] ?? e.response?.data['error'] ?? fallback;
+    // Javob tanasi har doim Map bo'lmaydi: bo'sh body, nginx HTML 5xx sahifasi
+    // yoki List kelishi mumkin — u holda ['message'] o'qish o'zi crash qilardi.
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message'] ?? data['error'];
+      if (msg != null) return msg.toString();
+    }
+    return fallback;
   }
   return 'Tarmoq xatosi: ${e.message}';
 }

@@ -14,6 +14,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -731,8 +732,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
   // ostidagi "1 кг" yorlig'ida turibdi) — ombor "kelgan" deb yozmaguncha
   // son tasdiqlanmagan.
   String _qtyText(YukOrder order, YukOrderItem item) {
-    if (item.accepted && item.received > 0) return _fmtQty(item.received);
-    if (_isDoneOrder(order)) return _fmtQty(item.taken);
+    if (item.accepted && item.received > 0) {
+      return _fmtQty(item.received, item.type);
+    }
+    if (_isDoneOrder(order)) return _fmtQty(item.taken, item.type);
     return '';
   }
 
@@ -761,20 +764,15 @@ class _YukSkladCardState extends State<YukSkladCard> {
     return _formatMoney(v);
   }
 
-  String _fmtQty(double v) {
+  // API birlikdagi miqdorni (кг/л -> gramm) UI ko'rinishida formatlaydi;
+  // 0 bo'lsa bo'sh string (maydon bo'sh qoladi).
+  String _fmtQty(double v, String? type) {
     if (v == 0) return '';
-    var s = v.toStringAsFixed(3);
-    if (s.contains('.')) {
-      s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
-    }
-    return s;
+    return formatQty(v, type);
   }
 
-  bool _isKg(String? type) {
-    if (type == null) return false;
-    final t = type.toLowerCase();
-    return t.contains('kg') || t.contains('кг');
-  }
+  // кг/л (og'irlik/hajm) mahsulotmi — kasr kiritish/1000 faktor uchun.
+  bool _isKg(String? type) => qtyUnitFactor(type) == 1000;
 
   double _parse(String raw) {
     final cleaned = raw.trim().replaceAll(' ', '').replaceAll(',', '.');
@@ -782,11 +780,6 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final v = double.tryParse(cleaned);
     if (v == null || v < 0) return 0;
     return v;
-  }
-
-  String _formatCount(num v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
   }
 
   String _formatTime(String raw) {
@@ -905,7 +898,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
             !(old?.accepted ?? false)) {
           final v = _qtyBasis(item);
           final ctrl = _takenCtrlFor(o, item);
-          if (_parse(ctrl.text) != v) ctrl.text = _fmtQty(v);
+          final t = _fmtQty(v, item.type);
+          if (ctrl.text != t) ctrl.text = t;
           final priced = provider.getItemPrice(o.id, item.productId);
           if (priced != null && provider.canSeedOrder(o)) {
             provider.seedItemPrice(o.id, item.productId, v, priced.subtotal);
@@ -1527,7 +1521,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
           const SizedBox(width: 6),
           Expanded(
             flex: _qtyFlex,
-            child: _addedValueBox(_fmtQty(item.taken)),
+            // Qo'shilgan (proche) itemning birligi yo'q — faktor 1.
+            child: _addedValueBox(_fmtQty(item.taken, null)),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -1571,7 +1566,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
           const SizedBox(width: 6),
           Expanded(
             flex: _qtyFlex,
-            child: _addedValueBox(_fmtQty(item.taken)),
+            // taken API birlikda — item.type bo'yicha UI (kg) ko'rinadi.
+            child: _addedValueBox(_fmtQty(item.taken, item.type)),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -1757,7 +1753,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                 Text(item.name, style: deletedStyle.copyWith(fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(
-                  '${_formatCount(item.count)}'
+                  '${formatQty(item.count, item.type)}'
                   '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
                   style: deletedStyle.copyWith(fontSize: 12),
                 ),
@@ -1777,7 +1773,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                 border: Border.all(color: red.withValues(alpha: 0.35)),
               ),
               child: Text(
-                _formatCount(item.count),
+                formatQty(item.count, item.type),
                 style: deletedStyle.copyWith(fontSize: 13),
               ),
             ),
@@ -1820,16 +1816,19 @@ class _YukSkladCardState extends State<YukSkladCard> {
     // hisob asosiga tayanadi: qabulda received, aks holda count/taken.
     final takenVal = done ? (priced?.taken ?? item.taken) : _qtyBasis(item);
     final subtotalVal = priced?.subtotal ?? item.subtotal;
-    final unitPrice =
-        (takenVal > 0 && subtotalVal > 0) ? subtotalVal / takenVal : null;
+    // Birlik narx UI birlikda (so'm/kg): API'dagi gramm avval kg'ga o'giriladi.
+    final unitPrice = (takenVal > 0 && subtotalVal > 0)
+        ? subtotalVal / qtyToUi(takenVal, item.type)
+        : null;
     final unitLabel = unitPrice != null
-        ? '${_fmtQty(takenVal)} * ${_formatMoney(unitPrice)}'
+        ? '${_fmtQty(takenVal, item.type)} * ${_formatMoney(unitPrice)}'
         : '';
     final diff = takenVal - item.count;
     final showDiff =
         !item.isProche && takenVal > 0 && diff.abs() > 0.0001;
-    final diffText =
-        diff > 0 ? '+${_fmtQty(diff)}' : '-${_fmtQty(diff.abs())}';
+    final diffText = diff > 0
+        ? '+${_fmtQty(diff, item.type)}'
+        : '-${_fmtQty(diff.abs(), item.type)}';
     final diffColor =
         diff > 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
     return Padding(
@@ -1860,7 +1859,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       Text(
                         item.isProche
                             ? 'Qo\'shimcha'
-                            : '${_formatCount(item.count)}'
+                            : '${formatQty(item.count, item.type)}'
                                 '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
                         style: TextStyle(
                           fontSize: 12,
@@ -2395,6 +2394,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                     ),
                   ),
                 ),
+              const SizedBox(height: 24),
             ],
           ),
         );
@@ -2445,24 +2445,15 @@ class _YukOrderCardState extends State<YukOrderCard> {
     return _formatMoney(v);
   }
 
-  // "Nechta olgani" / miqdor uchun: 3 xonagacha yaxlitlab, ortiqcha nollarni
-  // olib tashlaydi (8.5 -> "8.5", 8 -> "8", 0.2999999 -> "0.3").
-  String _fmtQty(double v) {
+  // "Nechta olgani" / miqdor uchun: API birlikdagi qiymatni (кг/л -> gramm)
+  // UI ko'rinishida formatlaydi; 0 bo'lsa bo'sh string.
+  String _fmtQty(double v, String? type) {
     if (v == 0) return '';
-    var s = v.toStringAsFixed(3);
-    if (s.contains('.')) {
-      s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
-    }
-    return s;
+    return formatQty(v, type);
   }
 
-  // Mahsulot kg (vazn) bilan o'lchanadimi — 'type' maydoniga qarab.
-  // "kg", "кг" (lotin/kirill) ni qamrab oladi.
-  bool _isKg(String? type) {
-    if (type == null) return false;
-    final t = type.toLowerCase();
-    return t.contains('kg') || t.contains('кг');
-  }
+  // Mahsulot kg/l (vazn/hajm) bilan o'lchanadimi — 'type' maydoniga qarab.
+  bool _isKg(String? type) => qtyUnitFactor(type) == 1000;
 
   @override
   void initState() {
@@ -2484,7 +2475,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
               : item.taken);
       final subtotal0 = existing?.subtotal ?? item.subtotal;
       _takenControllers[item.productId] =
-          TextEditingController(text: _fmtQty(taken0));
+          TextEditingController(text: _fmtQty(taken0, item.type));
       _subtotalControllers[item.productId] =
           TextEditingController(text: _fmt(subtotal0));
       _takenFocusNodes[item.productId] = FocusNode();
@@ -2528,7 +2519,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
     for (final item in order.items) {
       if (item.accepted && !(oldAccepted[item.productId] ?? false)) {
         final v = item.received > 0 ? item.received : item.taken;
-        _takenCtrlFor(item).text = _fmtQty(v);
+        _takenCtrlFor(item).text = _fmtQty(v, item.type);
         // Providerga ham yozamiz — "1 *" birlik narx qayta hisoblanadi.
         deferred.add(() => _onItemChanged(item));
       }
@@ -2583,7 +2574,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
   TextEditingController _takenCtrlFor(YukOrderItem item) =>
       _takenControllers.putIfAbsent(
         item.productId,
-        () => TextEditingController(text: _fmtQty(item.taken)),
+        () => TextEditingController(text: _fmtQty(item.taken, item.type)),
       );
 
   TextEditingController _subtotalCtrlFor(YukOrderItem item) =>
@@ -2612,7 +2603,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
     // ham accepted itemning taken'ini o'zgartirmaydi).
     final takenText = _takenControllers[productId]?.text ?? '';
     final subtotalText = _subtotalControllers[productId]?.text ?? '';
-    final taken = _parse(takenText);
+    // Maydonda UI birlik (kg/l) — API'ga butun gramm/ml yoziladi.
+    final taken = qtyFromUi(_parse(takenText), item.type).toDouble();
     final subtotal = _parse(subtotalText);
     // "Ataylab 0": ikkala maydonga ham QO'LDA nimadir yozilgan-u, qiymati 0
     // (_parse('') ham 0 — shuning uchun matn tekshiriladi). Bunday yozuv 0/0
@@ -2622,11 +2614,6 @@ class _YukOrderCardState extends State<YukOrderCard> {
         taken == 0 &&
         subtotal == 0;
     provider.setItemPrice(order.id, productId, taken, subtotal, zero: zero);
-  }
-
-  String _formatCount(num v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
   }
 
   String _formatDate(String raw) {
@@ -2925,7 +2912,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
           const SizedBox(width: 6),
           Expanded(
             flex: _qtyFlex,
-            child: _addedValueBox(_fmtQty(item.taken)),
+            // Qo'shilgan (proche) itemning birligi yo'q — faktor 1.
+            child: _addedValueBox(_fmtQty(item.taken, null)),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -3379,16 +3367,19 @@ class _YukOrderCardState extends State<YukOrderCard> {
                 // (avto to'lgan kelgan soni + faqat summa yozilsa ham chiqadi).
                 final priced = provider.getItemPrice(order.id, item.productId);
                 final takenCtrl = _takenControllers[item.productId];
+                // takenVal — API birlikda (кг/л -> gramm). Maydonda UI birlik
+                // turadi, shuning uchun matn avval API birlikka o'giriladi.
                 final takenVal = (!done && takenCtrl != null)
-                    ? _parse(takenCtrl.text)
+                    ? qtyFromUi(_parse(takenCtrl.text), item.type).toDouble()
                     : (priced?.taken ?? item.taken);
                 final subtotalVal = priced?.subtotal ?? item.subtotal;
+                // Birlik narx UI birlikda (so'm/kg).
                 final unitPrice = (takenVal > 0 && subtotalVal > 0)
-                    ? subtotalVal / takenVal
+                    ? subtotalVal / qtyToUi(takenVal, item.type)
                     : null;
                 // Olingan miqdor * birlik narxi: "5.250 * 9 524".
                 final unitLabel = unitPrice != null
-                    ? '${_fmtQty(takenVal)} * ${_formatMoney(unitPrice)}'
+                    ? '${_fmtQty(takenVal, item.type)} * ${_formatMoney(unitPrice)}'
                     : '';
                 // Buyurtma soniga nisbatan farq: ortiq olinsa +yashil,
                 // kam olinsa -qizil. Masalan 3 so'ralib 5 olinsa "+2".
@@ -3398,8 +3389,8 @@ class _YukOrderCardState extends State<YukOrderCard> {
                 final showDiff =
                     !item.isProche && takenVal > 0 && diff.abs() > 0.0001;
                 final diffText = diff > 0
-                    ? '+${_fmtQty(diff)}'
-                    : '-${_fmtQty(diff.abs())}';
+                    ? '+${_fmtQty(diff, item.type)}'
+                    : '-${_fmtQty(diff.abs(), item.type)}';
                 final diffColor = diff > 0
                     ? const Color(0xFF2E7D32)
                     : const Color(0xFFC62828);
@@ -3432,7 +3423,7 @@ class _YukOrderCardState extends State<YukOrderCard> {
                                 Text(
                                   item.isProche
                                       ? 'Qo\'shimcha'
-                                      : '${_formatCount(item.count)}'
+                                      : '${formatQty(item.count, item.type)}'
                                           '${item.type != null && item.type!.isNotEmpty ? ' ${item.type}' : ''}',
                                   style: TextStyle(
                                     fontSize: 12,

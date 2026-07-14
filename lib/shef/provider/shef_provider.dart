@@ -191,13 +191,17 @@ class ShefProvider extends ChangeNotifier {
 
   // production hodisasida ro'yxatni jim yangilaymiz (payload'siz signal).
   void connectSocket() {
-    _socketSub ??=
+    // connect/disconnect juftligi _socketSub orqali balanslanadi —
+    // OrderSocket ref-count to'g'ri ishlashi uchun (qarang: order_socket.dart).
+    if (_socketSub != null) return;
+    _socketSub =
         OrderSocket.instance.productionEvents.listen((_) => refreshSilently());
     OrderSocket.instance.connect();
   }
 
   void disconnectSocket() {
-    _socketSub?.cancel();
+    if (_socketSub == null) return;
+    _socketSub!.cancel();
     _socketSub = null;
     OrderSocket.instance.disconnect();
   }

@@ -27,14 +27,14 @@ class _AddProductPageState extends State<AddProductPage> {
   final ImagePicker _picker = ImagePicker();
 
   int? _selectedCategoryId;
-  List<int> _selectedFilials = [];
+  final List<int> _selectedFilials = [];
   File? _selectedImage;
 
   // Ombor → yuk keltiruvchi oqimi uchun yangi maydonlar
   bool _moneApp = true;
   bool _bozor = false;
   String _source = 'samarqand';
-  List<int> _selectedSklads = [];
+  final List<int> _selectedSklads = [];
 
   // Tarkib (tex karta)
   final TechCardController _techController = TechCardController();
@@ -543,7 +543,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   .uploadImage(_selectedImage!);
 
                               if (imageUrl == null) {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         content: Text(
@@ -553,6 +553,8 @@ class _AddProductPageState extends State<AddProductPage> {
                                 return;
                               }
                             }
+
+                            if (!context.mounted) return;
 
                             final product = ProductModelAdmin(
                               id: 0,

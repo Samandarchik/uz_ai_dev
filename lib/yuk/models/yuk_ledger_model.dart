@@ -55,15 +55,19 @@ List<YukLedgerDay> parseYukLedger(dynamic data) {
 // 'rasxod' — xarajat/xizmat.
 class LedgerDayItem {
   final String name;
+  // API birlikda: кг/л mahsulotlarda butun gramm/ml (1500 = 1.5 kg).
   final double taken;
   final num subtotal;
   final String itemType;
+  // O'lchov birligi (кг, шт, л...) — taken'ni formatlash uchun.
+  final String type;
 
   const LedgerDayItem({
     required this.name,
     required this.taken,
     required this.subtotal,
     required this.itemType,
+    this.type = '',
   });
 
   bool get isRasxod => itemType == 'rasxod';
@@ -74,6 +78,7 @@ class LedgerDayItem {
       taken: (json['taken'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?) ?? 0,
       itemType: json['item_type']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
     );
   }
 }

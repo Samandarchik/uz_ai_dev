@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Narxlangan sklad buyurtmalarini KUNLIK kartalarda ko'rsatish uchun UMUMIY
@@ -29,15 +30,6 @@ String formatMoney(num v) {
     buf.write(s[i]);
   }
   return buf.toString();
-}
-
-String _fmtQty(double v) {
-  if (v == 0) return '0';
-  var s = v.toStringAsFixed(3);
-  if (s.contains('.')) {
-    s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
-  }
-  return s;
 }
 
 // ─────────────── Kunlik guruhlash yordamchilari ───────────────
@@ -469,7 +461,8 @@ class YukDayCard extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(
-              _fmtQty(item.taken),
+              // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
+              formatQty(item.taken, item.type),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -478,12 +471,12 @@ class YukDayCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          // Donasi (birlik narx) = summa / soni.
+          // Donasi (birlik narx) = summa / soni (UI birlikda: so'm/kg).
           Expanded(
             flex: 3,
             child: Text(
               item.taken > 0 && item.subtotal > 0
-                  ? '${formatMoney(item.subtotal / item.taken)} so\'m'
+                  ? '${formatMoney(item.subtotal / qtyToUi(item.taken, item.type))} so\'m'
                   : '-',
               textAlign: TextAlign.right,
               style: TextStyle(

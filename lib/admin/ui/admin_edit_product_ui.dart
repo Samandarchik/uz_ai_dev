@@ -448,7 +448,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       child: CircularProgressIndicator.adaptive());
                 }
                 return DropdownButtonFormField<int>(
-                  value: _selectedCategoryId,
+                  initialValue: _selectedCategoryId,
                   decoration: const InputDecoration(
                     labelText: 'Категория',
                     border: OutlineInputBorder(),
@@ -649,7 +649,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                   .uploadImage(_selectedImage!);
 
                               if (uploadedUrl == null) {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         content: Text(
@@ -665,10 +665,18 @@ class _EditProductPageState extends State<EditProductPage> {
                               imageUrl = '';
                             }
 
+                            if (!context.mounted) return;
+
                             final updatedProduct = widget.product.copyWith(
                               name: _nameController.text,
                               categoryName: companyController.text,
-                              grams: double.parse(grammControlle.text),
+                              // Bo'sh maydonda double.parse('') FormatException
+                              // otib saqlashni jimgina to'xtatardi (validator
+                              // bo'sh qiymatga ruxsat beradi) — add ekranidagi
+                              // kabi himoya qilamiz.
+                              grams: grammControlle.text.isEmpty
+                                  ? null
+                                  : double.parse(grammControlle.text),
                               bozorGrams: bozorGrammController.text.isEmpty
                                   ? null
                                   : double.parse(bozorGrammController.text),

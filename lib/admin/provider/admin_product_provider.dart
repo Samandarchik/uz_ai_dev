@@ -141,8 +141,9 @@ class ProductProviderAdmin extends ChangeNotifier {
   }
 
   // Reorder products within category
+  // Eslatma: onReorderItem callback'i newIndex'ni allaqachon to'g'irlab beradi,
+  // shuning uchun bu yerda qo'lda kompensatsiya kerak emas.
   Future<bool> reorderProducts(int categoryId, int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) newIndex--;
     final item = _filteredProducts.removeAt(oldIndex);
     _filteredProducts.insert(newIndex, item);
     notifyListeners();

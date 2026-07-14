@@ -7,6 +7,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:uz_ai_dev/user/ui/order_ui.dart';
 import 'package:uz_ai_dev/login_page.dart';
@@ -53,13 +54,6 @@ class _UserHomeUiState extends State<UserHomeUi> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  String _formatQuantity(double quantity, String? type) {
-    if (type != null && type.toLowerCase() == 'шт') {
-      return quantity.toInt().toString();
-    }
-    return quantity.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
   }
 
   @override
@@ -225,7 +219,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
                                   name: product.name,
                                   quantity: quantity,
                                   quantityText:
-                                      _formatQuantity(quantity, product.type),
+                                      formatQty(quantity, product.type),
                                   type: product.type,
                                   buttonColor: _buttonColor,
                                   onTap: () =>

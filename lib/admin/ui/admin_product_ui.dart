@@ -65,7 +65,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
     setState(() => _isDownloading = true);
     _progressNotifier.value = 0;
 
-    print('\n🟢 ========== UI: YUKLASH BOSHLANDI ==========');
+    debugPrint('\n🟢 ========== UI: YUKLASH BOSHLANDI ==========');
     final uiStopwatch = Stopwatch()..start();
 
     if (!mounted) return;
@@ -125,7 +125,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
           if (total > 0) {
             final progress = (received / total * 100);
             _progressNotifier.value = progress;
-            print('📊 UI Progress: ${progress.toStringAsFixed(1)}%');
+            debugPrint('📊 UI Progress: ${progress.toStringAsFixed(1)}%');
           }
         },
         shareText: '${widget.categoryName} - Mahsulotlar katalogi',
@@ -152,7 +152,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
       }
 
       uiStopwatch.stop();
-      print(
+      debugPrint(
           '⏱ ========== UI: JAMI VAQT: ${uiStopwatch.elapsedMilliseconds}ms ==========\n');
     } catch (e) {
       // Close dialog
@@ -180,7 +180,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
       }
 
       uiStopwatch.stop();
-      print(
+      debugPrint(
           '⏱ ========== UI: XATOLIK VAQTI: ${uiStopwatch.elapsedMilliseconds}ms ==========\n');
     } finally {
       _progressNotifier.value = 0;
@@ -286,7 +286,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.all(8),
               itemCount: productProvider.filteredProducts.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 productProvider.reorderProducts(
                     widget.categoryId, oldIndex, newIndex);
               },

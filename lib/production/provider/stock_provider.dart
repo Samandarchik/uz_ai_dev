@@ -33,6 +33,21 @@ class StockProvider extends ChangeNotifier {
     return null;
   }
 
+  // Mahsulot birligi (type): avval sklad qoldiq qatorlaridan, bo'lmasa
+  // katalogdan. Topilmasa null (formatlashda faktor 1 ishlaydi).
+  String? typeFor(int skladId, int productId) {
+    final rows = _bySklad[skladId];
+    if (rows != null) {
+      for (final r in rows) {
+        if (r.productId == productId && r.type.isNotEmpty) return r.type;
+      }
+    }
+    for (final c in catalog) {
+      if (c.id == productId && c.type.isNotEmpty) return c.type;
+    }
+    return null;
+  }
+
   Future<void> fetchStock(int skladId) async {
     _loading.add(skladId);
     _errors.remove(skladId);

@@ -2,12 +2,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/user/services/api_service.dart';
 import '../../login_page.dart';
 
 class OrdersPage extends StatefulWidget {
+  const OrdersPage({super.key});
+
   @override
-  _OrdersPageState createState() => _OrdersPageState();
+  State<OrdersPage> createState() => _OrdersPageState();
 }
 
 class _OrdersPageState extends State<OrdersPage> {
@@ -15,15 +18,15 @@ class _OrdersPageState extends State<OrdersPage> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
-  Set<String> _expandedOrders = Set<String>();
+  final Set<String> _expandedOrders = <String>{};
 
   // Pagination variables
   int _currentPage = 1;
   int _totalPages = 1;
-  int _limit = 30;
+  final int _limit = 30;
   bool _hasMore = true;
 
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -63,6 +66,7 @@ class _OrdersPageState extends State<OrdersPage> {
     String? token = prefs.getString('token');
 
     if (token == null) {
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
@@ -242,7 +246,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       onRefresh: _refresh,
                       child: ListView(
                         children: [
-                          Container(
+                          SizedBox(
                             height: MediaQuery.of(context).size.height * 0.7,
                             child: Center(
                               child: Column(
@@ -390,7 +394,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                                       color: _getStatusColor(
                                                               order['status'] ??
                                                                   'unknown')
-                                                          .withOpacity(0.1),
+                                                          .withValues(alpha: 0.1),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               20),
@@ -440,7 +444,13 @@ class _OrdersPageState extends State<OrdersPage> {
                                                     color: Colors.grey),
                                                 SizedBox(width: 4),
                                                 Text(
-                                                  '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split(' ')[0] : 'N/A'}',
+                                                  order['created'] != null
+                                                      ? DateTime.parse(order[
+                                                              'created'])
+                                                          .toLocal()
+                                                          .toString()
+                                                          .split(' ')[0]
+                                                      : 'N/A',
                                                   style: TextStyle(
                                                     color: Colors.grey[600],
                                                     fontSize: 12,
@@ -550,7 +560,12 @@ class _OrdersPageState extends State<OrdersPage> {
                                                                             12),
                                                                   ),
                                                                   child: Text(
-                                                                    "${order['items'][itemIndex]['count']} ${order['items'][itemIndex]['type']}",
+                                                                    formatQtyUnit(
+                                                                        (order['items'][itemIndex]['count'] as num?) ??
+                                                                            0,
+                                                                        order['items'][itemIndex]
+                                                                            [
+                                                                            'type']),
                                                                     style:
                                                                         TextStyle(
                                                                       fontSize:
@@ -596,7 +611,13 @@ class _OrdersPageState extends State<OrdersPage> {
                                                   padding:
                                                       EdgeInsets.only(left: 22),
                                                   child: Text(
-                                                    '${order['created'] != null ? DateTime.parse(order['created']).toLocal().toString().split('.')[0] : 'N/A'}',
+                                                    order['created'] != null
+                                                        ? DateTime.parse(order[
+                                                                'created'])
+                                                            .toLocal()
+                                                            .toString()
+                                                            .split('.')[0]
+                                                        : 'N/A',
                                                     style: TextStyle(
                                                       color: Colors.grey[600],
                                                       fontSize: 12,

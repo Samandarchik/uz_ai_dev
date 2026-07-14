@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -18,11 +19,11 @@ class ApiService {
         },
       );
 
-      print('Login Response: ${response.data}');
+      debugPrint('Login Response: ${response.data}');
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
-      print('Login DioException: ${e.message}');
-      print('Login Response Body: ${e.response?.data}');
+      debugPrint('Login DioException: ${e.message}');
+      debugPrint('Login Response Body: ${e.response?.data}');
       return {
         'success': false,
         'message': _handleDioError(e),
@@ -71,8 +72,8 @@ class ApiService {
         ),
       );
 
-      print('Get Orders Response Status: ${response.statusCode}');
-      print('Get Orders Response Body: ${response.data}');
+      debugPrint('Get Orders Response Status: ${response.statusCode}');
+      debugPrint('Get Orders Response Body: ${response.data}');
 
       Map<String, dynamic> result = Map<String, dynamic>.from(response.data);
 
@@ -93,7 +94,7 @@ class ApiService {
 
       return result;
     } on DioException catch (e) {
-      print('Get Orders DioException: ${e.message}');
+      debugPrint('Get Orders DioException: ${e.message}');
       if (e.response?.statusCode == 401) {
         return {
           'success': false,

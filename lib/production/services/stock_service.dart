@@ -8,6 +8,10 @@ import 'package:uz_ai_dev/production/models/stock_model.dart';
 class StockService {
   final Dio dio = sl<Dio>();
 
+  // API kontrakt: кг/л miqdorlar butun gramm/ml — butun qiymat kasrsiz
+  // yuboriladi (1500, 1500.0 emas).
+  static num _asWire(double v) => v % 1 == 0 ? v.toInt() : v;
+
   Never _throwDio(DioException e, String fallback) {
     if (e.response != null) {
       final body = e.response!.data;
@@ -51,7 +55,7 @@ class StockService {
         data: {
           'sklad_id': skladId,
           'product_id': productId,
-          'qty': qty,
+          'qty': _asWire(qty),
           'comment': comment,
         },
       );
@@ -80,7 +84,7 @@ class StockService {
         data: {
           'sklad_id': skladId,
           'product_id': productId,
-          'min_qty': minQty,
+          'min_qty': _asWire(minQty),
         },
       );
       if (response.statusCode == 200) {

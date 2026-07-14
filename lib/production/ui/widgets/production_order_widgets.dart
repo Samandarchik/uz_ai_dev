@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart' show productionStatusChip;
@@ -557,7 +558,8 @@ class _StageBlock extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              '${fmtStockQty(ing.stockAmount)} ${ing.stockUnit}',
+              // stock_amount API birlikda (кг/литр -> gramm/ml).
+              '${formatQty(ing.stockAmount, ing.stockUnit)} ${ing.stockUnit}',
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontSize: 12.5,
@@ -571,7 +573,7 @@ class _StageBlock extends StatelessWidget {
               child: Text(
                 !ing.linked
                     ? '—'
-                    : '${fmtStockQty(qoldiq ?? 0)} ${ing.stockUnit}',
+                    : '${formatQty(qoldiq ?? 0, ing.stockUnit)} ${ing.stockUnit}',
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   fontSize: 12.5,

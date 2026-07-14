@@ -171,7 +171,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.all(8),
               itemCount: categoryProvider.categories.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 categoryProvider.reorderCategories(oldIndex, newIndex);
               },
               itemBuilder: (context, index) {

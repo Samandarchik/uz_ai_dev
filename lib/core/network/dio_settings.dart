@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_dio_logger/talker_dio_logger_interceptor.dart';
 import 'package:talker_dio_logger/talker_dio_logger_settings.dart';
@@ -35,7 +36,9 @@ class AppDioClient {
     dio.interceptors.add(
       TalkerDioLogger(
         settings: const TalkerDioLoggerSettings(
-          enabled: true,
+          // Faqat debug rejimda: release'da Bearer token va barcha so'rov/javob
+          // tanalari qurilma loglariga yozilib qolmasin (xavfsizlik).
+          enabled: kDebugMode,
           printRequestHeaders: true,
           printRequestData: true,
           printResponseData: true,

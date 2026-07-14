@@ -7,6 +7,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
@@ -296,23 +297,6 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   }
 }
 
-// Miqdorni formatlash: 3.0 -> "3", 1.5 -> "1.5".
-String _formatCount(double v) {
-  if (v == v.roundToDouble()) return v.toInt().toString();
-  return v.toString();
-}
-
-// Miqdor: 3 xonagacha yaxlitlab, ortiqcha nollarni olib tashlaydi
-// (8.5 -> "8.5", 8 -> "8", 0.2999999 -> "0.3").
-String _fmtQty(double v) {
-  if (v == 0) return '0';
-  var s = v.toStringAsFixed(3);
-  if (s.contains('.')) {
-    s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
-  }
-  return s;
-}
-
 // "2026-06-20T12:34:..." -> "2026-06-20 12:34".
 String _formatDate(String raw) {
   if (raw.isEmpty) return '';
@@ -389,8 +373,9 @@ class _SkladDayCardState extends State<_SkladDayCard> {
         valid.add(k);
         _received.putIfAbsent(
           k,
+          // taken API birlikda (кг/л -> gramm) — maydonga UI (kg) yoziladi.
           () => TextEditingController(
-            text: order.isPriced ? _fmtQty(item.taken) : '',
+            text: order.isPriced ? formatQty(item.taken, item.type) : '',
           ),
         );
       }
@@ -552,8 +537,9 @@ class _SkladDayCardState extends State<_SkladDayCard> {
       return;
     }
 
+    // Maydonda UI birlik (kg/l) — API'ga butun gramm/ml yuboriladi.
     final received = _received.containsKey(key)
-        ? _parseQty(_received[key]!.text)
+        ? qtyFromUi(_parseQty(_received[key]!.text), item.type).toDouble()
         : 0.0;
 
     // Kelgan soni kiritilmagan yoki 0 bo'lsa qabul yuborilmaydi —
@@ -933,12 +919,12 @@ class _MediaItemRow extends StatelessWidget {
     // Ortiqcha/kam farqi yonida birlik (type) ham ko'rsatiladi: "+8.2 kg".
     final diffUnit = item.type.isNotEmpty ? ' ${item.type}' : '';
     final diffText = diff > 0
-        ? '+${_fmtQty(diff)}$diffUnit'
-        : '-${_fmtQty(diff.abs())}$diffUnit';
+        ? '+${formatQty(diff, item.type)}$diffUnit'
+        : '-${formatQty(diff.abs(), item.type)}$diffUnit';
     final diffColor = diff > 0 ? _green : _red;
     final qtyLabel = item.isProche
         ? 'Qo\'shimcha'
-        : '${_formatCount(item.count)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
+        : '${formatQty(item.count, item.type)}${item.type.isNotEmpty ? ' ${item.type}' : ''}';
 
     // O'chirilgan item: nom + miqdor qizil chizilgan, o'ng tomonda
     // "O'chirildi" belgisi. Maydon/kamera/qabul tugmasi YO'Q.
@@ -997,12 +983,16 @@ class _MediaItemRow extends StatelessWidget {
     }
 
     // Kelgan soni (haqiqatda kelgan) va taken (yuk keltiruvchi aytgan) farqi.
-    final received =
-        editable ? _parse(receivedController?.text ?? '') : item.received;
+    // Maydondagi matn UI birlikda — solishtirish uchun API birlikka o'giriladi.
+    final received = editable
+        ? qtyFromUi(_parse(receivedController?.text ?? ''), item.type)
+            .toDouble()
+        : item.received;
     final shortage = taken - received; // >0 = kam kelgan (kamomad)
     final showShort = taken > 0 && received > 0 && shortage.abs() > 0.0001;
-    final shortText =
-        shortage > 0 ? '-${_fmtQty(shortage)}' : '+${_fmtQty(shortage.abs())}';
+    final shortText = shortage > 0
+        ? '-${formatQty(shortage, item.type)}'
+        : '+${formatQty(shortage.abs(), item.type)}';
     final shortColor = shortage > 0 ? _red : _green;
 
     return Padding(
@@ -1141,7 +1131,7 @@ class _MediaItemRow extends StatelessWidget {
       child: Text(
         notBrought
             ? '—'
-            : '${_fmtQty(item.received)}'
+            : '${formatQty(item.received, item.type)}'
                 '${item.type.isNotEmpty ? ' ${item.type}' : ''}',
         style: const TextStyle(fontSize: 13, color: Colors.black54),
       ),

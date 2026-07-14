@@ -16,6 +16,9 @@ import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 // backend uni "olinmagan" deb yopadi.
 typedef ItemPrice = ({double taken, double subtotal, bool zero});
 
+// JSON'ga yozishda butun qiymatni kasrsiz yuborish: 1500.0 -> 1500.
+num _asWire(double v) => v % 1 == 0 ? v.toInt() : v;
+
 // Yuk keltiruvchi bosh ekrani uchun holat boshqaruvchi.
 class YukProvider extends ChangeNotifier {
   final YukService _service = YukService();
@@ -62,12 +65,16 @@ class YukProvider extends ChangeNotifier {
   // DARHOL yoziladi. Internet o'chiq bo'lsa ham ilovani yopib qayta ochganda
   // qiymatlar tiklanadi; internet qaytganda backendga sinxronlanadi.
   final BaseStorage _storage = sl<BaseStorage>();
-  static const String _draftsKey = 'yuk_price_drafts';
+  // v2: кг/л miqdorlar endi BUTUN gramm/ml (yangi API kontrakt). Eski (kg
+  // birlikdagi) qoralama/kesh yangi versiyada o'qilmasligi uchun kalit
+  // yangilandi — eski kalitdagi qiymatlar e'tiborsiz qoladi.
+  static const String _draftsKey = 'yuk_price_drafts_v2';
   // Qo'shilgan yozuvlar (proche/rasxod) uchun lokal saqlash kaliti.
+  // (taken'i birliksiz — konvertatsiya yo'q, kalit o'zgarmadi.)
   static const String _addedItemsKey = 'yuk_added_items_drafts';
   // Internet o'chiq bo'lsa buyurtmalar ro'yxati ham ko'rinishi uchun oxirgi
-  // muvaffaqiyatli ro'yxat lokal keshlanadi.
-  static const String _ordersKey = 'yuk_orders_cache';
+  // muvaffaqiyatli ro'yxat lokal keshlanadi. v2 — gramm kontrakti.
+  static const String _ordersKey = 'yuk_orders_cache_v2';
 
   // Hozir ko'rsatilayotgan ro'yxat internetdan emas, lokal keshdan olinganmi
   // (UI'da "offline" eslatmasi ko'rsatish uchun).
@@ -563,8 +570,10 @@ class YukProvider extends ChangeNotifier {
           .where((e) => !_isDeletedItem(orderId, e.key))
           .map((e) => <String, dynamic>{
                 'product_id': e.key,
-                'taken': e.value.taken,
-                'subtotal': e.value.subtotal,
+                // taken API birlikda (кг/л -> butun gramm) — butun qiymat
+                // kasrsiz yuboriladi (1500, 1500.0 emas).
+                'taken': _asWire(e.value.taken),
+                'subtotal': _asWire(e.value.subtotal),
               })
           .toList();
       // Qo'shilgan proche/rasxod itemlar ham qoralamada ketadi — profil
@@ -743,8 +752,10 @@ class YukProvider extends ChangeNotifier {
     final items = filled.entries
         .map((e) => <String, dynamic>{
               'product_id': e.key,
-              'taken': e.value.taken,
-              'subtotal': e.value.subtotal,
+              // taken API birlikda (кг/л -> butun gramm) — butun qiymat
+              // kasrsiz yuboriladi (1500, 1500.0 emas).
+              'taken': _asWire(e.value.taken),
+              'subtotal': _asWire(e.value.subtotal),
             })
         .toList();
     // Yuboriladigan mahsulot jami: FAQAT to'liq to'ldirilgan itemlar + proche.
@@ -966,7 +977,10 @@ class YukProvider extends ChangeNotifier {
   // WebSocket'ga ulanib, buyurtma hodisalarini tinglaymiz. fetchOrders bilan
   // birga ishlaydi (u boshlang'ich sync, bu — real-time yangilanish).
   void connectSocket() {
-    _socketSub ??= OrderSocket.instance.events.listen(_onSocketEvent);
+    // connect/disconnect juftligi _socketSub orqali balanslanadi —
+    // OrderSocket ref-count to'g'ri ishlashi uchun (qarang: order_socket.dart).
+    if (_socketSub != null) return;
+    _socketSub = OrderSocket.instance.events.listen(_onSocketEvent);
     _transferSocketSub ??=
         OrderSocket.instance.transferEvents.listen(_onTransferSocketEvent);
     OrderSocket.instance.connect();
@@ -974,7 +988,8 @@ class YukProvider extends ChangeNotifier {
 
   // Ekrandan chiqqanda yoki logout'da ulanishni uzamiz.
   void disconnectSocket() {
-    _socketSub?.cancel();
+    if (_socketSub == null) return;
+    _socketSub!.cancel();
     _socketSub = null;
     _transferSocketSub?.cancel();
     _transferSocketSub = null;

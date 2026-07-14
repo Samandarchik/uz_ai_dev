@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 
 class UserProductDetailUi extends StatelessWidget {
@@ -11,13 +12,6 @@ class UserProductDetailUi extends StatelessWidget {
 
   static const Color _buttonColor = Color(0xFFC5A97B);
   static const Color _bgColor = Color(0xFFFAF6F1);
-
-  String _formatQuantity(double quantity, String? type) {
-    if (type != null && type.toLowerCase() == 'шт') {
-      return quantity.toInt().toString();
-    }
-    return quantity.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
-  }
 
   ProductModel? _findProduct(ProductProvider provider) {
     for (var products in provider.productsByCategory.values) {
@@ -161,7 +155,7 @@ class UserProductDetailUi extends StatelessWidget {
                               EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         ),
                         Text(
-                          _formatQuantity(quantity, product.type),
+                          formatQty(quantity, product.type),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,

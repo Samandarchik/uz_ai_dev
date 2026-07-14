@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/admin/model/category_model.dart';
@@ -18,18 +19,17 @@ class ApiAdminService {
         final List<dynamic> data = response.data['data'] ?? [];
         return data.map((e) => CategoryProductAdmin.fromJson(e)).toList();
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception('server_error' +
-            ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        throw Exception('server_error: ${e.response!.statusCode} - ${e.response!.statusMessage}');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка getCategories: $e');
-      throw Exception('unexpected_error' + ': $e');
+      debugPrint('Ошибка getCategories: $e');
+      throw Exception('unexpected_error: $e');
     }
   }
 
@@ -47,18 +47,18 @@ class ApiAdminService {
         final responseData = response.data['data'] ?? response.data;
         return CategoryProductAdmin.fromJson(responseData);
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('category_create_error' + ': $errorMessage');
+        throw Exception('category_create_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка createCategory: $e');
-      throw Exception('category_create_unexpected' + ': $e');
+      debugPrint('Ошибка createCategory: $e');
+      throw Exception('category_create_unexpected: $e');
     }
   }
 
@@ -75,7 +75,7 @@ class ApiAdminService {
         final responseData = response.data['data'] ?? response.data;
         return CategoryProductAdmin.fromJson(responseData);
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
@@ -83,13 +83,13 @@ class ApiAdminService {
           throw Exception('category_not_found');
         }
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('category_update_error' + ': $errorMessage');
+        throw Exception('category_update_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка updateCategory: $e');
-      throw Exception('category_update_unexpected' + ': $e');
+      debugPrint('Ошибка updateCategory: $e');
+      throw Exception('category_update_unexpected: $e');
     }
   }
 
@@ -111,7 +111,7 @@ class ApiAdminService {
           return CategoryProductAdmin.fromJson(responseData);
         }
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
@@ -121,13 +121,13 @@ class ApiAdminService {
           throw Exception('category_cannot_delete');
         }
         final errorMessage = parseDioError(e, fallback: 'unknown_server_error');
-        throw Exception('category_delete_error' + ': $errorMessage');
+        throw Exception('category_delete_error: $errorMessage');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка deleteCategory: $e');
-      throw Exception('category_delete_unexpected' + ': $e');
+      debugPrint('Ошибка deleteCategory: $e');
+      throw Exception('category_delete_unexpected: $e');
     }
   }
 
@@ -140,7 +140,7 @@ class ApiAdminService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка reorderCategories: $e');
+      debugPrint('Ошибка reorderCategories: $e');
       return false;
     }
   }

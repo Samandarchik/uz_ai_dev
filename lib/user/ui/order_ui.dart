@@ -2,24 +2,17 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
-  // Quantity formatlash
-  String _formatQuantity(double quantity, String? type) {
-    if (type != null && type.toLowerCase() == 'шт') {
-      return quantity.toInt().toString();
-    }
-    return quantity.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
-  }
-
-  // Miqdorni o'zgartirish dialogi
+  // Miqdorni o'zgartirish dialogi (foydalanuvchi kg/l kiritadi)
   void _showQuantityDialog(BuildContext context, ProductModel product) {
     final provider = context.read<ProductProvider>();
     final controller = TextEditingController(
-      text: _formatQuantity(
+      text: formatQty(
         provider.getProductQuantity(product.id),
         product.type,
       ),
@@ -57,7 +50,11 @@ class CartPage extends StatelessWidget {
             onPressed: () {
               final quantity = double.tryParse(controller.text) ?? 0;
               if (quantity > 0) {
-                provider.setProductQuantity(product.id, quantity);
+                // UI (kg/l) -> API (butun gramm/ml)
+                provider.setProductQuantity(
+                  product.id,
+                  qtyFromUi(quantity, product.type).toDouble(),
+                );
               }
               Navigator.pop(context);
             },
@@ -144,7 +141,7 @@ class CartPage extends StatelessWidget {
                       children: [
                         if (quantity > 0)
                           Text(
-                            _formatQuantity(quantity, product.type),
+                            formatQty(quantity, product.type),
                             style: const TextStyle(fontSize: 16),
                           ),
                         IconButton(
@@ -181,13 +178,13 @@ class CartPage extends StatelessWidget {
                     onPressed: () async {
                       try {
                         await provider.submitOrder();
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text("Заказ отправлен ✅")),
                         );
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                        }
+                        Navigator.pop(context);
                       } catch (e) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Ошибка: $e")),
                         );

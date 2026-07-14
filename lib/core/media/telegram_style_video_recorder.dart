@@ -31,7 +31,7 @@ class _TelegramStyleVideoRecorderState
   int _recordedSeconds = 0;
   Timer? _timer;
 
-  List<XFile> _videoSegments = [];
+  final List<XFile> _videoSegments = [];
 
   static const _nativeCameraChannel = MethodChannel('native_camera');
   List<Map<String, dynamic>> _iosLenses = [];
@@ -388,6 +388,7 @@ class _TelegramStyleVideoRecorderState
             ),
           ),
         );
+        if (!mounted) return;
         if (result != null && result is Map) {
           if (result['action'] == 'send') {
             Navigator.of(context).pop(_videoSegments);
@@ -488,7 +489,7 @@ class _TelegramStyleVideoRecorderState
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(color: Colors.black.withOpacity(0.45)),
+              child: Container(color: Colors.black.withValues(alpha: 0.45)),
             ),
           ),
 
@@ -557,7 +558,7 @@ class _TelegramStyleVideoRecorderState
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -604,12 +605,12 @@ class _TelegramStyleVideoRecorderState
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: _isDraggingLensButton
-                                ? Colors.black.withOpacity(0.6)
-                                : Colors.black.withOpacity(0.4),
+                                ? Colors.black.withValues(alpha: 0.6)
+                                : Colors.black.withValues(alpha: 0.4),
                             border: Border.all(
                               color: _isDraggingLensButton
-                                  ? Colors.amber.withOpacity(0.8)
-                                  : Colors.white.withOpacity(0.4),
+                                  ? Colors.amber.withValues(alpha: 0.8)
+                                  : Colors.white.withValues(alpha: 0.4),
                               width: _isDraggingLensButton ? 2 : 1,
                             ),
                           ),
@@ -663,7 +664,7 @@ class _TelegramStyleVideoRecorderState
                             border: Border.all(color: Colors.white, width: 4),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 8,
                               ),
                             ],
@@ -725,7 +726,7 @@ class _TelegramStyleVideoRecorderState
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         child: child,
@@ -754,7 +755,7 @@ class CircleBorderPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final borderRadius = size.width / 2 - borderWidth / 2;
     final borderPaint = Paint()
-      ..color = borderColor.withOpacity(0.5)
+      ..color = borderColor.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = borderWidth;
     canvas.drawCircle(center, borderRadius, borderPaint);
@@ -762,7 +763,7 @@ class CircleBorderPainter extends CustomPainter {
     if (progress > 0) {
       final progressRadius = size.width / 2 - progressWidth / 2;
       final trackPaint = Paint()
-        ..color = Colors.white.withOpacity(0.2)
+        ..color = Colors.white.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = progressWidth;
       canvas.drawCircle(center, progressRadius, trackPaint);

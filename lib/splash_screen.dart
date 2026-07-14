@@ -17,7 +17,7 @@ class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
@@ -27,15 +27,15 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      print('SplashScreen');
+      debugPrint('SplashScreen');
 
       // 🔹 Bitta request bilan ham version check ham isRelease ni olamiz
       final result = await VersionChecker.checkVersionAndRelease(context);
       bool needsUpdate = result['needsUpdate'] ?? false;
       bool versionsMatch = result['versionsMatch'] ?? true;
 
-      print('needsUpdate: $needsUpdate');
-      print('versionsMatch: $versionsMatch');
+      debugPrint('needsUpdate: $needsUpdate');
+      debugPrint('versionsMatch: $versionsMatch');
 
       // Agar update kerak bo'lmasa, tokenni tekshiramiz
       // versionsMatch = true → isRelease = true (Try login ko'rinmaydi)
@@ -124,7 +124,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: 0.3),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),

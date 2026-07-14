@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -16,18 +17,17 @@ class ApiFilialService {
         final List<dynamic> data = response.data['data'] ?? response.data;
         return data.map((e) => Filial.fromJson(e)).toList();
       } else {
-        throw Exception('server_error' + ': ${response.statusCode}');
+        throw Exception('server_error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception('server_error' +
-            ': ${e.response!.statusCode} - ${e.response!.statusMessage}');
+        throw Exception('server_error: ${e.response!.statusCode} - ${e.response!.statusMessage}');
       } else {
-        throw Exception('network_error' + ': ${e.message}');
+        throw Exception('network_error: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка getFilials: $e');
-      throw Exception('unexpected_error' + ': $e');
+      debugPrint('Ошибка getFilials: $e');
+      throw Exception('unexpected_error: $e');
     }
   }
 }

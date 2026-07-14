@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 
 class ProductModel {
   final int id;
@@ -62,7 +63,7 @@ class CategoryModel {
 // Order Item Model
 class OrderItem {
   final int productId;
-  final double count; // int -> double
+  final double count; // API birlikda: кг/л uchun butun gramm/ml
 
   OrderItem({
     required this.productId,
@@ -72,7 +73,8 @@ class OrderItem {
   Map<String, dynamic> toJson() {
     return {
       'product_id': productId,
-      'count': count,
+      // Butun qiymatlar kasrsiz yuborilsin (1500, 1500.0 emas)
+      'count': count % 1 == 0 ? count.toInt() : count,
     };
   }
 }
@@ -132,24 +134,26 @@ class ProductProvider extends ChangeNotifier {
     return selectedProducts[productId] ?? 0.0;
   }
 
-  // Product type bo'yicha increment miqdorini aniqlash
-  double _getIncrementAmount(int productId) {
-    // Mahsulot type ni topish
-    ProductModel? product;
+  // Mahsulotni id bo'yicha topish
+  ProductModel? findProductById(int productId) {
     for (var products in productsByCategory.values) {
-      try {
-        product = products.firstWhere((p) => p.id == productId);
-        break;
-      } catch (e) {
-        continue;
+      for (var p in products) {
+        if (p.id == productId) return p;
       }
     }
+    return null;
+  }
 
+  // Product type bo'yicha increment miqdorini aniqlash (API birlikda:
+  // кг/л uchun gramm/ml, boshqalar uchun o'z birligi)
+  double _getIncrementAmount(int productId) {
+    final product = findProductById(productId);
     if (product != null && product.type != null) {
-      num? grams = product.grams;
-      return grams?.toDouble() ?? 1.0; // 1 gram = 0.001 kg
+      // grams — DISPLAY birlikdagi qadam (masalan 0.5 = 0.5 kg);
+      // API birlikka o'giramiz (кг/л -> gramm/ml)
+      return qtyFromUi(product.grams ?? 1, product.type).toDouble();
     }
-    return 1.0; // Default: Кг uchun
+    return 1.0;
   }
 
   // Floating point precision muammosini hal qilish
@@ -192,7 +196,13 @@ class ProductProvider extends ChangeNotifier {
   }
 
   double get totalSelectedProducts {
-    return selectedProducts.values.fold(0.0, (sum, qty) => sum + qty);
+    // UI birlikda yig'indi (кг/л mahsulotlar gramm emas, kg sifatida)
+    double sum = 0.0;
+    selectedProducts.forEach((productId, qty) {
+      final product = findProductById(productId);
+      sum += qtyToUi(qty, product?.type);
+    });
+    return sum;
   }
 
   void clearSelection() {

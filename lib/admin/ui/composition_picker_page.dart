@@ -239,7 +239,7 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _unit,
+            initialValue: _unit,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Ед. изм.',

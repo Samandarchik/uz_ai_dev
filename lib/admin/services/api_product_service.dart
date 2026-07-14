@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -27,7 +28,7 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка getAllProducts: $e');
+      debugPrint('Ошибка getAllProducts: $e');
       throw Exception('Kutilmagan Ошибка: $e');
     }
   }
@@ -53,7 +54,7 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка createProduct: $e');
+      debugPrint('Ошибка createProduct: $e');
       throw Exception('Mahsulot yaratishda kutilmagan Ошибка: $e');
     }
   }
@@ -114,7 +115,7 @@ class ApiProductService {
         throw Exception('Tarmoq xatosi: ${e.message}');
       }
     } catch (e) {
-      print('Ошибка deleteProduct: $e');
+      debugPrint('Ошибка deleteProduct: $e');
       throw Exception('Mahsulot o\'chirishda kutilmagan Ошибка: $e');
     }
   }
@@ -128,7 +129,7 @@ class ApiProductService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка reorderProducts: $e');
+      debugPrint('Ошибка reorderProducts: $e');
       return false;
     }
   }

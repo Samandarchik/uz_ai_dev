@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
@@ -41,6 +42,16 @@ class OmborProvider extends ChangeNotifier {
   // Kategoriya ichidagi mahsulotlar soni (ro'yxat subtitle uchun).
   int productCount(String categoryName) =>
       productsByCategory[categoryName]?.length ?? 0;
+
+  // Mahsulotni id bo'yicha topish (savat submit'da type kerak).
+  OmborProduct? findProductById(int productId) {
+    for (final products in productsByCategory.values) {
+      for (final p in products) {
+        if (p.id == productId) return p;
+      }
+    }
+    return null;
+  }
 
   // Qidiruv uchun barcha mahsulotlar (kategoriya nomi bilan birga).
   List<MapEntry<String, OmborProduct>> get allProductsWithCategory {
@@ -177,10 +188,20 @@ class OmborProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Milli-birlikdan haqiqiy miqdorga: 1200 -> 1.2 (xatosiz).
-      final items = _cart.entries
-          .map((e) => {'product_id': e.key, 'count': e.value / 1000.0})
-          .toList();
+      // API kontrakt: кг/л mahsulotda count — BUTUN gramm/ml. Savat milli
+      // birlikda saqlanadi (kg×1000 == gramm), shuning uchun qiymat
+      // o'zgarishsiz yuboriladi. Boshqa birliklar: /1000 (eski semantika).
+      final items = _cart.entries.map((e) {
+        final type = findProductById(e.key)?.type;
+        final num count;
+        if (qtyUnitFactor(type) == 1000) {
+          count = e.value; // milli == gramm/ml, butun son
+        } else {
+          final v = e.value / 1000.0;
+          count = v % 1 == 0 ? v.toInt() : v;
+        }
+        return {'product_id': e.key, 'count': count};
+      }).toList();
       final message = await _service.submitOrder(items);
       _cart.clear();
       return message;
@@ -250,13 +271,17 @@ class OmborProvider extends ChangeNotifier {
   // WebSocket'ga ulanib, buyurtma hodisalarini tinglaymiz. fetchMyOrders bilan
   // birga ishlaydi (u boshlang'ich sync, bu — real-time yangilanish).
   void connectSocket() {
-    _socketSub ??= OrderSocket.instance.events.listen(_onSocketEvent);
+    // connect/disconnect juftligi _socketSub orqali balanslanadi —
+    // OrderSocket ref-count to'g'ri ishlashi uchun (qarang: order_socket.dart).
+    if (_socketSub != null) return;
+    _socketSub = OrderSocket.instance.events.listen(_onSocketEvent);
     OrderSocket.instance.connect();
   }
 
   // Ekrandan chiqqanda yoki logout'da ulanishni uzamiz.
   void disconnectSocket() {
-    _socketSub?.cancel();
+    if (_socketSub == null) return;
+    _socketSub!.cancel();
     _socketSub = null;
     OrderSocket.instance.disconnect();
   }

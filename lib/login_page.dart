@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +20,7 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.isRelease = true});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -154,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
             padding: EdgeInsets.all(20),
             child: Card(
               elevation: 15,
-              shadowColor: Colors.blue.withOpacity(0.3),
+              shadowColor: Colors.blue.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -265,8 +266,12 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                           ),
                         ),
-                        // 🔹 "Try using" buttoni - faqat isRelease false bo'lsa ko'rinadi
-                        if (!widget.isRelease) ...[
+                        // 🔹 "Try using" buttoni — FAQAT debug buildda va
+                        // isRelease false bo'lsa. Release ilovada versiya
+                        // mos kelmay qolgan har bir foydalanuvchiga test
+                        // akkauntga bir bosishda kirish tugmasi ko'rinib
+                        // qolmasligi kerak (xavfsizlik).
+                        if (!widget.isRelease && kDebugMode) ...[
                           SizedBox(height: 20),
                           SizedBox(
                             width: double.infinity,

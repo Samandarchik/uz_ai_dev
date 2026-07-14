@@ -69,6 +69,11 @@ class OrderSocket {
   // Foydalanuvchi (provider) connect chaqirganmi — reconnect faqat shunda davom etadi.
   bool _wantConnected = false;
 
+  // Nechta ekran/provider ulanishni ushlab turibdi (reference count).
+  // Bitta ekran yopilganda boshqa ochiq ekranlarning real-time oqimi
+  // uzilib qolmasligi uchun ulanish faqat OXIRGI disconnect'da yopiladi.
+  int _refs = 0;
+
   // Hozir ulanish jarayoni ketяptimi (ikki marta parallel ulanmaslik uchun).
   bool _connecting = false;
 
@@ -78,8 +83,10 @@ class OrderSocket {
   Timer? _reconnectTimer;
 
   // Ulanishni boshlash. Bir necha marta chaqirilsa ham bitta aktiv ulanish
-  // bo'ladi (idempotent).
+  // bo'ladi (idempotent). Har bir connect() mos disconnect() bilan
+  // juftlanishi kerak (provider'lar buni _socketSub orqali kafolatlaydi).
   Future<void> connect() async {
+    _refs++;
     _wantConnected = true;
     if (_channel != null || _connecting) return;
     await _openConnection();
@@ -181,8 +188,12 @@ class OrderSocket {
     _channel = null;
   }
 
-  // Ulanishni butunlay uzish (logout yoki ekrandan chiqishda).
+  // Bitta obunachi ulanishni qo'yib yubordi (ekrandan chiqish yoki logout).
+  // Ulanish faqat boshqa hech kim ushlab turmaganda YOPILADI — aks holda
+  // ochiq qolgan ekranlarning real-time oqimi davom etadi.
   void disconnect() {
+    if (_refs > 0) _refs--;
+    if (_refs > 0) return;
     _wantConnected = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;

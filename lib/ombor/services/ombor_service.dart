@@ -188,7 +188,11 @@ class OmborService {
   ) async {
     try {
       final form = FormData();
-      form.fields.add(MapEntry('received', '$received'));
+      // Butun qiymat kasrsiz yuborilsin: 1500.0 emas, "1500" (кг/л — gramm).
+      final receivedStr = received % 1 == 0
+          ? received.toInt().toString()
+          : received.toString();
+      form.fields.add(MapEntry('received', receivedStr));
       if (imagePath != null) {
         form.files.add(MapEntry(
           'image',

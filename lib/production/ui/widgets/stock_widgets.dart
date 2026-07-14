@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 
@@ -280,8 +281,9 @@ class _StockRowTile extends StatelessWidget {
                     const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                'Qoldiq: ${fmtStockQty(row.qty)} ${row.type}'
-                '${row.minQty > 0 ? ' • Min: ${fmtStockQty(row.minQty)}' : ''}',
+                // qty API birlikda (кг/л -> gramm) — UI'da kg/l ko'rinadi.
+                'Qoldiq: ${formatQty(row.qty, row.type)} ${row.type}'
+                '${row.minQty > 0 ? ' • Min: ${formatQty(row.minQty, row.type)}' : ''}',
                 style: const TextStyle(fontSize: 12.5),
               ),
             ),
@@ -292,7 +294,7 @@ class _StockRowTile extends StatelessWidget {
                 title: const Text('Min chegara'),
                 subtitle: Text(
                   row.minQty > 0
-                      ? 'Hozir: ${fmtStockQty(row.minQty)} ${row.type}'
+                      ? 'Hozir: ${formatQty(row.minQty, row.type)} ${row.type}'
                       : 'O\'rnatilmagan',
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -368,7 +370,7 @@ class _StockRowTile extends StatelessWidget {
         ),
         subtitle: row.minQty > 0
             ? Text(
-                'Min: ${fmtStockQty(row.minQty)} ${row.type}'.trim(),
+                'Min: ${formatQty(row.minQty, row.type)} ${row.type}'.trim(),
                 style: TextStyle(
                   fontSize: 11.5,
                   color: low ? Colors.orange.shade800 : Colors.grey.shade600,
@@ -384,7 +386,7 @@ class _StockRowTile extends StatelessWidget {
               const SizedBox(width: 6),
             ],
             Text(
-              '${fmtStockQty(row.qty)} ${row.type}'.trim(),
+              '${formatQty(row.qty, row.type)} ${row.type}'.trim(),
               style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.bold,
@@ -428,7 +430,10 @@ class _MinQtyDialogState extends State<_MinQtyDialog> {
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-      text: widget.row.minQty > 0 ? fmtStockQty(widget.row.minQty) : '',
+      // minQty API birlikda — maydonga UI (kg/l) qiymati yoziladi.
+      text: widget.row.minQty > 0
+          ? formatQty(widget.row.minQty, widget.row.type)
+          : '',
     );
   }
 
@@ -446,7 +451,8 @@ class _MinQtyDialogState extends State<_MinQtyDialog> {
       setState(() => _error = 'Miqdorni to\'g\'ri kiriting');
       return;
     }
-    Navigator.pop(context, value);
+    // UI (kg/l) -> API (butun gramm/ml).
+    Navigator.pop(context, qtyFromUi(value, widget.row.type).toDouble());
   }
 
   @override
@@ -515,6 +521,8 @@ void showStockMovesSheet(
   String title = '',
 }) {
   final provider = context.read<StockProvider>();
+  // Harakat qatorlarida birlik (type) katalogdan ham topilishi uchun.
+  provider.ensureCatalog();
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -585,8 +593,14 @@ void showStockMovesSheet(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       itemCount: moves.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) =>
-                          _MoveRow(move: moves[index], showName: title.isEmpty),
+                      itemBuilder: (context, index) => _MoveRow(
+                        move: moves[index],
+                        showName: title.isEmpty,
+                        // qty API birlikda — mahsulot birligi qoldiq/katalog
+                        // ro'yxatidan aniqlanadi (topilmasa faktor 1).
+                        type: provider.typeFor(
+                            skladId, moves[index].productId),
+                      ),
                     );
                   },
                 ),
@@ -603,8 +617,10 @@ class _MoveRow extends StatelessWidget {
   final StockMove move;
   // Umumiy tarixda (mahsulot filtri yo'q) mahsulot nomi ham ko'rsatiladi.
   final bool showName;
+  // Mahsulot birligi (кг/л bo'lsa qty gramm/ml'da keladi — /1000 ko'rsatiladi).
+  final String? type;
 
-  const _MoveRow({required this.move, this.showName = false});
+  const _MoveRow({required this.move, this.showName = false, this.type});
 
   String _date(String raw) {
     final dt = DateTime.tryParse(raw);
@@ -653,7 +669,7 @@ class _MoveRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '${positive ? '+' : ''}${fmtStockQty(move.qty)}',
+            '${positive ? '+' : ''}${formatQty(move.qty, type)}',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -762,11 +778,13 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
       setState(() => _error = 'Miqdorni to\'g\'ri kiriting (0 dan katta)');
       return;
     }
+    // UI (kg/l) -> API (butun gramm/ml); boshqa birliklar o'zgarishsiz.
+    final apiQty = qtyFromUi(qty, _selected!.type).toDouble();
     Navigator.pop(
       context,
       StockAdjustResult(
         productId: _selected!.id,
-        qty: _isMinus ? -qty : qty,
+        qty: _isMinus ? -apiQty : apiQty,
         comment: _commentController.text.trim(),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 
@@ -735,7 +736,8 @@ class _LedgerDaySheetState extends State<_LedgerDaySheet> {
           ),
           if (it.taken > 0) ...[
             Text(
-              '× ${_qty(it.taken)}',
+              // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
+              '× ${formatQtyUnit(it.taken, it.type)}',
               style: const TextStyle(fontSize: 11.5, color: Colors.black45),
             ),
             const SizedBox(width: 8),
@@ -800,15 +802,4 @@ String _money(num v) {
     buf.write(digits[i]);
   }
   return buf.toString();
-}
-
-// Miqdor: butun bo'lsa kasrsiz, aks holda ortiqcha nollarsiz 2 xonagacha.
-String _qty(double v) {
-  if (v == v.roundToDouble()) return v.toStringAsFixed(0);
-  var s = v.toStringAsFixed(2);
-  while (s.endsWith('0')) {
-    s = s.substring(0, s.length - 1);
-  }
-  if (s.endsWith('.')) s = s.substring(0, s.length - 1);
-  return s;
 }
