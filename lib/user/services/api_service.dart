@@ -35,6 +35,29 @@ class ApiService {
     }
   }
 
+  /// v1 login — FAQAT parol bilan kirish. Javob shakli eski login bilan
+  /// bir xil (token + user).
+  static Future<Map<String, dynamic>> loginV1(String password) async {
+    try {
+      final response = await _dio.post(
+        AppUrls.loginV1,
+        data: {'password': password},
+      );
+
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': _handleDioError(e),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Kutilmagan xato: $e',
+      };
+    }
+  }
+
   // ────────────────────────── ORDERS ──────────────────────────
 
   static Future<Map<String, dynamic>> getOrders(String token,

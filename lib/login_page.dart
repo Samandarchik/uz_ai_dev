@@ -24,7 +24,6 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? version;
@@ -84,7 +83,6 @@ class _LoginPageState extends State<LoginPage> {
 
   void _selectAccount(Map<String, String> account) {
     setState(() {
-      _phoneController.text = account['phone']!;
       _passwordController.text = account['password']!;
     });
   }
@@ -96,9 +94,8 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final loginInput = _phoneController.text.trim();
-    // Login API tanlash
-    final result = await ApiService.login(loginInput, _passwordController.text);
+    // v1 login — FAQAT parol bilan kiriladi (telefon so'ralmaydi).
+    final result = await ApiService.loginV1(_passwordController.text);
 
     if (!mounted) return;
     setState(() {
@@ -108,9 +105,12 @@ class _LoginPageState extends State<LoginPage> {
     if (result['success'] == true) {
       TextInput.finishAutofillContext();
 
-      await _saveAccount(_phoneController.text, _passwordController.text);
-
       final user = result['data']['user'];
+      // Saqlangan akkauntlar ro'yxatida ko'rsatish uchun telefon serverdan
+      // kelgan profildan olinadi.
+      await _saveAccount(
+          (user['phone'] ?? user['name'] ?? '').toString(),
+          _passwordController.text);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
@@ -140,9 +140,8 @@ class _LoginPageState extends State<LoginPage> {
     if (result['success'] == true) {
       TextInput.finishAutofillContext();
 
-      await _saveAccount(_phoneController.text, _passwordController.text);
-
       final user = result['data']['user'];
+      await _saveAccount((user['phone'] ?? '').toString(), "112233");
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['data']['token']);
@@ -247,31 +246,14 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         SizedBox(height: 30),
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.username],
-                          decoration: InputDecoration(
-                            labelText: "Login",
-                            prefixIcon: Icon(Icons.person, color: Colors.blue),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  BorderSide(color: Colors.blue, width: 2),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 20),
+                        // v1 login: FAQAT parol so'raladi (HR ilovasidagi kabi).
                         TextFormField(
                           controller: _passwordController,
                           keyboardType: TextInputType.visiblePassword,
                           autofillHints: const [AutofillHints.password],
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: 'Parol',
                             prefixIcon: Icon(Icons.lock, color: Colors.blue),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -449,7 +431,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
