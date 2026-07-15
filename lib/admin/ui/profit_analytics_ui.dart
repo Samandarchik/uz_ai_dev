@@ -769,6 +769,20 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
             ),
           ),
           const SizedBox(width: 6),
+          // Sotilgan dona — foyda summasidan oldin.
+          SizedBox(
+            width: 52,
+            child: Text(
+              '${c.sold == c.sold.roundToDouble() ? c.sold.toInt() : c.sold} ta',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           SizedBox(
             width: 86,
             child: FittedBox(
