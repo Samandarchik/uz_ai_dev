@@ -309,8 +309,7 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
               child: _kpiCard(
                 'Minusga tushgan',
                 '${t.negativeCount} tort',
-                valueColor:
-                    t.negativeCount > 0 ? Colors.red.shade700 : null,
+                valueColor: t.negativeCount > 0 ? Colors.red.shade700 : null,
               ),
             ),
           ],
@@ -781,70 +780,214 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
   Widget _profitBarRow(ProfitCake c, double maxAbs) {
     final negative = c.profit < 0;
     final frac = (c.profit.abs() / maxAbs).clamp(0.02, 1.0).toDouble();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              c.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12),
+    return InkWell(
+      onTap: () => _showCakeSales(c),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 5,
+              child: Text(
+                c.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            flex: 4,
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: frac,
-              child: Container(
-                height: 10,
-                decoration: BoxDecoration(
-                  color: negative ? Colors.red.shade600 : Colors.green.shade600,
-                  borderRadius: BorderRadius.circular(4),
+            const SizedBox(width: 6),
+            Expanded(
+              flex: 4,
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: frac,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color:
+                        negative ? Colors.red.shade600 : Colors.green.shade600,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          // Sotilgan dona — foyda summasidan oldin.
-          SizedBox(
-            width: 52,
-            child: Text(
-              '${c.sold == c.sold.roundToDouble() ? c.sold.toInt() : c.sold} ta',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 86,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
+            const SizedBox(width: 6),
+            // Sotilgan dona — foyda summasidan oldin.
+            SizedBox(
+              width: 52,
               child: Text(
-                fmtCostMoney(c.profit),
+                '${c.sold == c.sold.roundToDouble() ? c.sold.toInt() : c.sold} ta',
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11.5,
                   fontFeatures: const [FontFeature.tabularFigures()],
-                  color: negative ? Colors.red.shade700 : Colors.black87,
+                  color: Colors.grey.shade600,
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 86,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  fmtCostMoney(c.profit),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: negative ? Colors.red.shade700 : Colors.black87,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // Tort bosilganda: kunlik sotuvlar ro'yxati (qachon • nechta • nechpuldan •
+  // kun foydasi) pastdan oynada. Sotuvsiz kunlar ko'rsatilmaydi.
+  void _showCakeSales(ProfitCake c) {
+    final days = c.daily.where((p) => p.qty > 0).toList().reversed.toList();
+    final hasPrice = c.salePrice > 0;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (context, scrollCtrl) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    c.name,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasPrice
+                        ? 'Sotish narxi: ${fmtCostMoney(c.salePrice)} so\'m • '
+                            'Jami: ${_qtyText(c.sold)} ta • '
+                            'foyda ${fmtCostMoney(c.profit)} so\'m'
+                        : 'Jami: ${_qtyText(c.sold)} ta (narx belgilanmagan)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: days.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Bu davrda sotuv bo\'lmagan',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      itemCount: days.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: Colors.grey.shade200),
+                      itemBuilder: (context, i) {
+                        final p = days[i];
+                        final dayProfit =
+                            hasPrice ? p.qty * (c.salePrice - p.cost) : null;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 46,
+                                child: Text(
+                                  _ddMM(p.d),
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 46,
+                                child: Text(
+                                  '${_qtyText(p.qty)} ta',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontFeatures: [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  hasPrice
+                                      ? '× ${fmtCostMoney(c.salePrice)}'
+                                      : '',
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 92,
+                                child: Text(
+                                  dayProfit == null
+                                      ? '—'
+                                      : '${dayProfit < 0 ? '−' : '+'}'
+                                          '${fmtCostMoney(dayProfit.abs())}',
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                    color: (dayProfit ?? 0) < 0
+                                        ? Colors.red.shade700
+                                        : Colors.green.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Butun son bo'lsa kasrsiz (5), aks holda qisqa kasr (2.5).
+  static String _qtyText(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 }
 
 // ---------------------------------------------------------------------------
@@ -1030,8 +1173,7 @@ class _MarginChartPainter extends CustomPainter {
         }
         // Ikkala qo'shnisi null bo'lgan yakka nuqta ko'rinsin.
         final prevNull = i == 0 || s.values[i - 1] == null;
-        final nextNull =
-            i == s.values.length - 1 || s.values[i + 1] == null;
+        final nextNull = i == s.values.length - 1 || s.values[i + 1] == null;
         if (prevNull && nextNull) canvas.drawCircle(p, 2.5, dotPaint);
         lastIdx = i;
       }
@@ -1040,8 +1182,7 @@ class _MarginChartPainter extends CustomPainter {
       // Oxirgi ma'lum nuqtada doiracha (seriya oxiri).
       if (lastIdx != null) {
         final v = s.values[lastIdx]!;
-        canvas.drawCircle(
-            Offset(_x(size, lastIdx), _y(size, v)), 3, dotPaint);
+        canvas.drawCircle(Offset(_x(size, lastIdx), _y(size, v)), 3, dotPaint);
       }
     }
 
