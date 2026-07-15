@@ -72,6 +72,9 @@ abstract final class AppUrls {
   // unit_price ENG KICHIK birlik uchun (кг/л -> 1 gr/ml, шт -> 1 dona,
   // м -> 1 metr). Hech narxlanmaganlar ro'yxatda yo'q. Admin/bugalter.
   static String latestPrices = '$baseUrl/api/prices/latest';
+  // Xarid narxlari tarixi: GET ?product_id=N&limit=20 — bitta mahsulotning
+  // narxlangan xaridlari (eng yangisi birinchi). Admin/bugalter.
+  static String pricesHistory = '$baseUrl/api/prices/history';
 
   static const String users = '$baseUrl/api/users';
   // Login+parolni Telegram orqali yuborish:

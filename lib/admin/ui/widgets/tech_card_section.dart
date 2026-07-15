@@ -17,6 +17,14 @@ class TechCardController {
   String profitMode;
   double profitValue;
 
+  // Dop. rasxod: '' | 'percent' (C0 dan foiz) | 'sum' (so'm/dona) va qiymati.
+  String overheadMode;
+  double overheadValue;
+
+  // Tasdiqlangan sotish narxi (so'm/dona, 0 — belgilanmagan). Faqat admin
+  // «Almashtirish» bosganda o'zgaradi.
+  int salePrice;
+
   TechCardController([TechCard? initial])
       : batchQty = (initial?.batchQty ?? 1) < 1 ? 1 : (initial?.batchQty ?? 1),
         diameterCm = initial?.diameterCm,
@@ -24,7 +32,10 @@ class TechCardController {
         bases = List<TechBase>.from(initial?.bases ?? const []),
         consumables = List<TechItem>.from(initial?.consumables ?? const []),
         profitMode = initial?.profitMode ?? '',
-        profitValue = initial?.profitValue ?? 0;
+        profitValue = initial?.profitValue ?? 0,
+        overheadMode = initial?.overheadMode ?? '',
+        overheadValue = initial?.overheadValue ?? 0,
+        salePrice = initial?.salePrice ?? 0;
 
   // To'liq TechCard ni yig'ib qaytaradi (weight maydonlari mahalliy hisoblanadi).
   TechCard build() => TechCard(
@@ -35,6 +46,9 @@ class TechCardController {
         consumables: List<TechItem>.from(consumables),
         profitMode: profitMode,
         profitValue: profitValue,
+        overheadMode: overheadMode,
+        overheadValue: overheadValue,
+        salePrice: salePrice,
       );
 
   // «Состав» uchun showInSostav=true bo'lgan nomlar.

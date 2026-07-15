@@ -180,6 +180,40 @@ class _CostBody extends StatelessWidget {
                   color: Colors.grey.shade700,
                 ),
               ),
+              // Dop. rasxod belgilangan bo'lsa — to'liq tannarx ham chiqadi.
+              if (cost.overheadCost > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Доп. расходы (1 dona): '
+                  '${fmtCostMoney(cost.overheadCost)} сум',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'To\'liq tannarx (1 dona): '
+                  '${fmtCostMoney(cost.fullPieceCost)} сум',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+              // Tasdiqlangan sotish narxi (tex kartadagi sale_price).
+              if (cost.salePrice > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Sotish narxi: ${fmtCostMoney(cost.salePrice)} сум',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade800,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

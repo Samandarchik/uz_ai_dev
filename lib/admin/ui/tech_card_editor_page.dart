@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
+import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/tech_image_upload_service.dart';
 import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
@@ -16,6 +17,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
+import 'package:uz_ai_dev/production/ui/widgets/price_history_sheet.dart';
 
 // Mahsulot tex kartasini (тех карта) Excel «тех карта» varag'iga 1:1 o'xshash
 // ko'rinishda tahrirlash sahifasi. Ro'yxatda double-tap orqali ochiladi.
@@ -122,6 +124,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   final FocusNode _profitPctFocus = FocusNode();
   final FocusNode _profitSumFocus = FocusNode();
 
+  // «Доп. расходы» qatoridagi inline maydonlar (% ↔ сум, C0 orqali bog'langan).
+  final TextEditingController _overheadPctCtrl = TextEditingController();
+  final TextEditingController _overheadSumCtrl = TextEditingController();
+  final FocusNode _overheadPctFocus = FocusNode();
+  final FocusNode _overheadSumFocus = FocusNode();
+
   TechCardController get c => _controller;
 
   @override
@@ -152,6 +160,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     _profitSumCtrl.dispose();
     _profitPctFocus.dispose();
     _profitSumFocus.dispose();
+    _overheadPctCtrl.dispose();
+    _overheadSumCtrl.dispose();
+    _overheadPctFocus.dispose();
+    _overheadSumFocus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -201,61 +213,42 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   // ---- Jonli tannarx hisoblari (oxirgi xarid narxlari asosida) ----
-  // amount ham, unit_price ham ENG KICHIK birlikda (gr/ml/шт/м) —
-  // qator tannarxi to'g'ridan-to'g'ri ko'paytma.
+  // Matematika YAGONA joyda — lib/admin/model/tech_card_cost.dart. Bu yerda
+  // faqat shu helperlarni joriy prices/wasteFactors bilan chaqiramiz.
 
   // Tozalash yo'qotishi koeffitsiyentlari (product_id -> factor, faqat !=1).
   // ProductProviderAdmin ro'yxatidan bir marta yig'iladi (backend ham
   // /api/production/cost da xuddi shu koeffitsiyentni qo'llaydi).
   Map<int, double>? _wasteFactorsCache;
 
-  double _wasteFactor(int productId) {
-    final factors = _wasteFactorsCache ??= {
-      for (final p in context.read<ProductProviderAdmin>().products)
-        if (p.wasteFactor != 1) p.id: p.wasteFactor,
-    };
-    return factors[productId] ?? 1;
-  }
+  Map<int, double> get _wasteFactors => _wasteFactorsCache ??=
+      techWasteFactors(context.read<ProductProviderAdmin>().products);
 
   // Qator tannarxi (tozalash yo'qotishi bilan).
   // null — narx yo'q (product_id=0 yoki hech narxlanmagan).
-  double? _rowCost(TechItem item) {
-    if (item.productId == 0) return null;
-    final p = _prices[item.productId];
-    if (p == null) return null;
-    return item.amount * p.unitPrice * _wasteFactor(item.productId);
-  }
+  double? _rowCost(TechItem item) => techRowCost(item, _prices, _wasteFactors);
 
   // Qatorda ko'rsatiladigan «Цена»: g/ml uchun 1 kg/l narxi (x1000),
   // pcs/m uchun o'z birligi narxi.
-  double? _rowUnitPrice(TechItem item) {
-    if (item.productId == 0) return null;
-    final p = _prices[item.productId];
-    if (p == null) return null;
-    return (item.unit == 'g' || item.unit == 'ml')
-        ? p.unitPrice * 1000
-        : p.unitPrice;
-  }
+  double? _rowUnitPrice(TechItem item) => techRowUnitPrice(item, _prices);
 
-  // Narxi borlarining yig'indisi (narxsizlar hisobga olinmaydi).
-  double _itemsCost(List<TechItem> items) {
-    double sum = 0;
-    for (final it in items) {
-      sum += _rowCost(it) ?? 0;
-    }
-    return sum;
-  }
+  double _baseCost(TechBase base) =>
+      techItemsCost(base.ingredients, _prices, _wasteFactors);
 
-  double _baseCost(TechBase base) => _itemsCost(base.ingredients);
+  double get _consumablesCost =>
+      techItemsCost(c.consumables, _prices, _wasteFactors);
 
-  double get _consumablesCost => _itemsCost(c.consumables);
-
-  // Partiya tannarxi = barcha bazalar + расходник.
+  // Partiya masalliq tannarxi = barcha bazalar + расходник.
   double get _batchCost =>
       c.bases.fold<double>(0, (sum, b) => sum + _baseCost(b)) +
       _consumablesCost;
 
+  // C0 — 1 dona MASALLIQ tannarxi.
   double get _pieceCost => c.batchQty > 0 ? _batchCost / c.batchQty : 0;
+
+  // C — 1 dona TO'LIQ tannarx = C0 + dop. rasxod.
+  double get _fullPieceCost =>
+      techFullPieceCost(c.overheadMode, c.overheadValue, _pieceCost);
 
   // Miqdori kiritilgan, lekin narxi yo'q qatorlar soni (ogohlantirish uchun).
   int get _missingPriceCount {
@@ -271,36 +264,50 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     return n;
   }
 
+  // ---- Dop. rasxod (Доп. расходы) ----
+  // overheadMode: 'percent' — C0 dan foiz; 'sum' — so'm/dona.
+
+  // Dop. rasxod so'mda (ko'rsatish uchun). null — hisoblab bo'lmaydi.
+  double? get _overheadSum {
+    if (c.overheadMode == 'sum') return c.overheadValue;
+    if (c.overheadMode == 'percent') {
+      if (!_pricesLoaded || _pieceCost <= 0) return null;
+      return _pieceCost * c.overheadValue / 100;
+    }
+    return null;
+  }
+
+  // Dop. rasxod foizda (C0 ga nisbatan). null — hisoblab bo'lmaydi.
+  double? get _overheadPct {
+    if (c.overheadMode == 'percent') return c.overheadValue;
+    if (c.overheadMode == 'sum') {
+      if (!_pricesLoaded || _pieceCost <= 0) return null;
+      return c.overheadValue * 100 / _pieceCost;
+    }
+    return null;
+  }
+
   // ---- Foyda (ustama) va sotuv narxi ----
   // profitMode: 'percent' — profitValue foiz; 'sum' — profitValue so'm/dona.
+  // % ↔ сум konvertatsiya endi TO'LIQ tannarx C orqali (C0 emas).
 
   // 1 dona uchun foyda so'mda. null — hisoblab bo'lmaydi.
   double? get _profitPerPiece {
-    if (c.profitMode == 'sum') return c.profitValue;
-    if (c.profitMode == 'percent') {
-      if (!_pricesLoaded || _pieceCost <= 0) return null;
-      return _pieceCost * c.profitValue / 100;
-    }
-    return null;
+    if (c.profitMode == 'percent' && !_pricesLoaded) return null;
+    return techProfitPerPiece(c.profitMode, c.profitValue, _fullPieceCost);
   }
 
   // Foyda foizda. null — hisoblab bo'lmaydi.
   double? get _profitPercent {
-    if (c.profitMode == 'percent') return c.profitValue;
-    if (c.profitMode == 'sum') {
-      if (!_pricesLoaded || _pieceCost <= 0) return null;
-      return c.profitValue * 100 / _pieceCost;
-    }
-    return null;
+    if (c.profitMode == 'sum' && !_pricesLoaded) return null;
+    return techProfitPercent(c.profitMode, c.profitValue, _fullPieceCost);
   }
 
-  // 1 dona sotuv narxi = tannarx + foyda. Tannarx noma'lum/0 bo'lsa null.
-  double? get _salePricePerPiece {
-    if (c.profitMode.isEmpty) return null;
-    if (!_pricesLoaded || _pieceCost <= 0) return null;
-    final profit = _profitPerPiece;
-    if (profit == null) return null;
-    return _pieceCost + profit;
+  // Tavsiya etiladigan sotish narxi = roundTo1000(C + foyda).
+  // null — foyda belgilanmagan yoki C noma'lum/0.
+  int? get _suggestedSalePrice {
+    if (!_pricesLoaded) return null;
+    return techSuggestedSalePrice(c.profitMode, c.profitValue, _fullPieceCost);
   }
 
   // Foiz ko'rinishi: butun bo'lsa butun, aks holda 1 kasr (50 / 12.5).
@@ -339,6 +346,33 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
+  // «Доп. расходы» maydonlari — «Прибыль» bilan bir xil naqsh.
+  void _onOverheadPctChanged(String text) {
+    final v = _parseProfit(text);
+    setState(() {
+      if (text.trim().isEmpty || v <= 0) {
+        c.overheadMode = '';
+        c.overheadValue = 0;
+      } else {
+        c.overheadMode = 'percent';
+        c.overheadValue = v;
+      }
+    });
+  }
+
+  void _onOverheadSumChanged(String text) {
+    final v = _parseProfit(text);
+    setState(() {
+      if (text.trim().isEmpty || v <= 0) {
+        c.overheadMode = '';
+        c.overheadValue = 0;
+      } else {
+        c.overheadMode = 'sum';
+        c.overheadValue = v;
+      }
+    });
+  }
+
   // Fokusda BO'LMAGAN maydonlarni modeldan qayta to'ldiradi: yozilayotgan
   // maydonga tegilmaydi, ikkinchisi (va tannarx o'zgarganda ikkalasi ham)
   // jonli yangilanadi. build oxirida post-frame chaqiriladi.
@@ -353,6 +387,20 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       final t =
           (c.profitMode.isEmpty || sum == null) ? '' : sum.round().toString();
       if (_profitSumCtrl.text != t) _profitSumCtrl.text = t;
+    }
+  }
+
+  void _syncOverheadControllers() {
+    if (!_overheadPctFocus.hasFocus) {
+      final pct = _overheadPct;
+      final t = (c.overheadMode.isEmpty || pct == null) ? '' : _fmtPercent(pct);
+      if (_overheadPctCtrl.text != t) _overheadPctCtrl.text = t;
+    }
+    if (!_overheadSumFocus.hasFocus) {
+      final sum = _overheadSum;
+      final t =
+          (c.overheadMode.isEmpty || sum == null) ? '' : sum.round().toString();
+      if (_overheadSumCtrl.text != t) _overheadSumCtrl.text = t;
     }
   }
 
@@ -907,10 +955,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Har rebuild'dan keyin fokussiz profit maydonlarini modelga tenglaymiz
-    // (miqdor o'zgarsa summa/foiz jonli yangilanadi).
+    // Har rebuild'dan keyin fokussiz profit/dop.rasxod maydonlarini modelga
+    // tenglaymiz (miqdor o'zgarsa summa/foiz jonli yangilanadi).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncProfitControllers();
+      if (mounted) {
+        _syncProfitControllers();
+        _syncOverheadControllers();
+      }
     });
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1138,19 +1189,28 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   ),
                 ),
               ]),
-              // Foyda (ustama) — qatorning o'zida kiritiladi (% ↔ сум jonli).
+              // Dop. rasxod (qadoq/kommunal ustamasi) — % ↔ сум jonli, C0 orqali.
               _gridRow([
-                _flexCell(_profitRow(), padded: false),
+                _flexCell(_overheadRow(), padded: false),
               ]),
-              // Sotuv narxi = tannarx + foyda (1 dona).
+              // To'liq tannarx C = C0 + dop. rasxod (1 dona).
               _gridRow([
                 _flexCell(
                   Text(
-                    'Цена продажи за 1 штуку - '
-                    '${_salePricePerPiece == null ? '—' : fmtCostMoney(_salePricePerPiece!)} сум',
+                    'Полная себестоимость за 1 штуку - '
+                    '${_pricesLoaded ? fmtCostMoney(_fullPieceCost) : '—'} сум',
                     style: _kCellBold,
                   ),
                 ),
+              ]),
+              // Foyda (ustama) — qatorning o'zida kiritiladi (% ↔ сум jonli, C orqali).
+              _gridRow([
+                _flexCell(_profitRow(), padded: false),
+              ]),
+              // Sotish narxi — SAQLANGAN narx; yangi tavsiya faqat admin
+              // «Almashtirish» bosganda qabul qilinadi (avto yangilanmaydi).
+              _gridRow([
+                _flexCell(_salePriceRow(), padded: false),
               ]),
             ],
           ),
@@ -1185,8 +1245,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   // «Прибыль» qatori: label + ikkita inline maydon (% va сум).
-  // Biriga yozilsa ikkinchisi joriy 1 dona tannarxidan avto hisoblanadi;
-  // oxirgi yozilgan maydon profit_mode ni belgilaydi. Bo'sh = belgilanmagan.
+  // Biriga yozilsa ikkinchisi joriy 1 dona TO'LIQ tannarxidan (C) avto
+  // hisoblanadi; oxirgi yozilgan maydon profit_mode ni belgilaydi.
+  // Bo'sh = belgilanmagan.
   Widget _profitRow() {
     return Padding(
       padding: _kCellPad,
@@ -1210,6 +1271,97 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             onChanged: _onProfitSumChanged,
           ),
           const Text(' сум', style: _kCellBold),
+        ],
+      ),
+    );
+  }
+
+  // «Доп. расходы» qatori — «Прибыль» bilan bir xil naqsh, lekin % ↔ сум
+  // konvertatsiyasi C0 (masalliq tannarxi) orqali.
+  Widget _overheadRow() {
+    return Padding(
+      padding: _kCellPad,
+      child: Row(
+        children: [
+          const Expanded(child: Text('Доп. расходы', style: _kCellBold)),
+          _profitField(
+            controller: _overheadPctCtrl,
+            focusNode: _overheadPctFocus,
+            width: 56,
+            decimal: true,
+            onChanged: _onOverheadPctChanged,
+          ),
+          const Text(' %', style: _kCellBold),
+          const SizedBox(width: 10),
+          _profitField(
+            controller: _overheadSumCtrl,
+            focusNode: _overheadSumFocus,
+            width: 96,
+            decimal: false,
+            onChanged: _onOverheadSumChanged,
+          ),
+          const Text(' сум', style: _kCellBold),
+        ],
+      ),
+    );
+  }
+
+  // «Цена продажи» qatori: SAQLANGAN salePrice ko'rsatiladi (0 — «—»).
+  // Tavsiya (suggested) saqlanganidan farq qilsa, yonida to'q sariq
+  // «Yangi: X» + «Almashtirish» chiqadi — bosilsa controller.salePrice
+  // yangilanadi (✓ saqlashda backend'ga ketadi). Bu admin tasdiq oqimi.
+  Widget _salePriceRow() {
+    final stored = c.salePrice;
+    final suggested = _suggestedSalePrice;
+    final showHint = suggested != null && suggested != stored;
+    return Padding(
+      padding: _kCellPad,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Цена продажи за 1 штуку - '
+            '${stored > 0 ? fmtCostMoney(stored) : '—'} сум',
+            style: _kCellBold,
+          ),
+          if (showHint)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Yangi: ${fmtCostMoney(suggested)}',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => setState(() => c.salePrice = suggested),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        border: Border.all(color: Colors.orange.shade400),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Almashtirish',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -1534,7 +1686,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // --- Umumiy qator/katak yordamchilari (Excel to'ri) ---
 
+  // Narx 30 kundan eski (yangilanmagan) — Цена katagi sariq bo'ladi.
+  static const int _kStalePriceDays = 30;
+
+  bool _isStalePrice(TechItem item) {
+    final lastPriced = _prices[item.productId]?.lastPriced;
+    if (lastPriced == null) return false;
+    return DateTime.now().difference(lastPriced).inDays > _kStalePriceDays;
+  }
+
   // Bir blokdagi ingredient qatori: nom | birlik | miqdor | Цена | Сумма.
+  // Butun qator InkWell'i tahrirni ochadi; Цена katagining O'Z InkWell'i bor —
+  // bosilsa xarid tarixi sheet'i (ichki tap g'olib, long-press esa faqat
+  // tashqi InkWell'da bo'lgani uchun o'chirish ishlayveradi).
   Widget _itemRow(
     TechItem item, {
     required VoidCallback onTap,
@@ -1543,6 +1707,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final price = _rowUnitPrice(item);
     final cost = _rowCost(item);
     final noPrice = cost == null;
+    final stale = !noPrice && _isStalePrice(item);
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1574,10 +1739,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 child: Text(_excelAmount(item), style: _kCellStyle),
               ),
               // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
+              // Eski narx (>30 kun) — sariq fon; bosilsa xarid tarixi.
               _moneyCell(
                 noPrice ? '—' : fmtCostMoney(price!),
                 width: _kPriceColW,
                 grey: noPrice,
+                bg: stale ? const Color(0xFFFFECB3) : null,
+                onTap: item.productId != 0
+                    ? () => showPriceHistorySheet(
+                          context,
+                          productId: item.productId,
+                          productName: item.name,
+                        )
+                    : null,
               ),
               // Сумма: kiritilgan miqdorning tannarxi.
               _moneyCell(
@@ -1594,17 +1768,24 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // Pul katagi (Excel to'ri uslubida): o'ngga tekislangan, uzun sonlar
   // FittedBox bilan kichrayadi. grey=true — narx yo'q («—», kulrang).
+  // bg — katak foni (eski narx ogohlantirishi); onTap — katakning o'z tap
+  // maydoni (narx tarixi).
   Widget _moneyCell(
     String text, {
     required double width,
     bool bold = false,
     bool grey = false,
+    Color? bg,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final cell = Container(
       width: width,
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: const BoxDecoration(border: Border(left: _kSide)),
+      decoration: BoxDecoration(
+        color: bg,
+        border: const Border(left: _kSide),
+      ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
@@ -1617,6 +1798,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         ),
       ),
     );
+    if (onTap == null) return cell;
+    return InkWell(onTap: onTap, child: cell);
   }
 
   // Blok oxiridagi nozik «+ ...» qatori.

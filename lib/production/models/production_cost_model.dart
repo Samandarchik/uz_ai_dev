@@ -66,7 +66,10 @@ class ProductionCost {
   final String name;
   final int batchQty; // partiyada nechta dona
   final double batchCost; // 1 partiya tannarxi (so'm)
-  final double pieceCost; // 1 dona tannarxi (so'm)
+  final double pieceCost; // 1 dona MASALLIQ tannarxi (so'm)
+  final double overheadCost; // 1 dona dop. rasxod (so'm), 0 — yo'q
+  final double fullPieceCost; // 1 dona TO'LIQ tannarx (so'm)
+  final int salePrice; // tasdiqlangan sotish narxi (so'm), 0 — yo'q
   final int missing; // narxi yo'q masalliqlar soni
   final List<ProductionCostItem> items;
 
@@ -76,6 +79,9 @@ class ProductionCost {
     this.batchQty = 1,
     this.batchCost = 0,
     this.pieceCost = 0,
+    this.overheadCost = 0,
+    this.fullPieceCost = 0,
+    this.salePrice = 0,
     this.missing = 0,
     this.items = const [],
   });
@@ -88,6 +94,9 @@ class ProductionCost {
       batchQty: bq < 1 ? 1 : bq,
       batchCost: _asDouble(json['batch_cost']),
       pieceCost: _asDouble(json['piece_cost']),
+      overheadCost: _asDouble(json['overhead_cost']),
+      fullPieceCost: _asDouble(json['full_piece_cost']),
+      salePrice: _asInt(json['sale_price']),
       missing: _asInt(json['missing']),
       items: ProductionCostItem.listFromJson(json['items']),
     );

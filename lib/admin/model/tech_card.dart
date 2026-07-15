@@ -246,6 +246,16 @@ class TechCard {
   // sum rejimida 1 DONA uchun so'mdagi foyda.
   final double profitValue;
 
+  // Dop. rasxod (qadoq/kommunal kabi ustama xarajat):
+  // '' — yo'q, 'percent' — masalliq tannarxidan (C0) foiz,
+  // 'sum' — 1 DONA uchun so'm.
+  final String overheadMode;
+  final double overheadValue;
+
+  // Tasdiqlangan sotish narxi (so'm/dona). 0 — belgilanmagan.
+  // FAQAT admin «Almashtirish» bosganda o'zgaradi — avto yangilanmaydi.
+  final int salePrice;
+
   const TechCard({
     this.batchQty = 1,
     this.batchWeightG = 0,
@@ -256,10 +266,14 @@ class TechCard {
     this.consumables = const [],
     this.profitMode = '',
     this.profitValue = 0,
+    this.overheadMode = '',
+    this.overheadValue = 0,
+    this.salePrice = 0,
   });
 
   factory TechCard.fromJson(Map<String, dynamic> json) {
     final rawMode = json['profit_mode']?.toString() ?? '';
+    final rawOverhead = json['overhead_mode']?.toString() ?? '';
     return TechCard(
       batchQty: json['batch_qty'] == null ? 1 : _asInt(json['batch_qty']),
       batchWeightG: _asInt(json['batch_weight_g']),
@@ -271,6 +285,11 @@ class TechCard {
       consumables: TechItem.listFromJson(json['consumables']),
       profitMode: (rawMode == 'percent' || rawMode == 'sum') ? rawMode : '',
       profitValue: _asDouble(json['profit_value']),
+      overheadMode: (rawOverhead == 'percent' || rawOverhead == 'sum')
+          ? rawOverhead
+          : '',
+      overheadValue: _asDouble(json['overhead_value']),
+      salePrice: _asInt(json['sale_price']),
     );
   }
 
@@ -293,6 +312,9 @@ class TechCard {
         'consumables': consumables.map((e) => e.toJson()).toList(),
         'profit_mode': profitMode,
         'profit_value': profitValue,
+        'overhead_mode': overheadMode,
+        'overhead_value': overheadValue,
+        'sale_price': salePrice,
       };
 
   TechCard copyWith({
@@ -306,6 +328,9 @@ class TechCard {
     List<TechItem>? consumables,
     String? profitMode,
     double? profitValue,
+    String? overheadMode,
+    double? overheadValue,
+    int? salePrice,
   }) {
     return TechCard(
       batchQty: batchQty ?? this.batchQty,
@@ -317,6 +342,9 @@ class TechCard {
       consumables: consumables ?? this.consumables,
       profitMode: profitMode ?? this.profitMode,
       profitValue: profitValue ?? this.profitValue,
+      overheadMode: overheadMode ?? this.overheadMode,
+      overheadValue: overheadValue ?? this.overheadValue,
+      salePrice: salePrice ?? this.salePrice,
     );
   }
 

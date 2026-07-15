@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
+import 'package:uz_ai_dev/production/models/price_history_model.dart';
 import 'package:uz_ai_dev/production/models/production_cost_model.dart';
 import 'package:uz_ai_dev/production/models/production_stats_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
@@ -127,6 +128,28 @@ class ProductionService {
       throw Exception('Narxlar yuklanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'narxlar yuklanmadi');
+    }
+  }
+
+  // GET /api/prices/history?product_id=N&limit=K — bitta mahsulotning xarid
+  // narxlari tarixi (eng yangisi birinchi). Faqat admin/bugalter.
+  Future<List<PriceHistoryEntry>> fetchPriceHistory(
+    int productId, {
+    int limit = 20,
+  }) async {
+    try {
+      final response = await dio.get(
+        AppUrls.pricesHistory,
+        queryParameters: {'product_id': productId, 'limit': limit},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) return PriceHistoryEntry.listFromJson(body['data']);
+        return [];
+      }
+      throw Exception('Tarix yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'tarix yuklanmadi');
     }
   }
 
