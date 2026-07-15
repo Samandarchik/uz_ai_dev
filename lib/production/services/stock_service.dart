@@ -24,11 +24,21 @@ class StockService {
   }
 
   // GET /api/stock?sklad_id=N -> skladdagi qoldiqlar ro'yxati.
-  Future<List<StockRow>> fetchStock(int skladId) async {
+  //
+  // includeAll: true bo'lsa `include_all=1` qo'shiladi — javobga skladga
+  // tegishli, lekin hali qoldiq yozuvi YO'Q katalog mahsulotlari ham
+  // qo'shiladi (qty: 0, min_qty: 0, low: false). Faqat inventarizatsiya
+  // sahifasi uchun: «nima yo'q» ni ham sanash kerak. Boshqa ekranlar
+  // (ombor kartalari, «Kam qolganlar») bu bayroqsiz chaqiradi — ular uchun
+  // «yozuv yo'q ⇒ ko'rsatilmaydi» qoidasi saqlanadi.
+  Future<List<StockRow>> fetchStock(int skladId, {bool includeAll = false}) async {
     try {
       final response = await dio.get(
         AppUrls.stock,
-        queryParameters: {'sklad_id': skladId},
+        queryParameters: {
+          'sklad_id': skladId,
+          if (includeAll) 'include_all': 1,
+        },
       );
       if (response.statusCode == 200) {
         final body = response.data;
