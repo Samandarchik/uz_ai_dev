@@ -8,6 +8,7 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
+import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
@@ -158,6 +159,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'profit_analytics',
+                child: ListTile(
+                  leading: Icon(Icons.insights),
+                  title: Text('Foyda analitikasi'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
@@ -175,6 +184,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'profit_control':
                   context.push(const ProfitControlUi());
+                  break;
+                case 'profit_analytics':
+                  context.push(const ProfitAnalyticsUi());
                   break;
               }
             },

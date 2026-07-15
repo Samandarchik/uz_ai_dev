@@ -5,6 +5,7 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/tech_card_editor_page.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -158,7 +159,19 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Foyda nazorati')),
+      appBar: AppBar(
+        title: const Text('Foyda nazorati'),
+        actions: [
+          // Davr bo'yicha foyda analitikasi ekrani (marja dinamikasi va h.k.).
+          IconButton(
+            tooltip: 'Analitika',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfitAnalyticsUi()),
+            ),
+            icon: const Icon(Icons.insights),
+          ),
+        ],
+      ),
       body: Consumer<ProductProviderAdmin>(
         builder: (context, provider, _) {
           if (_loading) {

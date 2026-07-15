@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:uz_ai_dev/admin/model/profit_analytics_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
@@ -174,6 +175,28 @@ class ProductionService {
       throw Exception('Statistika yuklanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'statistika yuklanmadi');
+    }
+  }
+
+  // GET /api/analytics/profit?days=N — foyda analitikasi (admin/bugalter).
+  // days ∈ {7, 30, 90}. Tortlar bo'yicha tushum/tannarx/foyda, kunlik marja
+  // dinamikasi va masalliq narx sakrashlari.
+  Future<ProfitAnalytics> fetchProfitAnalytics(int days) async {
+    try {
+      final response = await dio.get(
+        AppUrls.profitAnalytics,
+        queryParameters: {'days': days},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return ProfitAnalytics.fromJson(
+              Map<String, dynamic>.from(body['data']));
+        }
+      }
+      throw Exception('Analitika yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'analitika yuklanmadi');
     }
   }
 
