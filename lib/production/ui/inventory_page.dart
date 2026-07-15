@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
@@ -27,6 +29,43 @@ import 'package:uz_ai_dev/production/services/stock_service.dart';
 // boshqa ekranlarda («Kam qolganlar», ombor kartalari) «Qoldiq: 0» bo'lib
 // ko'rinib ketardi. Saqlash esa StockProvider.submitInventory orqali — u
 // yuborgandan keyin keshni o'zi jim yangilaydi.
+//
+// Ko'rinishi — Excel jadvali (tex karta muharriri bilan bir xil uslub):
+// Rasm | ID | Nomi | Dasturda | Skladda | Birlik | Farq.
+
+// ---- Excel uslubi konstantalar (tech_card_editor_page.dart bilan bir xil) ----
+
+const Color _kBorderColor = Color(0xFF333333);
+const BorderSide _kSide = BorderSide(color: _kBorderColor, width: 1);
+const Color _kHeaderColor = Color(0xFFE0E0E0); // sarlavha qatori
+const Color _kLowTint = Color(0xFFFFF8E1); // kam qolgan qator — mayin sariq
+
+const EdgeInsets _kCellPad = EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+const TextStyle _kCellStyle = TextStyle(fontSize: 13, color: Colors.black);
+const TextStyle _kCellBold = TextStyle(
+  fontSize: 13,
+  color: Colors.black,
+  fontWeight: FontWeight.bold,
+);
+// Raqam kataklari — ustunlar bo'ylab tekis turishi uchun tabular figures.
+const TextStyle _kNumStyle = TextStyle(
+  fontSize: 13,
+  color: Colors.black,
+  fontFeatures: [FontFeature.tabularFigures()],
+);
+
+// Ustun kengliklari: «Nomi» — Expanded, qolgani qat'iy.
+const double _kImgColW = 48;
+const double _kIdColW = 48;
+const double _kQtyColW = 76; // «Dasturda»
+const double _kInputColW = 84; // «Skladda» (kiritish maydoni)
+const double _kUnitColW = 52; // «Birlik»
+const double _kDiffColW = 64; // «Farq»
+// Shundan tor ekranda jadval gorizontal skroll bo'ladi (aks holda «Nomi»
+// ustuni yanchilib ketardi). Qat'iy ustunlar 372 — «Nomi» ga ~220 qoladi.
+const double _kMinTableWidth = 600;
+const double _kThumbSize = 40;
+
 class StockInventoryPage extends StatefulWidget {
   final int skladId;
 
@@ -510,11 +549,7 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                  itemCount: visible.length,
-                  itemBuilder: (context, index) => _inventoryRow(visible[index]),
-                ),
+              : _excelTable(visible),
         ),
       ],
     );
@@ -635,86 +670,180 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
     );
   }
 
-  // Bitta qator: nomi + joriy qoldiq + farq | real son kiritish maydoni.
-  Widget _inventoryRow(StockRow row) {
-    final ctrl = _controllerFor(row.productId);
-    final diffApi = _diffApi(row);
-    final counted = diffApi != null;
+  // ───────────────────────── Excel jadvali ─────────────────────────
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: counted ? _accent : Colors.grey.shade300,
-          width: counted ? 1.4 : 1,
+  // Jadval: qat'iy sarlavha qatori + ostida vertikal skroll qatorlar.
+  // Tor ekranda (telefon) butun jadval gorizontal skrollga o'raladi, shunda
+  // «Nomi» ustuni yanchilmaydi va kataklar ustunma-ustun tekis turadi.
+  Widget _excelTable(List<StockRow> rows) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const double hPad = 12;
+        final available = constraints.maxWidth - hPad * 2;
+        final scrollX = available < _kMinTableWidth;
+        final tableWidth = scrollX ? _kMinTableWidth : available;
+
+        final table = SizedBox(
+          width: tableWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _headerRow(),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  itemCount: rows.length,
+                  itemBuilder: (context, index) => _tableRow(rows[index]),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (!scrollX) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: hPad),
+            child: table,
+          );
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: hPad),
+          child: table,
+        );
+      },
+    );
+  }
+
+  // Bitta katak. width null — Expanded («Nomi»). first — chap chegarasiz
+  // (tashqi ramka beradi), qolganlarida chap chegara ustunlarni ajratadi.
+  Widget _cell({
+    required Widget child,
+    double? width,
+    bool first = false,
+    Alignment align = Alignment.center,
+    EdgeInsets padding = _kCellPad,
+  }) {
+    final content = Container(
+      alignment: align,
+      padding: padding,
+      decoration: BoxDecoration(
+        border: first ? null : const Border(left: _kSide),
+      ),
+      child: child,
+    );
+    if (width == null) return Expanded(child: content);
+    return SizedBox(width: width, child: content);
+  }
+
+  // Sarlavha: Rasm | ID | Nomi | Dasturda | Skladda | Birlik | Farq
+  Widget _headerRow() {
+    Widget head(String text, {double? width, bool first = false, Alignment? a}) =>
+        _cell(
+          width: width,
+          first: first,
+          align: a ?? Alignment.center,
+          child: Text(text, style: _kCellBold, textAlign: TextAlign.center),
+        );
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: _kHeaderColor,
+        border: Border(top: _kSide, left: _kSide, right: _kSide, bottom: _kSide),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            head('Rasm', width: _kImgColW, first: true),
+            head('ID', width: _kIdColW),
+            head('Nomi', a: Alignment.centerLeft),
+            head('Dasturda', width: _kQtyColW),
+            head('Skladda', width: _kInputColW),
+            head('Birlik', width: _kUnitColW),
+            head('Farq', width: _kDiffColW),
+          ],
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    );
+  }
+
+  // Bitta jadval qatori. Kam qolgan (low) qator mayin sariq fonda — to'r
+  // ko'rinishini buzmaydi, lekin ko'zga tashlanadi.
+  Widget _tableRow(StockRow row) {
+    final ctrl = _controllerFor(row.productId);
+    final diffApi = _diffApi(row);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: row.low ? _kLowTint : Colors.white,
+        border: const Border(left: _kSide, right: _kSide, bottom: _kSide),
+      ),
+      child: IntrinsicHeight(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _rowName(row),
-                    style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Joriy: ${formatQty(row.qty, row.type)} ${row.type}'
-                              .trim(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: row.qty < 0 ? Colors.red : Colors.grey.shade600,
-                          ),
-                        ),
-                      ),
-                      if (diffApi != null) ...[
-                        const SizedBox(width: 6),
-                        _diffBadge(row, diffApi),
-                      ],
-                    ],
-                  ),
-                ],
+            // Rasm — bosilsa katta ko'rinishda ochiladi.
+            _cell(
+              width: _kImgColW,
+              first: true,
+              padding: const EdgeInsets.all(4),
+              child: _thumb(row),
+            ),
+            // ID — mayin, tabular.
+            _cell(
+              width: _kIdColW,
+              child: Text(
+                '${row.productId}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 110,
-              child: TextField(
-                controller: ctrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  // Hint UI birlikda — foydalanuvchi ham kg/l kiritadi.
-                  hintText: formatQty(row.qty, row.type),
-                  suffixText: row.type.isNotEmpty ? row.type : null,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                // Farq/hisob/tugma matni yangilanishi uchun + qoralama.
-                onChanged: (_) {
-                  setState(() {});
-                  _scheduleDraftSave();
-                },
+            // Nomi — 2 qatorgacha.
+            _cell(
+              align: Alignment.centerLeft,
+              child: Text(
+                _rowName(row),
+                style: _kCellStyle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
+            // Dasturda — tizimdagi qoldiq (UI birlikda), manfiy bo'lsa qizil.
+            _cell(
+              width: _kQtyColW,
+              align: Alignment.centerRight,
+              child: Text(
+                formatQty(row.qty, row.type),
+                style: row.qty < 0
+                    ? const TextStyle(
+                        fontSize: 13,
+                        color: _diffMinus,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      )
+                    : _kNumStyle,
+              ),
+            ),
+            // Skladda — real sanalgan son (qoralama shu yerda yashaydi).
+            _cell(
+              width: _kInputColW,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: _countField(row, ctrl),
+            ),
+            // Birlik — kiritish maydonining yonida, alohida ustun.
+            _cell(
+              width: _kUnitColW,
+              child: Text(row.type, style: _kCellStyle),
+            ),
+            // Farq — jonli: -2 qizil, +1 yashil, teng bo'lsa ✓.
+            _cell(
+              width: _kDiffColW,
+              align: Alignment.centerRight,
+              child: _diffCell(row, diffApi),
             ),
           ],
         ),
@@ -722,29 +851,126 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
     );
   }
 
-  // Farq belgisi: -2 qizil, +1 yashil, teng bo'lsa mayin ✓ to'g'ri.
-  Widget _diffBadge(StockRow row, double diffApi) {
-    final equal = diffApi.abs() <= 1e-9;
-    final color = equal
-        ? _okColor
-        : (diffApi < 0 ? _diffMinus : _diffPlus);
-    final text = equal
-        ? '✓ to\'g\'ri'
-        : '${_diffLabel(row, diffApi)} ${row.type}'.trim();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: equal ? FontWeight.w500 : FontWeight.w700,
-          color: color,
+  // «Rasm» katagi: 40x40 thumbnail; yo'q/xato — kulrang placeholder.
+  Widget _thumb(StockRow row) {
+    if (row.imageUrl.isEmpty) return _thumbPlaceholder();
+    return InkWell(
+      onTap: () => _showImageDialog(row),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: CachedNetworkImage(
+          imageUrl: '${AppUrls.baseUrl}${row.imageUrl}',
+          width: _kThumbSize,
+          height: _kThumbSize,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            width: _kThumbSize,
+            height: _kThumbSize,
+            color: Colors.grey.shade200,
+          ),
+          errorWidget: (_, __, ___) => _thumbPlaceholder(),
         ),
+      ),
+    );
+  }
+
+  Widget _thumbPlaceholder() {
+    return Container(
+      width: _kThumbSize,
+      height: _kThumbSize,
+      color: Colors.grey.shade200,
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: 18,
+        color: Colors.grey.shade500,
+      ),
+    );
+  }
+
+  // Rasm bosilsa to'liq ko'rinishda (ombor kartalaridagi naqsh).
+  void _showImageDialog(StockRow row) {
+    if (row.imageUrl.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: CachedNetworkImage(
+          imageUrl: '${AppUrls.baseUrl}${row.imageUrl}',
+          fit: BoxFit.contain,
+          placeholder: (_, __) => const Center(
+            child: CircularProgressIndicator(color: _accent),
+          ),
+          errorWidget: (_, __, ___) =>
+              const Icon(Icons.error, size: 40, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  // «Skladda» katagi — real sanalgan sonni kiritish maydoni. Birlik endi o'z
+  // ustunida, shuning uchun maydon ichida suffiks yo'q; hint — tizimdagi son.
+  Widget _countField(StockRow row, TextEditingController ctrl) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+      ],
+      textAlign: TextAlign.right,
+      style: _kNumStyle,
+      decoration: InputDecoration(
+        // Hint UI birlikda — foydalanuvchi ham kg/l kiritadi.
+        hintText: formatQty(row.qty, row.type),
+        hintStyle: TextStyle(
+          fontSize: 13,
+          color: Colors.grey.shade400,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: _accent, width: 1.4),
+        ),
+      ),
+      // Farq/hisob/tugma matni yangilanishi uchun + qoralama.
+      onChanged: (_) {
+        setState(() {});
+        _scheduleDraftSave();
+      },
+    );
+  }
+
+  // «Farq» katagi: sanalmagan — bo'sh; teng — mayin ✓; aks holda ±son.
+  Widget _diffCell(StockRow row, double? diffApi) {
+    if (diffApi == null) return const SizedBox.shrink();
+    if (diffApi.abs() <= 1e-9) {
+      return const Text(
+        '✓',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: _okColor,
+        ),
+      );
+    }
+    return Text(
+      _diffLabel(row, diffApi),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: diffApi < 0 ? _diffMinus : _diffPlus,
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
   }

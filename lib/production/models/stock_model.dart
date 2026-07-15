@@ -62,6 +62,10 @@ class StockRow {
   final int productId;
   final String name;
   final String type; // mahsulotning o'z birligi: кг | литр | шт | м ...
+  // Mahsulot rasmi — relativ yo'l ('/static/...'); bo'sh bo'lishi mumkin.
+  // To'liq manzil: '${AppUrls.baseUrl}$imageUrl'. Inventarizatsiya jadvalidagi
+  // «Rasm» ustuni uchun.
+  final String imageUrl;
   final double qty; // manfiy bo'lishi mumkin (qizil ko'rsatiladi)
   final double minQty; // minimal chegara (0 — o'rnatilmagan)
   final bool low; // backend: qty <= min_qty (kam qolgan)
@@ -71,6 +75,7 @@ class StockRow {
     required this.productId,
     this.name = '',
     this.type = '',
+    this.imageUrl = '',
     this.qty = 0,
     this.minQty = 0,
     this.low = false,
@@ -82,6 +87,7 @@ class StockRow {
       productId: _asInt(json['product_id']),
       name: json['name']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
       qty: _asDouble(json['qty']),
       minQty: _asDouble(json['min_qty']),
       low: json['low'] == true,
