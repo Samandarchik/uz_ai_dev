@@ -75,6 +75,10 @@ abstract final class AppUrls {
   // Xarid narxlari tarixi: GET ?product_id=N&limit=20 — bitta mahsulotning
   // narxlangan xaridlari (eng yangisi birinchi). Admin/bugalter.
   static String pricesHistory = '$baseUrl/api/prices/history';
+  // Foyda analitikasi: GET ?days=N (7/30/90) — tortlar bo'yicha tushum/
+  // tannarx/foyda, kunlik marja dinamikasi va masalliq narx sakrashlari.
+  // Admin/bugalter.
+  static String profitAnalytics = '$baseUrl/api/analytics/profit';
 
   static const String users = '$baseUrl/api/users';
   // Login+parolni Telegram orqali yuborish:
