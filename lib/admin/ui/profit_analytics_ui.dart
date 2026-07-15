@@ -34,12 +34,16 @@ class _ChartSeries {
   final Color color;
   final List<double?> values;
   final double? endValue; // oxirgi ma'lum marja (legend uchun)
+  final List<double?> costs; // kunlik 1 dona tannarx (so'm) — tooltip uchun
+  final double salePrice; // joriy sotish narxi (foyda so'mda hisoblash uchun)
 
   const _ChartSeries({
     required this.name,
     required this.color,
     required this.values,
     required this.endValue,
+    required this.costs,
+    required this.salePrice,
   });
 }
 
@@ -131,6 +135,9 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
       final byDate = <String, double?>{
         for (final p in cake.daily) p.d: p.margin,
       };
+      final costByDate = <String, double?>{
+        for (final p in cake.daily) p.d: p.cost,
+      };
       final values = [for (final d in data.days) byDate[d]];
       double? end;
       for (final v in values) {
@@ -141,6 +148,8 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
         color: _seriesColors[i],
         values: values,
         endValue: end,
+        costs: [for (final d in data.days) costByDate[d]],
+        salePrice: cake.salePrice,
       ));
     }
 
@@ -489,7 +498,8 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
     );
   }
 
-  // Tanlangan kun paneli (chart tooltip'i): sana + har seriya marjasi.
+  // Tanlangan kun paneli (chart tooltip'i): sana + har seriya uchun
+  // o'sha kungi tannarx (so'm), 1 dona foyda (so'm) va marja (%).
   Widget _selectedDayPanel(_ChartData chart, int idx) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -502,14 +512,24 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _ddMM(chart.days[idx]),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Text(
+                _ddMM(chart.days[idx]),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Text(
+                'tannarx • 1 dona foyda • marja',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           for (final s in chart.series)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 3),
               child: Row(
                 children: [
                   Container(
@@ -528,13 +548,23 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
                     ),
                   ),
                   Text(
-                    _pct(s.values[idx]),
+                    s.costs[idx] == null ? '—' : fmtCostMoney(s.costs[idx]!),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _dayProfitText(s, idx),
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                       color: (s.values[idx] ?? 0) < 0
                           ? Colors.red.shade700
-                          : Colors.black87,
+                          : Colors.green.shade800,
                     ),
                   ),
                 ],
@@ -543,6 +573,17 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
         ],
       ),
     );
+  }
+
+  // «+48 336 • +40,6%» — 1 dona foyda (sotish narxi − o'sha kungi tannarx)
+  // va marja. Tannarx/narx noma'lum bo'lsa faqat mavjud qismi.
+  String _dayProfitText(_ChartSeries s, int idx) {
+    final cost = s.costs[idx];
+    final margin = s.values[idx];
+    if (cost == null || s.salePrice <= 0) return _pct(margin);
+    final profit = s.salePrice - cost;
+    final sign = profit >= 0 ? '+' : '−';
+    return '$sign${fmtCostMoney(profit.abs())} • ${_pct(margin)}';
   }
 
   // 4. «Qachon minusga o'tdi» kartasi.
