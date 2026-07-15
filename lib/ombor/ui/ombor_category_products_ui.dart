@@ -3,16 +3,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
+import 'package:uz_ai_dev/production/models/stock_model.dart';
+import 'package:uz_ai_dev/production/provider/stock_provider.dart';
+
+// Ombor skladlari qoldig'ini yuklab qo'yish: avval skladlar ro'yxati
+// (SharedPreferences), keyin har sklad uchun GET /api/stock. Faqat HALI
+// yuklanmagan sklad so'raladi — qayta build'da takroriy so'rov ketmaydi.
+// Kartochkadagi «Qoldiq» qatori shu keshdan o'qiydi.
+Future<void> ensureOmborStock(BuildContext context) async {
+  final ombor = context.read<OmborProvider>();
+  await ombor.ensureSklads();
+  if (!context.mounted) return;
+  final stock = context.read<StockProvider>();
+  for (final id in ombor.skladIds) {
+    if (stock.stockFor(id) == null && !stock.isLoading(id)) {
+      stock.fetchStock(id);
+    }
+  }
+}
 
 // Bitta kategoriya ichidagi bozor mahsulotlari — user panelidagi
 // ProductsScreen kabi GRID ko'rinishda.
-class OmborCategoryProductsUi extends StatelessWidget {
+class OmborCategoryProductsUi extends StatefulWidget {
   final String categoryName;
   const OmborCategoryProductsUi({super.key, required this.categoryName});
 
+  @override
+  State<OmborCategoryProductsUi> createState() =>
+      _OmborCategoryProductsUiState();
+}
+
+class _OmborCategoryProductsUiState extends State<OmborCategoryProductsUi> {
   static const Color _bgColor = Color(0xFFFAF6F1);
+
+  @override
+  void initState() {
+    super.initState();
+    // Kartochkalardagi «Qoldiq» qatori uchun (kesh bor bo'lsa so'rov ketmaydi).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ensureOmborStock(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,11 +56,12 @@ class OmborCategoryProductsUi extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: _bgColor,
         elevation: 0,
-        title: Text(categoryName),
+        title: Text(widget.categoryName),
       ),
       body: Consumer<OmborProvider>(
         builder: (context, provider, child) {
-          final products = provider.productsByCategory[categoryName] ?? [];
+          final products =
+              provider.productsByCategory[widget.categoryName] ?? [];
 
           if (products.isEmpty) {
             return const Center(child: Text('Mahsulotlar topilmadi'));
@@ -168,10 +204,18 @@ class OmborCartBar extends StatelessWidget {
 // - rasm bosilsa: rasm katta ochiladi
 // isGrid=true -> grid katakchasi (rasm cho'ziluvchan), false -> gorizontal
 // ro'yxat kartasi (eni 180, rasm balandligi 160).
+// skladId berilsa qoldiq aynan shu sklad bo'yicha; berilmasa ombor
+// skladlaridan birinchi topilgani.
 class OmborProductCard extends StatelessWidget {
   final OmborProduct product;
   final bool isGrid;
-  const OmborProductCard({super.key, required this.product, this.isGrid = false});
+  final int? skladId;
+  const OmborProductCard({
+    super.key,
+    required this.product,
+    this.isGrid = false,
+    this.skladId,
+  });
 
   static const Color _accentColor = Color(0xFFC5A97B);
 
@@ -208,6 +252,39 @@ class OmborProductCard extends StatelessWidget {
     final source = product.sourceLabel;
     if (qtyText.isNotEmpty && source.isNotEmpty) return '$qtyText • $source';
     return qtyText.isNotEmpty ? qtyText : source;
+  }
+
+  // «Qoldiq» qatori — faqat sklad qoldig'ida yozuv bo'lsa ko'rinadi.
+  Widget _buildQoldiq(StockRow row) {
+    final low = row.low;
+    final color = low
+        ? Colors.orange.shade800
+        : row.minQty > 0
+            ? Colors.green.shade700
+            : Colors.grey.shade600;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+      child: Row(
+        children: [
+          if (low) ...[
+            Icon(Icons.warning_amber_rounded, size: 12, color: color),
+            const SizedBox(width: 3),
+          ],
+          Expanded(
+            child: Text(
+              omborQoldiqText(row),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Uzoq bosilganda miqdorni qo'lda kiritish oynasi: xohlagancha buyurtma
@@ -416,6 +493,9 @@ class OmborProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sklad qoldig'i (bo'lmasa null — qator umuman ko'rsatilmaydi).
+    final stockRow = omborStockRow(context, product.id, skladId: skladId);
+
     return Consumer<OmborProvider>(
       builder: (context, provider, child) {
         final image = GestureDetector(
@@ -472,6 +552,7 @@ class OmborProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (stockRow != null) _buildQoldiq(stockRow),
                 if (!isGrid) const Spacer(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
@@ -488,6 +569,40 @@ class OmborProductCard extends StatelessWidget {
       },
     );
   }
+}
+
+// Mahsulotning sklad qoldig'i qatori. skladId berilsa — aynan shu sklad;
+// berilmasa ombor skladlari bo'ylab birinchi topilgani (odatda ombor bitta
+// skladga biriktirilgan). Yozuv topilmasa null — «noma'lum», 0 EMAS: shuning
+// uchun kartochkada qator umuman ko'rsatilmaydi.
+StockRow? omborStockRow(BuildContext context, int productId, {int? skladId}) {
+  final stock = context.watch<StockProvider>();
+  final ids = skladId != null
+      ? <int>[skladId]
+      : context.watch<OmborProvider>().skladIds;
+  for (final id in ids) {
+    for (final r in stock.stockFor(id) ?? const <StockRow>[]) {
+      if (r.productId == productId) return r;
+    }
+  }
+  return null;
+}
+
+// «Qoldiq» matni — chegara (min_qty) va joriy qoldiq munosabati:
+//  - chegara bor, qoldiq undan yuqori -> «Qoldiq: 5+1=6 кг»
+//  - chegara bor, qoldiq undan past   -> «Qoldiq: 5-1=4 кг»
+//  - chegara yo'q (min_qty == 0)      -> «Qoldiq: 6 кг»
+// Sonlar UI birlikda: кг/л mahsulotda API gramm/ml bo'lib keladi -> kg/l.
+String omborQoldiqText(StockRow row) {
+  final unit = row.type.trim();
+  final suffix = unit.isEmpty ? '' : ' $unit';
+  final qty = formatQty(row.qty, row.type);
+  if (row.minQty <= 0) return 'Qoldiq: $qty$suffix';
+  final min = formatQty(row.minQty, row.type);
+  final diff = formatQty((row.qty - row.minQty).abs(), row.type);
+  // Ishora backend'ning low bayrog'idan — matn va rang doim mos bo'lsin.
+  final sign = row.low ? '-' : '+';
+  return 'Qoldiq: $min$sign$diff=$qty$suffix';
 }
 
 // Milli-birlikni (qiymat*1000) faqat butun son arifmetikasi bilan formatlash:

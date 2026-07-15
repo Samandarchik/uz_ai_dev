@@ -6,6 +6,7 @@ import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
+import 'package:uz_ai_dev/production/models/stock_model.dart';
 
 // Ombor bosh ekrani uchun holat boshqaruvchi.
 class OmborProvider extends ChangeNotifier {
@@ -18,6 +19,22 @@ class OmborProvider extends ChangeNotifier {
   String? errorMessage;
 
   List<String> get categories => productsByCategory.keys.toList();
+
+  // ─────────────────────── Ombor skladlari ───────────────────────
+  // SharedPreferences'dagi 'user' JSON dan bir marta o'qiladi. Kartochkadagi
+  // «Qoldiq» qatori va «Kam qolganlar» sahifasi shu skladlar bo'yicha ishlaydi.
+  List<int> skladIds = [];
+  bool _skladsLoaded = false;
+
+  // Birinchi (asosiy) sklad — kartochkada qoldiq shu sklad bo'yicha ko'rinadi.
+  int? get primarySkladId => skladIds.isEmpty ? null : skladIds.first;
+
+  Future<void> ensureSklads() async {
+    if (_skladsLoaded) return;
+    _skladsLoaded = true;
+    skladIds = await loadUserSklads();
+    notifyListeners();
+  }
 
   // Admin paneldagi kabi ko'rsatiladigan kategoriyalar: server tartibida,
   // faqat bozor mahsuloti borlari. /api/categories da topilmagan guruh

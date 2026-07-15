@@ -6,9 +6,12 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
+import 'package:uz_ai_dev/ombor/ui/ombor_low_stock_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_orders_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_production_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_stock_ui.dart';
+import 'package:uz_ai_dev/production/models/stock_model.dart';
+import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 
 // Ombor roli uchun bosh ekran — user panelidagi kabi: tepada qidiruv,
 // har kategoriya sarlavha + "barchasi" tugmasi + gorizontal kartochkalar.
@@ -42,6 +45,8 @@ class _OmborHomeUiState extends State<OmborHomeUi>
       provider.fetchProducts();
       // Real-time: ro'yxat refresh'siz avtomatik yangilanishi uchun socketga ulanamiz.
       provider.connectSocket();
+      // Kartochkadagi «Qoldiq» qatori va «Kam qolganlar» badge'i uchun.
+      ensureOmborStock(context);
     });
   }
 
@@ -79,6 +84,8 @@ class _OmborHomeUiState extends State<OmborHomeUi>
             tooltip: 'Ishlab chiqarish',
             icon: const Icon(Icons.factory_outlined),
           ),
+          // Min chegaradan pastga tushgan mahsulotlar (soni badge'da).
+          const _LowStockButton(),
           // Sklad qoldig'i (inventar) sahifasi.
           IconButton(
             onPressed: () {
@@ -132,6 +139,38 @@ class _OmborHomeUiState extends State<OmborHomeUi>
           if (!isProductsTab) return const SizedBox.shrink();
           return const OmborCartBar();
         },
+      ),
+    );
+  }
+}
+
+// AppBar dagi «Kam qolganlar» tugmasi: badge'da ombor skladlaridagi chegaradan
+// pastga tushgan qatorlar soni. Alohida vidjet — qoldiq yangilanganda faqat
+// shu tugma qayta quriladi.
+class _LowStockButton extends StatelessWidget {
+  const _LowStockButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final stock = context.watch<StockProvider>();
+    final sklads = context.watch<OmborProvider>().skladIds;
+
+    var count = 0;
+    for (final id in sklads) {
+      for (final r in stock.stockFor(id) ?? const <StockRow>[]) {
+        if (r.low) count++;
+      }
+    }
+
+    return IconButton(
+      onPressed: () {
+        context.push(const OmborLowStockUi());
+      },
+      tooltip: 'Kam qolganlar',
+      icon: Badge.count(
+        count: count,
+        isLabelVisible: count > 0,
+        child: const Icon(Icons.production_quantity_limits),
       ),
     );
   }
