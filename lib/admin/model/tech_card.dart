@@ -56,6 +56,11 @@ int _asInt(dynamic v) {
       (double.tryParse(v?.toString() ?? '')?.toInt() ?? 0);
 }
 
+double _asDouble(dynamic v) {
+  if (v is num) return v.toDouble();
+  return double.tryParse(v?.toString() ?? '') ?? 0;
+}
+
 // Bitta ingredient/расходник (item).
 class TechItem {
   final int productId;
@@ -235,6 +240,12 @@ class TechCard {
   final List<TechBase> bases;
   final List<TechItem> consumables; // qadoqlash materiallari
 
+  // Foyda (ustama): '' — belgilanmagan, 'percent' — foizda, 'sum' — so'mda.
+  final String profitMode;
+  // percent rejimida foiz qiymati (50 = +50%),
+  // sum rejimida 1 DONA uchun so'mdagi foyda.
+  final double profitValue;
+
   const TechCard({
     this.batchQty = 1,
     this.batchWeightG = 0,
@@ -243,9 +254,12 @@ class TechCard {
     this.stages = const [],
     this.bases = const [],
     this.consumables = const [],
+    this.profitMode = '',
+    this.profitValue = 0,
   });
 
   factory TechCard.fromJson(Map<String, dynamic> json) {
+    final rawMode = json['profit_mode']?.toString() ?? '';
     return TechCard(
       batchQty: json['batch_qty'] == null ? 1 : _asInt(json['batch_qty']),
       batchWeightG: _asInt(json['batch_weight_g']),
@@ -255,6 +269,8 @@ class TechCard {
       stages: TechStage.listFromJson(json['stages']),
       bases: TechBase.listFromJson(json['bases']),
       consumables: TechItem.listFromJson(json['consumables']),
+      profitMode: (rawMode == 'percent' || rawMode == 'sum') ? rawMode : '',
+      profitValue: _asDouble(json['profit_value']),
     );
   }
 
@@ -275,6 +291,8 @@ class TechCard {
         'stages': stages.map((e) => e.toJson()).toList(),
         'bases': bases.map((e) => e.toJson()).toList(),
         'consumables': consumables.map((e) => e.toJson()).toList(),
+        'profit_mode': profitMode,
+        'profit_value': profitValue,
       };
 
   TechCard copyWith({
@@ -286,6 +304,8 @@ class TechCard {
     List<TechStage>? stages,
     List<TechBase>? bases,
     List<TechItem>? consumables,
+    String? profitMode,
+    double? profitValue,
   }) {
     return TechCard(
       batchQty: batchQty ?? this.batchQty,
@@ -295,6 +315,8 @@ class TechCard {
       stages: stages ?? this.stages,
       bases: bases ?? this.bases,
       consumables: consumables ?? this.consumables,
+      profitMode: profitMode ?? this.profitMode,
+      profitValue: profitValue ?? this.profitValue,
     );
   }
 

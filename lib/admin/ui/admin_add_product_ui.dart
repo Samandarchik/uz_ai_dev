@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
@@ -24,6 +26,9 @@ class _AddProductPageState extends State<AddProductPage> {
   final ingredientsControlle = TextEditingController();
   final grammController = TextEditingController(text: '1');
   final bozorGrammController = TextEditingController();
+  // Tozalash yo'qotishi (faqat кг/л oilasida ko'rinadi), butun gramm.
+  final wasteBaseController = TextEditingController();
+  final wasteAmountController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   int? _selectedCategoryId;
@@ -65,6 +70,18 @@ class _AddProductPageState extends State<AddProductPage> {
       context.read<FilialProviderAdmin>().getFilials();
     });
   }
+
+  // ---- Tozalash yo'qotishi (waste) yordamchilari ----
+  int get _wasteBaseVal => int.tryParse(wasteBaseController.text.trim()) ?? 0;
+  int get _wasteAmountVal =>
+      int.tryParse(wasteAmountController.text.trim()) ?? 0;
+  // Noto'g'ri kombinatsiya: qizil eslatma ko'rinadi, saqlashda 0/0 yuboriladi.
+  bool get _wasteInvalid =>
+      _wasteBaseVal > 0 && _wasteAmountVal > 0 && _wasteAmountVal >= _wasteBaseVal;
+  bool get _wasteValid =>
+      _wasteBaseVal > 0 && _wasteAmountVal > 0 && _wasteAmountVal < _wasteBaseVal;
+  // Faqat кг/л oilasida ma'noga ega.
+  bool get _wasteApplies => qtyUnitFactor(_selectedType) == 1000;
 
   // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan birlashtiradi.
   String _compositionNames() => _techController.sostavNames().join(', ');
@@ -273,6 +290,57 @@ class _AddProductPageState extends State<AddProductPage> {
                 });
               },
             ),
+            // Tozalash yo'qotishi — faqat кг/л oilasidagi mahsulotlarda.
+            if (_wasteApplies) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Tozalashda yo\'qotish (ixtiyoriy)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: wasteBaseController,
+                      decoration: const InputDecoration(
+                        labelText: 'Necha grammdan (gr)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: wasteAmountController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nechasi yo\'qoladi (gr)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              if (_wasteInvalid)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Yo\'qotish umumiy grammdan kichik bo\'lishi kerak — '
+                    'aks holda saqlanmaydi (0)',
+                    style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                  ),
+                ),
+            ],
             SizedBox(
               height: 20,
             ),
@@ -582,6 +650,12 @@ class _AddProductPageState extends State<AddProductPage> {
                                   : ingredientsControlle.text,
                               compositionAsIngredients:
                                   _compositionAsIngredients,
+                              wasteBase: _wasteApplies && _wasteValid
+                                  ? _wasteBaseVal
+                                  : 0,
+                              wasteAmount: _wasteApplies && _wasteValid
+                                  ? _wasteAmountVal
+                                  : 0,
                             );
 
                             final success = await context
@@ -621,6 +695,8 @@ class _AddProductPageState extends State<AddProductPage> {
     ingredientsControlle.dispose();
     grammController.dispose();
     bozorGrammController.dispose();
+    wasteBaseController.dispose();
+    wasteAmountController.dispose();
     _techController.dispose();
     super.dispose();
   }

@@ -36,6 +36,11 @@ class ProductModelAdmin {
   // «Состав» tarkibdagi mahsulot nomlaridan to'lsa true bo'ladi
   final bool compositionAsIngredients;
 
+  // Tozalash yo'qotishi (faqat кг/л oilasi uchun, gr/ml da butun son):
+  // har wasteBase grammdan wasteAmount gramm yo'qoladi. 0/0 = yo'q.
+  final int wasteBase;
+  final int wasteAmount;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -57,7 +62,19 @@ class ProductModelAdmin {
     this.techCard,
     this.comment,
     this.compositionAsIngredients = false,
+    this.wasteBase = 0,
+    this.wasteAmount = 0,
   });
+
+  // Tozalash yo'qotishi koeffitsiyenti: xarid narxi shu koeffitsiyentga
+  // ko'paytiriladi (masalan 8000 dan 100 yo'qolsa — 8000/7900).
+  // Noto'g'ri qiymatlarda 1 (ta'sir yo'q).
+  double get wasteFactor {
+    if (wasteBase > 0 && wasteAmount > 0 && wasteAmount < wasteBase) {
+      return wasteBase / (wasteBase - wasteAmount);
+    }
+    return 1;
+  }
 
   factory ProductModelAdmin.fromJson(Map<String, dynamic> json) {
     return ProductModelAdmin(
@@ -86,6 +103,8 @@ class ProductModelAdmin {
           : null,
       comment: json['comment']?.toString(),
       compositionAsIngredients: json['composition_as_ingredients'] ?? false,
+      wasteBase: (json['waste_base'] as num?)?.toInt() ?? 0,
+      wasteAmount: (json['waste_amount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -110,6 +129,8 @@ class ProductModelAdmin {
       'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
+      'waste_base': wasteBase,
+      'waste_amount': wasteAmount,
     };
   }
 
@@ -133,6 +154,8 @@ class ProductModelAdmin {
       'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
+      'waste_base': wasteBase,
+      'waste_amount': wasteAmount,
     };
   }
 
@@ -156,6 +179,8 @@ class ProductModelAdmin {
       'tech_card': techCard?.toJson(),
       'comment': comment,
       'composition_as_ingredients': compositionAsIngredients,
+      'waste_base': wasteBase,
+      'waste_amount': wasteAmount,
     };
   }
 
@@ -180,6 +205,8 @@ class ProductModelAdmin {
     TechCard? techCard,
     String? comment,
     bool? compositionAsIngredients,
+    int? wasteBase,
+    int? wasteAmount,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -203,6 +230,8 @@ class ProductModelAdmin {
       comment: comment ?? this.comment,
       compositionAsIngredients:
           compositionAsIngredients ?? this.compositionAsIngredients,
+      wasteBase: wasteBase ?? this.wasteBase,
+      wasteAmount: wasteAmount ?? this.wasteAmount,
     );
   }
 }

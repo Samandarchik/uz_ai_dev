@@ -13,12 +13,18 @@ class TechCardController {
   final List<TechBase> bases;
   final List<TechItem> consumables;
 
+  // Foyda (ustama): '' | 'percent' | 'sum' va qiymati (foiz yoki so'm/dona).
+  String profitMode;
+  double profitValue;
+
   TechCardController([TechCard? initial])
       : batchQty = (initial?.batchQty ?? 1) < 1 ? 1 : (initial?.batchQty ?? 1),
         diameterCm = initial?.diameterCm,
         stages = List<TechStage>.from(initial?.stages ?? const []),
         bases = List<TechBase>.from(initial?.bases ?? const []),
-        consumables = List<TechItem>.from(initial?.consumables ?? const []);
+        consumables = List<TechItem>.from(initial?.consumables ?? const []),
+        profitMode = initial?.profitMode ?? '',
+        profitValue = initial?.profitValue ?? 0;
 
   // To'liq TechCard ni yig'ib qaytaradi (weight maydonlari mahalliy hisoblanadi).
   TechCard build() => TechCard(
@@ -27,6 +33,8 @@ class TechCardController {
         stages: List<TechStage>.from(stages),
         bases: List<TechBase>.from(bases),
         consumables: List<TechItem>.from(consumables),
+        profitMode: profitMode,
+        profitValue: profitValue,
       );
 
   // «Состав» uchun showInSostav=true bo'lgan nomlar.

@@ -194,12 +194,26 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // amount ham, unit_price ham ENG KICHIK birlikda (gr/ml/шт/м) —
   // qator tannarxi to'g'ridan-to'g'ri ko'paytma.
 
-  // Qator tannarxi. null — narx yo'q (product_id=0 yoki hech narxlanmagan).
+  // Tozalash yo'qotishi koeffitsiyentlari (product_id -> factor, faqat !=1).
+  // ProductProviderAdmin ro'yxatidan bir marta yig'iladi (backend ham
+  // /api/production/cost da xuddi shu koeffitsiyentni qo'llaydi).
+  Map<int, double>? _wasteFactorsCache;
+
+  double _wasteFactor(int productId) {
+    final factors = _wasteFactorsCache ??= {
+      for (final p in context.read<ProductProviderAdmin>().products)
+        if (p.wasteFactor != 1) p.id: p.wasteFactor,
+    };
+    return factors[productId] ?? 1;
+  }
+
+  // Qator tannarxi (tozalash yo'qotishi bilan).
+  // null — narx yo'q (product_id=0 yoki hech narxlanmagan).
   double? _rowCost(TechItem item) {
     if (item.productId == 0) return null;
     final p = _prices[item.productId];
     if (p == null) return null;
-    return item.amount * p.unitPrice;
+    return item.amount * p.unitPrice * _wasteFactor(item.productId);
   }
 
   // Qatorda ko'rsatiladigan «Цена»: g/ml uchun 1 kg/l narxi (x1000),
@@ -245,6 +259,58 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       if (it.amount > 0 && _rowCost(it) == null) n++;
     }
     return n;
+  }
+
+  // ---- Foyda (ustama) va sotuv narxi ----
+  // profitMode: 'percent' — profitValue foiz; 'sum' — profitValue so'm/dona.
+
+  // 1 dona uchun foyda so'mda. null — hisoblab bo'lmaydi.
+  double? get _profitPerPiece {
+    if (c.profitMode == 'sum') return c.profitValue;
+    if (c.profitMode == 'percent') {
+      if (!_pricesLoaded || _pieceCost <= 0) return null;
+      return _pieceCost * c.profitValue / 100;
+    }
+    return null;
+  }
+
+  // Foyda foizda. null — hisoblab bo'lmaydi.
+  double? get _profitPercent {
+    if (c.profitMode == 'percent') return c.profitValue;
+    if (c.profitMode == 'sum') {
+      if (!_pricesLoaded || _pieceCost <= 0) return null;
+      return c.profitValue * 100 / _pieceCost;
+    }
+    return null;
+  }
+
+  // 1 dona sotuv narxi = tannarx + foyda. Tannarx noma'lum/0 bo'lsa null.
+  double? get _salePricePerPiece {
+    if (c.profitMode.isEmpty) return null;
+    if (!_pricesLoaded || _pieceCost <= 0) return null;
+    final profit = _profitPerPiece;
+    if (profit == null) return null;
+    return _pieceCost + profit;
+  }
+
+  // Foiz ko'rinishi: butun bo'lsa butun, aks holda 1 kasr (50 / 12.5).
+  static String _fmtPercent(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
+  Future<void> _editProfit() async {
+    final result = await showDialog<_ProfitResult>(
+      context: context,
+      builder: (_) => _ProfitDialog(
+        pieceCost: _pricesLoaded ? _pieceCost : 0,
+        mode: c.profitMode,
+        value: c.profitValue,
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      c.profitMode = result.mode;
+      c.profitValue = result.value;
+    });
   }
 
   // ---- Партия (Штук) va Диаметр tahriri ----
@@ -1024,6 +1090,29 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   ),
                 ),
               ]),
+              // Foyda (ustama) — bosilganda tahrir dialogi ochiladi.
+              _gridRow([
+                _flexCell(
+                  InkWell(
+                    onTap: _editProfit,
+                    child: Padding(
+                      padding: _kCellPad,
+                      child: _profitRowText(),
+                    ),
+                  ),
+                  padded: false,
+                ),
+              ]),
+              // Sotuv narxi = tannarx + foyda (1 dona).
+              _gridRow([
+                _flexCell(
+                  Text(
+                    'Цена продажи за 1 штуку - '
+                    '${_salePricePerPiece == null ? '—' : fmtCostMoney(_salePricePerPiece!)} сум',
+                    style: _kCellBold,
+                  ),
+                ),
+              ]),
             ],
           ),
         ),
@@ -1054,6 +1143,26 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           ),
       ],
     );
+  }
+
+  // «Прибыль» qatori matni: «Прибыль - +50% • 100 000 сум».
+  // Belgilanmagan bo'lsa kulrang «—»; hisoblab bo'lmagan qismi «—».
+  Widget _profitRowText() {
+    if (c.profitMode.isEmpty) {
+      return Text(
+        'Прибыль - —',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade500,
+        ),
+      );
+    }
+    final pct = _profitPercent;
+    final sum = _profitPerPiece;
+    final pctText = pct == null ? '—' : '+${_fmtPercent(pct)}%';
+    final sumText = sum == null ? '—' : '${fmtCostMoney(sum)} сум';
+    return Text('Прибыль - $pctText • $sumText', style: _kCellBold);
   }
 
   // --- «Bo'limlar» qatori: raqamlangan chiplar + «+ Bo'lim» ---
@@ -1538,6 +1647,184 @@ class _ColorPickerDialog extends StatelessWidget {
             ? const Icon(Icons.check, size: 20, color: Colors.black)
             : Center(child: child ?? const SizedBox.shrink()),
       ),
+    );
+  }
+}
+
+// ---- Foyda (ustama) dialogi ----
+// Ikkala maydon jonli bog'langan: foiz yozilsa summa, summa yozilsa foiz
+// joriy 1 dona tannarxidan hisoblanadi. pieceCost == 0 bo'lsa ikkinchi
+// maydon bo'sh qoladi va faqat yozilgan maydon saqlanadi.
+// Oxirgi tahrirlangan maydon profit_mode ni belgilaydi.
+
+class _ProfitResult {
+  final String mode; // '' | 'percent' | 'sum'
+  final double value;
+
+  const _ProfitResult(this.mode, this.value);
+}
+
+class _ProfitDialog extends StatefulWidget {
+  final double pieceCost; // 1 dona tannarxi (0 — noma'lum)
+  final String mode;
+  final double value;
+
+  const _ProfitDialog({
+    required this.pieceCost,
+    required this.mode,
+    required this.value,
+  });
+
+  @override
+  State<_ProfitDialog> createState() => _ProfitDialogState();
+}
+
+class _ProfitDialogState extends State<_ProfitDialog> {
+  late final TextEditingController _percentCtrl;
+  late final TextEditingController _sumCtrl;
+
+  // Oxirgi tahrirlangan maydon — saqlanadigan rejim.
+  late String _lastEdited; // '' | 'percent' | 'sum'
+  bool _dirty = false; // foydalanuvchi biror maydonni o'zgartirdimi
+  bool _syncing = false; // jonli yangilashda halqadan saqlaydi
+
+  double get _cost => widget.pieceCost;
+
+  @override
+  void initState() {
+    super.initState();
+    _percentCtrl = TextEditingController();
+    _sumCtrl = TextEditingController();
+    _lastEdited = widget.mode;
+    // Joriy qiymatlardan ikkala maydonni to'ldiramiz (tannarx bo'lsa).
+    if (widget.mode == 'percent' && widget.value > 0) {
+      _percentCtrl.text = _fmtNum(widget.value);
+      if (_cost > 0) {
+        _sumCtrl.text = (_cost * widget.value / 100).round().toString();
+      }
+    } else if (widget.mode == 'sum' && widget.value > 0) {
+      _sumCtrl.text = widget.value.round().toString();
+      if (_cost > 0) {
+        _percentCtrl.text = _fmtNum(widget.value * 100 / _cost);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _percentCtrl.dispose();
+    _sumCtrl.dispose();
+    super.dispose();
+  }
+
+  // Butun bo'lsa butun, aks holda 1 kasr.
+  static String _fmtNum(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
+  double _parse(String s) => double.tryParse(s.trim().replaceAll(',', '.')) ?? 0;
+
+  void _onPercentChanged(String text) {
+    if (_syncing) return;
+    _dirty = true;
+    _lastEdited = 'percent';
+    if (_cost <= 0) return; // tannarx yo'q — ikkinchi maydon hisoblanmaydi
+    _syncing = true;
+    _sumCtrl.text = text.trim().isEmpty
+        ? ''
+        : (_cost * _parse(text) / 100).round().toString();
+    _syncing = false;
+  }
+
+  void _onSumChanged(String text) {
+    if (_syncing) return;
+    _dirty = true;
+    _lastEdited = 'sum';
+    if (_cost <= 0) return;
+    _syncing = true;
+    _percentCtrl.text =
+        text.trim().isEmpty ? '' : _fmtNum(_parse(text) * 100 / _cost);
+    _syncing = false;
+  }
+
+  void _submit() {
+    if (!_dirty) {
+      Navigator.pop(context); // o'zgarish yo'q
+      return;
+    }
+    final mode = _lastEdited;
+    final value =
+        mode == 'percent' ? _parse(_percentCtrl.text) : _parse(_sumCtrl.text);
+    // Bo'sh/0 qiymat = foyda belgilanmagan.
+    Navigator.pop(
+      context,
+      (mode.isEmpty || value <= 0)
+          ? const _ProfitResult('', 0)
+          : _ProfitResult(mode, value),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Прибыль'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_cost > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '1 dona tannarxi: ${fmtCostMoney(_cost)} сум',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey[600]),
+                ),
+              ),
+            ),
+          TextField(
+            controller: _percentCtrl,
+            autofocus: true,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Foiz (%)',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: _onPercentChanged,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _sumCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Summa (so\'m)',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: _onSumChanged,
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        if (widget.mode.isNotEmpty)
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, const _ProfitResult('', 0)),
+            child: const Text('O\'chirish', style: TextStyle(color: Colors.red)),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('OK'),
+        ),
+      ],
     );
   }
 }
