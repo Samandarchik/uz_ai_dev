@@ -68,6 +68,10 @@ abstract final class AppUrls {
   static String productionCost = '$baseUrl/api/production/cost';
   // Statistika: GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (admin/bugalter).
   static String productionStats = '$baseUrl/api/production/stats';
+  // Oxirgi xarid narxlari: GET — barcha mahsulotlarning eng so'nggi narxi.
+  // unit_price ENG KICHIK birlik uchun (кг/л -> 1 gr/ml, шт -> 1 dona,
+  // м -> 1 metr). Hech narxlanmaganlar ro'yxatda yo'q. Admin/bugalter.
+  static String latestPrices = '$baseUrl/api/prices/latest';
 
   static const String users = '$baseUrl/api/users';
   // Login+parolni Telegram orqali yuborish:

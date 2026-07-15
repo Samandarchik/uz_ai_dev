@@ -13,6 +13,8 @@ import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_item_editor.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/production/models/latest_price_model.dart';
+import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 
 // Mahsulot tex kartasini (тех карта) Excel «тех карта» varag'iga 1:1 o'xshash
@@ -88,6 +90,8 @@ const EdgeInsets _kCellPad = EdgeInsets.symmetric(horizontal: 8, vertical: 6);
 
 const double _kUnitColW = 52; // «Кг / Литр / шт / м» ustuni
 const double _kAmountColW = 68; // miqdor / og'irlik ustuni
+const double _kPriceColW = 68; // «Цена» ustuni (1 kg/l yoki 1 шт/м narxi)
+const double _kSumColW = 80; // «Сумма» ustuni (qator tannarxi)
 
 class TechCardEditorPage extends StatefulWidget {
   final ProductModelAdmin product;
@@ -108,12 +112,32 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // Hozir rasm yuklanayotgan baza indekslari.
   final Set<int> _uploadingBases = {};
 
+  // Oxirgi xarid narxlari (product_id -> narx) — jonli tannarx kataklari.
+  Map<int, LatestPrice> _prices = {};
+  bool _pricesLoaded = false;
+
   TechCardController get c => _controller;
 
   @override
   void initState() {
     super.initState();
     _controller = TechCardController(widget.product.techCard);
+    _loadPrices();
+  }
+
+  // Narxlarni yuklash. Xatoda JIM — sahifa narxsiz ham ishlayveradi
+  // (tannarx kataklarida «—» ko'rinadi).
+  Future<void> _loadPrices() async {
+    try {
+      final prices = await ProductionService().fetchLatestPrices();
+      if (!mounted) return;
+      setState(() {
+        _prices = prices;
+        _pricesLoaded = true;
+      });
+    } catch (_) {
+      // jim
+    }
   }
 
   @override
@@ -164,6 +188,63 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         backgroundColor: error ? Colors.red : null,
       ),
     );
+  }
+
+  // ---- Jonli tannarx hisoblari (oxirgi xarid narxlari asosida) ----
+  // amount ham, unit_price ham ENG KICHIK birlikda (gr/ml/шт/м) —
+  // qator tannarxi to'g'ridan-to'g'ri ko'paytma.
+
+  // Qator tannarxi. null — narx yo'q (product_id=0 yoki hech narxlanmagan).
+  double? _rowCost(TechItem item) {
+    if (item.productId == 0) return null;
+    final p = _prices[item.productId];
+    if (p == null) return null;
+    return item.amount * p.unitPrice;
+  }
+
+  // Qatorda ko'rsatiladigan «Цена»: g/ml uchun 1 kg/l narxi (x1000),
+  // pcs/m uchun o'z birligi narxi.
+  double? _rowUnitPrice(TechItem item) {
+    if (item.productId == 0) return null;
+    final p = _prices[item.productId];
+    if (p == null) return null;
+    return (item.unit == 'g' || item.unit == 'ml')
+        ? p.unitPrice * 1000
+        : p.unitPrice;
+  }
+
+  // Narxi borlarining yig'indisi (narxsizlar hisobga olinmaydi).
+  double _itemsCost(List<TechItem> items) {
+    double sum = 0;
+    for (final it in items) {
+      sum += _rowCost(it) ?? 0;
+    }
+    return sum;
+  }
+
+  double _baseCost(TechBase base) => _itemsCost(base.ingredients);
+
+  double get _consumablesCost => _itemsCost(c.consumables);
+
+  // Partiya tannarxi = barcha bazalar + расходник.
+  double get _batchCost =>
+      c.bases.fold<double>(0, (sum, b) => sum + _baseCost(b)) +
+      _consumablesCost;
+
+  double get _pieceCost => c.batchQty > 0 ? _batchCost / c.batchQty : 0;
+
+  // Miqdori kiritilgan, lekin narxi yo'q qatorlar soni (ogohlantirish uchun).
+  int get _missingPriceCount {
+    int n = 0;
+    for (final base in c.bases) {
+      for (final it in base.ingredients) {
+        if (it.amount > 0 && _rowCost(it) == null) n++;
+      }
+    }
+    for (final it in c.consumables) {
+      if (it.amount > 0 && _rowCost(it) == null) n++;
+    }
+    return n;
   }
 
   // ---- Партия (Штук) va Диаметр tahriri ----
@@ -895,33 +976,83 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   Widget _headerRightTable(TechCard card) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: _kSide, left: _kSide, right: _kSide),
-      ),
-      child: Column(
-        children: [
-          _gridRow([
-            _flexCell(
-              Text(
-                'Общий вес за ${c.batchQty} штук - '
-                '${_kgComma(card.computedBatchWeightG)} кг',
-                style: _kCellBold,
-              ),
+    final missing = _missingPriceCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: _kSide, left: _kSide, right: _kSide),
+          ),
+          child: Column(
+            children: [
+              _gridRow([
+                _flexCell(
+                  Text(
+                    'Общий вес за ${c.batchQty} штук - '
+                    '${_kgComma(card.computedBatchWeightG)} кг',
+                    style: _kCellBold,
+                  ),
+                ),
+              ]),
+              _gridRow([
+                _flexCell(
+                  Text(
+                    'Общий вес за 1 штуку - '
+                    '${_kgComma(card.computedPieceWeightG)} кг',
+                    style: _kCellBold,
+                  ),
+                ),
+              ]),
+              // Jonli tannarx (oxirgi xarid narxlari bo'yicha).
+              _gridRow([
+                _flexCell(
+                  Text(
+                    'Себестоимость за ${c.batchQty} штук - '
+                    '${_pricesLoaded ? fmtCostMoney(_batchCost) : '—'} сум',
+                    style: _kCellBold,
+                  ),
+                ),
+              ]),
+              _gridRow([
+                _flexCell(
+                  Text(
+                    'Себестоимость за 1 штуку - '
+                    '${_pricesLoaded ? fmtCostMoney(_pieceCost) : '—'} сум',
+                    style: _kCellBold,
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+        // Narxi yo'q masalliqlar ogohlantirishi (tannarx to'liq emas).
+        if (_pricesLoaded && missing > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 14,
+                  color: Colors.orange.shade800,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '$missing ta masalliqda narx yo\'q',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
-          _gridRow([
-            _flexCell(
-              Text(
-                'Общий вес за 1 штуку - '
-                '${_kgComma(card.computedPieceWeightG)} кг',
-                style: _kCellBold,
-              ),
-            ),
-          ]),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -1080,6 +1211,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         style: _kCellBold,
                       ),
                     ),
+                    // Blok tannarxi (Цена+Сумма ustunlari ustida birlashgan).
+                    _moneyCell(
+                      _pricesLoaded ? fmtCostMoney(_baseCost(base)) : '—',
+                      width: _kPriceColW + _kSumColW,
+                      bold: true,
+                      grey: !_pricesLoaded,
+                    ),
                   ],
                 ),
               ),
@@ -1158,10 +1296,28 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               color: _kConsumableColor,
               border: Border(bottom: _kSide),
             ),
-            padding: _kCellPad,
-            child: Text(
-              'Расходник ( на ${c.batchQty} тортов )',
-              style: _kCellBold,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: _kCellPad,
+                      child: Text(
+                        'Расходник ( на ${c.batchQty} тортов )',
+                        style: _kCellBold,
+                      ),
+                    ),
+                  ),
+                  // Расходник tannarxi (o'ng tomonda, Цена+Сумма kengligida).
+                  _moneyCell(
+                    _pricesLoaded ? fmtCostMoney(_consumablesCost) : '—',
+                    width: _kPriceColW + _kSumColW,
+                    bold: true,
+                    grey: !_pricesLoaded,
+                  ),
+                ],
+              ),
             ),
           ),
           for (int i = 0; i < c.consumables.length; i++)
@@ -1178,12 +1334,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // --- Umumiy qator/katak yordamchilari (Excel to'ri) ---
 
-  // Bir blokdagi ingredient qatori: nom | birlik | miqdor.
+  // Bir blokdagi ingredient qatori: nom | birlik | miqdor | Цена | Сумма.
   Widget _itemRow(
     TechItem item, {
     required VoidCallback onTap,
     required VoidCallback onLongPress,
   }) {
+    final price = _rowUnitPrice(item);
+    final cost = _rowCost(item);
+    final noPrice = cost == null;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1214,7 +1373,46 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 decoration: const BoxDecoration(border: Border(left: _kSide)),
                 child: Text(_excelAmount(item), style: _kCellStyle),
               ),
+              // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
+              _moneyCell(
+                noPrice ? '—' : fmtCostMoney(price!),
+                width: _kPriceColW,
+                grey: noPrice,
+              ),
+              // Сумма: kiritilgan miqdorning tannarxi.
+              _moneyCell(
+                noPrice ? '—' : fmtCostMoney(cost),
+                width: _kSumColW,
+                grey: noPrice,
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Pul katagi (Excel to'ri uslubida): o'ngga tekislangan, uzun sonlar
+  // FittedBox bilan kichrayadi. grey=true — narx yo'q («—», kulrang).
+  Widget _moneyCell(
+    String text, {
+    required double width,
+    bool bold = false,
+    bool grey = false,
+  }) {
+    return Container(
+      width: width,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: const BoxDecoration(border: Border(left: _kSide)),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: grey ? Colors.grey.shade500 : Colors.black,
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),

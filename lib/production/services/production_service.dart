@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/models/production_cost_model.dart';
 import 'package:uz_ai_dev/production/models/production_stats_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
@@ -109,6 +110,23 @@ class ProductionService {
       throw Exception('Tannarx yuklanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'tannarx yuklanmadi');
+    }
+  }
+
+  // GET /api/prices/latest — barcha mahsulotlarning oxirgi xarid narxi
+  // (eng kichik birlik uchun). Kalit: product_id. Narxlanmaganlar yo'q.
+  // Faqat admin/bugalter.
+  Future<Map<int, LatestPrice>> fetchLatestPrices() async {
+    try {
+      final response = await dio.get(AppUrls.latestPrices);
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) return LatestPrice.mapFromJson(body['data']);
+        return {};
+      }
+      throw Exception('Narxlar yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'narxlar yuklanmadi');
     }
   }
 
