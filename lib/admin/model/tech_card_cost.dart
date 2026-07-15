@@ -144,3 +144,25 @@ bool techCardHasContent(TechCard? card) {
   return card.bases.any((b) => b.ingredients.isNotEmpty) ||
       card.consumables.isNotEmpty;
 }
+
+// Sotish narxi ALMASHTIRILISHI kerak mahsulotlar soni: tavsiya hisoblanadi
+// va saqlangan sale_price dan farq qiladi (hali belgilanmagani ham kiradi).
+// Admin bosh sahifadagi badge va «Foyda nazorati» shu qoida bilan ishlaydi.
+int techPriceReplaceCount(
+  List<ProductModelAdmin> products,
+  Map<int, LatestPrice> prices,
+) {
+  if (prices.isEmpty) return 0;
+  final wasteFactors = techWasteFactors(products);
+  int n = 0;
+  for (final p in products) {
+    final card = p.techCard;
+    if (!techCardHasContent(card)) continue;
+    final c0 = techIngredientPieceCost(card!, prices, wasteFactors);
+    final full = techFullPieceCost(card.overheadMode, card.overheadValue, c0);
+    final suggested =
+        techSuggestedSalePrice(card.profitMode, card.profitValue, full);
+    if (suggested != null && suggested > 0 && suggested != card.salePrice) n++;
+  }
+  return n;
+}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
@@ -16,6 +17,8 @@ import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/login_page.dart';
+import 'package:uz_ai_dev/production/models/latest_price_model.dart';
+import 'package:uz_ai_dev/production/services/production_service.dart';
 
 class AdminHomeUi extends StatefulWidget {
   const AdminHomeUi({super.key});
@@ -26,6 +29,10 @@ class AdminHomeUi extends StatefulWidget {
 
 class _AdminHomeUiState extends State<AdminHomeUi> {
   bool _isEditMode = false;
+
+  // Oxirgi xarid narxlari — AppBar'dagi «narx almashtirish» badge hisobi
+  // uchun. Xatoda JIM (badge shunchaki ko'rinmaydi).
+  Map<int, LatestPrice> _prices = {};
 
   @override
   void initState() {
@@ -44,7 +51,18 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
     await Future.wait([
       categoryProvider.getCategories(),
       productProvider.initializeProducts(forceRefresh: forceRefresh),
+      _loadPrices(),
     ]);
+  }
+
+  Future<void> _loadPrices() async {
+    try {
+      final prices = await ProductionService().fetchLatestPrices();
+      if (!mounted) return;
+      setState(() => _prices = prices);
+    } catch (_) {
+      // jim — badge ko'rinmaydi, sahifa ishlayveradi
+    }
   }
 
   TokenStorage tokenStorage = sl<TokenStorage>();
@@ -59,6 +77,30 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
         ),
         title: const Text('Admin Panel'),
         actions: [
+          // Narxi almashtirilishi kerak mahsulotlar soni (qizil badge).
+          // Bosilsa «Foyda nazorati» ochiladi — u yerda [Almashtirish] bor.
+          Consumer<ProductProviderAdmin>(
+            builder: (context, productProvider, _) {
+              final count =
+                  techPriceReplaceCount(productProvider.products, _prices);
+              return IconButton(
+                tooltip: 'Narxni almashtirish kerak',
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProfitControlUi()),
+                  );
+                  // Qaytganda narxlarni yangilaymiz (sale_price'lar
+                  // provider orqali o'zi yangilanadi).
+                  _loadPrices();
+                },
+                icon: Badge.count(
+                  count: count,
+                  isLabelVisible: count > 0,
+                  child: const Icon(Icons.price_change_outlined),
+                ),
+              );
+            },
+          ),
           IconButton(
             onPressed: () {
               final productProvider = context.read<ProductProviderAdmin>();
