@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -139,6 +140,44 @@ class YukService {
         throw Exception(msg);
       }
       throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  // GET /api/yuk/proche-names?item_type=proche|rasxod -> qo'shimcha yozuv
+  // "Nomi" maydoni uchun takliflar. proche — katalog nomlari + ilgari
+  // yozilgan proche nomlar, rasxod — faqat ilgari yozilgan xarajat nomlari.
+  // Javob: { "success": true, "data": [ {name,type,in_catalog,uses} ] }
+  // Ro'yxat backendda uses bo'yicha kamayuvchi tartibda saralangan.
+  // Takliflar shunchaki qulaylik — katalogga hech narsa qo'shilmaydi.
+  Future<List<ProcheNameSuggestion>> fetchProcheNames({
+    required String itemType,
+  }) async {
+    try {
+      final response = await dio.get(
+        AppUrls.procheNames,
+        queryParameters: {'item_type': itemType},
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) {
+          return parseProcheNames(body['data']);
+        }
+        return [];
+      }
+      throw Exception('Takliflarni yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Takliflarni yuklashda kutilmagan xato: $e');
     }
   }
 

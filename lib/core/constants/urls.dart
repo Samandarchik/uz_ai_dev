@@ -18,6 +18,10 @@ abstract final class AppUrls {
   static String yukOrders = '$baseUrl/api/yuk/orders';
   // Yuk keltiruvchi buyurtmaga biriktiriladigan rasm/video yuklash
   static String yukUpload = '$baseUrl/api/yuk/upload';
+  // Qo'shimcha yozuv "Nomi" maydoni uchun takliflar
+  // (?item_type=proche — katalog + ilgarigi nomlar, ?item_type=rasxod —
+  // faqat ilgari yozilgan xarajat nomlari).
+  static String procheNames = '$baseUrl/api/yuk/proche-names';
   // Yuk keltiruvchining kunlik hisob daftari (ostatok/rasxod/prixod)
   static String yukLedger = '$baseUrl/api/yuk/ledger';
   // Bitta kunning xarajat tafsiloti (?date=YYYY-MM-DD[&user_id=N])

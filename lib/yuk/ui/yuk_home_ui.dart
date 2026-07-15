@@ -16,6 +16,7 @@ import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/login_page.dart';
+import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
@@ -1352,20 +1353,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 14),
-            TextField(
+            _NameAutocompleteField(
               controller: nameController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: 'Nomi',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: _accentColor),
-                ),
-              ),
+              itemType: rasxod ? 'rasxod' : 'proche',
             ),
             const SizedBox(height: 12),
             if (!rasxod) ...[
@@ -2399,6 +2389,179 @@ class _YukSkladCardState extends State<YukSkladCard> {
           ),
         );
       },
+    );
+  }
+}
+
+// Qo'shimcha yozuv (proche mahsulot / rasxod) qo'shish oynasidagi "Nomi"
+// maydoni — qidiruvli (autocomplete). Yozilgan matn bo'yicha serverdan olingan
+// takliflar filtrlanadi: katalogdagi mahsulot nomlari + ilgari yuk
+// keltiruvchilar yozgan nomlar.
+//
+// Takliflar FAQAT qulaylik uchun: foydalanuvchi butunlay yangi nomni qo'lda
+// yozaverishi mumkin va katalogga hech narsa qo'shilmaydi. Shu sababli
+// takliflarni yuklashdagi xato jim yutiladi — maydon baribir ishlayveradi.
+class _NameAutocompleteField extends StatefulWidget {
+  const _NameAutocompleteField({
+    required this.controller,
+    required this.itemType,
+  });
+
+  // Oynaning mavjud nameController'i — nima yuborilishi o'zgarmaydi.
+  final TextEditingController controller;
+  // 'proche' — katalog + ilgarigi nomlar, 'rasxod' — faqat ilgarigi nomlar.
+  final String itemType;
+
+  @override
+  State<_NameAutocompleteField> createState() => _NameAutocompleteFieldState();
+}
+
+class _NameAutocompleteFieldState extends State<_NameAutocompleteField> {
+  static const Color _accentColor = Color(0xFFC5A97B);
+  // Bir vaqtda ko'rsatiladigan takliflar soni.
+  static const int _maxOptions = 8;
+
+  final FocusNode _focusNode = FocusNode();
+  final YukService _service = YukService();
+  List<ProcheNameSuggestion> _suggestions = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSuggestions();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  // Takliflar oyna ochilganda bir marta olinadi. Yuklanguncha (va xato bo'lsa
+  // ham) maydon to'liq ishlaydi — shunchaki taklif chiqmaydi.
+  Future<void> _loadSuggestions() async {
+    try {
+      final list = await _service.fetchProcheNames(itemType: widget.itemType);
+      if (!mounted) return;
+      setState(() => _suggestions = list);
+    } catch (_) {
+      // Jim o'tamiz: takliflarsiz ham qo'lda yozish ishlayveradi.
+    }
+  }
+
+  // Registrga bog'liq bo'lmagan "contains" filtri. Matn bo'sh bo'lsa eng
+  // ko'p ishlatilganlari chiqadi (ro'yxat serverda uses bo'yicha saralangan).
+  Iterable<ProcheNameSuggestion> _filterOptions(TextEditingValue value) {
+    final query = value.text.trim().toLowerCase();
+    final source = query.isEmpty
+        ? _suggestions
+        : _suggestions.where((s) => s.name.toLowerCase().contains(query));
+    return source.take(_maxOptions);
+  }
+
+  // O'ng tomondagi kichik izoh: katalog mahsuloti bo'lsa birligi + "katalogda",
+  // aks holda necha marta yozilgani.
+  String _hintFor(ProcheNameSuggestion option) {
+    if (option.inCatalog) {
+      return option.type.isEmpty ? 'katalogda' : '${option.type} · katalogda';
+    }
+    return option.uses > 0 ? '${option.uses} marta' : '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Takliflar ro'yxati maydon (ya'ni oyna) kengligiga moslanadi.
+    return LayoutBuilder(
+      builder: (context, constraints) => RawAutocomplete<ProcheNameSuggestion>(
+        textEditingController: widget.controller,
+        focusNode: _focusNode,
+        optionsBuilder: _filterOptions,
+        // Tanlanganda nom AYNAN shu imloda maydonga tushadi — keyinchalik
+        // nomlar bir-biriga mos tushishi uchun muhim.
+        displayStringForOption: (option) => option.name,
+        onSelected: (_) => _focusNode.unfocus(),
+        fieldViewBuilder:
+            (context, controller, focusNode, onFieldSubmitted) => TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textCapitalization: TextCapitalization.sentences,
+          onSubmitted: (_) => onFieldSubmitted(),
+          decoration: InputDecoration(
+            labelText: 'Nomi',
+            isDense: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _accentColor),
+            ),
+          ),
+        ),
+        optionsViewBuilder: (context, onSelected, options) => Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(10),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: 240,
+                  maxWidth: constraints.maxWidth,
+                ),
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      final hint = _hintFor(option);
+                      return InkWell(
+                        onTap: () => onSelected(option),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  option.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              if (hint.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  hint,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
