@@ -5,6 +5,7 @@ import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin/ui/tech_card_editor_page.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
@@ -145,11 +146,10 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
         product: p,
         card: card,
         fullCost: full,
-        margin: card.salePrice > 0
-            ? techMarginPercent(card.salePrice, full)
-            : null,
-        suggested: techSuggestedSalePrice(
-            card.profitMode, card.profitValue, full),
+        margin:
+            card.salePrice > 0 ? techMarginPercent(card.salePrice, full) : null,
+        suggested:
+            techSuggestedSalePrice(card.profitMode, card.profitValue, full),
       ));
     }
     return rows;
@@ -260,8 +260,7 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
             decoration: const InputDecoration(
               isDense: true,
               suffixText: '%',
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               border: OutlineInputBorder(),
             ),
             onChanged: _onThresholdChanged,
@@ -299,111 +298,124 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
     );
   }
 
+  // Qator bosilsa mahsulotning tex karta sahifasi ochiladi (provider
+  // saqlashda o'zi yangilanadi — qaytganda jadval qayta hisoblanadi).
+  void _openTechCard(_RowData row) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TechCardEditorPage(product: row.product),
+      ),
+    );
+  }
+
   Widget _productRow(_RowData row, {bool grey = false}) {
     final margin = row.margin;
     final low = !grey && margin != null && margin < _threshold;
     final textColor = grey ? Colors.grey.shade500 : Colors.black87;
     final saving = _savingIds.contains(row.product.id);
     final suggested = row.suggested;
-    final showSuggestion =
-        suggested != null && suggested != row.card.salePrice;
+    final showSuggestion = suggested != null && suggested != row.card.salePrice;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: low ? Colors.red.shade50 : null,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  row.product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: low ? Colors.red.shade700 : textColor,
+    return InkWell(
+      onTap: () => _openTechCard(row),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        decoration: BoxDecoration(
+          color: low ? Colors.red.shade50 : null,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    row.product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: low ? Colors.red.shade700 : textColor,
+                    ),
                   ),
                 ),
-              ),
-              _moneyCell(
-                row.fullCost > 0 ? fmtCostMoney(row.fullCost) : '—',
-                width: 78,
-                color: textColor,
-              ),
-              _moneyCell(
-                row.card.salePrice > 0
-                    ? fmtCostMoney(row.card.salePrice)
-                    : '—',
-                width: 78,
-                color: textColor,
-              ),
-              SizedBox(
-                width: 56,
-                child: Text(
-                  margin == null ? '—' : '${margin.toStringAsFixed(1)}%',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                    color: low
-                        ? Colors.red.shade700
-                        : (grey ? Colors.grey.shade500 : Colors.black87),
+                _moneyCell(
+                  row.fullCost > 0 ? fmtCostMoney(row.fullCost) : '—',
+                  width: 78,
+                  color: textColor,
+                ),
+                _moneyCell(
+                  row.card.salePrice > 0
+                      ? fmtCostMoney(row.card.salePrice)
+                      : '—',
+                  width: 78,
+                  color: textColor,
+                ),
+                SizedBox(
+                  width: 56,
+                  child: Text(
+                    margin == null ? '—' : '${margin.toStringAsFixed(1)}%',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: low
+                          ? Colors.red.shade700
+                          : (grey ? Colors.grey.shade500 : Colors.black87),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          // Tavsiya narxi saqlanganidan farq qilsa — «→ X» (Almashtirish).
-          if (showSuggestion)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: saving
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        child: SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : Tooltip(
-                        message: 'Almashtirish',
-                        child: InkWell(
-                          onTap: () => _applySuggested(row),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              border:
-                                  Border.all(color: Colors.orange.shade400),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '→ ${fmtCostMoney(suggested)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.orange.shade900,
+              ],
+            ),
+            // Tavsiya narxi saqlanganidan farq qilsa — «→ X» (Almashtirish).
+            if (showSuggestion)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: saving
+                      ? const Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Tooltip(
+                          message: 'Almashtirish',
+                          child: InkWell(
+                            onTap: () => _applySuggested(row),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                border:
+                                    Border.all(color: Colors.orange.shade400),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '→ ${fmtCostMoney(suggested)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.orange.shade900,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
