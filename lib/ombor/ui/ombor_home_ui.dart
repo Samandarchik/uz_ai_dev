@@ -43,6 +43,10 @@ class _OmborHomeUiState extends State<OmborHomeUi>
       if (!mounted) return;
       final provider = context.read<OmborProvider>();
       provider.fetchProducts();
+      // Kartochkadagi «Buyurtma: X кг» yozuvi uchun — buyurtmalar «Mahsulotlar»
+      // tabида ham kerak, «Buyurtmalarim» tabи ochilishini kutmaymiz.
+      // Keyin socket ro'yxatni o'zi yangilab turadi.
+      provider.fetchMyOrders();
       // Real-time: ro'yxat refresh'siz avtomatik yangilanishi uchun socketga ulanamiz.
       provider.connectSocket();
       // Kartochkadagi «Qoldiq» qatori va «Kam qolganlar» badge'i uchun.
@@ -356,7 +360,11 @@ class _OmborProductsTabState extends State<_OmborProductsTab> {
                             ),
                           ),
                           SizedBox(
-                            height: 280,
+                            // 296 (280 emas): kartochkada «Qoldiq» ustiga
+                            // «Buyurtma: X кг» qatori ham qo'shilishi mumkin —
+                            // 280 da Column 7px toshib ketardi. Ortiqcha joyni
+                            // kartochkadagi Spacer yutadi.
+                            height: 296,
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               padding:

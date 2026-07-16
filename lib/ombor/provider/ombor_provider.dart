@@ -173,7 +173,12 @@ class OmborProvider extends ChangeNotifier {
 
   // GET /api/orders -> ombor userning o'z buyurtmalari.
   // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
+  //
+  // Bir vaqtda ikkita so'rov ketmasligi uchun yengil guard: bosh ekran ham,
+  // «Buyurtmalarim» tabи ham ochilishida chaqiradi — parallel javoblar bir
+  // birini eskisi bilan almashtirib qo'ymasin.
   Future<void> fetchMyOrders() async {
+    if (isLoadingOrders) return;
     isLoadingOrders = true;
     ordersError = null;
     notifyListeners();
@@ -188,6 +193,34 @@ class OmborProvider extends ChangeNotifier {
       isLoadingOrders = false;
       notifyListeners();
     }
+  }
+
+  // Shu mahsulotga BUYURTMA BERILGAN, lekin HALI KELMAGAN miqdor.
+  // Kartochkadagi «Buyurtma: X кг» yozuvi uchun — ombor «Kam qolganlar»
+  // sahifasidan bir narsani ikki marta buyurtma qilib yubormasligi kerak.
+  //
+  // Faqat quyidagi itemlar qo'shiladi:
+  //  - !accepted — qabul qilingan item allaqachon sklad qoldig'iga kirim
+  //    qilingan (backend: stockKirimOnAccept), ya'ni «Qoldiq» ichida
+  //    sanalgan. Uni bu yerda ham sanasak — ikki marta hisoblangan bo'lardi.
+  //    Aynan item'ning O'Z accepted bayrog'i (order statusi emas) ikki sonni
+  //    bir-biridan ajratib turadi: qisman qabul qilingan buyurtmada kelgan
+  //    itemlar «Qoldiq»da, kelmaganlari esa shu yerda.
+  //  - !deleted — o'chirilgan item umuman kelmaydi.
+  //  - itemType == '' — faqat katalog mahsuloti ('rasxod'/'proche' emas).
+  //
+  // Qiymat gramm kontraktida (кг/л -> butun гр/мл) — ko'rsatishda formatQty.
+  double orderedQty(int productId) {
+    var sum = 0.0;
+    for (final order in myOrders) {
+      for (final item in order.items) {
+        if (item.productId != productId) continue;
+        if (item.accepted || item.deleted) continue;
+        if (item.itemType.isNotEmpty) continue;
+        sum += item.count;
+      }
+    }
+    return sum;
   }
 
   // Savatdagi mahsulotlardan buyurtma yuborish.

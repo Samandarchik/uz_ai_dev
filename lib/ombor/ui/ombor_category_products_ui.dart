@@ -553,6 +553,8 @@ class OmborProductCard extends StatelessWidget {
                     ),
                   ),
                 if (stockRow != null) _buildQoldiq(stockRow),
+                // Berilgan, lekin hali kelmagan buyurtma (0 bo'lsa ko'rinmaydi).
+                OmborBuyurtmaLabel(productId: product.id, type: product.type),
                 if (!isGrid) const Spacer(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
@@ -603,6 +605,67 @@ String omborQoldiqText(StockRow row) {
   // Ishora backend'ning low bayrog'idan — matn va rang doim mos bo'lsin.
   final sign = row.low ? '-' : '+';
   return 'Qoldiq: $min$sign$diff=$qty$suffix';
+}
+
+// «Buyurtma: 10 кг» yozuvi — shu mahsulotga buyurtma BERILGAN, lekin hali
+// KELMAGAN miqdor (OmborProvider.orderedQty). «Qoldiq» qatoridan keyin
+// alohida qatorda turadi: ombor «Kam qolganlar» sahifasidan bir mahsulotni
+// ikki marta buyurtma qilib yubormasligi uchun.
+//
+// Alohida qator (yonma-yon emas) — chunki kartochka tor (grid'da ~165px,
+// ro'yxatda 180px): bitta qatorda ikkala yozuv ham qirqilib ketardi.
+// Rangi qoldiq holatlaridan (yashil/to'q sariq/kulrang) ataylab farqli.
+// Miqdor 0 bo'lsa hech narsa chizilmaydi.
+class OmborBuyurtmaLabel extends StatelessWidget {
+  final int productId;
+  // Birlik — «Qoldiq» qatoridagi kabi (кг/л da qiymat butun гр/мл bo'lib
+  // keladi, formatQty uni kg/l ga qaytaradi).
+  final String? type;
+  final EdgeInsetsGeometry padding;
+
+  const OmborBuyurtmaLabel({
+    super.key,
+    required this.productId,
+    required this.type,
+    this.padding = const EdgeInsets.fromLTRB(8, 0, 8, 2),
+  });
+
+  static const Color _orderedColor = Color(0xFF1565C0);
+
+  @override
+  Widget build(BuildContext context) {
+    final qty = context.watch<OmborProvider>().orderedQty(productId);
+    if (qty <= 0) return const SizedBox.shrink();
+
+    final unit = (type ?? '').trim();
+    final qtyText = formatQty(qty, type);
+    final text = unit.isEmpty
+        ? 'Buyurtma: $qtyText'
+        : 'Buyurtma: $qtyText $unit';
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          const Icon(Icons.shopping_cart_outlined,
+              size: 11, color: _orderedColor),
+          const SizedBox(width: 3),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: _orderedColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Milli-birlikni (qiymat*1000) faqat butun son arifmetikasi bilan formatlash:

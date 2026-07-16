@@ -257,6 +257,12 @@ class _LowStockTile extends StatelessWidget {
               ),
             ],
           ),
+          // Berilgan, lekin hali kelmagan buyurtma (0 bo'lsa ko'rinmaydi).
+          OmborBuyurtmaLabel(
+            productId: row.productId,
+            type: row.type,
+            padding: const EdgeInsets.only(top: 4),
+          ),
         ],
       ),
     );
