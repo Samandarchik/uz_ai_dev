@@ -27,6 +27,29 @@ class BugalterProvider extends ChangeNotifier {
     }
   }
 
+  // Buyurtma ichidagi mahsulot miqdorini tuzatish (gram xatolari uchun).
+  // Server to'liq yangilangan buyurtmani qaytaradi — ro'yxatdagi mos
+  // buyurtma (order.id bo'yicha) almashtiriladi, Consumer'lar qayta quriladi.
+  // Xato bo'lsa Exception qayta otiladi (UI snackbar ko'rsatadi).
+  Future<void> editItemQty({
+    required int orderId,
+    required int productId,
+    required num taken,
+    num? received,
+  }) async {
+    final updated = await _service.editItemQty(
+      orderId: orderId,
+      productId: productId,
+      taken: taken,
+      received: received,
+    );
+    final index = orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      orders[index] = updated;
+    }
+    notifyListeners();
+  }
+
   // ─────────────── Pul berish (yuk keltiruvchiga to'lov) ───────────────
 
   // Dropdown uchun yuk keltiruvchi foydalanuvchilar ro'yxati.

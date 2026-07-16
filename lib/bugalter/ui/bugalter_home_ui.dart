@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
@@ -6,6 +7,7 @@ import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/yuk_day_cards.dart';
@@ -55,6 +57,19 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
     tokenStorage.removeToken();
     tokenStorage.removeRefreshToken();
     context.push(LoginPage());
+  }
+
+  // Mahsulot qatori bosilganda: miqdorni (eski APK'lardan qolgan gram
+  // xatolarini) tuzatish dialogi.
+  void _openEditItemDialog(YukOrder order, YukOrderItem item) {
+    showDialog(
+      context: context,
+      builder: (_) => _EditItemQtyDialog(
+        order: order,
+        item: item,
+        provider: context.read<BugalterProvider>(),
+      ),
+    );
   }
 
   String _tabName(int? id) =>
@@ -250,6 +265,9 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                               // "Hammasi" tabida sklad almashganda kichik
                               // sklad nomi yorlig'i ko'rsatiladi.
                               showSkladLabels: id == null,
+                              // Bugalter mahsulot qatorini bosib miqdorni
+                              // (gram xatolarini) tuzatadi.
+                              onEditItem: _openEditItemDialog,
                             );
                           },
                         ),
@@ -259,6 +277,195 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
           },
         ),
       ),
+    );
+  }
+}
+
+// Bugalter uchun mahsulot miqdorini tahrirlash dialogi.
+// "Soni" (taken) har doim tahrirlanadi; "Qabul qilingan (ombor)" maydoni
+// FAQAT haqiqiy kamomad yozilgan itemda (accepted && received > 0 &&
+// received != taken) ko'rsatiladi — aks holda faqat taken yuboriladi
+// (server received'ni o'zi sinxronlaydi).
+class _EditItemQtyDialog extends StatefulWidget {
+  final YukOrder order;
+  final YukOrderItem item;
+  final BugalterProvider provider;
+  const _EditItemQtyDialog({
+    required this.order,
+    required this.item,
+    required this.provider,
+  });
+
+  @override
+  State<_EditItemQtyDialog> createState() => _EditItemQtyDialogState();
+}
+
+class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
+  static const Color _accentColor = Color(0xFFC5A97B);
+
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _takenController;
+  late final TextEditingController _receivedController;
+  bool _saving = false;
+
+  // кг/л — kasr kiritish mumkin (kg -> BUTUN gr yuboriladi); boshqa
+  // birliklar faqat butun son.
+  bool get _isDecimal => qtyUnitFactor(widget.item.type) > 1;
+
+  // Faqat haqiqiy kamomad yozilgan itemda received alohida tahrirlanadi.
+  bool get _showReceived =>
+      widget.item.accepted &&
+      widget.item.received > 0 &&
+      widget.item.received != widget.item.taken;
+
+  @override
+  void initState() {
+    super.initState();
+    _takenController = TextEditingController(
+      text: formatQty(widget.item.taken, widget.item.type),
+    );
+    _receivedController = TextEditingController(
+      text: formatQty(widget.item.received, widget.item.type),
+    );
+  }
+
+  @override
+  void dispose() {
+    _takenController.dispose();
+    _receivedController.dispose();
+    super.dispose();
+  }
+
+  // "1,5" -> 1.5. Parse bo'lmasa null.
+  double? _parse(String? text) {
+    final t = (text ?? '').trim().replaceAll(',', '.');
+    if (t.isEmpty) return null;
+    return double.tryParse(t);
+  }
+
+  String? _validate(String? text) {
+    final v = _parse(text);
+    if (v == null || v <= 0) return 'Miqdor 0 dan katta bo\'lishi kerak';
+    return null;
+  }
+
+  // UI qiymatini API butun soniga o'girish (kg -> gr). Serverga hech qachon
+  // kasr yuborilmaydi.
+  num _toApi(String text) {
+    num api = qtyFromUi(_parse(text)!, widget.item.type);
+    if (api is double && api == api.roundToDouble()) api = api.toInt();
+    return api;
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final taken = _toApi(_takenController.text);
+    // received faqat alohida ko'rsatilgan (haqiqiy kamomad) holatda yuboriladi.
+    final received = _showReceived ? _toApi(_receivedController.text) : null;
+
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await widget.provider.editItemQty(
+        orderId: widget.order.id,
+        productId: widget.item.productId,
+        taken: taken,
+        received: received,
+      );
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Miqdor yangilandi'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _saving = false);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  InputDecoration _decoration(String label) => InputDecoration(
+        labelText: label,
+        suffixText: widget.item.type,
+        border: const OutlineInputBorder(),
+      );
+
+  List<TextInputFormatter> get _formatters => _isDecimal
+      ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))]
+      : [FilteringTextInputFormatter.digitsOnly];
+
+  @override
+  Widget build(BuildContext context) {
+    final type = (widget.item.type ?? '').trim();
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: Text(
+        type.isNotEmpty ? '${widget.item.name} ($type)' : widget.item.name,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _takenController,
+              autofocus: true,
+              enabled: !_saving,
+              keyboardType:
+                  TextInputType.numberWithOptions(decimal: _isDecimal),
+              inputFormatters: _formatters,
+              decoration: _decoration('Soni'),
+              validator: _validate,
+            ),
+            if (_showReceived) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _receivedController,
+                enabled: !_saving,
+                keyboardType:
+                    TextInputType.numberWithOptions(decimal: _isDecimal),
+                inputFormatters: _formatters,
+                decoration: _decoration('Qabul qilingan (ombor)'),
+                validator: _validate,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text(
+            'Bekor qilish',
+            style: TextStyle(color: Colors.black54),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _saving ? null : _save,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _accentColor,
+            foregroundColor: Colors.white,
+          ),
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Saqlash'),
+        ),
+      ],
     );
   }
 }

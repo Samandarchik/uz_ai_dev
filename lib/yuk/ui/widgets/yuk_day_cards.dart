@@ -99,12 +99,17 @@ class YukDayCard extends StatelessWidget {
   // Sklad almashganda kichik sklad nomi yorlig'i chiqadi (bugalter "Hammasi"
   // tabi va yuk tarixi); aniq sklad tabida kerak emas.
   final bool showSkladLabels;
+  // Mahsulot qatori bosilganda tahrirlash uchun callback (bugalter miqdorni
+  // tuzatishi uchun). null (default) — qatorlar faqat o'qiladi; yuk tarixi
+  // ekrani shu holatda qoladi.
+  final void Function(YukOrder order, YukOrderItem item)? onEditItem;
   const YukDayCard({
     super.key,
     required this.day,
     required this.orders,
     this.showImages = false,
     this.showSkladLabels = false,
+    this.onEditItem,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -420,7 +425,7 @@ class YukDayCard extends StatelessWidget {
         );
       }
       for (final item in products) {
-        out.add(_productRow(item));
+        out.add(_productRow(order, item));
         // Omborchi qabul paytida olgan rasm/video (tugma yoqilganda).
         if (showImages && item.acceptMedia.isNotEmpty) {
           out.add(
@@ -442,8 +447,10 @@ class YukDayCard extends StatelessWidget {
   }
 
   // Bitta mahsulot qatori: Mahsulot / Soni / Donasi / Turi / Summa.
-  Widget _productRow(YukOrderItem item) {
-    return Padding(
+  // onEditItem berilgan bo'lsa qator bosiladigan bo'ladi (bugalter miqdorni
+  // tuzatadi) va "Soni" yonida kichik tahrir belgisi ko'rinadi.
+  Widget _productRow(YukOrder order, YukOrderItem item) {
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
@@ -460,15 +467,36 @@ class YukDayCard extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             flex: 2,
-            child: Text(
-              // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
-              formatQty(item.taken, item.type),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
-            ),
+            child: onEditItem == null
+                ? Text(
+                    // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
+                    formatQty(item.taken, item.type),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          formatQty(item.taken, item.type),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.edit,
+                        size: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ],
+                  ),
           ),
           const SizedBox(width: 6),
           // Donasi (birlik narx) = summa / soni (UI birlikda: so'm/kg).
@@ -513,6 +541,12 @@ class YukDayCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onEditItem == null) return row;
+    return InkWell(
+      onTap: () => onEditItem!(order, item),
+      borderRadius: BorderRadius.circular(6),
+      child: row,
     );
   }
 }

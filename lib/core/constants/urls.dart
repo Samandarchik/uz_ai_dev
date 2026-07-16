@@ -43,6 +43,11 @@ abstract final class AppUrls {
   // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
   // buyurtmalari.
   static String bugalterOrders = '$baseUrl/api/bugalter/orders';
+  // Bugalter buyurtma ichidagi mahsulot miqdorini tuzatishi (eski APK'lardan
+  // qolgan gram xatolari uchun). PUT {taken, received?} — miqdorlar API
+  // birlikda (кг/л -> butun gr/ml).
+  static String bugalterOrderItemQty(int orderId, int productId) =>
+      '$baseUrl/api/bugalter/orders/$orderId/items/$productId/qty';
 
   // Ishlab chiqarish (производство) — shef roli.
   // Tex kartasi bor mahsulotlar ro'yxati (buyurtma yaratish uchun).

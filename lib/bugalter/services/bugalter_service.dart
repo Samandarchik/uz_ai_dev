@@ -70,6 +70,51 @@ class BugalterService {
     }
   }
 
+  // PUT /api/bugalter/orders/{orderId}/items/{productId}/qty ->
+  // buyurtma ichidagi mahsulot miqdorini tuzatish (gram xatolari uchun).
+  // Body: { "taken": 1500 } yoki { "taken": 1500, "received": 1400 } —
+  // received faqat alohida tahrirlansa yuboriladi (yo'q bo'lsa server
+  // received == eski taken bo'lgan qabul qilingan itemda o'zi sinxronlaydi).
+  // Miqdorlar API birlikda (кг/л -> BUTUN gr/ml). Javob: to'liq yangilangan
+  // buyurtma ({ "success": true, "message": "...", "data": {order} }).
+  Future<YukOrder> editItemQty({
+    required int orderId,
+    required int productId,
+    required num taken,
+    num? received,
+  }) async {
+    try {
+      final data = <String, dynamic>{'taken': taken};
+      if (received != null) data['received'] = received;
+
+      final response = await dio.put(
+        AppUrls.bugalterOrderItemQty(orderId, productId),
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return YukOrder.fromJson(
+              Map<String, dynamic>.from(body['data'] as Map));
+        }
+      }
+      throw Exception(
+          'Miqdorni yangilab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Miqdorni yangilashda kutilmagan xato: $e');
+    }
+  }
+
   // POST /api/payments -> yuk keltiruvchiga pul berish (prixod yozuvi).
   // Body: { "user_id":37, "amount":500000, "comment":"..." }
   // Muvaffaqiyatda backenddan kelgan message qaytariladi.
