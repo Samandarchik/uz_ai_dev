@@ -66,6 +66,12 @@ abstract final class AppUrls {
   // POST {sklad_id, items:[{product_id, actual_qty}]} — inventarizatsiya
   // (real sanab chiqilgan qoldiqlar; farqlar korreksiya bo'lib yoziladi).
   static String stockInventory = '$baseUrl/api/stock/inventory';
+  // Inventarizatsiya dalolatnomalari (акт): qachon sanalgan, nima kam chiqqan
+  // va bu qancha pul. Ombor — o'z skladi, admin — istalgani. Ost-yo'llar:
+  //   GET ?sklad_id=N[&limit=K] — ro'yxat (eng yangisi birinchi, items'siz)
+  //   GET /{id}                 — bitta dalolatnoma, items (farqli qatorlar)
+  //                               bilan; narxlar sanash paytidagi holatda.
+  static String stockInventories = '$baseUrl/api/stock/inventories';
 
   // Tannarx: GET ?product_id=N — mahsulot tex kartasi bo'yicha 1 partiya /
   // 1 dona tannarxi (admin/bugalter).

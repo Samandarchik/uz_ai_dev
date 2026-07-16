@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/production/models/inventory_act_model.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 
 // Sklad qoldig'i (inventar) uchun Dio servis: qoldiqlar, korreksiya va
@@ -132,6 +133,48 @@ class StockService {
       throw Exception('Inventarizatsiya saqlanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'inventarizatsiya saqlanmadi');
+    }
+  }
+
+  // GET /api/stock/inventories?sklad_id=N&limit=K — inventarizatsiya
+  // dalolatnomalari ro'yxati (eng yangisi birinchi). Javobda `items` YO'Q —
+  // qatorlar faqat fetchInventory(id) da keladi.
+  Future<List<InventoryAct>> fetchInventories(
+    int skladId, {
+    int limit = 20,
+  }) async {
+    try {
+      final response = await dio.get(
+        AppUrls.stockInventories,
+        queryParameters: {'sklad_id': skladId, 'limit': limit},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map) return InventoryAct.listFromJson(body['data']);
+        return [];
+      }
+      throw Exception('Dalolatnomalar yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'dalolatnomalar yuklanmadi');
+    }
+  }
+
+  // GET /api/stock/inventories/{id} — bitta dalolatnoma, farqli qatorlari
+  // (items) va sanash paytidagi narxlari bilan.
+  Future<InventoryAct> fetchInventory(int id) async {
+    try {
+      final response = await dio.get('${AppUrls.stockInventories}/$id');
+      if (response.statusCode == 200) {
+        final body = response.data;
+        final data = (body is Map) ? body['data'] : null;
+        if (data is Map) {
+          return InventoryAct.fromJson(Map<String, dynamic>.from(data));
+        }
+        throw Exception('Dalolatnoma topilmadi');
+      }
+      throw Exception('Dalolatnoma yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'dalolatnoma yuklanmadi');
     }
   }
 

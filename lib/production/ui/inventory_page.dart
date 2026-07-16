@@ -12,6 +12,7 @@ import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
 import 'package:uz_ai_dev/production/services/stock_service.dart';
+import 'package:uz_ai_dev/production/ui/inventory_history_page.dart';
 
 // Inventarizatsiya sahifasi (F5): skladni oyoq bilan aylanib chiqib, HAR bir
 // mahsulotni real sanash. Ro'yxatda qoldiq qatorlari ham, hali qoldiq yozuvi
@@ -402,6 +403,20 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
           'Inventarizatsiya — ${productionSkladName(widget.skladId)}',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          // Oldingi sanashlar (dalolatnomalar): qachon, nima kam chiqqan,
+          // qancha pul.
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => InventoryHistoryPage(skladId: widget.skladId),
+              ),
+            ),
+            icon: const Icon(Icons.history),
+            tooltip: 'Inventarizatsiya tarixi',
+          ),
+        ],
       ),
       body: _body(),
       bottomNavigationBar: SafeArea(
