@@ -20,6 +20,13 @@ Backend (`mone_backend_user_admin/`) ga TEGMA — u boshqa Claude'ning ishi.
   `splash_screen.dart` da bu rollar kelsa token tozalanib, xato dialogi chiqadi.
 
 ## Konvensiyalar
+- **⚠️ FLOAT SERVERGA YUBORILMAYDI.** Backend saqlaydigan hamma son — eng kichik birlikdagi
+  BUTUN son: miqdor (кг/л → гр/мл, `lib/core/utils/qty_units.dart` → `qtyFromUi` bilan
+  ×1000 butun; ko'rsatishda `qtyToUi`/`formatQty` bilan kg'ga qaytariladi), **pul — butun
+  SO'M** (tiyin yo'q). Foydalanuvchi kg yoki kasr yozsa — UI yaxlitlaydi, keyin yuboradi.
+  Kasr pul yuborilsa server so'rovni rad etishi mumkin (`int` maydon). Sabab: `../CLAUDE.md`
+  → «NEVER STORE A FLOAT». Hisoblangan nisbat (1 гр narxi, marja %) ekranda float bo'lishi
+  mumkin — u saqlanmaydi.
 - Yangi feature uchun naqsh: `models/` → `services/` (Dio chaqiruv) → `provider/` (holat) → `ui/` (ekran).
 - Backend JSON `snake_case` ishlatadi; model `fromJson`/`toJson` da shuni hisobga ol.
 - API JSON shaklini `../CLAUDE.md` dagi kontrakt bo'yicha aniq moslab yoz.
