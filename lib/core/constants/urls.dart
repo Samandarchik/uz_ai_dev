@@ -95,6 +95,10 @@ abstract final class AppUrls {
   // Admin/bugalter.
   static String profitAnalytics = '$baseUrl/api/analytics/profit';
 
+  // Audit jurnali: GET ?limit=&entity=&action= — admin harakatlari tarixi
+  // (narx o'zgarishi, sklad korreksiyasi, o'chirishlar...). Faqat admin.
+  static const String auditLog = '$baseUrl/api/audit-log';
+
   static const String users = '$baseUrl/api/users';
   // Login+parolni Telegram orqali yuborish:
   //   POST $users/{id}/send-credentials — bitta foydalanuvchiga (service ichida quriladi)
