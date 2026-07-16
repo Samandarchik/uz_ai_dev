@@ -112,6 +112,10 @@ abstract final class AppUrls {
   static String wsOrders = '${baseUrl.replaceFirst('http', 'ws')}/api/ws';
   //filials
   static const String filials = '$baseUrl/api/filials';
+  // Filial limitlari: GET ?filial_id=N — filialning mahsulot limitlari;
+  // POST {filial_id, product_id, limit_qty} — upsert (limit_qty: 0 —
+  // o'chirish). limit_qty birlik kontrakti: кг/л -> BUTUN gr/ml. Faqat admin.
+  static const String filialLimits = '$baseUrl/api/filial-limits';
   //Category
   static const String category = '$baseUrl/api/categories';
   static const String categoryReorder = '$baseUrl/api/categories/reorder';

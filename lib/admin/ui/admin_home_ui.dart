@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
+import 'package:uz_ai_dev/admin/ui/filial_limits_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
@@ -176,6 +177,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'filial_limits',
+                child: ListTile(
+                  leading: Icon(Icons.rule),
+                  title: Text('Filial limitlari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
@@ -199,6 +208,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'audit_log':
                   context.push(const AuditLogUi());
+                  break;
+                case 'filial_limits':
+                  context.push(const FilialLimitsUi());
                   break;
               }
             },
