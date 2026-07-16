@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
@@ -334,7 +335,6 @@ class _SkladDayCardState extends State<_SkladDayCard> {
   final Map<String, String> _videos = {};
   // Har (buyurtma, mahsulot) uchun "Kelgan soni" controlleri.
   final Map<String, TextEditingController> _received = {};
-  final ImagePicker _picker = ImagePicker();
 
   String _keyOf(int orderId, int productId) => '${orderId}_$productId';
 
@@ -442,11 +442,13 @@ class _SkladDayCardState extends State<_SkladDayCard> {
     }
   }
 
-  // Mahsulot uchun rasm olish (kamera).
+  // Mahsulot uchun rasm olish — ilova ICHIDAGI kamera (InAppPhotoCamera).
+  // image_picker'ning tashqi kamerasi Android'da ilovani orqa fonda
+  // o'ldirilishiga (kiritilgan "Kelgan soni" qiymatlari yo'qolishiga)
+  // sabab bo'lardi.
   Future<void> _captureImage(String key) async {
-    final x = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
+    final x = await Navigator.of(context).push<XFile>(
+      MaterialPageRoute(builder: (_) => const InAppPhotoCamera()),
     );
     if (x != null) {
       if (!mounted) return;

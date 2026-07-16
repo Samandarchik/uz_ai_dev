@@ -14,6 +14,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
@@ -1010,9 +1011,14 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   Future<void> _pickFromCamera(int orderId, {required bool video}) async {
     try {
+      // Rasm ilova ICHIDAGI kamerada olinadi (InAppPhotoCamera) — tashqi
+      // kamera ilovasi Android'da ilovani orqa fonda o'ldirilishiga
+      // (kiritilgan summalar yo'qolishiga) sabab bo'lardi.
       final XFile? file = video
           ? await _picker.pickVideo(source: ImageSource.camera)
-          : await _picker.pickImage(source: ImageSource.camera);
+          : await Navigator.of(context).push<XFile>(
+              MaterialPageRoute(builder: (_) => const InAppPhotoCamera()),
+            );
       if (file == null || !mounted) return;
       context.read<YukProvider>().addAttachments(orderId, [file.path]);
     } catch (_) {

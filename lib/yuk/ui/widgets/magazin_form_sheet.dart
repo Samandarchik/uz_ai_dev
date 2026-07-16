@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
 import 'package:uz_ai_dev/yuk/provider/magazin_provider.dart';
 
@@ -76,7 +77,13 @@ class _MagazinFormSheetState extends State<_MagazinFormSheet> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? file = await _picker.pickImage(source: source);
+      // Kamera ilova ICHIDA ochiladi (InAppPhotoCamera) — tashqi kamera
+      // ilovasi Android'da ilovani orqa fonda o'ldirilishiga sabab bo'lardi.
+      final XFile? file = source == ImageSource.camera
+          ? await Navigator.of(context).push<XFile>(
+              MaterialPageRoute(builder: (_) => const InAppPhotoCamera()),
+            )
+          : await _picker.pickImage(source: source);
       if (file == null || !mounted) return;
       setState(() => _localImagePath = file.path);
     } catch (_) {
