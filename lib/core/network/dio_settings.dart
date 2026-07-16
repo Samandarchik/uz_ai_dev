@@ -23,6 +23,11 @@ class AppDioClient {
 
           options.headers['Content-Type'] = 'application/json';
           options.headers['Accept'] = 'application/json';
+          // Yangi klient belgisi: кг/л miqdorlar гр/мл BUTUN son tilida
+          // yuriladi. Belgisiz so'rovni server eski (kg/l tilli) APK deb
+          // bilib, qiymatlarni o'zi konvert qiladi — bu headerni OLIB
+          // TASHLAMANG (backend legacy_qty.go bilan juft ishlaydi).
+          options.headers['X-Qty-Unit'] = 'milli';
 
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';

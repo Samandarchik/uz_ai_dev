@@ -108,7 +108,9 @@ class OrderSocket {
         return;
       }
 
-      final uri = Uri.parse('${AppUrls.wsOrders}?token=$token');
+      // qty=milli — yangi klient belgisi: broadcast'lar gram tilida kelsin
+      // (belgisiz ulanishga server kg/l ga o'girib yuboradi, legacy_qty.go).
+      final uri = Uri.parse('${AppUrls.wsOrders}?token=$token&qty=milli');
       final channel = WebSocketChannel.connect(uri);
       _channel = channel;
 
