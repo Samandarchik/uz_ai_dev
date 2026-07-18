@@ -540,8 +540,9 @@ class _SkladDayCardState extends State<_SkladDayCard> {
     }
 
     // Maydonda UI birlik (kg/l) — API'ga butun gramm/ml yuboriladi.
+    // qtyFromUiSafe: 1000+ kiritilsa gramm deb olinadi (gramm-yozish himoyasi).
     final received = _received.containsKey(key)
-        ? qtyFromUi(_parseQty(_received[key]!.text), item.type).toDouble()
+        ? qtyFromUiSafe(_parseQty(_received[key]!.text), item.type).toDouble()
         : 0.0;
 
     // Kelgan soni kiritilmagan yoki 0 bo'lsa qabul yuborilmaydi —
@@ -987,7 +988,7 @@ class _MediaItemRow extends StatelessWidget {
     // Kelgan soni (haqiqatda kelgan) va taken (yuk keltiruvchi aytgan) farqi.
     // Maydondagi matn UI birlikda — solishtirish uchun API birlikka o'giriladi.
     final received = editable
-        ? qtyFromUi(_parse(receivedController?.text ?? ''), item.type)
+        ? qtyFromUiSafe(_parse(receivedController?.text ?? ''), item.type)
             .toDouble()
         : item.received;
     final shortage = taken - received; // >0 = kam kelgan (kamomad)

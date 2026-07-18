@@ -34,6 +34,19 @@ num qtyFromUi(num uiQty, String? type) {
   return (uiQty * f).round();
 }
 
+/// Qo'lda teriladigan кг/л maydon qiymatini API soniga o'giradi — GRAMM-YOZISH
+/// HIMOYASI bilan. Omborchilar кг/л maydonga ko'pincha GRAMM yozadi ("20 kg"
+/// o'rniga "20000") va qiymat ×1000 bo'lib 20 TONNA bo'lib ketardi. Bozorda
+/// bitta buyurtmada 1000 kg/l dan katta mahsulot bo'lmaydi (real maksimum
+/// Сахар ~500 kg) — shuning uchun 1000 va undan katta qiymat GRAMM/МЛ deb
+/// qabul qilinadi va ko'paytirilmaydi (backend legacyQtyIn bilan bir xil
+/// qoida). 1000 dan kichigi odatdagidek kg/l deb ×1000 qilinadi.
+num qtyFromUiSafe(num uiQty, String? type) {
+  final f = qtyUnitFactor(type);
+  if (f != 1 && uiQty >= 1000) return uiQty.round();
+  return qtyFromUi(uiQty, type);
+}
+
 /// API miqdorini UI ko'rinishida formatlaydi (max 3 kasr, oxirgi nollar olib
 /// tashlanadi): 1500 (кг) -> "1.5", 2000 (кг) -> "2", 7 (шт) -> "7".
 String formatQty(num apiQty, String? type) {

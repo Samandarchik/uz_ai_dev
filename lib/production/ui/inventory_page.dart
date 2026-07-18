@@ -224,7 +224,7 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
   double? _diffApi(StockRow row) {
     final ui = _inputUi(row);
     if (ui == null) return null;
-    return qtyFromUi(ui, row.type).toDouble() - row.qty;
+    return qtyFromUiSafe(ui, row.type).toDouble() - row.qty;
   }
 
   bool _hasDiff(StockRow row) {
@@ -361,7 +361,7 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
 
     // Maydonlarda UI birlik (kg/l) — API'ga butun gramm/ml yuboriladi.
     num toApi(StockRow row, double ui) {
-      final api = qtyFromUi(ui, row.type);
+      final api = qtyFromUiSafe(ui, row.type);
       return api % 1 == 0 ? api.toInt() : api;
     }
 

@@ -452,7 +452,7 @@ class _MinQtyDialogState extends State<_MinQtyDialog> {
       return;
     }
     // UI (kg/l) -> API (butun gramm/ml).
-    Navigator.pop(context, qtyFromUi(value, widget.row.type).toDouble());
+    Navigator.pop(context, qtyFromUiSafe(value, widget.row.type).toDouble());
   }
 
   @override
@@ -779,7 +779,7 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
       return;
     }
     // UI (kg/l) -> API (butun gramm/ml); boshqa birliklar o'zgarishsiz.
-    final apiQty = qtyFromUi(qty, _selected!.type).toDouble();
+    final apiQty = qtyFromUiSafe(qty, _selected!.type).toDouble();
     Navigator.pop(
       context,
       StockAdjustResult(

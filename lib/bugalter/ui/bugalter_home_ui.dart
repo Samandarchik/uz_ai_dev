@@ -352,7 +352,7 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
   // UI qiymatini API butun soniga o'girish (kg -> gr). Serverga hech qachon
   // kasr yuborilmaydi.
   num _toApi(String text) {
-    num api = qtyFromUi(_parse(text)!, widget.item.type);
+    num api = qtyFromUiSafe(_parse(text)!, widget.item.type);
     if (api is double && api == api.roundToDouble()) api = api.toInt();
     return api;
   }

@@ -300,7 +300,14 @@ class OmborProductCard extends StatelessWidget {
       if (raw.isEmpty) return;
       final value = double.tryParse(raw);
       if (value == null) return;
-      // Kasr saqlanadi: 0.5 -> 500 milli, 2.5 -> 2500 milli.
+      // GRAMM-YOZISH HIMOYASI: кг/л mahsulotda 1000+ kiritilsa omborchi
+      // grammda yozgan deb olinadi ("20 kg" o'rniga "20000" yozish odati) —
+      // milli panjarada gramm == milli, ko'paytirilmaydi. Aks holda kasr
+      // saqlanib ×1000: 0.5 -> 500 milli, 2.5 -> 2500 milli.
+      if (qtyUnitFactor(product.type) != 1 && value >= 1000) {
+        Navigator.pop(dialogContext, value.round());
+        return;
+      }
       Navigator.pop(dialogContext, (value * 1000).round());
     }
 
