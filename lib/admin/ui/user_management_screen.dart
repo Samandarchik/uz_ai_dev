@@ -19,15 +19,40 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final UserManagementService _userService = UserManagementService();
+  final TextEditingController _searchCtrl = TextEditingController();
 
   List<User> _users = [];
   bool _isLoading = false;
   String _errorMessage = '';
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  // Qidiruv: ism, telefon, rol va filial nomi bo'yicha (katta-kichik harf farqsiz).
+  List<User> get _filteredUsers {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return _users;
+    final qDigits = q.replaceAll(RegExp(r'\D'), '');
+    return _users.where((u) {
+      if (_displayName(u).toLowerCase().contains(q)) return true;
+      if (qDigits.isNotEmpty &&
+          u.phone.replaceAll(RegExp(r'\D'), '').contains(qDigits)) {
+        return true;
+      }
+      if (_roleLabel(u.role).toLowerCase().contains(q)) return true;
+      final filial = u.filial?.name.toLowerCase() ?? '';
+      return filial.contains(q);
+    }).toList();
   }
 
   Future<void> _loadUsers() async {
@@ -615,7 +640,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         runSpacing: 8,
         children: [
           Text(
-            '${_users.length} ta foydalanuvchi',
+            _query.trim().isEmpty
+                ? '${_users.length} ta foydalanuvchi'
+                : '${_filteredUsers.length} / ${_users.length} ta foydalanuvchi',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -642,6 +669,51 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // Qidiruv maydoni — header bilan ro'yxat orasida.
+  Widget _searchField(bool isNarrow) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          isNarrow ? 12 : 20, 0, isNarrow ? 12 : 20, isNarrow ? 12 : 16),
+      child: TextField(
+        controller: _searchCtrl,
+        onChanged: (value) => setState(() => _query = value),
+        decoration: InputDecoration(
+          hintText: 'Qidirish: ism, telefon, rol, filial...',
+          hintStyle: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          prefixIcon:
+              Icon(Icons.search_rounded, size: 20, color: Colors.grey[500]),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close_rounded,
+                      size: 18, color: Colors.grey[500]),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _query = '');
+                  },
+                )
+              : null,
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          filled: true,
+          fillColor: const Color(0xFFF9FAFB),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF4F46E5)),
+          ),
+        ),
       ),
     );
   }
@@ -683,11 +755,27 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ),
       );
     }
+    final users = _filteredUsers;
+    if (users.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, size: 40, color: Colors.grey[400]),
+            const SizedBox(height: 8),
+            Text(
+              'Hech narsa topilmadi',
+              style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
     return ListView.separated(
-      itemCount: _users.length,
+      itemCount: users.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) =>
-          isNarrow ? _rowNarrow(_users[i], i) : _rowWide(_users[i], i),
+          isNarrow ? _rowNarrow(users[i], i) : _rowWide(users[i], i),
     );
   }
 
@@ -726,6 +814,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               child: Column(
                 children: [
                   _header(isNarrow),
+                  _searchField(isNarrow),
                   const Divider(height: 1),
                   Expanded(child: _content(isNarrow)),
                 ],
