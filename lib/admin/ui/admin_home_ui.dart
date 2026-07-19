@@ -9,11 +9,8 @@ import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
-import 'package:uz_ai_dev/admin/ui/filial_limits_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
-import 'package:uz_ai_dev/admin/ui/pos_orders_ui.dart';
-import 'package:uz_ai_dev/admin/ui/pos_recons_ui.dart';
-import 'package:uz_ai_dev/admin/ui/pos_sales_ui.dart';
+import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
@@ -182,34 +179,10 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
-                value: 'filial_limits',
-                child: ListTile(
-                  leading: Icon(Icons.rule),
-                  title: Text('Filial limitlari'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'pos_orders',
+                value: 'pos_hub',
                 child: ListTile(
                   leading: Icon(Icons.point_of_sale),
-                  title: Text('POS buyurtmalari'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'pos_sales',
-                child: ListTile(
-                  leading: Icon(Icons.storefront),
-                  title: Text('POS sotuvlari'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'pos_recons',
-                child: ListTile(
-                  leading: Icon(Icons.fact_check),
-                  title: Text('POS solishtirish'),
+                  title: Text('POS (Konak)'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -245,17 +218,8 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 case 'audit_log':
                   context.push(const AuditLogUi());
                   break;
-                case 'filial_limits':
-                  context.push(const FilialLimitsUi());
-                  break;
-                case 'pos_orders':
-                  context.push(const PosOrdersUi());
-                  break;
-                case 'pos_sales':
-                  context.push(const PosSalesUi());
-                  break;
-                case 'pos_recons':
-                  context.push(const PosReconsUi());
+                case 'pos_hub':
+                  context.push(const PosHubUi());
                   break;
                 case 'filials':
                   context.push(const FilialsUi());
