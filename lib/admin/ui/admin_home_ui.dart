@@ -10,6 +10,8 @@ import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filial_limits_ui.dart';
+import 'package:uz_ai_dev/admin/ui/pos_orders_ui.dart';
+import 'package:uz_ai_dev/admin/ui/pos_sales_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
@@ -185,6 +187,22 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'pos_orders',
+                child: ListTile(
+                  leading: Icon(Icons.point_of_sale),
+                  title: Text('POS buyurtmalari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pos_sales',
+                child: ListTile(
+                  leading: Icon(Icons.storefront),
+                  title: Text('POS sotuvlari'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
@@ -211,6 +229,12 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'filial_limits':
                   context.push(const FilialLimitsUi());
+                  break;
+                case 'pos_orders':
+                  context.push(const PosOrdersUi());
+                  break;
+                case 'pos_sales':
+                  context.push(const PosSalesUi());
                   break;
               }
             },

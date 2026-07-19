@@ -116,6 +116,15 @@ abstract final class AppUrls {
   // POST {filial_id, product_id, limit_qty} — upsert (limit_qty: 0 —
   // o'chirish). limit_qty birlik kontrakti: кг/л -> BUTUN gr/ml. Faqat admin.
   static const String filialLimits = '$baseUrl/api/filial-limits';
+  // POS (Konak) buyurtmalari: GET ?limit=50 — «POS avto» useri yaratgan
+  // avto-buyurtmalar (eng yangisi birinchi). Faqat admin.
+  static const String posOrders = '$baseUrl/api/pos-orders';
+  // POST — buyurtmani bazadan POS'ga yuborish (PosDelivery yaratadi).
+  static String posOrderDispatch(int id) =>
+      '$baseUrl/api/pos-orders/$id/dispatch';
+  // POS smena sotuvlari hisoboti: GET ?days=30[&filial_id=] —
+  // {sales:[...], total}. days default 30, clamp [1,92]. Faqat admin.
+  static const String posSales = '$baseUrl/api/pos-sales';
   //Category
   static const String category = '$baseUrl/api/categories';
   static const String categoryReorder = '$baseUrl/api/categories/reorder';

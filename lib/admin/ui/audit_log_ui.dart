@@ -33,6 +33,7 @@ const List<_EntityFilter> _kFilters = [
   _EntityFilter('Buyurtma', 'order'),
   _EntityFilter('Qarz', 'magazin_debt'),
   _EntityFilter('To\'lov', 'payment'),
+  _EntityFilter('Limit', 'filial_limit'),
 ];
 
 // action → o'zbekcha label. Noma'lum action xom holida ko'rsatiladi.
@@ -52,6 +53,12 @@ String _actionLabel(String action) {
       return 'To\'lov yaratildi';
     case 'tolov_ochirish':
       return 'To\'lov o\'chirildi';
+    case 'limit_ozgartirish':
+      return 'Limit o\'zgartirildi';
+    case 'pos_yuborish':
+      return 'POS\'ga yuborildi';
+    case 'pos_qabul':
+      return 'POS kam qabul qildi';
     default:
       return action;
   }
@@ -71,6 +78,12 @@ IconData _actionIcon(String action) {
       return Icons.receipt_long;
     case 'tolov_yaratish':
       return Icons.payments;
+    case 'limit_ozgartirish':
+      return Icons.rule;
+    case 'pos_yuborish':
+      return Icons.local_shipping_outlined;
+    case 'pos_qabul':
+      return Icons.report_problem_outlined;
     default:
       return Icons.history;
   }
