@@ -59,6 +59,10 @@ String _actionLabel(String action) {
       return 'POS\'ga yuborildi';
     case 'pos_qabul':
       return 'POS kam qabul qildi';
+    case 'pos_spisaniya':
+      return 'POS spisaniya';
+    case 'pos_inventarizatsiya':
+      return 'POS inventarizatsiya';
     default:
       return action;
   }
@@ -84,6 +88,10 @@ IconData _actionIcon(String action) {
       return Icons.local_shipping_outlined;
     case 'pos_qabul':
       return Icons.report_problem_outlined;
+    case 'pos_spisaniya':
+      return Icons.delete_sweep_outlined;
+    case 'pos_inventarizatsiya':
+      return Icons.checklist;
     default:
       return Icons.history;
   }

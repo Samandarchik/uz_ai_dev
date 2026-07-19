@@ -125,6 +125,9 @@ abstract final class AppUrls {
   // POS smena sotuvlari hisoboti: GET ?days=30[&filial_id=] —
   // {sales:[...], total}. days default 30, clamp [1,92]. Faqat admin.
   static const String posSales = '$baseUrl/api/pos-sales';
+  // POS smena solishtirish (recon): GET ?days=30[&filial_id=] —
+  // {recons:[...]}. days default 30, clamp [1,92]. Faqat admin.
+  static const String posRecons = '$baseUrl/api/pos-recons';
   //Category
   static const String category = '$baseUrl/api/categories';
   static const String categoryReorder = '$baseUrl/api/categories/reorder';

@@ -10,7 +10,9 @@ import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filial_limits_ui.dart';
+import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_orders_ui.dart';
+import 'package:uz_ai_dev/admin/ui/pos_recons_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_sales_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
@@ -203,6 +205,22 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'pos_recons',
+                child: ListTile(
+                  leading: Icon(Icons.fact_check),
+                  title: Text('POS solishtirish'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'filials',
+                child: ListTile(
+                  leading: Icon(Icons.store_outlined),
+                  title: Text('Filiallar'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
@@ -235,6 +253,12 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'pos_sales':
                   context.push(const PosSalesUi());
+                  break;
+                case 'pos_recons':
+                  context.push(const PosReconsUi());
+                  break;
+                case 'filials':
+                  context.push(const FilialsUi());
                   break;
               }
             },
