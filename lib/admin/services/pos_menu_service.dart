@@ -19,16 +19,41 @@ class PosMenuService {
           if (filialId != null) 'filial_id': filialId,
         },
       );
-      final data = response.data is Map ? response.data['data'] : null;
-      if (data is Map) {
-        return PosMenuResult.fromJson(Map<String, dynamic>.from(data));
-      }
-      return const PosMenuResult();
+      return _parseResult(response);
     } on DioException catch (e) {
       if (e.response != null) {
         throw Exception('Server xatosi: ${parseDioError(e)}');
       }
       throw Exception('Tarmoq xatosi: ${e.message}');
     }
+  }
+
+  // Kuratsiyani saqlash: PUT to'liq TARTIBLI id ro'yxati bilan (tartib =
+  // POS'dagi tartib). Bo'sh ro'yxat → config o'chiriladi (configured=false).
+  // Javob — yangilangan to'liq holat (GET bilan bir xil shakl).
+  Future<PosMenuResult> savePosMenu(int? filialId, List<int> productIds) async {
+    try {
+      final response = await dio.put(
+        AppUrls.posMenu,
+        queryParameters: {
+          if (filialId != null) 'filial_id': filialId,
+        },
+        data: {'product_ids': productIds},
+      );
+      return _parseResult(response);
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception('Server xatosi: ${parseDioError(e)}');
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  PosMenuResult _parseResult(Response response) {
+    final data = response.data is Map ? response.data['data'] : null;
+    if (data is Map) {
+      return PosMenuResult.fromJson(Map<String, dynamic>.from(data));
+    }
+    return const PosMenuResult();
   }
 }

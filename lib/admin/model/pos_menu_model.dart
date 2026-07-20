@@ -1,7 +1,10 @@
 // POS (Konak) menyu — POS ko'radigan katalog (kategoriyalar + mahsulotlar).
 // Kontrakt: GET /api/pos-menu?filial_id=N (faqat admin, filial_id ixtiyoriy —
 // server birinchi filialni oladi) — data:
-// {filial_id, filial_name, categories:[{id,name}], products:[PosMenuProduct]}.
+// {filial_id, filial_name, configured, categories:[{id,name}],
+//  products:[PosMenuProduct], available_products:[PosMenuProduct]}.
+// PUT /api/pos-menu?filial_id=N body {"product_ids":[...]} — javob data
+// GET bilan bir xil shaklda (yangilangan holat).
 //
 // MUHIM (int kontrakt): sale_price — butun so'm (0 = narx qo'yilmagan),
 // limit_qty — saqlanadigan birlikdagi BUTUN son (кг/л -> gr/ml, 0 = limit
@@ -63,26 +66,41 @@ class PosMenuProduct {
   }
 }
 
-// GET /api/pos-menu javobi: filial + kategoriyalar + mahsulotlar.
+// GET/PUT /api/pos-menu javobi: filial + kategoriyalar + mahsulotlar.
+// configured=true — kuratsiya config'i bor (products = tanlangan tartibda);
+// available_products — filialga biriktirilgan, LEKIN menyuga kirmaganlar
+// (config bo'lmasa bo'sh []).
 class PosMenuResult {
   final int filialId;
   final String filialName;
+  final bool configured;
   final List<PosMenuCategory> categories;
   final List<PosMenuProduct> products;
+  final List<PosMenuProduct> availableProducts;
 
   const PosMenuResult({
     this.filialId = 0,
     this.filialName = '',
+    this.configured = false,
     this.categories = const [],
     this.products = const [],
+    this.availableProducts = const [],
   });
+
+  static List<PosMenuProduct> _productList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => PosMenuProduct.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 
   factory PosMenuResult.fromJson(Map<String, dynamic> json) {
     final rawCategories = json['categories'];
-    final rawProducts = json['products'];
     return PosMenuResult(
       filialId: _asInt(json['filial_id']),
       filialName: json['filial_name']?.toString() ?? '',
+      configured: json['configured'] == true,
       categories: rawCategories is List
           ? rawCategories
               .whereType<Map>()
@@ -90,12 +108,8 @@ class PosMenuResult {
                   PosMenuCategory.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : const [],
-      products: rawProducts is List
-          ? rawProducts
-              .whereType<Map>()
-              .map((e) => PosMenuProduct.fromJson(Map<String, dynamic>.from(e)))
-              .toList()
-          : const [],
+      products: _productList(json['products']),
+      availableProducts: _productList(json['available_products']),
     );
   }
 }
