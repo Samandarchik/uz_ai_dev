@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/ui/filial_limits_ui.dart';
+import 'package:uz_ai_dev/admin/ui/pos_menu_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_orders_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_recons_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_sales_ui.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 
 // POS (Konak) markazi — admin bosh menyusini soddalash uchun POS'ga oid
-// 4 ta ekran bitta hub'ga yig'ilgan: buyurtmalar, sotuvlar, solishtirish,
-// filial limitlari. Har karta mavjud ekranga o'tkazadi, yangi mantiq yo'q.
+// 5 ta ekran bitta hub'ga yig'ilgan: buyurtmalar, sotuvlar, solishtirish,
+// filial limitlari, POS menyu. Har karta mavjud ekranga o'tkazadi, yangi
+// mantiq yo'q.
 
 const Color _kBgColor = Color(0xFFFAF6F1);
 const Color _kAccent = Color(0xFFC5A97B);
@@ -61,6 +63,13 @@ class PosHubUi extends StatelessWidget {
             title: 'Filial limitlari',
             subtitle: 'Avto-buyurtma limitlari',
             page: const FilialLimitsUi(),
+          ),
+          _hubCard(
+            context,
+            icon: Icons.menu_book,
+            title: 'POS menyu',
+            subtitle: 'POS ko\'radigan katalog',
+            page: const PosMenuUi(),
           ),
         ],
       ),

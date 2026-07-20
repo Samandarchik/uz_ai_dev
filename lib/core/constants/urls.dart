@@ -128,6 +128,10 @@ abstract final class AppUrls {
   // POS smena solishtirish (recon): GET ?days=30[&filial_id=] —
   // {recons:[...]}. days default 30, clamp [1,92]. Faqat admin.
   static const String posRecons = '$baseUrl/api/pos-recons';
+  // POS menyu — Konak POS ko'radigan katalog: GET ?filial_id=N (ixtiyoriy,
+  // default birinchi filial) — {filial_id, filial_name, categories, products}.
+  // Faqat admin.
+  static const String posMenu = '$baseUrl/api/pos-menu';
   //Category
   static const String category = '$baseUrl/api/categories';
   static const String categoryReorder = '$baseUrl/api/categories/reorder';
