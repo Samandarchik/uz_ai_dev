@@ -98,7 +98,14 @@ class _YukProfileUiState extends State<YukProfileUi> {
                   )
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(12),
+                    // Oxirgi qator tizim navigatsiya paneli ostida qolmasligi uchun
+                    // pastdan qo'shimcha bo'sh joy.
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      12,
+                      12,
+                      12 + MediaQuery.of(context).padding.bottom + 80,
+                    ),
                     itemCount: sections.length,
                     itemBuilder: (context, index) {
                       final section = sections[index];
