@@ -7,13 +7,11 @@ import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
-import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
+import 'package:uz_ai_dev/admin/ui/analytics_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
-import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
-import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -131,18 +129,10 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
-                value: 'production',
+                value: 'analytics_hub',
                 child: ListTile(
-                  leading: Icon(Icons.factory_outlined),
-                  title: Text('Ishlab chiqarish'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'production_stats',
-                child: ListTile(
-                  leading: Icon(Icons.query_stats),
-                  title: Text('Ishlab chiqarish statistikasi'),
+                  leading: Icon(Icons.insights),
+                  title: Text('Analitika'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -151,22 +141,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 child: ListTile(
                   leading: Icon(Icons.inventory_2_outlined),
                   title: Text('Sklad qoldiqlari'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'profit_control',
-                child: ListTile(
-                  leading: Icon(Icons.trending_up),
-                  title: Text('Foyda nazorati'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'profit_analytics',
-                child: ListTile(
-                  leading: Icon(Icons.insights),
-                  title: Text('Foyda analitikasi'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -200,20 +174,11 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 case 'categories':
                   context.push(const CategoryManagementScreen());
                   break;
-                case 'production':
-                  context.push(const AdminProductionUi());
-                  break;
-                case 'production_stats':
-                  context.push(const AdminProductionStatsUi());
+                case 'analytics_hub':
+                  context.push(const AnalyticsHubUi());
                   break;
                 case 'stock':
                   context.push(const AdminStockUi());
-                  break;
-                case 'profit_control':
-                  context.push(const ProfitControlUi());
-                  break;
-                case 'profit_analytics':
-                  context.push(const ProfitAnalyticsUi());
                   break;
                 case 'audit_log':
                   context.push(const AuditLogUi());
