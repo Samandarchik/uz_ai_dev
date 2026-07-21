@@ -137,11 +137,16 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
   // Mahsulotlardan jadval qatorlarini yig'ish.
   List<_RowData> _buildRows(List<ProductModelAdmin> products) {
     final wasteFactors = techWasteFactors(products);
+    // Полуфабрикат qatorlari rekursiv tannarx bilan hisoblanadi.
+    final byId = techProductsById(products);
     final rows = <_RowData>[];
     for (final p in products) {
+      // Полуфабрикат sotilmaydi — «Foyda nazorati» ro'yxatiga kirmaydi.
+      if (p.isSemiFinished) continue;
       final card = p.techCard;
       if (!techCardHasContent(card)) continue;
-      final c0 = techIngredientPieceCost(card!, _prices, wasteFactors);
+      final c0 =
+          techIngredientPieceCost(card!, _prices, wasteFactors, products: byId);
       final full = techFullPieceCost(card.overheadMode, card.overheadValue, c0);
       rows.add(_RowData(
         product: p,

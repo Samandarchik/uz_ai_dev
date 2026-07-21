@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/admin/ui/admin_add_categoriy.dart';
 import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/analytics_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
+import 'package:uz_ai_dev/admin/ui/convert_pf_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
@@ -168,6 +169,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              const PopupMenuItem(
+                value: 'convert_pf',
+                child: ListTile(
+                  leading: Icon(Icons.published_with_changes),
+                  title: Text('Полуфабрикатga o\'tkazish'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
             onSelected: (value) {
               switch (value) {
@@ -188,6 +197,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'filials':
                   context.push(const FilialsUi());
+                  break;
+                case 'convert_pf':
+                  context.push(const ConvertPfUi());
                   break;
               }
             },

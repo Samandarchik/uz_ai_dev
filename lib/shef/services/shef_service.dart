@@ -36,6 +36,29 @@ class ShefService {
     }
   }
 
+  // GET /api/production/pf-availability?product_id=N&qty=Q — tanlangan
+  // mahsulot uchun полуфабрикат qoldig'i bo'yicha limit (shef o'z skladi).
+  // max_qty null — cheklov yo'q (tex kartada pf ishlatilmagan).
+  Future<PfAvailability> fetchPfAvailability(int productId, int qty) async {
+    try {
+      final response = await dio.get(
+        AppUrls.pfAvailability,
+        queryParameters: {'product_id': productId, 'qty': qty},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return PfAvailability.fromJson(
+              Map<String, dynamic>.from(body['data']));
+        }
+        return const PfAvailability();
+      }
+      throw Exception('Qoldiq ma\'lumoti yuklanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'qoldiq ma\'lumoti yuklanmadi');
+    }
+  }
+
   // GET /api/production/orders -> shefning o'z buyurtmalari.
   Future<List<ProductionOrder>> fetchOrders() async {
     try {

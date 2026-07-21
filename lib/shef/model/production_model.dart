@@ -22,12 +22,16 @@ class ProductionProduct {
   final String name;
   final String imageUrl; // '/static/...' yoki to'liq URL yoki ''
   final int batchQty; // partiyada nechta dona (>= 1)
+  // Полуфабрикат (biskvit kabi) — ro'yxatda qatnashadi, chunki u ham
+  // ishlab chiqariladi.
+  final bool isSemiFinished;
 
   const ProductionProduct({
     required this.id,
     required this.name,
     this.imageUrl = '',
     this.batchQty = 1,
+    this.isSemiFinished = false,
   });
 
   factory ProductionProduct.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,7 @@ class ProductionProduct {
       name: json['name']?.toString() ?? '',
       imageUrl: json['image_url']?.toString() ?? '',
       batchQty: bq < 1 ? 1 : bq,
+      isSemiFinished: json['is_semi_finished'] == true,
     );
   }
 
@@ -51,6 +56,78 @@ class ProductionProduct {
           .toList();
     }
     return [];
+  }
+}
+
+// GET /api/production/pf-availability javobidagi bitta полуфабрикат limiti:
+// tanlangan mahsulot (tort) tex kartasidagi pf ehtiyoji va sklad qoldig'i.
+class PfLimit {
+  final int productId;
+  final String name;
+  final String imageUrl;
+  final int batchQty; // tort partiyasi (dona)
+  final int perBatchNeed; // 1 partiyaga kerak pf (dona)
+  final int need; // Q dona uchun kerak (partiyaga yaxlitlangan)
+  final num stock; // pf qoldig'i (dona)
+  final num reserved; // boshqa buyurtmalarga band (dona)
+  final num available; // mumkin (dona)
+
+  const PfLimit({
+    required this.productId,
+    required this.name,
+    this.imageUrl = '',
+    this.batchQty = 1,
+    this.perBatchNeed = 0,
+    this.need = 0,
+    this.stock = 0,
+    this.reserved = 0,
+    this.available = 0,
+  });
+
+  factory PfLimit.fromJson(Map<String, dynamic> json) {
+    return PfLimit(
+      productId: _asInt(json['product_id']),
+      name: json['name']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      batchQty: _asInt(json['batch_qty']),
+      perBatchNeed: _asInt(json['per_batch_need']),
+      need: _asInt(json['need']),
+      stock: (json['stock'] as num?) ?? _asDouble(json['stock']),
+      reserved: (json['reserved'] as num?) ?? _asDouble(json['reserved']),
+      available: (json['available'] as num?) ?? _asDouble(json['available']),
+    );
+  }
+
+  static List<PfLimit> listFromJson(dynamic data) {
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => PfLimit.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [];
+  }
+}
+
+// GET /api/production/pf-availability?product_id=N&qty=Q javobi (data).
+// maxQty == null — cheklov yo'q (tex kartada полуфабрикат ishlatilmagan).
+class PfAvailability {
+  final int skladId;
+  final int? maxQty;
+  final List<PfLimit> limits;
+
+  const PfAvailability({
+    this.skladId = 0,
+    this.maxQty,
+    this.limits = const [],
+  });
+
+  factory PfAvailability.fromJson(Map<String, dynamic> json) {
+    return PfAvailability(
+      skladId: _asInt(json['sklad_id']),
+      maxQty: json['max_qty'] == null ? null : _asInt(json['max_qty']),
+      limits: PfLimit.listFromJson(json['limits']),
+    );
   }
 }
 

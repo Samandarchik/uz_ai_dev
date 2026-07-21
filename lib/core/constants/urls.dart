@@ -59,6 +59,15 @@ abstract final class AppUrls {
   //   /{id}/items/{pi}/stages/{si}/progress   — done_qty kiritish (PUT)
   // pi/si — 0-based item/stage indekslari.
   static String productionOrders = '$baseUrl/api/production/orders';
+  // Полуфабрикат qoldig'i bo'yicha buyurtma limiti:
+  // GET ?product_id=N&qty=Q (shef/ombor — o'z skladi; admin/bugalter
+  // qo'shimcha &sklad_id=M berishi mumkin). data: { sklad_id, max_qty
+  // (null = cheksiz), limits: [{product_id, name, image_url, batch_qty,
+  // per_batch_need, need, stock, reserved, available}] }.
+  static String pfAvailability = '$baseUrl/api/production/pf-availability';
+  // Takrorlanadigan bir xil bazalarni полуфабрикат mahsulotlarga aylantirish
+  // (faqat admin). POST {"dry_run": true|false} -> data: {created, skipped}.
+  static String techcardsConvertPf = '$baseUrl/api/techcards/convert-pf';
 
   // Sklad qoldig'i (to'liq inventar). GET ?sklad_id=N — qoldiqlar ro'yxati.
   static String stock = '$baseUrl/api/stock';

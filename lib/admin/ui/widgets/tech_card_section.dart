@@ -52,7 +52,8 @@ class TechCardController {
       );
 
   // «Состав» uchun showInSostav=true bo'lgan nomlar.
-  List<String> sostavNames() => build().sostavNames();
+  List<String> sostavNames({TechCard? Function(int productId)? pfCard}) =>
+      build().sostavNames(pfCard: pfCard);
 
   void dispose() {}
 }

@@ -349,16 +349,37 @@ class TechCard {
   }
 
   // «Состав» uchun showInSostav=true bo'lgan barcha nomlar (bazalar + расходник).
-  List<String> sostavNames() {
+  // pfCard berilsa, полуфабрикат qatori (tex kartasi topilgan product_id) o'z nomi
+  // o'rniga ICHIDAGI masalliq nomlariga yoyiladi; aylanma havola visited bilan
+  // to'xtatiladi (bunda pf nomining o'zi yoziladi). Natija takrorsiz.
+  List<String> sostavNames({
+    TechCard? Function(int productId)? pfCard,
+    Set<int>? visited,
+  }) {
     final names = <String>[];
-    for (final base in bases) {
-      for (final item in base.ingredients) {
-        if (item.showInSostav) names.add(item.name);
+    void addItem(TechItem item) {
+      if (!item.showInSostav) return;
+      final card = (pfCard != null &&
+              item.productId != 0 &&
+              !(visited?.contains(item.productId) ?? false))
+          ? pfCard(item.productId)
+          : null;
+      if (card != null) {
+        names.addAll(card.sostavNames(
+            pfCard: pfCard, visited: {...?visited, item.productId}));
+      } else {
+        names.add(item.name);
       }
     }
-    for (final item in consumables) {
-      if (item.showInSostav) names.add(item.name);
+
+    for (final base in bases) {
+      base.ingredients.forEach(addItem);
     }
-    return names;
+    consumables.forEach(addItem);
+    final seen = <String>{};
+    return [
+      for (final n in names)
+        if (seen.add(n.trim().toLowerCase())) n
+    ];
   }
 }

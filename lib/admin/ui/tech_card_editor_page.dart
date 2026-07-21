@@ -224,19 +224,34 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   Map<int, double> get _wasteFactors => _wasteFactorsCache ??=
       techWasteFactors(context.read<ProductProviderAdmin>().products);
 
-  // Qator tannarxi (tozalash yo'qotishi bilan).
+  // productId -> mahsulot xaritasi (полуфабрикат qatorlarini aniqlash,
+  // og'irlik va rekursiv tannarx uchun). Bir marta yig'iladi.
+  Map<int, ProductModelAdmin>? _productByIdCache;
+
+  Map<int, ProductModelAdmin> get _productById => _productByIdCache ??=
+      techProductsById(context.read<ProductProviderAdmin>().products);
+
+  // Qator полуфабрикат mahsulotga bog'langanmi.
+  bool _isPfItem(TechItem item) =>
+      _productById[item.productId]?.isSemiFinished == true;
+
+  // Qator tannarxi (tozalash yo'qotishi bilan; pf qatori — rekursiv).
   // null — narx yo'q (product_id=0 yoki hech narxlanmagan).
-  double? _rowCost(TechItem item) => techRowCost(item, _prices, _wasteFactors);
+  double? _rowCost(TechItem item) =>
+      techRowCost(item, _prices, _wasteFactors, products: _productById);
 
   // Qatorda ko'rsatiladigan «Цена»: g/ml uchun 1 kg/l narxi (x1000),
-  // pcs/m uchun o'z birligi narxi.
-  double? _rowUnitPrice(TechItem item) => techRowUnitPrice(item, _prices);
+  // pcs/m uchun o'z birligi narxi; pf uchun 1 dona rekursiv tannarxi.
+  double? _rowUnitPrice(TechItem item) => techRowUnitPrice(item, _prices,
+      products: _productById, wasteFactors: _wasteFactors);
 
-  double _baseCost(TechBase base) =>
-      techItemsCost(base.ingredients, _prices, _wasteFactors);
+  double _baseCost(TechBase base) => techItemsCost(
+      base.ingredients, _prices, _wasteFactors,
+      products: _productById);
 
-  double get _consumablesCost =>
-      techItemsCost(c.consumables, _prices, _wasteFactors);
+  double get _consumablesCost => techItemsCost(
+      c.consumables, _prices, _wasteFactors,
+      products: _productById);
 
   // Partiya masalliq tannarxi = barcha bazalar + расходник.
   double get _batchCost =>
@@ -896,6 +911,94 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
+  // ---- Полуфабрикат qatori qo'shish ----
+  // ProductProviderAdmin (yagona manba) dagi is_semi_finished mahsulotlardan
+  // tanlanadi; qator dona (шт) birligida oddiy ingredient bo'lib saqlanadi.
+
+  Future<void> _addPfIngredient(int baseIndex) async {
+    final pfProducts = context
+        .read<ProductProviderAdmin>()
+        .products
+        .where((p) => p.isSemiFinished && p.id != widget.product.id)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    if (pfProducts.isEmpty) {
+      _snack(
+        'Полуфабрикат mahsulot yo\'q. Avval mahsulot tahririda '
+        '«Полуфабрикат» belgisini yoqing.',
+        error: true,
+      );
+      return;
+    }
+
+    final picked = await showModalBottomSheet<ProductModelAdmin>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 6),
+              child: Text(
+                'Полуфабрикат tanlash',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final p in pfProducts)
+                    ListTile(
+                      leading: const Icon(Icons.cake_outlined),
+                      title: Text(p.name),
+                      subtitle: p.techCard != null &&
+                              techPfPieceWeightG(p.id, _productById) > 0
+                          ? Text(
+                              '1 dona ≈ '
+                              '${techPfPieceWeightG(p.id, _productById)} г',
+                              style: const TextStyle(fontSize: 12),
+                            )
+                          : null,
+                      onTap: () => Navigator.pop(ctx, p),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    final value = await showDialog<String>(
+      context: context,
+      builder: (_) => _TextFieldDialog(
+        title: picked.name,
+        label: 'Necha dona (${c.batchQty} talik partiya uchun)',
+        initial: '',
+        number: true,
+      ),
+    );
+    if (value == null || !mounted) return;
+    final amount = int.tryParse(value) ?? 0;
+    if (amount <= 0) return;
+
+    setState(() {
+      final base = c.bases[baseIndex];
+      c.bases[baseIndex] = base.copyWith(ingredients: [
+        ...base.ingredients,
+        TechItem(
+          productId: picked.id,
+          name: picked.name,
+          unit: 'pcs',
+          amount: amount,
+        ),
+      ]);
+    });
+  }
+
   Future<void> _editIngredient(int baseIndex, int itemIndex) async {
     final base = c.bases[baseIndex];
     final updated = await showDialog<TechItem>(
@@ -1152,11 +1255,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           ),
           child: Column(
             children: [
+              // Og'irliklar полуфабрикат hissasi bilan (backend qoidasi:
+              // pf qatori = amount * pf piece_weight_g).
               _gridRow([
                 _flexCell(
                   Text(
                     'Общий вес за ${c.batchQty} штук - '
-                    '${_kgComma(card.computedBatchWeightG)} кг',
+                    '${_kgComma(techBatchWeightG(card, _productById))} кг',
                     style: _kCellBold,
                   ),
                 ),
@@ -1165,7 +1270,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 _flexCell(
                   Text(
                     'Общий вес за 1 штуку - '
-                    '${_kgComma(card.computedPieceWeightG)} кг',
+                    '${_kgComma(techPieceWeightG(card, _productById))} кг',
                     style: _kCellBold,
                   ),
                 ),
@@ -1559,7 +1664,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                       decoration:
                           const BoxDecoration(border: Border(left: _kSide)),
                       child: Text(
-                        _kgComma(base.computedWeightG),
+                        // Baza og'irligi pf qatorlar hissasi bilan.
+                        _kgComma(techBaseWeightG(base, _productById)),
                         style: _kCellBold,
                       ),
                     ),
@@ -1626,8 +1732,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               onLongPress: () => _deleteIngredient(index, j),
             ),
 
-          // «+ Ингредиент» qatori
+          // «+ Ингредиент» va «+ Полуфабрикат» qatorlari
           _addRow('+ Ингредиент', () => _addIngredient(index)),
+          _addRow('+ Полуфабрикат', () => _addPfIngredient(index)),
         ],
       ),
     );
@@ -1708,6 +1815,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final cost = _rowCost(item);
     final noPrice = cost == null;
     final stale = !noPrice && _isStalePrice(item);
+    final isPf = _isPfItem(item);
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1723,7 +1831,31 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               Expanded(
                 child: Padding(
                   padding: _kCellPad,
-                  child: Text(item.name, style: _kCellStyle),
+                  child: Row(
+                    children: [
+                      Flexible(child: Text(item.name, style: _kCellStyle)),
+                      // Полуфабрикат belgisi.
+                      if (isPf)
+                        Container(
+                          margin: const EdgeInsets.only(left: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            border: Border.all(color: Colors.purple.shade300),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ПФ',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               Container(

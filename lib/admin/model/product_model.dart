@@ -41,6 +41,12 @@ class ProductModelAdmin {
   final int wasteBase;
   final int wasteAmount;
 
+  // Полуфабрикат (yarim tayyor mahsulot, masalan «Классик бисквит»):
+  // o'z tex kartasi va o'z qoldig'i (dona) bor, sotilmaydi — boshqa
+  // mahsulotlarning tex kartasida ingredient sifatida ishlatiladi.
+  // Backend pf mahsulotlarni seller/filial kataloglaridan avtomatik chiqaradi.
+  final bool isSemiFinished;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -64,6 +70,7 @@ class ProductModelAdmin {
     this.compositionAsIngredients = false,
     this.wasteBase = 0,
     this.wasteAmount = 0,
+    this.isSemiFinished = false,
   });
 
   // Tozalash yo'qotishi koeffitsiyenti: xarid narxi shu koeffitsiyentga
@@ -105,6 +112,7 @@ class ProductModelAdmin {
       compositionAsIngredients: json['composition_as_ingredients'] ?? false,
       wasteBase: (json['waste_base'] as num?)?.toInt() ?? 0,
       wasteAmount: (json['waste_amount'] as num?)?.toInt() ?? 0,
+      isSemiFinished: json['is_semi_finished'] ?? false,
     );
   }
 
@@ -131,6 +139,7 @@ class ProductModelAdmin {
       'composition_as_ingredients': compositionAsIngredients,
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
+      'is_semi_finished': isSemiFinished,
     };
   }
 
@@ -156,6 +165,7 @@ class ProductModelAdmin {
       'composition_as_ingredients': compositionAsIngredients,
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
+      'is_semi_finished': isSemiFinished,
     };
   }
 
@@ -181,6 +191,7 @@ class ProductModelAdmin {
       'composition_as_ingredients': compositionAsIngredients,
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
+      'is_semi_finished': isSemiFinished,
     };
   }
 
@@ -207,6 +218,7 @@ class ProductModelAdmin {
     bool? compositionAsIngredients,
     int? wasteBase,
     int? wasteAmount,
+    bool? isSemiFinished,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -232,6 +244,7 @@ class ProductModelAdmin {
           compositionAsIngredients ?? this.compositionAsIngredients,
       wasteBase: wasteBase ?? this.wasteBase,
       wasteAmount: wasteAmount ?? this.wasteAmount,
+      isSemiFinished: isSemiFinished ?? this.isSemiFinished,
     );
   }
 }

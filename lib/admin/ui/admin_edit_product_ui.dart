@@ -50,6 +50,9 @@ class _EditProductPageState extends State<EditProductPage> {
   late String _source;
   late List<int> _selectedSklads;
 
+  // Полуфабрикат — ishlab chiqariladi, sotilmaydi; tex kartalarda ingredient.
+  late bool _isSemiFinished;
+
   // Tarkib (tex karta)
   late final TechCardController _techController;
 
@@ -107,6 +110,7 @@ class _EditProductPageState extends State<EditProductPage> {
         ? widget.product.source
         : 'samarqand';
     _selectedSklads = List.from(widget.product.sklads);
+    _isSemiFinished = widget.product.isSemiFinished;
 
     _techController = TechCardController(widget.product.techCard);
 
@@ -136,8 +140,17 @@ class _EditProductPageState extends State<EditProductPage> {
   // Faqat кг/л oilasida ma'noga ega.
   bool get _wasteApplies => qtyUnitFactor(_selectedType) == 1000;
 
-  // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan birlashtiradi.
-  String _compositionNames() => _techController.sostavNames().join(', ');
+  // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan
+  // birlashtiradi; полуфабрикат qatori ichidagi masalliq nomlariga yoyiladi.
+  String _compositionNames() {
+    final byId = {
+      for (final p in context.read<ProductProviderAdmin>().products) p.id: p
+    };
+    return _techController.sostavNames(pfCard: (id) {
+      final p = byId[id];
+      return (p != null && p.isSemiFinished) ? p.techCard : null;
+    }).join(', ');
+  }
 
   void _onCompositionSwitchChanged(bool value) {
     setState(() {
@@ -553,6 +566,27 @@ class _EditProductPageState extends State<EditProductPage> {
               },
             ),
             const SizedBox(height: 16),
+            // Полуфабрикат: yoqilganda birlik odatda «шт» (dona hisobida),
+            // lekin boshqa birlik ham tanlash mumkin.
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Полуфабрикат'),
+              subtitle: const Text(
+                'Ishlab chiqariladi, sotilmaydi — tex kartalarda '
+                'ingredient bo\'ladi (dona hisobida)',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _isSemiFinished,
+              onChanged: (value) {
+                setState(() {
+                  _isSemiFinished = value;
+                  // Odatiy birlik — «шт» (biskvit dona hisobida).
+                  if (value && (_selectedType == null || _selectedType!.isEmpty)) {
+                    _selectedType = 'шт';
+                  }
+                });
+              },
+            ),
             // Mone app / Bozor / Yuk manbai
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -780,6 +814,7 @@ class _EditProductPageState extends State<EditProductPage> {
                               wasteAmount: _wasteApplies && _wasteValid
                                   ? _wasteAmountVal
                                   : 0,
+                              isSemiFinished: _isSemiFinished,
                             );
 
                             final success = await context

@@ -427,12 +427,38 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 ),
         ),
       ),
-        title: Text(
-          '${product.name} (${product.type})',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+        title: Row(
+          children: [
+            Flexible(
+              child: Text(
+                '${product.name} (${product.type})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            // Полуфабрикат belgisi.
+            if (product.isSemiFinished)
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  border: Border.all(color: Colors.purple.shade300),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'ПФ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple.shade700,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

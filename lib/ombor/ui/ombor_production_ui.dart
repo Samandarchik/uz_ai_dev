@@ -4,6 +4,7 @@ import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
+import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/production_order_widgets.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart' show productionStatusChip;
@@ -163,6 +164,12 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
   // «Yetishmaganidan buyurtma» yuborilayotganda tugma spinner'i.
   bool _orderingShort = false;
 
+  // Ishlab chiqariladigan mahsulotlar (tex kartali, полуфабрикат ham shu
+  // yerda) id'lari — «Yetishmaganidan buyurtma» ularni CHIQARIB tashlaydi:
+  // biskvit sotib olinmaydi, ishlab chiqariladi. Xatoda bo'sh qoladi
+  // (eski xatti-harakat).
+  Set<int> _producedIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -170,7 +177,18 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
       if (!mounted) return;
       context.read<OmborProductionProvider>().refreshOrder(widget.orderId);
       _ensureStock();
+      _loadProducedIds();
     });
+  }
+
+  Future<void> _loadProducedIds() async {
+    try {
+      final products = await ProductionService().fetchProducts();
+      if (!mounted) return;
+      setState(() => _producedIds = {for (final p in products) p.id});
+    } catch (_) {
+      // Jim — pf ajratib bo'lmasa, oqim avvalgidek ishlayveradi.
+    }
   }
 
   // Buyurtma skladining qoldig'ini yuklash (order hali kelmagan bo'lsa
@@ -336,21 +354,77 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
 
     // short = kerak − qoldiq (yozuv yo'q — 0). Yuqoriga 2 xonaga yaxlitlash
     // (epsilon — float shovqini ortiqcha 0.01 qo'shmasligi uchun).
+    // Полуфабрикат (ishlab chiqariladigan) qatorlar sklad-buyurtmaga
+    // KIRMAYDI — ular alohida ro'yxatda faqat eslatma sifatida ko'rinadi.
     final shorts = <int, double>{};
+    final pfShorts = <int, double>{};
     need.forEach((pid, total) {
       final qoldiq = stockProvider.qtyFor(order.skladId, pid) ?? 0;
       final short = total - qoldiq;
       if (short > 0) {
-        shorts[pid] = (short * 100 - 1e-9).ceilToDouble() / 100;
+        final rounded = (short * 100 - 1e-9).ceilToDouble() / 100;
+        if (_producedIds.contains(pid)) {
+          pfShorts[pid] = rounded;
+        } else {
+          shorts[pid] = rounded;
+        }
       }
     });
 
-    if (shorts.isEmpty) {
+    if (shorts.isEmpty && pfShorts.isEmpty) {
       _snack('Hammasi yetarli', error: false);
       return;
     }
 
+    // Faqat полуфабрикат yetishmayapti — buyurtma yaratilmaydi, eslatma.
+    if (shorts.isEmpty) {
+      final pfEntries = pfShorts.entries.toList();
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Yetishmaganidan buyurtma',
+              style: TextStyle(fontSize: 17)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Sotib olinadigan masalliqlar yetarli. Faqat полуфабрикат '
+                'yetishmayapti — u ishlab chiqariladi, sklad-buyurtma '
+                'qilinmaydi:',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              for (final e in pfEntries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    '• ${names[e.key]} — yetishmayapti '
+                            '${formatQty(e.value, units[e.key])} '
+                            '${units[e.key] ?? ''} '
+                            '(полуфабрикат — ishlab chiqariladi)'
+                        .trim(),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Colors.purple.shade700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final entries = shorts.entries.toList();
+    final pfEntries = pfShorts.entries.toList();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -385,6 +459,32 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
                   style: const TextStyle(
                       fontSize: 13.5, fontWeight: FontWeight.bold),
                 ),
+                // Полуфабрикат qatorlar buyurtmaga kirmaydi — eslatma.
+                if (pfEntries.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Buyurtmaga kirmaydi (полуфабрикат — ishlab chiqariladi):',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.purple.shade700,
+                    ),
+                  ),
+                  for (final e in pfEntries)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '• ${names[e.key]} — yetishmayapti '
+                                '${formatQty(e.value, units[e.key])} '
+                                '${units[e.key] ?? ''}'
+                            .trim(),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.purple.shade700,
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
