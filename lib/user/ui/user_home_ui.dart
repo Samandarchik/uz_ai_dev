@@ -5,14 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/core/data/local/token_storage.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
 import 'package:uz_ai_dev/user/ui/order_ui.dart';
-import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/user/ui/orders_page.dart';
 import 'package:uz_ai_dev/user/ui/product_ui.dart';
 import 'package:uz_ai_dev/user/ui/user_product_detail_ui.dart';
@@ -25,7 +23,6 @@ class UserHomeUi extends StatefulWidget {
 }
 
 class _UserHomeUiState extends State<UserHomeUi> {
-  TokenStorage tokenStorage = sl<TokenStorage>();
   String name = '';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -72,11 +69,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-              onPressed: () {
-                tokenStorage.removeToken();
-                tokenStorage.removeRefreshToken();
-                context.push(LoginPage());
-              },
+              onPressed: () => logoutAndClear(context),
               icon: Icon(Icons.logout)),
           IconButton(
               onPressed: () => context.push(OrdersPage()),

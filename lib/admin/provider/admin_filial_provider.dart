@@ -4,8 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 
-class FilialProviderAdmin extends ChangeNotifier {
+class FilialProviderAdmin extends ChangeNotifier with ClearableProvider {
   final ApiFilialService _service = ApiFilialService();
 
   List<Filial> _filials = [];
@@ -32,5 +33,14 @@ class FilialProviderAdmin extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Logout: filiallar va yuklanish/xato holatini tozalaymiz.
+  @override
+  void clear() {
+    _filials = [];
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
   }
 }

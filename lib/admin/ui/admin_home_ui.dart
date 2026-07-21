@@ -19,11 +19,9 @@ import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
+import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/core/data/local/token_storage.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 
@@ -71,8 +69,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
       // jim — badge ko'rinmaydi, sahifa ishlayveradi
     }
   }
-
-  TokenStorage tokenStorage = sl<TokenStorage>();
 
   @override
   Widget build(BuildContext context) {
@@ -209,10 +205,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
             },
           ),
           IconButton(
-            onPressed: () {
-              tokenStorage.removeToken();
-              context.pushAndRemove(const LoginPage());
-            },
+            onPressed: () => logoutAndClear(context),
             icon: const Icon(Icons.logout),
           ),
         ],

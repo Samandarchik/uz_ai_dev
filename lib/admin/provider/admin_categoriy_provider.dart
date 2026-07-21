@@ -5,8 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 
-class CategoryProviderAdmin extends ChangeNotifier {
+class CategoryProviderAdmin extends ChangeNotifier with ClearableProvider {
   final ApiAdminService _service = ApiAdminService();
 
   List<CategoryProductAdmin> _categories = [];
@@ -52,4 +53,12 @@ class CategoryProviderAdmin extends ChangeNotifier {
     return success;
   }
 
+  // Logout: kategoriyalar va yuklanish/xato holatini tozalaymiz.
+  @override
+  void clear() {
+    _categories = [];
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+  }
 }

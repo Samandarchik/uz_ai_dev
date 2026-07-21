@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
@@ -24,7 +25,7 @@ typedef ItemPrice = ({double taken, double subtotal, bool zero});
 num _asWire(double v) => v % 1 == 0 ? v.toInt() : v;
 
 // Yuk keltiruvchi bosh ekrani uchun holat boshqaruvchi.
-class YukProvider extends ChangeNotifier {
+class YukProvider extends ChangeNotifier with ClearableProvider {
   final YukService _service = YukService();
 
   // Asosiy sahifa ro'yxati: backenddan ?status=pending bilan olinadi
@@ -1116,6 +1117,48 @@ class YukProvider extends ChangeNotifier {
 
   // dispose'dan keyin kechikkan timerlar notifyListeners chaqirmasligi uchun.
   bool _disposed = false;
+
+  // Logout: socketni uzib, timerlarni bekor qilib, barcha buyurtma/ledger/
+  // narx qoralamasi/biriktirma/transfer va keshlangan holatni tozalaymiz.
+  // Keyingi foydalanuvchi'ga hech qanday ma'lumot sizib chiqmasin.
+  @override
+  void clear() {
+    disconnectSocket();
+    for (final t in _draftTimers.values) {
+      t.cancel();
+    }
+    _draftTimers.clear();
+    _ledgerRefreshTimer?.cancel();
+    _ledgerRefreshTimer = null;
+    orders = [];
+    isLoading = false;
+    errorMessage = null;
+    historyOrders = [];
+    isHistoryLoading = false;
+    historyError = null;
+    ledger = [];
+    isLoadingLedger = false;
+    ledgerError = null;
+    _prices.clear();
+    _addedItems.clear();
+    _attachments.clear();
+    isOffline = false;
+    _myUserId = null;
+    submittingOrderId = null;
+    revertingOrderId = null;
+    submittingSkladId = null;
+    revertingSkladId = null;
+    _submittedAt.clear();
+    _ledgerLoadedOnce = false;
+    transfers = [];
+    decidingTransferId = null;
+    // OFFLINE kesh ham (telefon xotirasidagi qoralama/buyurtma) tozalanadi —
+    // aks holda keyingi yuk keltiruvchi kirganda eski ma'lumot yuklanib qoladi.
+    _storage.remove(key: _draftsKey);
+    _storage.remove(key: _addedItemsKey);
+    _storage.remove(key: _ordersKey);
+    notifyListeners();
+  }
 
   @override
   void dispose() {

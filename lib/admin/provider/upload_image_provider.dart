@@ -7,10 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 
-class CategoryProviderAdminUpload extends ChangeNotifier {
+class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider {
   final ApiAdminService _service = ApiAdminService();
   final Dio _dio = sl<Dio>(); // Dio();
   final String baseUrl = AppUrls.baseUrl; // Replace with your base URL
@@ -254,4 +255,14 @@ class CategoryProviderAdminUpload extends ChangeNotifier {
     }
   }
 
+  // Logout: kategoriyalar va yuklash/yuklanish/xato holatini tozalaymiz.
+  @override
+  void clear() {
+    _categories = [];
+    _isLoading = false;
+    _isUploading = false;
+    _error = null;
+    _uploadProgress = 0.0;
+    notifyListeners();
+  }
 }

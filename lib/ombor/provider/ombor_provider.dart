@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
@@ -12,7 +13,7 @@ import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 
 // Ombor bosh ekrani uchun holat boshqaruvchi.
-class OmborProvider extends ChangeNotifier {
+class OmborProvider extends ChangeNotifier with ClearableProvider {
   final OmborService _service = OmborService();
 
   Map<String, List<OmborProduct>> productsByCategory = {};
@@ -360,6 +361,29 @@ class OmborProvider extends ChangeNotifier {
     }
     // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblash.
     myOrders.sort((a, b) => b.id.compareTo(a.id));
+    notifyListeners();
+  }
+
+  // Logout: socketni uzib, katalog/savat/buyurtma va holat maydonlarini
+  // boshlang'ich holatga qaytaramiz.
+  @override
+  void clear() {
+    disconnectSocket();
+    productsByCategory = {};
+    allCategories = [];
+    isLoading = false;
+    errorMessage = null;
+    skladIds = [];
+    _skladsLoaded = false;
+    _cart.clear();
+    isSubmitting = false;
+    myOrders = [];
+    isLoadingOrders = false;
+    ordersError = null;
+    acceptingItemOrderId = null;
+    acceptingItemProductId = null;
+    deletingItemOrderId = null;
+    deletingItemProductId = null;
     notifyListeners();
   }
 

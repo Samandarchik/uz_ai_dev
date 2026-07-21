@@ -3,6 +3,7 @@
 // ProductModel/CategoryModel/OrderItem va ProductService (GET category/product1, POST AppUrls.orders).
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
@@ -82,7 +83,7 @@ class OrderItem {
   }
 }
 
-class ProductProvider extends ChangeNotifier {
+class ProductProvider extends ChangeNotifier with ClearableProvider {
   Map<String, List<ProductModel>> productsByCategory = {};
   List<CategoryModel> categories = [];
   Map<int, double> selectedProducts = {}; // productId: quantity (double)
@@ -210,6 +211,19 @@ class ProductProvider extends ChangeNotifier {
 
   void clearSelection() {
     selectedProducts.clear();
+    notifyListeners();
+  }
+
+  // Logout: barcha katalog + savat + holat maydonlarini boshlang'ich holatga.
+  @override
+  void clear() {
+    productsByCategory = {};
+    categories = [];
+    selectedProducts = {};
+    productPrintMap = {};
+    isLoading = false;
+    isSubmitting = false;
+    errorMessage = null;
     notifyListeners();
   }
 

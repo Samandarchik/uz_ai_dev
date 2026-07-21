@@ -14,13 +14,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/core/data/local/token_storage.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
-import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -98,8 +96,6 @@ class YukHomeUi extends StatefulWidget {
 }
 
 class _YukHomeUiState extends State<YukHomeUi> {
-  final TokenStorage tokenStorage = sl<TokenStorage>();
-
   static const Color _bgColor = Color(0xFFFAF6F1);
   static const Color _accentColor = Color(0xFFC5A97B);
 
@@ -177,11 +173,7 @@ class _YukHomeUiState extends State<YukHomeUi> {
   }
 
   void _logout() {
-    // Logout: avval socketni uzamiz.
-    context.read<YukProvider>().disconnectSocket();
-    tokenStorage.removeToken();
-    tokenStorage.removeRefreshToken();
-    context.push(LoginPage());
+    logoutAndClear(context);
   }
 
   String _skladName(int id) => kSkladNames[id] ?? 'Sklad $id';

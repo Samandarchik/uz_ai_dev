@@ -6,8 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 
-class ProductProviderAdmin extends ChangeNotifier {
+class ProductProviderAdmin extends ChangeNotifier with ClearableProvider {
   final ApiProductService _service = ApiProductService();
 
   // Barcha mahsulotlar bir marta yuklanadi
@@ -165,5 +166,17 @@ class ProductProviderAdmin extends ChangeNotifier {
   // Kategoriya bo'yicha mahsulotlar sonini olish
   int getProductCountByCategory(int categoryId) {
     return _allProducts.where((p) => p.categoryId == categoryId).length;
+  }
+
+  // Logout: mahsulotlar (YAGONA manba) va filtr/holat maydonlarini tozalaymiz.
+  @override
+  void clear() {
+    _allProducts = [];
+    _filteredProducts = [];
+    _isLoading = false;
+    _isInitialized = false;
+    _error = null;
+    _selectedCategoryId = null;
+    notifyListeners();
   }
 }

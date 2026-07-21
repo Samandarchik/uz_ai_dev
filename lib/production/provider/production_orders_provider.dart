@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
@@ -12,7 +13,8 @@ import 'package:uz_ai_dev/shef/model/production_model.dart';
 // Server rolga qarab filtrlaydi (ombor — o'z skladlari, admin/bugalter —
 // hammasi), shuning uchun uch rol ham bitta bazadan meros oladi; har rol
 // o'z amallarini qo'shadi (issue / delete / status).
-abstract class BaseProductionOrdersProvider extends ChangeNotifier {
+abstract class BaseProductionOrdersProvider extends ChangeNotifier
+    with ClearableProvider {
   final ProductionService service = ProductionService();
 
   List<ProductionOrder> orders = [];
@@ -105,6 +107,18 @@ abstract class BaseProductionOrdersProvider extends ChangeNotifier {
     OrderSocket.instance.disconnect();
   }
 
+  // Logout: socketni uzib, buyurtmalar va holat maydonlarini boshlang'ich
+  // holatga qaytaramiz. Sub-provider'lar o'z qo'shimcha maydonlarini
+  // (busyStageKey/busyOrderId) tozalab, super.clear() ni chaqiradi.
+  @override
+  void clear() {
+    disconnectSocket();
+    orders = [];
+    isLoading = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -140,6 +154,12 @@ class OmborProductionProvider extends BaseProductionOrdersProvider {
       busyStageKey = null;
       if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void clear() {
+    busyStageKey = null;
+    super.clear();
   }
 }
 
@@ -186,5 +206,11 @@ class BugalterProductionProvider extends BaseProductionOrdersProvider {
       busyOrderId = null;
       if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void clear() {
+    busyOrderId = null;
+    super.clear();
   }
 }

@@ -2,13 +2,14 @@
 // StockProvider (sklad bo'yicha qoldiq keshi + katalog) — adjust/setMin/
 // submitInventory/fetchMoves StockService orqali.
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/services/stock_service.dart';
 
 // Sklad qoldig'i holati: sklad bo'yicha qoldiqlar keshi, korreksiya va
 // harakatlar tarixi. Ombor (o'z skladi) va admin (hamma sklad) sahifalari
 // bitta shu provider'ni ishlatadi.
-class StockProvider extends ChangeNotifier {
+class StockProvider extends ChangeNotifier with ClearableProvider {
   final StockService _service = StockService();
 
   final Map<int, List<StockRow>> _bySklad = {};
@@ -166,6 +167,18 @@ class StockProvider extends ChangeNotifier {
     catalog = await _service.fetchCatalog();
     _catalogLoaded = true;
     if (!_disposed) notifyListeners();
+  }
+
+  // Logout: sklad qoldiq keshi, katalog va yuklanish/xato holatini tozalaymiz.
+  @override
+  void clear() {
+    _bySklad.clear();
+    _loading.clear();
+    _errors.clear();
+    isSubmitting = false;
+    catalog = [];
+    _catalogLoaded = false;
+    notifyListeners();
   }
 
   @override

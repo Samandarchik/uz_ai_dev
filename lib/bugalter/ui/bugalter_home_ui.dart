@@ -6,11 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
+import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/core/data/local/token_storage.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
-import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/yuk_day_cards.dart';
 
@@ -28,8 +26,6 @@ class BugalterHomeUi extends StatefulWidget {
 }
 
 class _BugalterHomeUiState extends State<BugalterHomeUi> {
-  final TokenStorage tokenStorage = sl<TokenStorage>();
-
   static const Color _bgColor = Color(0xFFFAF6F1);
   static const Color _accentColor = Color(0xFFC5A97B);
 
@@ -56,9 +52,7 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
   }
 
   void _logout() {
-    tokenStorage.removeToken();
-    tokenStorage.removeRefreshToken();
-    context.push(LoginPage());
+    logoutAndClear(context);
   }
 
   // Mahsulot qatori bosilganda: miqdorni (eski APK'lardan qolgan gram

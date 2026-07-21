@@ -2,10 +2,8 @@
 // OmborHomeUi (OmborProvider + StockProvider). Qidiruv, kategoriya kartochkalari, real-time socket.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
-import 'package:uz_ai_dev/core/data/local/token_storage.dart';
-import 'package:uz_ai_dev/core/di/di.dart';
-import 'package:uz_ai_dev/login_page.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_category_products_ui.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_low_stock_ui.dart';
@@ -26,7 +24,6 @@ class OmborHomeUi extends StatefulWidget {
 
 class _OmborHomeUiState extends State<OmborHomeUi>
     with SingleTickerProviderStateMixin {
-  final TokenStorage tokenStorage = sl<TokenStorage>();
 
   static const Color _bgColor = Color(0xFFFAF6F1);
   static const Color _accentColor = Color(0xFFC5A97B);
@@ -109,13 +106,7 @@ class _OmborHomeUiState extends State<OmborHomeUi>
             icon: const Icon(Icons.history),
           ),
           IconButton(
-            onPressed: () {
-              // Logout: avval socketni uzamiz.
-              context.read<OmborProvider>().disconnectSocket();
-              tokenStorage.removeToken();
-              tokenStorage.removeRefreshToken();
-              context.push(LoginPage());
-            },
+            onPressed: () => logoutAndClear(context),
             icon: const Icon(Icons.logout),
           ),
         ],

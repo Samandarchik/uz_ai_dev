@@ -4,13 +4,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/services/shef_service.dart';
 
 // Shef roli uchun holat boshqaruvchi: ishlab chiqarish buyurtmalari ro'yxati,
 // yaratish, masalliq qabul/rad va bo'lim progressi.
-class ShefProvider extends ChangeNotifier {
+class ShefProvider extends ChangeNotifier with ClearableProvider {
   final ShefService _service = ShefService();
 
   // Mening buyurtmalarim (bosh ekran ro'yxati).
@@ -210,6 +211,22 @@ class ShefProvider extends ChangeNotifier {
   }
 
   bool _disposed = false;
+
+  // Logout: socketni uzib, buyurtmalar/mahsulotlar va holat maydonlarini
+  // boshlang'ich holatga qaytaramiz.
+  @override
+  void clear() {
+    disconnectSocket();
+    orders = [];
+    isLoading = false;
+    errorMessage = null;
+    products = [];
+    isLoadingProducts = false;
+    productsError = null;
+    isSubmitting = false;
+    busyStageKey = null;
+    notifyListeners();
+  }
 
   @override
   void dispose() {

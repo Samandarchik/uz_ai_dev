@@ -3,12 +3,13 @@
 // yuk keltiruvchiga to'lov (submitPayment) va forSklad filtri.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
+import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Bugalter bosh ekrani uchun holat boshqaruvchi: barcha skladlarning
 // narxlangan/qabul qilingan buyurtmalari (mahsulotlar + xarajatlar bilan).
-class BugalterProvider extends ChangeNotifier {
+class BugalterProvider extends ChangeNotifier with ClearableProvider {
   final BugalterService _service = BugalterService();
 
   List<YukOrder> orders = [];
@@ -98,6 +99,19 @@ class BugalterProvider extends ChangeNotifier {
       isSubmittingPayment = false;
       notifyListeners();
     }
+  }
+
+  // Logout: buyurtmalar, yuk keltiruvchilar va holat maydonlarini tozalaymiz.
+  @override
+  void clear() {
+    orders = [];
+    isLoading = false;
+    errorMessage = null;
+    yukUsers = [];
+    isLoadingYukUsers = false;
+    yukUsersError = null;
+    isSubmittingPayment = false;
+    notifyListeners();
   }
 
   // Berilgan sklad buyurtmalari (null -> hammasi), yangisi tepada.
