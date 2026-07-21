@@ -10,6 +10,7 @@ import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/services/windows_update_service.dart';
 import 'package:uz_ai_dev/check_version.dart';
 import 'package:uz_ai_dev/login_page.dart';
 
@@ -28,6 +29,12 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       debugPrint('SplashScreen');
+
+      // 🔹 Windows avto-yangilanish: yangi release bo'lsa dialog ochilib
+      // o'zi yuklab o'rnatadi. Bunda navigatsiyani to'xtatamiz — ilova
+      // yangilanib qayta ishga tushadi.
+      if (await WindowsUpdateService.checkForUpdate()) return;
+      if (!mounted) return;
 
       // 🔹 Bitta request bilan ham version check ham isRelease ni olamiz
       final result = await VersionChecker.checkVersionAndRelease(context);

@@ -7,6 +7,8 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
+import 'package:uz_ai_dev/core/services/windows_update_service.dart';
+import 'package:uz_ai_dev/core/utils/app_navigator.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';
 import 'package:uz_ai_dev/production/provider/stock_provider.dart';
@@ -18,6 +20,10 @@ import 'package:uz_ai_dev/user/provider/provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupInit();
+
+  // Windows'da ochiq turgan ilova yangi release'ni o'tkazib yubormasligi
+  // uchun davriy (30 daqiqada) avto-yangilanish tekshiruvi.
+  WindowsUpdateService.startPeriodicChecks();
 
   runApp(
     MultiProvider(
@@ -48,6 +54,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'User Panel',
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,

@@ -11,6 +11,7 @@ REM     1) Loyiha ASCII papkaga (C:\uzbuild) ko'chiriladi, chunki
 REM        Cyrillic user-papka (Administrator) path da release build buziladi.
 REM     2) flutter pub get + flutter build windows --release.
 REM     3) Release bundle zip qilinib, shu papkaga qo'yiladi.
+REM     4) Zip GitHub Releases'ga chiqariladi (avto-update manbasi).
 REM ============================================================
 
 REM --- Manba papka (oxiridagi backslash olib tashlanadi, robocopy uchun) ---
@@ -75,6 +76,11 @@ if exist "%DEST%\windows\flutter\ephemeral" rd /s /q "%DEST%\windows\flutter\eph
 if exist "%DEST%\linux\flutter\ephemeral" rd /s /q "%DEST%\linux\flutter\ephemeral"
 if exist "%DEST%\macos\Flutter\ephemeral" rd /s /q "%DEST%\macos\Flutter\ephemeral"
 
+REM --- Oyna sarlavhasiga versiya qo'shish (faqat build nusxasida) ---
+REM     "uz_ai_dev" -> "uz_ai_dev v0.5.7"
+echo [+] Oyna sarlavhasiga versiya yozilmoqda: uz_ai_dev v%VERSION%
+powershell -NoProfile -Command "$f='%DEST%\windows\runner\main.cpp'; (Get-Content $f -Raw) -replace 'L\"uz_ai_dev\"', ('L\"uz_ai_dev v%VERSION%\"') | Set-Content $f -Encoding UTF8"
+
 REM --- ASCII papkaga o'tib build ---
 pushd "%DEST%"
 
@@ -102,6 +108,25 @@ if not exist "%RELDIR%\uz_ai_dev.exe" (
     goto :fail
 )
 
+REM --- Visual C++ runtime DLL larini bundle ga qo'shish (boshqa kompyuterda
+REM     VC++ Redistributable bo'lmasa ham dastur ishlashi uchun) ---
+echo [+] VC++ runtime DLL lari tekshirilmoqda...
+for %%d in (msvcp140.dll msvcp140_1.dll msvcp140_2.dll vcruntime140.dll vcruntime140_1.dll) do (
+    if not exist "%RELDIR%\%%d" (
+        if exist "%SystemRoot%\System32\%%d" (
+            copy /y "%SystemRoot%\System32\%%d" "%RELDIR%\" >nul
+            echo     + %%d System32 dan nusxalandi
+        )
+    )
+)
+REM Majburiy uchtasi bo'lmasa build yaroqsiz - to'xtatamiz
+for %%d in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll) do (
+    if not exist "%RELDIR%\%%d" (
+        echo [XATO] %%d topilmadi - bundle boshqa kompyuterda ishlamaydi.
+        goto :fail
+    )
+)
+
 set "ZIPNAME=uz_ai_dev_v%VERSION%_windows.zip"
 echo [4/4] Zip yaratilmoqda: %ZIPNAME%
 if exist "%SRC%\%ZIPNAME%" del /f /q "%SRC%\%ZIPNAME%"
@@ -111,13 +136,22 @@ if errorlevel 1 (
     goto :fail
 )
 
-REM --- Release bundle ni Desktop\Release_uz_ai_dev papkaga nusxalash ---
+REM --- 5/5: GitHub Releases'ga chiqarish (Windows avto-update manbasi) ---
+REM     Desktop\Release nusxalashdan OLDIN - u yerdan ilova ochiq bo'lsa
+REM     nusxalash xatosi publish'ni to'sib qo'ymasligi kerak.
+echo [5/5] GitHub Releases'ga chiqarilmoqda (v%VERSION%)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SRC%\publish_release.ps1" -Version "%VERSION%" -Zip "%SRC%\%ZIPNAME%"
+if errorlevel 1 (
+    echo [OGOHLANTIRISH] Release chiqarilmadi - yuqoridagi xabarga qarang.
+    echo   Avto-update ishlashi uchun release chiqishi SHART.
+)
+
+REM --- Release bundle ni Desktop\Release_uz_ai_dev papkaga nusxalash (ixtiyoriy) ---
 set "OUTDIR=%USERPROFILE%\Desktop\Release_uz_ai_dev"
 echo [+] Release papkaga nusxalanmoqda: %OUTDIR%
 robocopy "%RELDIR%" "%OUTDIR%" /MIR /NFL /NDL /NJH /NJS /NP /R:1 /W:1 >nul
 if %errorlevel% geq 8 (
-    echo [XATO] Release papkaga nusxalashda xatolik ^(robocopy=%errorlevel%^).
-    goto :fail
+    echo [OGOHLANTIRISH] Release papkaga nusxalab bo'lmadi ^(robocopy=%errorlevel%^) - ehtimol ilova o'sha papkadan ochiq. GitHub release baribir chiqdi.
 )
 
 echo.
