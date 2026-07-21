@@ -1,3 +1,6 @@
+// shef/provider/shef_provider.dart — shef roli holati: ShefProvider (orders,
+// tex kartali products, socket) — buyurtma yaratish va masalliq accept/reject/
+// progress ShefService orqali.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

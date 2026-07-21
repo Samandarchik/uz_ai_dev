@@ -1,3 +1,7 @@
+// yuk/provider/yuk_provider.dart — yuk keltiruvchi (sklad buyurtmalari) uchun MARKAZIY
+// provider: YukProvider. Egalik: orders (pending)/historyOrders/ledger/transfers, lokal narx
+// qoralamalari (_prices) + proche/rasxod qo'shimchalar, offline kesh, undo oynasi, WebSocket
+// real-time. YukService orqali fetch/price/draft/revert/transfer qiladi.
 import 'dart:async';
 import 'dart:convert';
 

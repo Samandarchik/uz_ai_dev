@@ -1,3 +1,6 @@
+// shef/ui/shef_order_detail_ui.dart — buyurtma tafsiloti ekrani:
+// ShefOrderDetailUi — bo'limlar bo'yicha masalliq qabul/rad va done_qty
+// kiritish; ShefProvider ustida.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

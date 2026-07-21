@@ -1,3 +1,6 @@
+// yuk/ui/yuk_profile_ui.dart — yuk keltiruvchi profili: YukProfileUi — kunlik hisob daftari
+// Excel-uslub oylik jadvallarda (_MonthTable/_MonthSection); kun bosilsa xarajat tafsiloti
+// _LedgerDaySheet. YukProvider.ledger va fetchLedgerDay'ga tayanadi.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

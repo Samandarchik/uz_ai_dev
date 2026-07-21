@@ -1,3 +1,6 @@
+// core/media/video_pervi.dart — yozilgan aylana videoning preview ekrani
+// (VideoPreviewScreen): segmentlarni avtoplay qiladi, "Yuborish"/"Qaytadan"
+// natijasini pop({action, segments}) bilan qaytaradi.
 import 'dart:io';
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';

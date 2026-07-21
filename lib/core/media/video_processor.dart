@@ -1,3 +1,6 @@
+// core/media/video_processor.dart — Telegram "video note" qayta ishlash
+// (VideoProcessor.toSquareNote): segmentlarni birlashtiradi, iOS'da kvadrat
+// qirqadi, 480p ga siqadi (FFmpeg'siz — AVFoundation/MediaCodec).
 import 'dart:io';
 
 import 'package:easy_video_editor/easy_video_editor.dart';

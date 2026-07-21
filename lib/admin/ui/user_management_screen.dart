@@ -1,4 +1,6 @@
-// ================ USERS SCREEN (HR uslubida) ================
+// admin/ui/user_management_screen.dart — foydalanuvchilarni boshqarish ekrani
+// (UserManagementScreen): UserManagementService orqali ro'yxat/o'chirish, qator
+// bosilsa UserEditDialog, login+parolni Telegram orqali yuborish.
 // Foydalanuvchilar ro'yxati: oq karta ichida qatorlar, har qatorda avatar
 // (bosh harflar), telefon, ochiq parol, Telegram holati va rol pill'i.
 // Qator bosilsa — tahrirlash dialogi, uzoq bosilsa — o'chirish tasdig'i.

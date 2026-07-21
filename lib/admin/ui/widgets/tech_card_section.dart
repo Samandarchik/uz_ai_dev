@@ -1,3 +1,6 @@
+// admin/ui/widgets/tech_card_section.dart — тех карта editori sub-fayli:
+// TechCardController — muharrir holatini (batchQty, bases, consumables,
+// profit/overhead, salePrice) boshqaradi va build() bilan TechCard yig'adi.
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 
 // Tex karta (тех карта) holatini boshqaradigan controller.

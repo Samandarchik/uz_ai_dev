@@ -1,3 +1,6 @@
+// admin/ui/widgets/tech_item_editor.dart — тех карта editori sub-vidjeti:
+// EditTechItemDialog (ingredient miqdori butun + birlik tahriri) +
+// confirmDeleteTechItem (o'chirishni tasdiqlash dialogi).
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';

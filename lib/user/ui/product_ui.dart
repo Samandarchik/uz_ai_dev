@@ -1,3 +1,5 @@
+// user/ui/product_ui.dart — Seller: bitta kategoriya mahsulotlari grid ekrani: ProductsScreen
+// (ProductProvider). Bosish -> savatga qo'shadi, uzun bosish -> UserProductDetailUi.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

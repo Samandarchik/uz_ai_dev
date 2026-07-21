@@ -1,4 +1,7 @@
-// ==================== EDIT PRODUCT PAGE WITH IMAGE UPLOAD ====================
+// admin/ui/admin_edit_product_ui.dart — mavjud mahsulotni tahrirlash formasi
+// (EditProductPage): ProductProviderAdmin.updateProduct; CategoryProviderAdmin/
+// FilialProviderAdmin, rasm CategoryProviderAdminUpload. Tex karta bu yerda emas —
+// _techController mavjud kartani o'zgarmay saqlaydi va «Состав» avto-to'ldirishga ishlatiladi.
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';

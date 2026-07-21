@@ -1,4 +1,5 @@
-// ui/screens/orders_page.dart
+// user/ui/orders_page.dart — Seller o'z buyurtmalari tarixi ekrani: OrdersPage (StatefulWidget).
+// ApiService.getOrders orqali sahifalab (pagination) yuklaydi, scroll oxirida yana chaqiradi.
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';

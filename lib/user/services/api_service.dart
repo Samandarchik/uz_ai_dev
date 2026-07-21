@@ -1,3 +1,5 @@
+// user/services/api_service.dart — Seller uchun statik Dio API: ApiService. Auth (login, loginV1) va
+// buyurtmalar (getOrders — AppUrls.orders); Dio xatolari _handleDioError bilan matnga aylantiriladi.
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

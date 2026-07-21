@@ -1,3 +1,6 @@
+// admin/services/filial_limit_service.dart — filial avto-buyurtma limitlari
+// servisi (faqat admin): FilialLimitService.fetchLimits/saveLimit →
+// GET/POST /api/filial-limits. limit_qty butun gr/ml (float yo'q).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/filial_limit_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

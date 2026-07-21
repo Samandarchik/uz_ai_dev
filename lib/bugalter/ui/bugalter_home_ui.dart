@@ -1,3 +1,5 @@
+// bugalter/ui/bugalter_home_ui.dart — Bugalter roli bosh ekrani: BugalterHomeUi (BugalterProvider).
+// Barcha skladlarning narxlangan/qabul buyurtmalari, "Hammasi" + har sklad tab, yuk keltiruvchi filtri.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

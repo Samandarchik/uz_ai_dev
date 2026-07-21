@@ -1,3 +1,7 @@
+// admin/ui/analytics_hub_ui.dart — analitika markazi (AnalyticsHubUi):
+// 4 ta kartadan iborat navigatsiya hub — ishlab chiqarish (AdminProductionUi),
+// statistikasi, foyda nazorati (ProfitControlUi), foyda analitikasi (ProfitAnalyticsUi).
+// Faqat navigatsiya, yangi mantiq yo'q.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_ui.dart';

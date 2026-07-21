@@ -1,3 +1,5 @@
+// ombor/ui/ombor_orders_ui.dart — Ombor buyurtmalari ekranlari: OmborOrdersUi, OmborOrdersHistoryUi va
+// umumiy OmborOrdersView (OmborProvider). Qatorda kelgan soni + rasm/video bilan qabul qilish/o'chirish.
 import 'dart:io';
 
 import 'package:flutter/material.dart';

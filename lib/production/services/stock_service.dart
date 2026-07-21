@@ -1,3 +1,6 @@
+// production/services/stock_service.dart — sklad qoldig'i (stock) Dio servisi:
+// StockService — /api/stock (+adjust/min/inventory/inventories/moves) va katalog
+// uchun /api/ombor/products endpointlari.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';

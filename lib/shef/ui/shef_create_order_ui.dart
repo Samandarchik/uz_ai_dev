@@ -1,3 +1,6 @@
+// shef/ui/shef_create_order_ui.dart — yangi ishlab chiqarish buyurtmasi yaratish
+// ekrani: ShefCreateOrderUi — tex kartali mahsulotlar savati, partiya yaxlitlashi
+// jonli; ShefProvider ustida.
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';

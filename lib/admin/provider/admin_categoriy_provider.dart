@@ -1,3 +1,7 @@
+// admin/provider/admin_categoriy_provider.dart — kategoriyalar holati
+// (CategoryProviderAdmin, ChangeNotifier): categories ro'yxatini
+// ApiAdminService orqali oladi (getCategories) va tartibini o'zgartiradi
+// (reorderCategories); isLoading/error holatini ushlaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/services/admin_categoriy.dart';

@@ -1,3 +1,6 @@
+// admin/ui/dealog.dart — kategoriya yaratish/tahrirlash dialogi (CategoryDialog):
+// CategoryProviderAdminUpload orqali create/update (rasm yuklash bilan).
+// admin_add_categoriy.dart shu dialogni «+» va tahrirda chaqiradi.
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';

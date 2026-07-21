@@ -1,3 +1,6 @@
+// bugalter/provider/bugalter_provider.dart — Bugalter (hisobchi) provideri: BugalterProvider
+// (ChangeNotifier). Holat: orders (barcha sklad narxlangan buyurtmalari), yukUsers; editItemQty,
+// yuk keltiruvchiga to'lov (submitPayment) va forSklad filtri.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';

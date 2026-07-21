@@ -1,3 +1,6 @@
+// production/ui/widgets/stock_widgets.dart — sklad qoldig'i (stock) uchun umumiy
+// vidjetlar: StockSkladView (qidiruv+qoldiq+korreksiya), showStockMovesSheet
+// (harakatlar tarixi), showStockAdjustDialog; StockProvider ustida.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

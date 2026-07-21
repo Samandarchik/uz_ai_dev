@@ -1,3 +1,5 @@
+// core/data/local/token_storage.dart — JWT token saqlash (TokenStorage):
+// getToken/removeToken/removeRefreshToken (BaseStorage ustida, 'token' kaliti).
 import 'base_storage.dart';
 
 final class TokenStorage {

@@ -1,3 +1,5 @@
+// user/ui/order_ui.dart — Seller savati (buyurtma berish) ekrani: CartPage (ProductProvider).
+// Miqdorni kg/l dialogda tahrirlash va savatni yuborish (submitOrder).
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

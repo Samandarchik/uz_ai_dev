@@ -1,3 +1,7 @@
+// admin/ui/admin_product_ui.dart — kategoriya ichidagi mahsulotlar ro'yxati
+// (AdminProductUi): ProductProviderAdmin.filteredProducts + ApiPdfService (PDF ulashish);
+// single tap tahrir (EditProductPage), double tap tex karta editori, long press
+// o'chirish, «i» ikona — tex karta. Reorder rejimi va ПФ belgisi bor.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';

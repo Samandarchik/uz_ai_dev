@@ -1,3 +1,6 @@
+// core/media/telegram_style_video_recorder.dart — ilova ichida "Telegram uslubi"
+// aylana video yozgich (TelegramStyleVideoRecorder): segmentlar yozadi va
+// List<XFile> qaytaradi (video_pervi preview + video_processor bilan ishlaydi).
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show ImageFilter;

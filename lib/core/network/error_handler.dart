@@ -1,3 +1,5 @@
+// core/network/error_handler.dart — parseDioError(): DioException'ni o'qiladigan
+// xato matniga aylantiradi (javob body'sidagi message/error, aks holda tarmoq xatosi).
 import 'package:dio/dio.dart';
 
 /// DioException ni o'qiladigan xato matniga aylantiradi.

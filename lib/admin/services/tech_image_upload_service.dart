@@ -1,3 +1,6 @@
+// admin/services/tech_image_upload_service.dart — тех карта baza rasmini
+// yuklash servisi: TechImageUploadService.upload → POST /api/upload
+// (multipart), server bergan "/static/..." URL qaytaradi.
 import 'dart:io';
 
 import 'package:dio/dio.dart';

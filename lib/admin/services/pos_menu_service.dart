@@ -1,3 +1,6 @@
+// admin/services/pos_menu_service.dart — Konak POS menyu katalogi servisi
+// (faqat admin): PosMenuService.fetchPosMenu/savePosMenu →
+// GET/PUT /api/pos-menu (tartibli product_ids ro'yxati).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/pos_menu_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

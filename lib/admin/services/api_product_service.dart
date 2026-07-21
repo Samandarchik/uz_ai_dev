@@ -1,3 +1,7 @@
+// admin/services/api_product_service.dart — mahsulot CRUD servisi
+// (ApiProductService): AppUrls.productAll (getAllProducts), AppUrls.product ga
+// post/put/delete (createProduct/updateProduct/deleteProduct) va
+// AppUrls.productReorder ga PUT (reorderProducts). ProductModelAdmin bilan.
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';

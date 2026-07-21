@@ -1,3 +1,6 @@
+// ombor/services/ombor_service.dart — Ombor (bozor) Dio servisi: OmborService. Endpointlar
+// AppUrls.orders (POST buyurtma / GET o'z buyurtmalari), omborProducts, category; item
+// accept (POST .../accept) va soft-delete (DELETE .../items/{productId}).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';

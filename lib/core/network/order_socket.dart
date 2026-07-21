@@ -1,3 +1,7 @@
+// core/network/order_socket.dart — real-time WebSocket (OrderSocket singleton):
+// buyurtma / targovli-pul / ishlab-chiqarish hodisalarini alohida stream'larga
+// tarqatadi (OrderSocketEvent / TransferSocketEvent / ProductionSocketEvent);
+// ref-count + auto-reconnect backoff. Ombor/Yuk provider'lari obuna bo'ladi.
 import 'dart:async';
 import 'dart:convert';
 

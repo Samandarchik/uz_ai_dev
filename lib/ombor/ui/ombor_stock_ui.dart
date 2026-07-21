@@ -1,3 +1,5 @@
+// ombor/ui/ombor_stock_ui.dart — Ombor: skladi qoldiqlari sahifasi: OmborStockUi. Qidiruv, qoldiqlar
+// ro'yxati, korreksiya va harakatlar tarixi (InventoryPage); bir nechta sklad bo'lsa tablar.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/ui/inventory_page.dart';

@@ -1,3 +1,6 @@
+// admin/ui/profit_analytics_ui.dart — foyda/marja analitikasi ekrani (faqat
+// admin): ProfitAnalyticsUi (StatefulWidget) — ProductionService orqali
+// GET /api/analytics/profit?days=N; KPI kartalar + marja dinamikasi chizig'i.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';

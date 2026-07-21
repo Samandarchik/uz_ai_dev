@@ -1,3 +1,6 @@
+// production/ui/widgets/production_order_widgets.dart — ombor/admin/bugalter
+// uchun umumiy ishlab chiqarish buyurtma vidjetlari: materialStatusChip,
+// ProductionOrderCard, ProductionOrderDetailBody.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

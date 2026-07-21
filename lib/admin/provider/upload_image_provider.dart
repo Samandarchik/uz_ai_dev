@@ -1,3 +1,7 @@
+// admin/provider/upload_image_provider.dart — rasm yuklash + kategoriya CRUD
+// holati (CategoryProviderAdminUpload, ChangeNotifier): rasmni /api/upload ga
+// Dio bilan yuklaydi (uploadImage, uploadProgress bilan) va kategoriyalarni
+// create/update/deleteCategory qiladi (ApiAdminService orqali).
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';

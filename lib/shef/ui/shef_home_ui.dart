@@ -1,3 +1,6 @@
+// shef/ui/shef_home_ui.dart — shef bosh ekrani: ShefHomeUi — mening ishlab
+// chiqarish buyurtmalarim ro'yxati (status chip, progress); ShefProvider ustida,
+// productionStatusChip shu yerda eksport qilinadi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

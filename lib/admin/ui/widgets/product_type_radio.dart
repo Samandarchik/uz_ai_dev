@@ -1,3 +1,6 @@
+// admin/ui/widgets/product_type_radio.dart — тех карта editori sub-vidjeti:
+// ProductTypeRadioGroup (birlik tanlash radio) + kProductTypeOptions kanonik
+// 9 birlik ro'yxati + normalizeProductType (eski qiymatlarni to'g'rilash).
 import 'package:flutter/material.dart';
 
 /// Mahsulot birligi (type) uchun yagona kanonik ro'yxat — hammasi kichik harfda.

@@ -1,3 +1,5 @@
+// core/context_extension.dart — BuildContext uchun navigatsiya qisqartmalari
+// (CustomContext extension): pop, push, pushReplacement, pushAndRemove.
 import 'package:flutter/material.dart';
 
 extension CustomContext on BuildContext {

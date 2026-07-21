@@ -1,3 +1,6 @@
+// yuk/ui/widgets/yuk_day_cards.dart — narxlangan buyurtmalarni KUNLIK kartada ko'rsatuvchi
+// umumiy widget YukDayCard (+ _AttachmentTile) va yordamchilar: groupYukOrdersByDay,
+// yukOrderContributes, formatMoney, kYukSkladNames. Bosh ekran va tarix ekrani birga ishlatadi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';

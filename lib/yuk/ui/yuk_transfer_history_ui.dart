@@ -1,3 +1,7 @@
+// yuk/ui/yuk_transfer_history_ui.dart — targovlidan kelgan pullar tarixi ekrani:
+// YukTransferHistoryUi (+ _TransferHistoryCard). Qabul/rad/kutilayotgan pullar bitta
+// ro'yxatda + holat bo'yicha jami; YukService.fetchTransfers va transfer socketiga tayanadi
+// (faqat ko'rish — qabul/rad bosh ekranda).
 import 'dart:async';
 
 import 'package:flutter/material.dart';

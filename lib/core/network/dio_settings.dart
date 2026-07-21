@@ -1,3 +1,6 @@
+// core/network/dio_settings.dart — Dio klientini quradi (AppDioClient.createDio):
+// baseUrl, Bearer token interceptor, X-Qty-Unit: milli header (гр/мл kontrakti)
+// va faqat-debug TalkerDioLogger.
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';

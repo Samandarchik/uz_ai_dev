@@ -1,3 +1,6 @@
+// admin/ui/filial_limits_ui.dart — filial mahsulot limitlari ekrani (FilialLimitsUi):
+// FilialProviderAdmin + ProductProviderAdmin, limitlar FilialLimitService orqali;
+// limit_qty gram kontraktda BUTUN (кг/л→gr/ml). Tashqi POS avto-buyurtma uchun.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

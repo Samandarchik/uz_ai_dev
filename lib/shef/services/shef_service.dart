@@ -1,3 +1,6 @@
+// shef/services/shef_service.dart — shef (ishlab chiqarish) Dio servisi:
+// ShefService — /api/production/{products,orders} (yaratish + accept/reject/
+// progress) va полуфабрикат limiti uchun /api/production/pf-availability.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';

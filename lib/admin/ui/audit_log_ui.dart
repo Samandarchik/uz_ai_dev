@@ -1,3 +1,6 @@
+// admin/ui/audit_log_ui.dart — audit jurnali ekrani (AuditLogUi):
+// AuditLogService.fetchAuditLog (faqat admin); obyekt turi bo'yicha chip filtr
+// (serverda), yozuvlar «eski → yangi» ko'rinishida (eski qizil, yangi yashil).
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/admin/model/audit_log_model.dart';

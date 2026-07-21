@@ -1,3 +1,8 @@
+// admin/provider/admin_product_provider.dart — mahsulotlarning YAGONA manbai
+// (ProductProviderAdmin, ChangeNotifier): barcha mahsulotlarni bir marta
+// yuklaydi (initializeProducts), kategoriya bo'yicha filtrlaydi
+// (filterByCategory) va create/update/delete/reorderProducts'ni xotirada
+// yangilaydi — to'liq re-fetch YO'Q. ApiProductService bilan ishlaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';

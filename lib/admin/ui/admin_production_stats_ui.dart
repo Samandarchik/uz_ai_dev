@@ -1,3 +1,6 @@
+// admin/ui/admin_production_stats_ui.dart — ishlab chiqarish statistikasi ekrani
+// (AdminProductionStatsUi): ProductionService.fetchStats (7/30/90 kun); progress
+// chiziqlar va gorizontal barlar, chart paketisiz. Admin/bugalter uchun.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/production/models/production_stats_model.dart';

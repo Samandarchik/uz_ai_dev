@@ -1,3 +1,6 @@
+// yuk/ui/yuk_magazin_detail_ui.dart — bitta magazin tafsiloti ekrani: YukMagazinDetailUi
+// (+ qarz/to'lov formasi _DebtFormSheet). Jami qarz, qarz yozuvlari, "Qarz qo'shish"/"To'lov"
+// FAB; MagazinProvider bilan ishlaydi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

@@ -1,3 +1,6 @@
+// yuk/ui/yuk_history_ui.dart — yuk keltiruvchining O'ZI narxlagan buyurtmalari tarixi ekrani:
+// YukHistoryUi. YukProvider.myHistoryOrders'ni YukDayCard kunlik kartalarida ko'rsatadi
+// (backenddan ?status=done bilan yuklanadi).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';

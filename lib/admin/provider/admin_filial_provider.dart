@@ -1,4 +1,6 @@
-// ==================== FILIAL PROVIDER ====================
+// admin/provider/admin_filial_provider.dart — filiallar holati
+// (FilialProviderAdmin, ChangeNotifier): ApiFilialService orqali filiallar
+// ro'yxatini oladi (getFilials), isLoading/error holatini ushlaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/services/api_filial_service.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';

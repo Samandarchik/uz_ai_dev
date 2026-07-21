@@ -1,3 +1,6 @@
+// admin/ui/admin_stock_ui.dart — sklad qoldiqlari ekrani (AdminStockUi):
+// har sklad uchun tab (StockSkladView, canAdjust=true) — korreksiya va harakatlar
+// tarixi; joriy tab uchun inventarizatsiya (StockInventoryPage). Qoldiq StockProvider'da.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/ui/inventory_page.dart';

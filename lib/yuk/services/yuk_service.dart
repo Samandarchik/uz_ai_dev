@@ -1,3 +1,6 @@
+// yuk/services/yuk_service.dart — yuk keltiruvchi Dio servisi: YukService. AppUrls:
+// yukOrders (fetch/price/draft/revert), yukLedger[/day], procheNames, yukTransfers
+// (accept/reject), yukUpload, omborProducts (mahsulot rasmlari).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';

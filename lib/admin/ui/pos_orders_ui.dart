@@ -1,3 +1,6 @@
+// admin/ui/pos_orders_ui.dart — Konak POS avto-buyurtmalari ekrani (faqat
+// admin): PosOrdersUi (StatefulWidget) — PosOrderService bilan buyurtmalarni
+// ko'rsatadi va «bazadan yuboradi» (dispatch), qabul/kamomad holatini rangda.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/admin/model/pos_order_model.dart';

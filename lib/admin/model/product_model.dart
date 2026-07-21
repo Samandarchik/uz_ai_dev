@@ -1,3 +1,8 @@
+// admin/model/product_model.dart — admin mahsulot modeli (ProductModelAdmin):
+// fromJson/toJson, techCard (iyerarxik тех карта), composition (eski tekis
+// tarkib), type, is_semi_finished (полуфабрикат), waste_base/waste_amount
+// (tozalash yo'qotishi -> wasteFactor), mone_app/bozor/source/sklads (ombor →
+// yuk keltiruvchi oqimi).
 import 'package:uz_ai_dev/admin/model/composition_item.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 

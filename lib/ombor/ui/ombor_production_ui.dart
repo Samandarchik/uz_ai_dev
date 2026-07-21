@@ -1,3 +1,5 @@
+// ombor/ui/ombor_production_ui.dart — Ombor: skladiga kelgan ishlab chiqarish buyurtmalari ro'yxati:
+// OmborProductionUi (OmborProductionProvider). Real-time socket bilan yangilanadi.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

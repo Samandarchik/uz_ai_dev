@@ -1,3 +1,6 @@
+// check_version.dart — ilova versiyasini tekshirish (VersionChecker):
+// version.uzaidev.uz/health dan oxirgi iOS/Android versiyani oladi, majburiy
+// update dialogini ko'rsatadi va {needsUpdate, versionsMatch} qaytaradi.
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';

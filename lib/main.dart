@@ -1,3 +1,6 @@
+// main.dart — ilova kirish nuqtasi: main() DI'ni (setupInit) ishga tushiradi,
+// MultiProvider'da barcha global ChangeNotifier providerlarni ro'yxatlaydi va
+// MyApp (MaterialApp) home = SplashScreen bilan ishga tushadi.
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';

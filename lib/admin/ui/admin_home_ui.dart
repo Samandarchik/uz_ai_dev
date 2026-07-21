@@ -1,3 +1,7 @@
+// admin/ui/admin_home_ui.dart — admin bosh ekrani: kategoriyalar ro'yxati
+// (AdminHomeUi): CategoryProviderAdmin + ProductProviderAdmin; AppBar'da qidiruv
+// (_AdminProductSearchDelegate), narx badge (→ProfitControlUi), reorder rejimi va
+// menyu (kategoriya/analitika/sklad/audit/POS/filial/pf), logout.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

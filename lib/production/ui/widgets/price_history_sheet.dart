@@ -1,3 +1,6 @@
+// production/ui/widgets/price_history_sheet.dart — masalliq xarid narxlari
+// tarixi bottom sheet'i: showPriceHistorySheet/_PriceHistorySheet — GET
+// /api/prices/history (tex karta muharriridagi «Цена» katagidan ochiladi).
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

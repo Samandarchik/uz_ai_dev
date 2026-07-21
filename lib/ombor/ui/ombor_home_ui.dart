@@ -1,3 +1,5 @@
+// ombor/ui/ombor_home_ui.dart — Ombor roli bosh ekrani (2 tab: Mahsulotlar / Buyurtmalarim):
+// OmborHomeUi (OmborProvider + StockProvider). Qidiruv, kategoriya kartochkalari, real-time socket.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';

@@ -1,3 +1,6 @@
+// admin/services/api_filial_service.dart — filial CRUD servisi
+// (ApiFilialService): AppUrls.filials ga get/post/put/delete
+// (getFilials/addFilial/updateFilial/deleteFilial), Filial modelini qaytaradi.
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 

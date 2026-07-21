@@ -1,3 +1,6 @@
+// admin/model/category_model.dart — admin kategoriya modeli
+// (CategoryProductAdmin): fromJson/toJson/copyWith, maydonlar id, name,
+// image_url, printer (printer id).
 class CategoryProductAdmin {
   final int id;
   final String name;

@@ -1,3 +1,6 @@
+// core/media/in_app_photo_camera.dart — ilova ICHIDA rasm olish ekrani
+// (InAppPhotoCamera): tashqi kamera ilovasini ochmaydi (xotira kam telefonlarda
+// holat yo'qolmasin); Navigator.push<XFile> orqali olingan rasmni qaytaradi.
 import 'dart:io';
 
 import 'package:camera/camera.dart';

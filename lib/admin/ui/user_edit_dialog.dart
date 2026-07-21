@@ -1,4 +1,6 @@
-// ================ USER CREATE/EDIT DIALOG ================
+// admin/ui/user_edit_dialog.dart — foydalanuvchi yaratish/tahrirlash dialogi
+// (UserEditDialog): UserManagementService orqali create/update; rol tanlovi
+// seller/ombor/yuk_keltiruvchi/bugalter/shef.
 // HR loyihasidagi users_screen dialog uslubida. Biznes-logika to'liq
 // eski EditUserPage (edit_user_list.dart) dan ko'chirilgan:
 //   - telefon + parol majburiy (ism ixtiyoriy — bo'sh qolsa telefon yoziladi)

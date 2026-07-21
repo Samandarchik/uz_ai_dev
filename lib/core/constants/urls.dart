@@ -1,3 +1,6 @@
+// core/constants/urls.dart — BARCHA backend endpoint manzillari (AppUrls):
+// baseUrl + har bir API yo'li (login, products, ombor, yuk, production, stock,
+// prices, analytics, POS, filials...). Yangi endpoint SHU YERGA qo'shiladi.
 abstract final class AppUrls {
   static const String baseUrl = "https://moneapp.monebakeryuz.uz";
   // static const String baseUrl = "http://localhost:1010";

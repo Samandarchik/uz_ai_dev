@@ -1,3 +1,6 @@
+// yuk/ui/yuk_magazin_ui.dart — "Qarz daftari" ro'yxat ekrani: YukMagazinUi (+ _MagazinListView,
+// _MagazinCard). Ekranga-lokal MagazinProvider, tepada umumiy qarz, "+" FAB — yangi magazin,
+// karta bosilsa YukMagazinDetailUi.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';

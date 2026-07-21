@@ -1,3 +1,6 @@
+// production/ui/widgets/cost_sheet.dart — tannarx (себестоимость) bottom
+// sheet'i: showProductionCostSheet/_CostSheet — GET /api/production/cost (1
+// dona/1 партия tannarxi + masalliqlar); tex karta va admin tafsiloti ishlatadi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

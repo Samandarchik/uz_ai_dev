@@ -1,3 +1,6 @@
+// admin/ui/filials_ui.dart — filiallar boshqaruvi ekrani (FilialsUi):
+// ApiFilialService; ro'yxatni hamma admin ko'radi, qo'shish/tahrir/o'chirish
+// faqat superadmin (rol SharedPreferences 'role' dan). FAB «+» qo'shadi.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';

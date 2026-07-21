@@ -1,3 +1,5 @@
+// bugalter/ui/bugalter_production_ui.dart — Bugalter: barcha ishlab chiqarish buyurtmalari ekrani:
+// BugalterProductionUi (BugalterProductionProvider). Buyurtmani o'chirish va statusni qo'lda almashtirish.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';

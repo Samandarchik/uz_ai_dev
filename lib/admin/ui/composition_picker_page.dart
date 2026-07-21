@@ -1,3 +1,6 @@
+// admin/ui/composition_picker_page.dart — ingredient (tarkib) tanlash sahifasi
+// (CompositionPickerPage): ProductProviderAdmin ro'yxatidan qidirib tanlaydi,
+// miqdor+birlik dialogi (_AmountUnitDialog) orqali natijani TechItem qilib qaytaradi.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

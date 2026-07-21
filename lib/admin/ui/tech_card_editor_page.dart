@@ -1,3 +1,6 @@
+// admin/ui/tech_card_editor_page.dart — тех карта / полуфабрикат muharriri
+// (eng og'ir admin ekrani): TechCardEditorPage — Excel «тех карта» varag'iga
+// 1:1 o'xshash baza bloklari + Расходник tahriri, saqlaganda mahsulot update.
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';

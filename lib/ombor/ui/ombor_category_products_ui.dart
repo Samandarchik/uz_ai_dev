@@ -1,3 +1,5 @@
+// ombor/ui/ombor_category_products_ui.dart — Ombor: bitta kategoriya bozor mahsulotlari grid ekrani:
+// OmborCategoryProductsUi (OmborProvider + StockProvider). ensureOmborStock() qoldiq keshini yuklaydi.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

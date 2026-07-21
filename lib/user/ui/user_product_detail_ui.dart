@@ -1,3 +1,5 @@
+// user/ui/user_product_detail_ui.dart — Seller: mahsulot batafsil ekrani: UserProductDetailUi
+// (ProductProvider, productId bo'yicha topadi). Rasm, tarkib va savatga qo'shish tugmalari.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

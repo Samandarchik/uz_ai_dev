@@ -1,3 +1,6 @@
+// admin/ui/admin_production_ui.dart — admin ishlab chiqarish buyurtmalari (faqat ko'rish)
+// (AdminProductionUi, tafsilot AdminProductionDetailUi): AdminProductionProvider +
+// StockProvider; socket bilan yangilanadi, «Berdim» yo'q, har item uchun tannarx sheet'i.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/production/provider/production_orders_provider.dart';

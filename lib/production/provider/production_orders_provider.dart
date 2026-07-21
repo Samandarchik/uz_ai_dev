@@ -1,3 +1,6 @@
+// production/provider/production_orders_provider.dart — ombor/admin/bugalter
+// ishlab chiqarish buyurtmalari holati: BaseProductionOrdersProvider +
+// Ombor/Admin/BugalterProductionProvider (orders ro'yxati, socket, issueStage/deleteOrder/setStatus).
 import 'dart:async';
 
 import 'package:flutter/material.dart';

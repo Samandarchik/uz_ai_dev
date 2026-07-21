@@ -1,3 +1,6 @@
+// admin/services/convert_pf_service.dart — takroriy bazalarni полуфабрикат
+// mahsulotga aylantirish servisi: ConvertPfService.convert → POST
+// /api/techcards/convert-pf (dry_run bilan; faqat admin).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/convert_pf_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

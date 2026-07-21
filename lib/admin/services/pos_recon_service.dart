@@ -1,3 +1,5 @@
+// admin/services/pos_recon_service.dart — Konak POS smena solishtiruvi servisi
+// (faqat admin): PosReconService.fetchPosRecons → GET /api/pos-recons?days=N.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/pos_recon_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

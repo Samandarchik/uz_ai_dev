@@ -1,3 +1,6 @@
+// admin/ui/profit_control_ui.dart — foyda/marja nazorati ekrani (faqat admin):
+// ProfitControlUi (StatefulWidget) — тех картаси bor mahsulotlar marjasini
+// jadvalda; hisob mijoz tomonida (tech_card_cost.dart), tavsiya narxni saqlaydi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

@@ -1,3 +1,6 @@
+// admin/ui/pos_recons_ui.dart — Konak POS smena solishtiruvi ekrani (faqat
+// admin): PosReconsUi (StatefulWidget) — PosReconService bilan har smena
+// kutilgan vs fakt qoldiq + kassa farqlarini ko'rsatadi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/admin/model/pos_recon_model.dart';

@@ -1,3 +1,6 @@
+// core/di/di.dart — GetIt DI konteyneri (sl): setupInit() SharedPreferences,
+// BaseStorage/TokenStorage va Dio (AppDioClient) singletonlarini ro'yxatlaydi.
+// main() dan eng birinchi chaqiriladi.
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';

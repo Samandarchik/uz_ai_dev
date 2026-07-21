@@ -1,3 +1,6 @@
+// production/ui/inventory_history_page.dart — инвентаризация tarixi (акт'lar)
+// ekrani: InventoryHistoryPage + _InventoryActDetailPage (Excel to'r), narxlar
+// sanash paytidagi snapshot; StockService.fetchInventories/fetchInventory.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';

@@ -1,3 +1,5 @@
+// ombor/ui/ombor_low_stock_ui.dart — Ombor: min chegaradan past (kam qolgan) mahsulotlar sahifasi:
+// OmborLowStockUi (OmborProvider + StockProvider). Kartadan savatga qo'shib shu yerdan buyurtma qilinadi.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';

@@ -1,4 +1,4 @@
-
+// user/models/product_model.dart — Seller buyurtma item modeli: OrderItem (productId, count, type).
 class OrderItem {
   final int productId;
   final int count;

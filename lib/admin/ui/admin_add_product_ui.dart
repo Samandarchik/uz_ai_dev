@@ -1,3 +1,7 @@
+// admin/ui/admin_add_product_ui.dart — yangi mahsulot qo'shish formasi
+// (AddProductPage): ProductProviderAdmin.createProduct; kategoriya/filial
+// CategoryProviderAdmin/FilialProviderAdmin, rasm CategoryProviderAdminUpload.
+// Тип radiosi, mone/bozor, tozalash yo'qotishi, полуфабрикат, tex karta (TechCardController).
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

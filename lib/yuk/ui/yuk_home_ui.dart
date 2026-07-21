@@ -1,3 +1,7 @@
+// yuk/ui/yuk_home_ui.dart — yuk keltiruvchi roli BOSH ekrani: YukHomeUi + sklad kartasi
+// YukSkladCard (buyurtmaga narx kiritish, proche/rasxod qo'shish, rasm/video, yuborish/undo),
+// targovli pul kartasi _TransferCard, _NameAutocompleteField, raqam formatterlari
+// (ThousandsSeparator/Decimal). YukProvider'ga tayanadi.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';

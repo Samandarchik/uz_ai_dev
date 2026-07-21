@@ -1,3 +1,7 @@
+// admin/model/user_model.dart — foydalanuvchi va bog'liq modellar:
+// User (role, filial, categoryIds, sklads, sources, telegramChatId,
+// passwordPlain), Filial, CreateUserRequest/UpdateUserRequest (user_management
+// servisi so'rov tanalari), SendAllCredentialsResult/SendCredentialsFailure.
 class User {
   final int id;
   final String name;

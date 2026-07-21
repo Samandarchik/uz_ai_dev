@@ -1,3 +1,6 @@
+// yuk/ui/widgets/magazin_form_sheet.dart — magazin qo'shish/tahrirlash bottom sheet
+// (_MagazinFormSheet) + showMagazinFormSheet()/magazinFullImageUrl(). Rasmni
+// /api/yuk/upload'ga yuklab, MagazinProvider bilan saqlaydi.
 import 'dart:io';
 
 import 'package:flutter/material.dart';

@@ -1,3 +1,6 @@
+// login_page.dart — kirish ekrani (LoginPage): v1 parol-bilan login
+// (ApiService.loginV1), token/role/is_admin'ni SharedPreferences'ga saqlaydi va
+// _navigateByRole orqali rolga mos Home'ga o'tadi. Debug'da "Try using" test tugmasi.
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

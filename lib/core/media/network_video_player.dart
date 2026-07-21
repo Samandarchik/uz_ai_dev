@@ -1,3 +1,5 @@
+// core/media/network_video_player.dart — URL'dagi videoni AYLANA ko'rinishda
+// ko'rsatuvchi to'liq ekran (CircularNetworkVideoPlayer): Telegram video note uslubi.
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 

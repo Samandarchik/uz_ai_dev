@@ -1,3 +1,6 @@
+// admin/services/pos_order_service.dart — Konak POS avto-buyurtmalari servisi
+// (faqat admin): PosOrderService.fetchPosOrders → GET /api/pos-orders,
+// dispatchOrder → POST /api/pos-orders/{id}/dispatch (bazadan yuborish).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/pos_order_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

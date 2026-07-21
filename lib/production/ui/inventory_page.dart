@@ -1,3 +1,6 @@
+// production/ui/inventory_page.dart — инвентаризация (акт) sahifasi:
+// StockInventoryPage — Excel to'rda skladdagi har mahsulotni real sanash;
+// qatorlar StockService(include_all), saqlash StockProvider.submitInventory orqali.
 import 'dart:async';
 import 'dart:convert';
 

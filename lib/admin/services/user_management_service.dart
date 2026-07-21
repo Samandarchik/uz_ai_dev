@@ -1,6 +1,9 @@
+// admin/services/user_management_service.dart — foydalanuvchilarni boshqarish
+// servisi (UserManagementService): AppUrls.users get/put/delete, AppUrls.register
+// (createUser), users/{id}/send-credentials va usersSendAllCredentials (parol
+// yuborish), telegramBot (bot username), toggleAdminStatus. Filiallar uchun
+// FilialService ham shu faylda (AppUrls.filials).
 import 'package:flutter/foundation.dart';
-// ================ SERVICES ================
-// services/user_management_service.dart
 
 import 'package:dio/dio.dart';
 

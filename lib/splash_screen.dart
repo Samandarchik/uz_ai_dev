@@ -1,3 +1,6 @@
+// splash_screen.dart — ochilish ekrani (SplashScreen): versiyani tekshiradi
+// (VersionChecker) va saqlangan token+role bo'yicha mos Home ekranga yo'naltiradi
+// (admin/ombor/yuk/bugalter/shef/seller); token yo'q bo'lsa LoginPage'ga o'tadi.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';

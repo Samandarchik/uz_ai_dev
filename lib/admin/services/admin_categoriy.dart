@@ -1,3 +1,7 @@
+// admin/services/admin_categoriy.dart — kategoriya CRUD servisi
+// (ApiAdminService): AppUrls.category ga get/post/put/delete va
+// AppUrls.categoryReorder ga PUT (getCategories/createCategory/
+// updateCategory/deleteCategory/reorderCategories).
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 

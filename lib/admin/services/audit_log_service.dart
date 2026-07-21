@@ -1,3 +1,5 @@
+// admin/services/audit_log_service.dart — audit jurnali servisi (faqat admin):
+// AuditLogService.fetchAuditLog → GET /api/audit-log (limit + entity filtri).
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/audit_log_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

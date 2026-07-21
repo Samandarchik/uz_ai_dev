@@ -1,3 +1,6 @@
+// yuk/provider/magazin_provider.dart — "Qarz daftari" holat provideri: MagazinProvider
+// (magazinlar ro'yxati + umumiy qarz, tanlangan magazin qarz yozuvlari). Mutatsiyalar
+// xotirada yangilanadi (refetch yo'q); MagazinService orqali ishlaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
 import 'package:uz_ai_dev/yuk/services/magazin_service.dart';

@@ -1,3 +1,6 @@
+// production/provider/stock_provider.dart — sklad qoldig'i (stock) holati:
+// StockProvider (sklad bo'yicha qoldiq keshi + katalog) — adjust/setMin/
+// submitInventory/fetchMoves StockService orqali.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/services/stock_service.dart';

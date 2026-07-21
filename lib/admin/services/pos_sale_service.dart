@@ -1,3 +1,5 @@
+// admin/services/pos_sale_service.dart — Konak POS smena sotuvlari servisi
+// (faqat admin): PosSaleService.fetchPosSales → GET /api/pos-sales?days=N.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/pos_sale_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

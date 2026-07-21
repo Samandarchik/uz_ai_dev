@@ -1,3 +1,6 @@
+// admin/ui/admin_add_categoriy.dart — kategoriyalar boshqaruvi ekrani
+// (CategoryManagementScreen): CategoryProviderAdminUpload'dan o'qiydi; «+» va
+// qatordagi tahrir CategoryDialog (dealog.dart) orqali, o'chirish tasdiq bilan.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

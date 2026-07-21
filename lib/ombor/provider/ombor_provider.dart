@@ -1,3 +1,6 @@
+// ombor/provider/ombor_provider.dart — Ombor (bozor) roli markaziy provideri: OmborProvider
+// (ChangeNotifier). Holat: productsByCategory, allCategories, savat (_cart — milli-birlik butun
+// son), myOrders; submitOrder/acceptOrderItem/deleteOrderItem va WebSocket real-time yangilanish.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

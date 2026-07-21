@@ -1,3 +1,6 @@
+// admin/ui/convert_pf_ui.dart — «Полуфабрикатga o'tkazish» vositasi (ConvertPfUi):
+// ConvertPfService.convert (avval dry_run hisobot, tasdiqda dry_run=false yakuniy);
+// so'ng ProductProviderAdmin bir marta to'liq qayta yuklanadi. Faqat admin.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/convert_pf_model.dart';

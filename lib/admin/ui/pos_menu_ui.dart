@@ -1,3 +1,6 @@
+// admin/ui/pos_menu_ui.dart — Konak POS menyu editori ekrani (faqat admin):
+// PosMenuUi (StatefulWidget) — PosMenuService bilan katalogni tartiblash,
+// qo'shish/chiqarish; har o'zgarishda avto-saqlash (PUT /api/pos-menu).
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/pos_menu_model.dart';
 import 'package:uz_ai_dev/admin/services/pos_menu_service.dart';

@@ -1,3 +1,6 @@
+// user/provider/provider.dart — Seller (user) roli markaziy provideri va modellari: ProductProvider
+// (ChangeNotifier — productsByCategory, categories, selectedProducts savat, submitOrder), modellar
+// ProductModel/CategoryModel/OrderItem va ProductService (GET category/product1, POST AppUrls.orders).
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

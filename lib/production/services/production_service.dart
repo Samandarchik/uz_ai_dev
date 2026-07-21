@@ -1,3 +1,6 @@
+// production/services/production_service.dart — ombor/admin/bugalter ishlab
+// chiqarish Dio servisi: ProductionService — /api/production/{products,orders,
+// cost,stats}, /api/prices/{latest,history}, /api/analytics/profit endpointlari.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/profit_analytics_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';

@@ -6,6 +6,19 @@ Backend (`mone_backend_user_admin/`) ga TEGMA — u boshqa Claude'ning ishi.
 > To'liq loyiha konteksti va ikkita Claude bilan parallel ishlash qoidasi yuqoridagi
 > `../CLAUDE.md` (mone_app/CLAUDE.md) faylida.
 
+## Navigatsiya
+
+To'liq navigatsiya xaritasi: **`CODEMAP.md`** (papka xaritasi, `models→services→provider→ui`
+naqshi, muhim/og'ir ekranlar, «vazifa → qayerga qarash» jadvali, global providerlar
+ro'yxati). Sessiya boshida shuni o'qi. Har bir `.dart` fayl tepasida maqsad izohi bor.
+
+Eng ko'p kerak bo'ladiganlar:
+- **Endpointlar** → `lib/core/constants/urls.dart` (`AppUrls`)
+- **DI (GetIt `sl`)** → `lib/core/di/di.dart`; **global providerlar ro'yxati** → `lib/main.dart`
+- **Tannarx / marja matematikasi (YAGONA manba)** → `lib/admin/model/tech_card_cost.dart`
+- **gram / pul konvert** → `lib/core/utils/qty_units.dart` (qo'lda `*1000` yozma)
+- **Admin mahsulot manbai** → `lib/admin/provider/admin_product_provider.dart` (`ProductProviderAdmin`)
+
 ## Stack va arxitektura
 - **State:** Provider (`ChangeNotifier`) — `lib/*/provider/`. Global providerlar `lib/main.dart` da.
 - **DI:** GetIt (`sl<...>`) — `lib/core/di/di.dart`.

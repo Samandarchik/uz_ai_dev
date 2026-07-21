@@ -1,3 +1,5 @@
+// yuk/services/magazin_service.dart — "Qarz daftari" Dio servisi: MagazinService.
+// GET/POST/PUT/DELETE /api/magazins va /api/magazins/{id}/debts; rasm uchun /api/yuk/upload.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';

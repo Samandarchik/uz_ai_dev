@@ -1,3 +1,6 @@
+// admin/ui/pos_sales_ui.dart — Konak POS smena sotuvlari ekrani (faqat admin):
+// PosSalesUi (StatefulWidget) — PosSaleService bilan smena sotuv hisobotlari
+// va umumiy summani ko'rsatadi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/admin/model/pos_sale_model.dart';

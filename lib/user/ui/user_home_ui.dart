@@ -1,3 +1,5 @@
+// user/ui/user_home_ui.dart — Seller roli bosh ekrani: UserHomeUi (ProductProvider). Qidiruv,
+// kategoriyalar va kartochkalar; savat (CartPage) hamda buyurtmalar (OrdersPage) ga o'tish.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

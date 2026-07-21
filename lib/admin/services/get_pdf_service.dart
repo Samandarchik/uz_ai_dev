@@ -1,3 +1,7 @@
+// admin/services/get_pdf_service.dart — kategoriya PDF servisi (ApiPdfService):
+// GET /api/products/category/{id}/pdf ni faylga yuklaydi (downloadCategoryPdf),
+// share_plus bilan ulashadi (downloadAndSharePdf) va vaqtinchalik fayllarni
+// tozalaydi (cleanupOldPdfs/deleteCategoryPdf).
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';

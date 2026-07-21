@@ -1,3 +1,6 @@
+// bugalter/services/bugalter_service.dart — Bugalter Dio servisi: BugalterService. Endpointlar
+// AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT) va payments (POST to'lov);
+// buyurtma JSON'i yuk keltiruvchiniki bilan bir xil, YukOrder modeli qayta ishlatiladi.
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
