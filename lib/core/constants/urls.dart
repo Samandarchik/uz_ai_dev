@@ -1,6 +1,6 @@
 abstract final class AppUrls {
-  static const String baseUrl = "https://moneapp.monebakeryuz.uz";
-  // static const String baseUrl = "http://localhost:1010";
+  // static const String baseUrl = "https://moneapp.monebakeryuz.uz";
+  static const String baseUrl = "http://localhost:1010";
 
   static const String login = '$baseUrl/api/login';
   // v1 login — FAQAT parol bilan kirish (eski /api/login telefon+parol

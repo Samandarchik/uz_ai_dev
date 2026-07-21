@@ -915,6 +915,123 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // ProductProviderAdmin (yagona manba) dagi is_semi_finished mahsulotlardan
   // tanlanadi; qator dona (шт) birligida oddiy ingredient bo'lib saqlanadi.
 
+  // Полуфабрикат ICHIDAGI masalliqlarni pastki oynada ko'rsatadi (ПФ chipi
+  // bosilganda). Ichma-ich pf qatori ham bosiladi — o'sha oyna qayta ochiladi.
+  void _showPfContents(ProductModelAdmin pf) {
+    final tc = pf.techCard;
+    if (tc == null) return;
+    final pieceW = techPfPieceWeightG(pf.id, _productById);
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text(
+                pf.name,
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Partiya: ${tc.batchQty} dona'
+                '${pieceW > 0 ? ' • 1 dona ≈ $pieceW г' : ''}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final base in tc.bases) ...[
+                    if (tc.bases.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                        child: Text(
+                          base.name,
+                          style: const TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    for (final ing in base.ingredients)
+                      _pfContentsRow(ctx, ing),
+                  ],
+                  if (tc.consumables.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                      child: Text(
+                        'Расходник',
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700),
+                      ),
+                    ),
+                    for (final ing in tc.consumables) _pfContentsRow(ctx, ing),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pfContentsRow(BuildContext ctx, TechItem ing) {
+    final nestedPf = _isPfItem(ing) ? _productById[ing.productId] : null;
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      title: Row(
+        children: [
+          Flexible(child: Text(ing.name, style: const TextStyle(fontSize: 13))),
+          if (nestedPf != null) _pfChip(withIcon: true),
+        ],
+      ),
+      trailing: Text(
+        '${_excelAmount(ing)} ${_excelUnitLabel(ing.unit)}',
+        style: const TextStyle(fontSize: 13),
+      ),
+      onTap: nestedPf != null ? () => _showPfContents(nestedPf) : null,
+    );
+  }
+
+  // «ПФ» chipi; withIcon=true bo'lsa ichida ro'yxat borligini bildiruvchi
+  // strelka qo'shiladi (bosish mumkinligiga ishora).
+  Widget _pfChip({bool withIcon = false}) {
+    return Container(
+      margin: const EdgeInsets.only(left: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.purple.shade50,
+        border: Border.all(color: Colors.purple.shade300),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'ПФ',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.bold,
+              color: Colors.purple.shade700,
+            ),
+          ),
+          if (withIcon)
+            Icon(Icons.expand_more, size: 12, color: Colors.purple.shade700),
+        ],
+      ),
+    );
+  }
+
   Future<void> _addPfIngredient(int baseIndex) async {
     final pfProducts = context
         .read<ProductProviderAdmin>()
@@ -1834,25 +1951,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   child: Row(
                     children: [
                       Flexible(child: Text(item.name, style: _kCellStyle)),
-                      // Полуфабрикат belgisi.
+                      // Полуфабрикат belgisi — bosilsa ichidagi masalliqlar
+                      // ro'yxati ochiladi (strelka shunga ishora).
                       if (isPf)
-                        Container(
-                          margin: const EdgeInsets.only(left: 5),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            border: Border.all(color: Colors.purple.shade300),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'ПФ',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.purple.shade700,
-                            ),
-                          ),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            final pf = _productById[item.productId];
+                            if (pf != null) _showPfContents(pf);
+                          },
+                          child: _pfChip(withIcon: true),
                         ),
                     ],
                   ),
