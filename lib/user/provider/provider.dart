@@ -227,10 +227,14 @@ class ProductProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
   }
 
-  // Buyurtmani print bo'yicha guruhlash va yuborish
-  Future<void> submitOrder() async {
+  // Buyurtmani print bo'yicha guruhlash va yuborish.
+  // Chek chiqmagan guruhlar bo'lsa ogohlantirish matnini qaytaradi, aks holda null.
+  Future<String?> submitOrder() async {
     isSubmitting = true;
     notifyListeners();
+
+    // Chek chiqmagan guruhlarning ogohlantirishlari (takrorlanmasin)
+    final Set<String> printWarnings = {};
 
     try {
       // Print bo'yicha guruhlash
@@ -263,7 +267,10 @@ class ProductProvider extends ChangeNotifier with ClearableProvider {
           'items': items.map((item) => item.toJson()).toList(),
         };
 
-        await service.submitOrder(orderData);
+        final warning = await service.submitOrder(orderData);
+        if (warning != null) {
+          printWarnings.add(warning);
+        }
 
         // Guruh qabul qilindi — savatdan darhol olib tashlaymiz:
         // keyingi guruh yiqilsa, retry bu guruhni qayta yubormaydi
@@ -280,6 +287,9 @@ class ProductProvider extends ChangeNotifier with ClearableProvider {
 
       // Hammasi yuborildi — qolgan holatni tozalash
       clearSelection();
+
+      // Chek chiqmagan guruh(lar) bo'lsa — ogohlantirishni qaytaramiz
+      return printWarnings.isEmpty ? null : printWarnings.join('\n');
     } catch (e) {
       // 'Exception: ' matryoshka prefikslarini olib tashlab toza xabar uzatamiz
       var message = e.toString();
@@ -361,8 +371,10 @@ class ProductService {
     }
   }
 
-  // Buyurtma yuborish
-  Future<void> submitOrder(Map<String, dynamic> orderData) async {
+  // Buyurtma yuborish. Buyurtma qabul qilinib, lekin chek printerga
+  // chiqmagan bo'lsa (status == 'print_error') — server xabarini
+  // ogohlantirish sifatida qaytaradi, aks holda null.
+  Future<String?> submitOrder(Map<String, dynamic> orderData) async {
     try {
       final response = await dio.post(
         AppUrls.orders,
@@ -372,6 +384,19 @@ class ProductService {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to submit order: ${response.statusCode}');
       }
+
+      // 200, lekin chek chiqmagan bo'lishi mumkin — data.status'ni tekshiramiz
+      final data = response.data;
+      if (data is Map && data['data'] is Map) {
+        final status = (data['data'] as Map)['status'];
+        if (status == 'print_error') {
+          final message = data['message'];
+          if (message is String && message.isNotEmpty) {
+            return message;
+          }
+        }
+      }
+      return null;
     } on DioException catch (e) {
       // Server JSON'ida aniq 'message' bo'lsa (masalan 503 — printer
       // ishlamayapti), foydalanuvchiga FAQAT o'sha matnni ko'rsatamiz

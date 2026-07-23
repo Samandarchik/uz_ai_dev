@@ -179,12 +179,26 @@ class CartPage extends StatelessWidget {
                     ),
                     onPressed: () async {
                       try {
-                        await provider.submitOrder();
+                        final warning = await provider.submitOrder();
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Заказ отправлен ✅")),
-                        );
-                        Navigator.pop(context);
+                        if (warning != null) {
+                          // Buyurtma qabul qilindi, lekin chek chiqmadi —
+                          // pop'dan keyin ham ko'rinishi uchun messenger'ni oldindan olamiz
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(warning),
+                              backgroundColor: Colors.orange,
+                              duration: const Duration(seconds: 6),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Заказ отправлен ✅")),
+                          );
+                          Navigator.pop(context);
+                        }
                       } catch (e) {
                         if (!context.mounted) return;
                         // 'Exception: ' prefiks(lar)ini olib tashlab toza xabar ko'rsatamiz
