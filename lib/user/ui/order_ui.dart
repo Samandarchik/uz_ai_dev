@@ -187,8 +187,13 @@ class CartPage extends StatelessWidget {
                         Navigator.pop(context);
                       } catch (e) {
                         if (!context.mounted) return;
+                        // 'Exception: ' prefiks(lar)ini olib tashlab toza xabar ko'rsatamiz
+                        var message = e.toString();
+                        while (message.startsWith('Exception: ')) {
+                          message = message.substring('Exception: '.length);
+                        }
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Ошибка: $e")),
+                          SnackBar(content: Text(message)),
                         );
                       }
                     },

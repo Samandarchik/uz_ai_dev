@@ -265,16 +265,28 @@ class ProductProvider extends ChangeNotifier with ClearableProvider {
 
         await service.submitOrder(orderData);
 
+        // Guruh qabul qilindi — savatdan darhol olib tashlaymiz:
+        // keyingi guruh yiqilsa, retry bu guruhni qayta yubormaydi
+        for (var item in items) {
+          selectedProducts.remove(item.productId);
+        }
+        notifyListeners();
+
         // Keyingi printerga yuborishdan oldin biroz kutish
         if (printNumber != sortedPrintNumbers.last) {
           await Future.delayed(Duration(milliseconds: 500));
         }
       }
 
-      // Muvaffaqiyatli yuborilgandan keyin tozalash
+      // Hammasi yuborildi — qolgan holatni tozalash
       clearSelection();
     } catch (e) {
-      throw Exception('Buyurtma yuborishda xatolik: $e');
+      // 'Exception: ' matryoshka prefikslarini olib tashlab toza xabar uzatamiz
+      var message = e.toString();
+      while (message.startsWith('Exception: ')) {
+        message = message.substring('Exception: '.length);
+      }
+      throw Exception(message);
     } finally {
       isSubmitting = false;
       notifyListeners();
@@ -360,6 +372,15 @@ class ProductService {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to submit order: ${response.statusCode}');
       }
+    } on DioException catch (e) {
+      // Server JSON'ida aniq 'message' bo'lsa (masalan 503 — printer
+      // ishlamayapti), foydalanuvchiga FAQAT o'sha matnni ko'rsatamiz
+      final data = e.response?.data;
+      final serverMessage = data is Map ? data['message'] : null;
+      if (serverMessage is String && serverMessage.isNotEmpty) {
+        throw Exception(serverMessage);
+      }
+      throw Exception('Failed to submit order: $e');
     } catch (e) {
       throw Exception('Failed to submit order: $e');
     }
