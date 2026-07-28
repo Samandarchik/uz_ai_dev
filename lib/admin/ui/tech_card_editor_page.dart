@@ -15,6 +15,7 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/tech_image_upload_service.dart';
 import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/cutting_scheme.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_item_editor.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -239,6 +240,20 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // Qator полуфабрикат mahsulotga bog'langanmi.
   bool _isPfItem(TechItem item) =>
       _productById[item.productId]?.isSemiFinished == true;
+
+  // Qator mahsuloti шт-oilasidan bo'lib, effektiv «1 dona og'irligi» (W)
+  // noma'lum bo'lsa — 'g' birligiga O'TKAZISH taqiqlanadi (backend g -> dona
+  // konvertini qila olmaydi). null — cheklov yo'q.
+  String? _gramBlockedMessage(TechItem item) {
+    final p = _productById[item.productId];
+    if (p == null || normalizeProductType(p.type) != 'шт') return null;
+    if (techEffectivePieceWeightG(item.productId, _productById) > 0) {
+      return null;
+    }
+    return p.isSemiFinished
+        ? 'Пф tex kartasida og\'irlik yo\'q — grammda kiritib bo\'lmaydi'
+        : '«1 шт = X gr» kiritilmagan — avval mahsulot tahririda kiriting';
+  }
 
   // Qator tannarxi (tozalash yo'qotishi bilan; pf qatori — rekursiv).
   // null — narx yo'q (product_id=0 yoki hech narxlanmagan).
@@ -952,6 +967,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
     if (item == null || !mounted) return;
     setState(() {
+      // Tanlash dialogi mahsulotni yangilagan bo'lishi mumkin
+      // («1 шт = X gr» saqlash) — keshlar qayta yig'iladi.
+      _productByIdCache = null;
+      _wasteFactorsCache = null;
       final base = c.bases[baseIndex];
       c.bases[baseIndex] =
           base.copyWith(ingredients: [...base.ingredients, item]);
@@ -1136,18 +1155,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
     if (picked == null || !mounted) return;
 
-    final value = await showDialog<String>(
+    // Miqdor dialogi: «дона» (eski oqim) yoki «грамм» (faqat pf tex kartasida
+    // 1 dona og'irligi ma'lum bo'lsa — backend g -> dona konvertini W bilan
+    // qiladi). Grammda unit 'g' bo'lib saqlanadi.
+    final res = await showDialog<_PfAmountResult>(
       context: context,
-      builder: (_) => _TextFieldDialog(
+      builder: (_) => _PfAmountDialog(
         title: picked.name,
-        label: 'Necha dona (${c.batchQty} talik partiya uchun)',
-        initial: '',
-        number: true,
+        batchQty: c.batchQty,
+        pieceWeightG: techPfPieceWeightG(picked.id, _productById),
       ),
     );
-    if (value == null || !mounted) return;
-    final amount = int.tryParse(value) ?? 0;
-    if (amount <= 0) return;
+    if (res == null || !mounted) return;
+    if (res.amount <= 0) return;
 
     setState(() {
       final base = c.bases[baseIndex];
@@ -1156,8 +1176,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         TechItem(
           productId: picked.id,
           name: picked.name,
-          unit: 'pcs',
-          amount: amount,
+          unit: res.unit,
+          amount: res.amount,
         ),
       ]);
     });
@@ -1167,7 +1187,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final base = c.bases[baseIndex];
     final updated = await showDialog<TechItem>(
       context: context,
-      builder: (_) => EditTechItemDialog(item: base.ingredients[itemIndex]),
+      builder: (_) => EditTechItemDialog(
+        item: base.ingredients[itemIndex],
+        gramBlockedMessage: _gramBlockedMessage(base.ingredients[itemIndex]),
+      ),
     );
     if (updated == null || !mounted) return;
     setState(() {
@@ -1198,13 +1221,22 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       MaterialPageRoute(builder: (_) => const CompositionPickerPage()),
     );
     if (item == null || !mounted) return;
-    setState(() => c.consumables.add(item));
+    setState(() {
+      // Tanlash dialogi mahsulotni yangilagan bo'lishi mumkin
+      // («1 шт = X gr» saqlash) — keshlar qayta yig'iladi.
+      _productByIdCache = null;
+      _wasteFactorsCache = null;
+      c.consumables.add(item);
+    });
   }
 
   Future<void> _editConsumable(int index) async {
     final updated = await showDialog<TechItem>(
       context: context,
-      builder: (_) => EditTechItemDialog(item: c.consumables[index]),
+      builder: (_) => EditTechItemDialog(
+        item: c.consumables[index],
+        gramBlockedMessage: _gramBlockedMessage(c.consumables[index]),
+      ),
     );
     if (updated == null || !mounted) return;
     setState(() => c.consumables[index] = updated);
@@ -2562,6 +2594,135 @@ class _ShapeDialogState extends State<_ShapeDialog> {
         ElevatedButton(
           onPressed: _submit,
           child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---- Полуфабрикат miqdor dialogi: «дона» / «грамм» ----
+// «дона» — eski oqim (unit 'pcs'). «грамм» — unit 'g', faqat pf 1 dona
+// og'irligi (W) ma'lum bo'lsa tanlanadi; jonli «≈ X dona» hisobi ko'rsatiladi.
+
+class _PfAmountResult {
+  final String unit; // 'pcs' | 'g'
+  final int amount; // butun son (dona yoki gramm)
+
+  const _PfAmountResult({required this.unit, required this.amount});
+}
+
+class _PfAmountDialog extends StatefulWidget {
+  final String title;
+  final int batchQty; // joriy karta partiyasi (label uchun)
+  final int pieceWeightG; // pf 1 dona og'irligi; 0 — грамм tanlab bo'lmaydi
+
+  const _PfAmountDialog({
+    required this.title,
+    required this.batchQty,
+    required this.pieceWeightG,
+  });
+
+  @override
+  State<_PfAmountDialog> createState() => _PfAmountDialogState();
+}
+
+class _PfAmountDialogState extends State<_PfAmountDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  String _unit = 'pcs';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
+    if (amount <= 0) return;
+    Navigator.pop(context, _PfAmountResult(unit: _unit, amount: amount));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget.pieceWeightG;
+    final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
+    // Grammda kiritilayotganda jonli «≈ X dona» hisobi.
+    final pcsHint = (_unit == 'g' && w > 0 && amount > 0)
+        ? '≈ ${(amount / w).toStringAsFixed(1)} dona'
+        : null;
+    final hintStyle = TextStyle(fontSize: 12.5, color: Colors.grey.shade700);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          RadioGroup<String>(
+            groupValue: _unit,
+            onChanged: (v) {
+              if (v == null) return;
+              if (v == 'g' && w <= 0) return; // og'irlik yo'q — bloklangan
+              setState(() => _unit = v);
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const RadioListTile<String>(
+                  value: 'pcs',
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('дона'),
+                ),
+                RadioListTile<String>(
+                  value: 'g',
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  enabled: w > 0,
+                  title: const Text('грамм'),
+                  subtitle: w > 0
+                      ? null
+                      : const Text(
+                          'Пф tex kartasida og\'irlik yo\'q',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          if (w > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('1 dona ≈ $w г', style: hintStyle),
+            ),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: _unit == 'g'
+                  ? 'Necha gramm (${widget.batchQty} talik partiya uchun)'
+                  : 'Necha dona (${widget.batchQty} talik partiya uchun)',
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+          ),
+          if (pcsHint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(pcsHint, style: hintStyle),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Добавить'),
         ),
       ],
     );

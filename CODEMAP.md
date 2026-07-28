@@ -47,8 +47,8 @@ Bitta mahsulotning тех карта (kompozitsiya) va tannarxi qanday qatlamlar
 | Qatlam | Fayl | Nima qiladi |
 |---|---|---|
 | model | `lib/admin/model/tech_card.dart` | `TechCard`, `bases[]`, `consumables[]`; og'irliklar BUTUN gr/ml, avto-hisob |
-| model | `lib/admin/model/product_model.dart` | `ProductModelAdmin` — `techCard`, `isSemiFinished`, `wasteBase/wasteAmount` |
-| **tannarx** | `lib/admin/model/tech_card_cost.dart` | **YAGONA manba** — sof funksiyalar (`techIngredientPieceCost`, `techFullPieceCost`); narx `GET /api/prices/latest` |
+| model | `lib/admin/model/product_model.dart` | `ProductModelAdmin` — `techCard`, `isSemiFinished`, `wasteBase/wasteAmount`, `pieceWeightG` («1 шт = X gr», tuxum kabi шт mahsulotni tex kartada grammda kiritish uchun) |
+| **tannarx** | `lib/admin/model/tech_card_cost.dart` | **YAGONA manba** — sof funksiyalar (`techIngredientPieceCost`, `techFullPieceCost`); narx `GET /api/prices/latest`. шт mahsulot gramm qatori konverti — `techEffectivePieceWeightG` |
 | service | `lib/production/services/production_service.dart` | `GET /api/production/products`, narxlar; `admin/services/api_product_service.dart` — mahsulot CRUD |
 | provider | `lib/admin/provider/admin_product_provider.dart` | `ProductProviderAdmin` — mahsulotni xotirada saqlaydi/yangilaydi |
 | ui | `lib/admin/ui/tech_card_editor_page.dart` | `TechCardEditorPage` — Excel «тех карта» varag'iga o'xshash muharrir |

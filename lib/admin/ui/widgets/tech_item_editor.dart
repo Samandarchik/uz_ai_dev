@@ -29,10 +29,14 @@ Future<bool> confirmDeleteTechItem(BuildContext context, String name) async {
 }
 
 // Ingredient miqdori (butun son) + birligini (g/ml/pcs/m) tahrirlash dialogi.
+// gramBlockedMessage berilsa 'g' birligini tanlab BO'LMAYDI (snackbar chiqadi):
+// шт-oiladagi mahsulotda «1 шт = X gr» (effektiv og'irlik) yo'q bo'lsa gramm
+// qatori yaratish taqiqlanadi — backend g -> dona konvertini qila olmaydi.
 class EditTechItemDialog extends StatefulWidget {
   final TechItem item;
+  final String? gramBlockedMessage;
 
-  const EditTechItemDialog({super.key, required this.item});
+  const EditTechItemDialog({super.key, required this.item, this.gramBlockedMessage});
 
   @override
   State<EditTechItemDialog> createState() => _EditTechItemDialogState();
@@ -62,6 +66,16 @@ class _EditTechItemDialogState extends State<EditTechItemDialog> {
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Введите корректное количество')),
+      );
+      return;
+    }
+    // 'g' bloklangan (шт mahsulotda 1 dona og'irligi yo'q) — 'g' GA O'TIB
+    // bo'lmaydi. Qator allaqachon 'g' bo'lsa tegilmaydi (saqlab qolinadi).
+    if (_unit == 'g' &&
+        widget.item.unit != 'g' &&
+        widget.gramBlockedMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.gramBlockedMessage!)),
       );
       return;
     }
@@ -122,6 +136,17 @@ class _EditTechItemDialogState extends State<EditTechItemDialog> {
               });
             },
           ),
+          // 'g' tanlangan, lekin bloklangan — saqlashdan oldin ogohlantirish.
+          if (_unit == 'g' &&
+              widget.item.unit != 'g' &&
+              widget.gramBlockedMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                widget.gramBlockedMessage!,
+                style: TextStyle(fontSize: 12, color: Colors.red[700]),
+              ),
+            ),
         ],
       ),
       actions: [

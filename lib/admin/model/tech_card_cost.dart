@@ -9,9 +9,15 @@
 //
 // Narx manbai — GET /api/prices/latest (LatestPrice.unitPrice ENG KICHIK
 // birlik narxi: кг/л uchun 1 gr/ml, шт uchun 1 dona, м uchun 1 metr).
+//
+// шт mahsulot (tuxum, полуфабрикат) tex kartada GRAMMDA ham kiritilishi
+// mumkin (unit 'g'): konvert W = techEffectivePieceWeightG («1 шт = X gr»,
+// pf uchun tex kartadan, xomga admin kiritadi) orqali — backend bilan mirror.
 
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart'
+    show normalizeProductType;
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 
 // Mahsulotlar ro'yxatidan tozalash yo'qotishi koeffitsiyentlari xaritasi
@@ -72,10 +78,18 @@ double? techPfPieceCost(
   }
 }
 
+// Qator «gramm kiritilgan шт mahsulot»mi: шт-oiladagi mahsulot (tuxum, pf)
+// tex kartada 'g' birligida yozilgan. Bunday qator gramm -> dona konvertini
+// W = techEffectivePieceWeightG («1 шт = X gr») orqali oladi (backend mirror).
+bool techIsShtGramRow(TechItem item, ProductModelAdmin? p) =>
+    p != null && item.unit == 'g' && normalizeProductType(p.type) == 'шт';
+
 // Qator tannarxi (PARTIYA uchun): amount * unit_price * wasteFactor.
 // amount ham, unit_price ham ENG KICHIK birlikda — to'g'ridan-to'g'ri
 // ko'paytma. Полуфабрикат qatori (products berilgan va mahsulot
 // is_semi_finished): amount * pf 1 dona rekursiv tannarxi.
+// Gramm kiritilgan шт qator (techIsShtGramRow): amount/W dona deb hisoblanadi
+// (pf: * pf 1 dona tannarxi; xom: * 1 dona narxi * wasteFactor); W<=0 — null.
 // null — narx yo'q (product_id=0, hech narxlanmagan yoki pf hisoblanmadi).
 double? techRowCost(
   TechItem item,
@@ -87,6 +101,19 @@ double? techRowCost(
 }) {
   if (item.productId == 0) return null;
   final pf = products?[item.productId];
+  if (pf != null && techIsShtGramRow(item, pf)) {
+    final w = techEffectivePieceWeightG(item.productId, products!);
+    if (w <= 0) return null; // 1 dona og'irligi noma'lum — narxsiz qator
+    if (pf.isSemiFinished) {
+      final piece = techPfPieceCost(pf, prices, wasteFactors, products,
+          visited: visited, depth: depth);
+      if (piece == null) return null;
+      return item.amount / w * piece;
+    }
+    final p = prices[item.productId];
+    if (p == null) return null;
+    return item.amount / w * p.unitPrice * (wasteFactors[item.productId] ?? 1);
+  }
   if (pf != null && pf.isSemiFinished) {
     final piece = techPfPieceCost(pf, prices, wasteFactors, products!,
         visited: visited, depth: depth);
@@ -100,7 +127,8 @@ double? techRowCost(
 
 // Qatorda ko'rsatiladigan «Цена»: g/ml uchun 1 kg/l narxi (x1000),
 // pcs/m uchun o'z birligi narxi. Полуфабрикат qatori uchun — pf 1 dona
-// rekursiv tannarxi. null — narx yo'q.
+// rekursiv tannarxi. Gramm kiritilgan шт qator uchun ham 1 kg narxi:
+// (1 dona narxi / W) * 1000. null — narx yo'q.
 double? techRowUnitPrice(
   TechItem item,
   Map<int, LatestPrice> prices, {
@@ -109,6 +137,15 @@ double? techRowUnitPrice(
 }) {
   if (item.productId == 0) return null;
   final pf = products?[item.productId];
+  if (pf != null && techIsShtGramRow(item, pf)) {
+    final w = techEffectivePieceWeightG(item.productId, products!);
+    if (w <= 0) return null;
+    final perPiece = pf.isSemiFinished
+        ? techPfPieceCost(pf, prices, wasteFactors, products)
+        : prices[item.productId]?.unitPrice;
+    if (perPiece == null) return null;
+    return perPiece / w * 1000;
+  }
   if (pf != null && pf.isSemiFinished) {
     return techPfPieceCost(pf, prices, wasteFactors, products!);
   }
@@ -161,37 +198,56 @@ double techIngredientPieceCost(
       card.batchQty;
 }
 
-// ---- Og'irlik (полуфабрикат hissasi bilan) ----
-// Backend qoidasi: pf qatori baza og'irligiga amount * pf tex kartasining
-// piece_weight_g qiymatini qo'shadi. Muharrir shu qoidani aks ettiradi.
+// ---- Og'irlik (полуфабрикат / dona qatorlar hissasi bilan) ----
+// Backend qoidasi: pcs (dona) qatori baza og'irligiga amount * W qo'shadi,
+// bunda W — mahsulotning EFFEKTIV 1 dona og'irligi (quyida). 'g' qatorlar
+// TechBase.computedWeightG da allaqachon hisoblangan (ikki marta emas).
 
-// pf mahsulotning 1 dona og'irligi (g): serverda saqlangan piece_weight_g,
-// bo'lmasa mahalliy hisoblangani. pf bo'lmasa/tex karta yo'q — 0.
+// Mahsulotning EFFEKTIV «1 dona og'irligi» (g) — backend bilan bir xil qoida:
+// tex kartasida og'irlik bo'lsa (piece_weight_g, bo'lmasa mahalliy hisob) —
+// o'sha (pf shu yerga kiradi); aks holda mahsulotdagi piece_weight_g
+// («1 шт = X gr», tuxum kabi xom шт mahsulot uchun admin kiritadi); yo'q — 0.
+int techEffectivePieceWeightG(
+  int productId,
+  Map<int, ProductModelAdmin> products,
+) {
+  final p = products[productId];
+  if (p == null) return 0;
+  final card = p.techCard;
+  if (card != null) {
+    final w =
+        card.pieceWeightG > 0 ? card.pieceWeightG : card.computedPieceWeightG;
+    if (w > 0) return w;
+  }
+  return p.pieceWeightG;
+}
+
+// pf mahsulotning 1 dona og'irligi (g) — FAQAT полуфабрикат uchun (pf
+// bo'lmasa 0). Umumiy qoida: techEffectivePieceWeightG.
 int techPfPieceWeightG(int productId, Map<int, ProductModelAdmin> products) {
   final p = products[productId];
   if (p == null || !p.isSemiFinished) return 0;
-  final card = p.techCard;
-  if (card == null) return 0;
-  return card.pieceWeightG > 0 ? card.pieceWeightG : card.computedPieceWeightG;
+  return techEffectivePieceWeightG(productId, products);
 }
 
-// Bazaning полуфабрикат qatorlari qo'shadigan og'irligi (g).
-int techBasePfExtraWeightG(
+// Bazaning pcs (dona) qatorlari qo'shadigan og'irligi (g): amount * W —
+// pf qatori ham, «1 шт = X gr» belgilangan xom шт qatori (tuxum) ham.
+int techBaseExtraWeightG(
   TechBase base,
   Map<int, ProductModelAdmin> products,
 ) {
   int sum = 0;
   for (final it in base.ingredients) {
     if (it.unit == 'pcs') {
-      sum += it.amount * techPfPieceWeightG(it.productId, products);
+      sum += it.amount * techEffectivePieceWeightG(it.productId, products);
     }
   }
   return sum;
 }
 
-// Baza og'irligi = g/ml yig'indisi + pf qatorlar hissasi.
+// Baza og'irligi = g/ml yig'indisi + pcs (pf/dona) qatorlar hissasi.
 int techBaseWeightG(TechBase base, Map<int, ProductModelAdmin> products) =>
-    base.computedWeightG + techBasePfExtraWeightG(base, products);
+    base.computedWeightG + techBaseExtraWeightG(base, products);
 
 // Partiya og'irligi = barcha bazalar (pf hissasi bilan).
 int techBatchWeightG(TechCard card, Map<int, ProductModelAdmin> products) {

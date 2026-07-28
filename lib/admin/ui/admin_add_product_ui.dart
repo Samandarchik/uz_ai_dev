@@ -33,6 +33,9 @@ class _AddProductPageState extends State<AddProductPage> {
   // Tozalash yo'qotishi (faqat кг/л oilasida ko'rinadi), butun gramm.
   final wasteBaseController = TextEditingController();
   final wasteAmountController = TextEditingController();
+  // «1 шт og'irligi» (gramm) — faqat xom шт mahsulotda ko'rinadi
+  // (pf og'irligi o'z tex kartasidan olinadi).
+  final pieceWeightController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   int? _selectedCategoryId;
@@ -90,6 +93,12 @@ class _AddProductPageState extends State<AddProductPage> {
       _wasteBaseVal > 0 && _wasteAmountVal > 0 && _wasteAmountVal < _wasteBaseVal;
   // Faqat кг/л oilasida ma'noga ega.
   bool get _wasteApplies => qtyUnitFactor(_selectedType) == 1000;
+
+  // ---- «1 шт og'irligi» (piece_weight_g) yordamchilari ----
+  // Faqat xom шт mahsulotda (pf emas) — tex kartada grammda kiritish uchun.
+  bool get _pieceWeightApplies => _selectedType == 'шт' && !_isSemiFinished;
+  int get _pieceWeightVal =>
+      int.tryParse(pieceWeightController.text.trim()) ?? 0;
 
   // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan
   // birlashtiradi; полуфабрикат qatori ichidagi masalliq nomlariga yoyiladi.
@@ -357,6 +366,24 @@ class _AddProductPageState extends State<AddProductPage> {
                     style: TextStyle(fontSize: 12, color: Colors.red[700]),
                   ),
                 ),
+            ],
+            // «1 шт og'irligi» — faqat xom шт mahsulotda (pf og'irligi
+            // tex kartadan). Tex kartada grammda kiritish uchun kerak.
+            if (_pieceWeightApplies) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: pieceWeightController,
+                decoration: const InputDecoration(
+                  labelText: '1 шт og\'irligi (gr, ixtiyoriy)',
+                  helperText:
+                      'Tex kartada grammda kiritish uchun (masalan tuxum)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+              ),
             ],
             SizedBox(
               height: 20,
@@ -695,6 +722,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                   ? _wasteAmountVal
                                   : 0,
                               isSemiFinished: _isSemiFinished,
+                              pieceWeightG: _pieceWeightApplies
+                                  ? _pieceWeightVal
+                                  : 0,
                             );
 
                             final success = await context
@@ -736,6 +766,7 @@ class _AddProductPageState extends State<AddProductPage> {
     bozorGrammController.dispose();
     wasteBaseController.dispose();
     wasteAmountController.dispose();
+    pieceWeightController.dispose();
     _techController.dispose();
     super.dispose();
   }

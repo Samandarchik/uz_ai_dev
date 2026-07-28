@@ -2,6 +2,7 @@
 // (CompositionPickerPage): home page kabi kategoriya ro'yxati, kategoriya ichida
 // mahsulotlar; AppBar qidiruvi barcha mahsulotlar bo'yicha ishlaydi. Tanlangach
 // miqdor+birlik dialogi (_AmountUnitDialog) orqali natijani TechItem qilib qaytaradi.
+// шт mahsulot grammda kiritilsa «1 шт = X gr» so'raladi (piece_weight_g ga saqlanadi).
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +10,10 @@ import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
+import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 // Ingredient (tarkib) tanlash sahifasi.
@@ -330,6 +333,9 @@ class _ProductPickTile extends StatelessWidget {
 }
 
 // Miqdor (butun son amount) + birlik (g/ml/pcs/m) kiritish dialogi.
+// шт-oiladagi mahsulot (tuxum, полуфабрикат) grammda ham kiritilishi mumkin:
+// bunda «1 шт = X gr» so'raladi/ko'rsatiladi (pf uchun tex kartadan, xom
+// mahsulot uchun admin kiritadi va mahsulotga saqlanadi — piece_weight_g).
 class _AmountUnitDialog extends StatefulWidget {
   final ProductModelAdmin product;
 
@@ -341,24 +347,87 @@ class _AmountUnitDialog extends StatefulWidget {
 
 class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   final TextEditingController _amountController = TextEditingController();
+  // «1 шт = X gr» maydoni (faqat xom шт mahsulot + 'g' birlikda ko'rinadi).
+  final TextEditingController _pieceWeightController = TextEditingController();
   // Default birlik — gramm (eng ko'p ishlatiladigan).
   String _unit = 'g';
+  bool _saving = false;
+
+  // Mahsulot шт-oilasidanmi (tuxum, pf...). Pf mahsulot type doim шт.
+  bool get _isShtFamily =>
+      normalizeProductType(widget.product.type) == 'шт';
 
   @override
   void initState() {
     super.initState();
     // Mahsulot turidan birlikni topishga harakat qilamiz.
     _unit = normalizeTechUnit(widget.product.type);
+    final saved = _effectiveW;
+    if (saved > 0 && !widget.product.isSemiFinished) {
+      _pieceWeightController.text = saved.toString();
+    }
   }
 
-  void _submit() {
+  // Saqlangan effektiv «1 dona og'irligi» (tex kartadan yoki piece_weight_g).
+  int get _effectiveW => techEffectivePieceWeightG(
+        widget.product.id,
+        techProductsById(context.read<ProductProviderAdmin>().products),
+      );
+
+  // Hisob-kitoblar uchun joriy W: pf — tex kartadan (read-only), xom —
+  // maydonga yozilgan qiymat.
+  int get _currentW => widget.product.isSemiFinished
+      ? _effectiveW
+      : (int.tryParse(_pieceWeightController.text.trim()) ?? 0);
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _onUnitChanged(String? value) {
+    if (value == null) return;
+    setState(() => _unit = value);
+  }
+
+  Future<void> _submit() async {
     final amount = int.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите корректное количество')),
-      );
+      _snack('Введите корректное количество');
       return;
     }
+    // Gramm kiritilgan шт mahsulot: W (1 шт = X gr) majburiy — usiz backend
+    // g -> dona konvertini qila olmaydi.
+    if (_isShtFamily && _unit == 'g') {
+      final w = _currentW;
+      if (widget.product.isSemiFinished) {
+        if (w <= 0) {
+          _snack('Пф tex kartasida og\'irlik yo\'q — grammda kiritib '
+              'bo\'lmaydi');
+          return;
+        }
+      } else {
+        if (w <= 0) {
+          _snack('1 шт necha gramm ekanini kiriting');
+          return;
+        }
+        // Yangi/o'zgargan W avval mahsulotga saqlanadi (piece_weight_g).
+        if (w != widget.product.pieceWeightG) {
+          setState(() => _saving = true);
+          final provider = context.read<ProductProviderAdmin>();
+          final ok = await provider
+              .updateProduct(widget.product.copyWith(pieceWeightG: w));
+          if (!mounted) return;
+          setState(() => _saving = false);
+          if (!ok) {
+            _snack(provider.error ?? '«1 шт = $w gr» saqlanmadi');
+            return;
+          }
+        }
+      }
+    }
+    if (!mounted) return;
     Navigator.pop(
       context,
       TechItem(
@@ -370,8 +439,57 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
     );
   }
 
+  // «1 шт = X gr» bo'limi: pf — read-only matn, xom — tahrir maydoni.
+  // Faqat шт-oilasida va 'g' birlik tanlanganda ko'rinadi.
+  Widget _pieceWeightSection() {
+    if (widget.product.isSemiFinished) {
+      final w = _effectiveW;
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            // Og'irlik yo'q — grammda kiritib bo'lmaydi (saqlash bloklanadi).
+            w > 0
+                ? '1 шт ≈ $w г (tex kartadan)'
+                : 'Пф tex kartasida og\'irlik yo\'q — grammda kiritib '
+                    'bo\'lmaydi',
+            style: w > 0
+                ? TextStyle(fontSize: 13, color: Colors.grey.shade700)
+                : TextStyle(fontSize: 12.5, color: Colors.red[700]),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: TextField(
+        controller: _pieceWeightController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(
+          labelText: '1 шт = __ гр',
+          helperText: 'Bir dona og\'irligi — mahsulotga saqlanadi',
+          border: OutlineInputBorder(),
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final amount = int.tryParse(_amountController.text.trim()) ?? 0;
+    final showPieceWeight = _isShtFamily && _unit == 'g';
+    final w = _currentW;
+    // Jonli «≈ N шт» hisobi (gramm kiritilayotganda).
+    final pcsHint = (showPieceWeight && w > 0 && amount > 0)
+        ? '≈ ${(amount / w).toStringAsFixed(1)} шт'
+        : null;
+    // 'pcs' birlikda og'irlik ma'lum bo'lsa kichik eslatma.
+    final savedW = _isShtFamily ? _effectiveW : 0;
+    final pcsUnitHint =
+        (_isShtFamily && _unit == 'pcs' && savedW > 0) ? '1 шт ≈ $savedW г' : null;
     return AlertDialog(
       title: Text(widget.product.name),
       content: Column(
@@ -386,7 +504,19 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
               labelText: 'Количество (целое)',
               border: OutlineInputBorder(),
             ),
+            onChanged: (_) => setState(() {}),
           ),
+          if (pcsHint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  pcsHint,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _unit,
@@ -401,22 +531,36 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
                       child: Text(techUnitLabel(u)),
                     ))
                 .toList(),
-            onChanged: (value) {
-              setState(() {
-                _unit = value ?? _unit;
-              });
-            },
+            onChanged: _onUnitChanged,
           ),
+          if (pcsUnitHint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  pcsUnitHint,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          if (showPieceWeight) _pieceWeightSection(),
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving ? null : () => Navigator.pop(context),
           child: const Text('Отмена'),
         ),
         ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Добавить'),
+          onPressed: _saving ? null : _submit,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Добавить'),
         ),
       ],
     );
@@ -425,6 +569,7 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   @override
   void dispose() {
     _amountController.dispose();
+    _pieceWeightController.dispose();
     super.dispose();
   }
 }

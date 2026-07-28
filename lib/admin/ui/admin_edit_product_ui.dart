@@ -40,6 +40,9 @@ class _EditProductPageState extends State<EditProductPage> {
   // Tozalash yo'qotishi (faqat кг/л oilasida ko'rinadi), butun gramm.
   late TextEditingController wasteBaseController;
   late TextEditingController wasteAmountController;
+  // «1 шт og'irligi» (gramm) — faqat xom шт mahsulotda ko'rinadi
+  // (pf og'irligi o'z tex kartasidan olinadi).
+  late TextEditingController pieceWeightController;
   late int _selectedCategoryId;
   late List<int> _selectedFilials;
 
@@ -102,6 +105,11 @@ class _EditProductPageState extends State<EditProductPage> {
           ? widget.product.wasteAmount.toString()
           : '',
     );
+    pieceWeightController = TextEditingController(
+      text: widget.product.pieceWeightG > 0
+          ? widget.product.pieceWeightG.toString()
+          : '',
+    );
 
     _selectedCategoryId = widget.product.categoryId;
     _selectedFilials = List.from(widget.product.filials);
@@ -142,6 +150,12 @@ class _EditProductPageState extends State<EditProductPage> {
       _wasteBaseVal > 0 && _wasteAmountVal > 0 && _wasteAmountVal < _wasteBaseVal;
   // Faqat кг/л oilasida ma'noga ega.
   bool get _wasteApplies => qtyUnitFactor(_selectedType) == 1000;
+
+  // ---- «1 шт og'irligi» (piece_weight_g) yordamchilari ----
+  // Faqat xom шт mahsulotda (pf emas) — tex kartada grammda kiritish uchun.
+  bool get _pieceWeightApplies => _selectedType == 'шт' && !_isSemiFinished;
+  int get _pieceWeightVal =>
+      int.tryParse(pieceWeightController.text.trim()) ?? 0;
 
   // «Состав» uchun: tex kartadagi showInSostav=true nomlarni vergul bilan
   // birlashtiradi; полуфабрикат qatori ichidagi masalliq nomlariga yoyiladi.
@@ -462,6 +476,24 @@ class _EditProductPageState extends State<EditProductPage> {
                     style: TextStyle(fontSize: 12, color: Colors.red[700]),
                   ),
                 ),
+            ],
+            // «1 шт og'irligi» — faqat xom шт mahsulotda (pf og'irligi
+            // tex kartadan). Tex kartada grammda kiritish uchun kerak.
+            if (_pieceWeightApplies) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: pieceWeightController,
+                decoration: const InputDecoration(
+                  labelText: '1 шт og\'irligi (gr, ixtiyoriy)',
+                  helperText:
+                      'Tex kartada grammda kiritish uchun (masalan tuxum)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+              ),
             ],
             SizedBox(
               height: 20,
@@ -818,6 +850,9 @@ class _EditProductPageState extends State<EditProductPage> {
                                   ? _wasteAmountVal
                                   : 0,
                               isSemiFinished: _isSemiFinished,
+                              pieceWeightG: _pieceWeightApplies
+                                  ? _pieceWeightVal
+                                  : 0,
                             );
 
                             final success = await context
@@ -861,6 +896,7 @@ class _EditProductPageState extends State<EditProductPage> {
     bozorGrammController.dispose();
     wasteBaseController.dispose();
     wasteAmountController.dispose();
+    pieceWeightController.dispose();
     _techController.dispose();
     super.dispose();
   }

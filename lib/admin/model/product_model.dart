@@ -1,8 +1,8 @@
 // admin/model/product_model.dart — admin mahsulot modeli (ProductModelAdmin):
 // fromJson/toJson, techCard (iyerarxik тех карта), composition (eski tekis
-// tarkib), type, is_semi_finished (полуфабрикат), waste_base/waste_amount
-// (tozalash yo'qotishi -> wasteFactor), mone_app/bozor/source/sklads (ombor →
-// yuk keltiruvchi oqimi).
+// tarkib), type, is_semi_finished (полуфабрикат), piece_weight_g (1 шт = X gr),
+// waste_base/waste_amount (tozalash yo'qotishi -> wasteFactor),
+// mone_app/bozor/source/sklads (ombor → yuk keltiruvchi oqimi).
 import 'package:uz_ai_dev/admin/model/composition_item.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 
@@ -52,6 +52,11 @@ class ProductModelAdmin {
   // Backend pf mahsulotlarni seller/filial kataloglaridan avtomatik chiqaradi.
   final bool isSemiFinished;
 
+  // «1 шт = X gr» — шт birlikdagi XOM mahsulot (masalan tuxum) uchun bitta
+  // dona og'irligi, BUTUN gramm. 0 — belgilanmagan. Pf uchun og'irlik o'z tex
+  // kartasidan olinadi (tech_card_cost.dart -> techEffectivePieceWeightG).
+  final int pieceWeightG;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -76,6 +81,7 @@ class ProductModelAdmin {
     this.wasteBase = 0,
     this.wasteAmount = 0,
     this.isSemiFinished = false,
+    this.pieceWeightG = 0,
   });
 
   // Tozalash yo'qotishi koeffitsiyenti: xarid narxi shu koeffitsiyentga
@@ -118,6 +124,7 @@ class ProductModelAdmin {
       wasteBase: (json['waste_base'] as num?)?.toInt() ?? 0,
       wasteAmount: (json['waste_amount'] as num?)?.toInt() ?? 0,
       isSemiFinished: json['is_semi_finished'] ?? false,
+      pieceWeightG: (json['piece_weight_g'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -145,6 +152,7 @@ class ProductModelAdmin {
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
       'is_semi_finished': isSemiFinished,
+      'piece_weight_g': pieceWeightG,
     };
   }
 
@@ -171,6 +179,7 @@ class ProductModelAdmin {
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
       'is_semi_finished': isSemiFinished,
+      'piece_weight_g': pieceWeightG,
     };
   }
 
@@ -197,6 +206,9 @@ class ProductModelAdmin {
       'waste_base': wasteBase,
       'waste_amount': wasteAmount,
       'is_semi_finished': isSemiFinished,
+      // Backend "maydon yo'q = tegilmasin" deb qaraydi — set/clear qilish
+      // uchun DOIM yuboriladi (0 = o'chirish).
+      'piece_weight_g': pieceWeightG,
     };
   }
 
@@ -224,6 +236,7 @@ class ProductModelAdmin {
     int? wasteBase,
     int? wasteAmount,
     bool? isSemiFinished,
+    int? pieceWeightG,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -250,6 +263,7 @@ class ProductModelAdmin {
       wasteBase: wasteBase ?? this.wasteBase,
       wasteAmount: wasteAmount ?? this.wasteAmount,
       isSemiFinished: isSemiFinished ?? this.isSemiFinished,
+      pieceWeightG: pieceWeightG ?? this.pieceWeightG,
     );
   }
 }
