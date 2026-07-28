@@ -1329,6 +1329,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
+  // Partiyadagi JAMI dona o'zgarganda: listQty = jami ÷ Штук (yaxlitlab, min 1).
+  // Saqlashda baribir listQty ketadi — JSON kontrakt o'zgarmagan.
+  // Sarlavha jadvalidagi va «Bo'limlar» qatoridagi kataklar shu metodni ishlatadi.
+  void _setTotalPieces(int total) {
+    if (total < 1) return;
+    final per = c.batchQty < 1 ? 1 : c.batchQty;
+    final lists = (total / per).round();
+    setState(() => c.listQty = lists < 1 ? 1 : lists);
+  }
+
   Widget _headerLeftTable() {
     return Container(
       decoration: const BoxDecoration(
@@ -1379,17 +1389,11 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
               padded: false,
             ),
-            // Partiyadagi JAMI dona; listQty = jami ÷ Штук (yaxlitlab, min 1).
-            // Saqlashda baribir listQty ketadi — JSON kontrakt o'zgarmagan.
+            // Partiyadagi JAMI dona (tahriri _setTotalPieces orqali).
             _flexCell(
               _InlineIntCell(
                 value: c.totalPieces,
-                onValue: (total) {
-                  if (total < 1) return;
-                  final per = c.batchQty < 1 ? 1 : c.batchQty;
-                  final lists = (total / per).round();
-                  setState(() => c.listQty = lists < 1 ? 1 : lists);
-                },
+                onValue: _setTotalPieces,
               ),
               flex: 2,
               leftBorder: true,
@@ -1861,6 +1865,27 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             label: const Text('Bo\'lim', style: TextStyle(fontSize: 12.5)),
             onPressed: _addStage,
             visualDensity: VisualDensity.compact,
+          ),
+          // «Общее количество» — sarlavha jadvalidagi bilan AYNAN bir qiymat,
+          // shu qatorda ham ko'rinib, joyida tahrirlanadi.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Общее количество:', style: _kCellBold),
+              const SizedBox(width: 6),
+              Container(
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade400),
+                ),
+                child: _InlineIntCell(
+                  value: c.totalPieces,
+                  suffixText: 'шт',
+                  onValue: _setTotalPieces,
+                ),
+              ),
+            ],
           ),
         ],
       ),
