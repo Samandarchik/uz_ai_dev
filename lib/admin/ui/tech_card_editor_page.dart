@@ -1505,7 +1505,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           const SizedBox(height: 6),
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
+              // Keng ekranda «Tepadan» + «Yon tomondan» yonma-yon sig'adi.
+              constraints: const BoxConstraints(maxWidth: 900),
               child: CuttingSchemeView(
                 shape: c.shape,
                 widthCm: c.widthCm,
