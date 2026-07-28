@@ -1255,8 +1255,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Sxema ko'rinsa mahsulot rasmi uning yonida chiqadi.
-                if (!_schemeVisible) _productPhoto(),
+                // Mahsulot rasmi HAR DOIM eng tepada — sahifaga kirganda
+                // birinchi bo'lib ko'rinadi (sxema bor-yo'qligidan qat'i nazar).
+                _productPhoto(),
                 _headerTables(wide),
                 _cuttingScheme(),
                 _stagesRow(),
@@ -1525,7 +1526,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // --- «Kesish sxemasi» — shakl + partiya (Штук) dan avto diagramma ---
   // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
-  // Tepasida mahsulot rasmi, ostida bir bo'lakning o'lchami/og'irligi chiqadi.
+  // Yonida mahsulot rasmi va bir bo'lakning o'lchami/og'irligi chiqadi.
 
   // Shakl kiritilgan bo'lsa sxema ko'rinadi (bo'lak 1 ta bo'lsa ham —
   // masalan har list butun tort bo'lganda kesiksiz ko'rsatiladi).
@@ -1565,8 +1566,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           Center(
             child: LayoutBuilder(
               builder: (context, cons) {
-                // Tepada mahsulot rasmi, ostida 2 ta sxema plitkasi (to'liq
-                // 3D va bitta bo'lak 3D). Keng ekranda yonma-yon, torda o'raladi.
+                // 3 ta BIR XIL o'lchamdagi plitka: to'liq 3D, mahsulot rasmi,
+                // bitta bo'lak 3D. Keng ekranda yonma-yon, torda o'raladi.
                 final maxW = cons.maxWidth;
                 final double tileW = maxW >= 3 * 200 + 24
                     ? ((maxW - 24) / 3).clamp(200.0, 250.0)
@@ -1588,11 +1589,14 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   );
                 }
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.start,
                   children: [
-                    // 1 — mahsulot rasmi (sxemaning tepasida turadi).
-                    if (url.isNotEmpty) ...[
+                    // 1 — mahsulot rasmi (boshida turadi).
+                    if (url.isNotEmpty)
                       tile(
                         'Tayyor ko\'rinishi',
                         ClipRRect(
@@ -1607,47 +1611,37 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.start,
-                      children: [
-                        // 2 — bitta list/tort kesish sxemasi (3D).
-                        tile(
-                          "To'liq tort",
-                          CuttingSchemeView(
-                            shape: c.shape,
-                            widthCm: c.widthCm,
-                            lengthCm: c.lengthCm,
-                            diameterCm: c.diameterCm,
-                            heightCm: c.heightCm,
-                            pieces: pieces,
-                          ),
-                        ),
-                        // 3 — kesilgan bitta bo'lak (3D) + o'lcham/og'irlik.
-                        tile(
-                          "Bir bo'lak",
-                          PieceSchemeView(
-                            shape: c.shape,
-                            widthCm: c.widthCm,
-                            lengthCm: c.lengthCm,
-                            diameterCm: c.diameterCm,
-                            heightCm: c.heightCm,
-                            pieces: pieces,
-                          ),
-                          Text(
-                            [
-                              if (sizeText != null) sizeText,
-                              if (weightText != null) '~ $weightText',
-                            ].join(' • '),
-                            textAlign: TextAlign.center,
-                            style: valStyle,
-                          ),
-                        ),
-                      ],
+                    // 2 — bitta list/tort kesish sxemasi (3D).
+                    tile(
+                      "To'liq tort",
+                      CuttingSchemeView(
+                        shape: c.shape,
+                        widthCm: c.widthCm,
+                        lengthCm: c.lengthCm,
+                        diameterCm: c.diameterCm,
+                        heightCm: c.heightCm,
+                        pieces: pieces,
+                      ),
+                    ),
+                    // 3 — kesilgan bitta bo'lak (3D) + o'lcham/og'irlik.
+                    tile(
+                      "Bir bo'lak",
+                      PieceSchemeView(
+                        shape: c.shape,
+                        widthCm: c.widthCm,
+                        lengthCm: c.lengthCm,
+                        diameterCm: c.diameterCm,
+                        heightCm: c.heightCm,
+                        pieces: pieces,
+                      ),
+                      Text(
+                        [
+                          if (sizeText != null) sizeText,
+                          if (weightText != null) '~ $weightText',
+                        ].join(' • '),
+                        textAlign: TextAlign.center,
+                        style: valStyle,
+                      ),
                     ),
                   ],
                 );
