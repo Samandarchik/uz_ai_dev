@@ -1887,12 +1887,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 ),
                 child: _InlineIntCell(
                   value: c.totalPieces,
-                  suffixText: _unitShort,
-                  suffix:
-                      widget.product.isSemiFinished ? _unitToggle() : null,
                   onValue: _setTotalPieces,
                 ),
               ),
+              const SizedBox(width: 6),
+              // Birlik yozuvi katakdan TASHQARIDA; полуфабрикатда bosilsa
+              // шт ↔ гр almashadi.
+              if (widget.product.isSemiFinished)
+                _unitToggle()
+              else
+                Text(_unitShort, style: _kCellStyle),
             ],
           ),
         ],
