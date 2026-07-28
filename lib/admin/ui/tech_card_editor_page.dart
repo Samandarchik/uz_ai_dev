@@ -448,18 +448,18 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // partiya JAMI donasi esa batchQty × listQty (c.totalPieces).
   int get _piecesPerList => c.batchQty < 1 ? 1 : c.batchQty;
 
-  // --- Partiya birligi (полуфабрикат uchun шт ↔ кг) ---
-  // 'kg' rejimi FAQAT yozuv birligi: 1 шт = 1 kg kelishuvi, batchQty soni
+  // --- Partiya birligi (полуфабрикат uchun шт ↔ гр) ---
+  // 'g' rejimi FAQAT yozuv birligi: 1 шт = 1 гр kelishuvi, batchQty soni
   // o'sha-o'sha butun son (sklad/tannarx/pf hisoblari шт'da qolaveradi).
-  bool get _kgMode => c.batchUnit == 'kg';
-  String get _unitShort => _kgMode ? 'кг' : 'шт'; // katak suffiksi
-  String get _unitPlural => _kgMode ? 'кг' : 'штук'; // «за N штук/кг»
-  String get _unitOne => _kgMode ? '1 кг' : '1 штуку'; // «за 1 штуку/кг»
+  bool get _gramMode => c.batchUnit == 'g';
+  String get _unitShort => _gramMode ? 'гр' : 'шт'; // katak suffiksi
+  String get _unitPlural => _gramMode ? 'гр' : 'штук'; // «за N штук/гр»
+  String get _unitOne => _gramMode ? '1 гр' : '1 штуку'; // «за 1 штуку/гр»
 
-  // шт ↔ кг almashtirgich (faqat полуфабрикат tex kartasida ko'rinadi).
+  // шт ↔ гр almashtirgich (faqat полуфабрикат tex kartasida ko'rinadi).
   Widget _unitToggle() {
     return InkWell(
-      onTap: () => setState(() => c.batchUnit = _kgMode ? '' : 'kg'),
+      onTap: () => setState(() => c.batchUnit = _gramMode ? '' : 'g'),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1380,7 +1380,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
             _flexCell(
-              Text(_kgMode ? 'Кг' : 'Штук',
+              Text(_gramMode ? 'Грамм' : 'Штук',
                   style: _kCellBold, textAlign: TextAlign.center),
               flex: 2,
               leftBorder: true,

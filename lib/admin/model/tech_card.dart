@@ -241,8 +241,8 @@ class TechCard {
   // BITTA LISTdan (противень) chiqadigan dona. Partiya JAMI donasi =
   // batchQty × listQty (totalPieces) — 1 dona hisoblari shunga bo'linadi.
   final int batchQty;
-  // batchQty ning KO'RSATISH birligi: '' (шт, default) | 'kg' (полуфабрикат
-  // uchun; kelishuv: 1 шт = 1 kg — soni o'zgarmaydi, faqat birlik yozuvi).
+  // batchQty ning KO'RSATISH birligi: '' (шт, default) | 'g' (полуфабрикат
+  // uchun; kelishuv: 1 шт = 1 гр — soni o'zgarmaydi, faqat birlik yozuvi).
   final String batchUnit;
   final int batchWeightG; // server avto hisoblaydi
   final int pieceWeightG; // server avto hisoblaydi
@@ -307,7 +307,7 @@ class TechCard {
     final rawShape = normalizeTechShape(json['shape']?.toString());
     return TechCard(
       batchQty: json['batch_qty'] == null ? 1 : _asInt(json['batch_qty']),
-      batchUnit: json['batch_unit']?.toString() == 'kg' ? 'kg' : '',
+      batchUnit: json['batch_unit']?.toString() == 'g' ? 'g' : '',
       batchWeightG: _asInt(json['batch_weight_g']),
       pieceWeightG: _asInt(json['piece_weight_g']),
       // Eski karta: shape yo'q, lekin diametr bor — round deb olinadi.
