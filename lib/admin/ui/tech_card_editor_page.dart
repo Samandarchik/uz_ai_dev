@@ -441,13 +441,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() => c.batchQty = qty < 1 ? 1 : qty);
   }
 
-  // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik.
+  // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik
+  // (balandlik kiritilgan bo'lsa oxiriga qo'shiladi).
   String _sizeLabel() {
+    final h = c.heightCm == null ? '' : '×${c.heightCm}';
     if (c.shape == 'round' && c.diameterCm != null) {
-      return '⌀ ${c.diameterCm} см';
+      return '⌀ ${c.diameterCm}$h см';
     }
     if (c.shape == 'rect' && c.widthCm != null && c.lengthCm != null) {
-      return '${c.widthCm}×${c.lengthCm} см';
+      return '${c.widthCm}×${c.lengthCm}$h см';
     }
     return '-';
   }
@@ -462,6 +464,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         diameterCm: c.diameterCm,
         widthCm: c.widthCm,
         lengthCm: c.lengthCm,
+        heightCm: c.heightCm,
       ),
     );
     if (res == null || !mounted) return;
@@ -470,6 +473,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       c.diameterCm = res.diameterCm;
       c.widthCm = res.widthCm;
       c.lengthCm = res.lengthCm;
+      c.heightCm = res.heightCm;
     });
   }
 
@@ -1555,16 +1559,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.start,
                   children: [
-                    tile(
-                      "To'liq tort",
-                      CuttingSchemeView(
-                        shape: c.shape,
-                        widthCm: c.widthCm,
-                        lengthCm: c.lengthCm,
-                        diameterCm: c.diameterCm,
-                        pieces: c.batchQty,
-                      ),
-                    ),
+                    // 1 — mahsulot rasmi (boshida turadi).
                     if (url.isNotEmpty)
                       tile(
                         'Tayyor ko\'rinishi',
@@ -1580,6 +1575,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                           ),
                         ),
                       ),
+                    // 2 — to'liq tort kesish sxemasi (3D).
+                    tile(
+                      "To'liq tort",
+                      CuttingSchemeView(
+                        shape: c.shape,
+                        widthCm: c.widthCm,
+                        lengthCm: c.lengthCm,
+                        diameterCm: c.diameterCm,
+                        heightCm: c.heightCm,
+                        pieces: c.batchQty,
+                      ),
+                    ),
+                    // 3 — kesilgan bitta bo'lak (3D) + o'lcham/og'irlik.
                     tile(
                       "Bir bo'lak",
                       PieceSchemeView(
@@ -1587,6 +1595,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         widthCm: c.widthCm,
                         lengthCm: c.lengthCm,
                         diameterCm: c.diameterCm,
+                        heightCm: c.heightCm,
                         pieces: c.batchQty,
                       ),
                       Text(
@@ -2320,12 +2329,14 @@ class _ShapeResult {
   final int? diameterCm;
   final int? widthCm;
   final int? lengthCm;
+  final int? heightCm; // balandlik — round va rect uchun ixtiyoriy
 
   const _ShapeResult({
     required this.shape,
     this.diameterCm,
     this.widthCm,
     this.lengthCm,
+    this.heightCm,
   });
 }
 
@@ -2338,12 +2349,14 @@ class _ShapeDialog extends StatefulWidget {
   final int? diameterCm;
   final int? widthCm;
   final int? lengthCm;
+  final int? heightCm;
 
   const _ShapeDialog({
     required this.shape,
     this.diameterCm,
     this.widthCm,
     this.lengthCm,
+    this.heightCm,
   });
 
   @override
@@ -2355,6 +2368,7 @@ class _ShapeDialogState extends State<_ShapeDialog> {
   late final TextEditingController _diameterCtrl;
   late final TextEditingController _widthCtrl;
   late final TextEditingController _lengthCtrl;
+  late final TextEditingController _heightCtrl;
 
   @override
   void initState() {
@@ -2365,6 +2379,8 @@ class _ShapeDialogState extends State<_ShapeDialog> {
     _widthCtrl = TextEditingController(text: widget.widthCm?.toString() ?? '');
     _lengthCtrl =
         TextEditingController(text: widget.lengthCm?.toString() ?? '');
+    _heightCtrl =
+        TextEditingController(text: widget.heightCm?.toString() ?? '');
   }
 
   @override
@@ -2372,6 +2388,7 @@ class _ShapeDialogState extends State<_ShapeDialog> {
     _diameterCtrl.dispose();
     _widthCtrl.dispose();
     _lengthCtrl.dispose();
+    _heightCtrl.dispose();
     super.dispose();
   }
 
@@ -2382,6 +2399,7 @@ class _ShapeDialogState extends State<_ShapeDialog> {
   }
 
   void _submit() {
+    final h = _posInt(_heightCtrl); // balandlik ixtiyoriy (bo'sh = null)
     if (_shape == 'round') {
       final d = _posInt(_diameterCtrl);
       if (d == null && _diameterCtrl.text.trim().isNotEmpty) return; // 0 — xato
@@ -2389,7 +2407,7 @@ class _ShapeDialogState extends State<_ShapeDialog> {
         context,
         d == null
             ? const _ShapeResult(shape: '')
-            : _ShapeResult(shape: 'round', diameterCm: d),
+            : _ShapeResult(shape: 'round', diameterCm: d, heightCm: h),
       );
       return;
     }
@@ -2405,7 +2423,7 @@ class _ShapeDialogState extends State<_ShapeDialog> {
       if (w == null || l == null) return; // biri yetishmaydi — yopilmaydi
       Navigator.pop(
         context,
-        _ShapeResult(shape: 'rect', widthCm: w, lengthCm: l),
+        _ShapeResult(shape: 'rect', widthCm: w, lengthCm: l, heightCm: h),
       );
       return;
     }
@@ -2480,6 +2498,10 @@ class _ShapeDialogState extends State<_ShapeDialog> {
                   Expanded(child: _numField(_lengthCtrl, 'Длина (см)')),
                 ],
               ),
+            ],
+            if (_shape == 'round' || _shape == 'rect') ...[
+              const SizedBox(height: 8),
+              _numField(_heightCtrl, 'Высота (см) — ixtiyoriy'),
             ],
           ],
         ),

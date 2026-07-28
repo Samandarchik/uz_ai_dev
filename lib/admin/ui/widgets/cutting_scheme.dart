@@ -76,6 +76,8 @@ class CuttingSchemeView extends StatelessWidget {
   final int? widthCm;
   final int? lengthCm;
   final int? diameterCm;
+  // Haqiqiy balandlik (sm, admin kiritadi); null — o'lchamdan taxminiy.
+  final int? heightCm;
   final int pieces; // batchQty — nechta bo'lakka kesiladi
 
   const CuttingSchemeView({
@@ -85,6 +87,7 @@ class CuttingSchemeView extends StatelessWidget {
     this.widthCm,
     this.lengthCm,
     this.diameterCm,
+    this.heightCm,
   });
 
   // Bir bo'lak o'lchami matni: rect — «15 × 10 sm», round — «1/8 (⌀ 24 sm)».
@@ -116,7 +119,8 @@ class CuttingSchemeView extends StatelessWidget {
         painter: _SlabPainter(
           widthCm: widthCm!.toDouble(),
           depthCm: lengthCm!.toDouble(),
-          heightCm: _rectHeightCm(widthCm!, lengthCm!),
+          heightCm:
+              heightCm?.toDouble() ?? _rectHeightCm(widthCm!, lengthCm!),
           cols: cols,
           rows: rows,
           wLabel: '$widthCm sm',
@@ -127,7 +131,11 @@ class CuttingSchemeView extends StatelessWidget {
     }
     if (_validRound(shape, diameterCm)) {
       return CustomPaint(
-        painter: _RoundSidePainter(diameterCm: diameterCm!, pieces: pieces),
+        painter: _RoundSidePainter(
+          diameterCm: diameterCm!,
+          heightCm: heightCm,
+          pieces: pieces,
+        ),
       );
     }
     return const SizedBox.shrink();
@@ -141,6 +149,8 @@ class PieceSchemeView extends StatelessWidget {
   final int? widthCm;
   final int? lengthCm;
   final int? diameterCm;
+  // Haqiqiy balandlik (sm, admin kiritadi); null — o'lchamdan taxminiy.
+  final int? heightCm;
   final int pieces;
 
   const PieceSchemeView({
@@ -150,6 +160,7 @@ class PieceSchemeView extends StatelessWidget {
     this.widthCm,
     this.lengthCm,
     this.diameterCm,
+    this.heightCm,
   });
 
   @override
@@ -164,7 +175,8 @@ class PieceSchemeView extends StatelessWidget {
           widthCm: pw,
           depthCm: pd,
           // Balandlik to'liq tortniki bilan bir xil (bir tortning bo'lagi).
-          heightCm: _rectHeightCm(widthCm!, lengthCm!),
+          heightCm:
+              heightCm?.toDouble() ?? _rectHeightCm(widthCm!, lengthCm!),
           cols: 1,
           rows: 1,
           wLabel: '${_fmtCm(pw)} sm',
@@ -175,7 +187,11 @@ class PieceSchemeView extends StatelessWidget {
     }
     if (_validRound(shape, diameterCm)) {
       return CustomPaint(
-        painter: _WedgePainter(diameterCm: diameterCm!, pieces: pieces),
+        painter: _WedgePainter(
+          diameterCm: diameterCm!,
+          heightCm: heightCm,
+          pieces: pieces,
+        ),
       );
     }
     return const SizedBox.shrink();
@@ -396,12 +412,17 @@ class _SlabPainter extends CustomPainter {
 
 class _RoundSidePainter extends CustomPainter {
   final int diameterCm;
+  final int? heightCm; // null — taxminiy balandlik
   final int pieces;
 
   static const double top = 28; // diametr strelkasi + yorliq
   static const double bottom = 6;
 
-  _RoundSidePainter({required this.diameterCm, required this.pieces});
+  _RoundSidePainter({
+    required this.diameterCm,
+    required this.pieces,
+    this.heightCm,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -410,7 +431,7 @@ class _RoundSidePainter extends CustomPainter {
     final availH = size.height - top - bottom;
     if (availW <= 0 || availH <= 0) return;
 
-    final hCm = _roundHeightCm(diameterCm);
+    final hCm = heightCm?.toDouble() ?? _roundHeightCm(diameterCm);
     // Masshtab (px/sm): diametr qancha bo'lsa ham konteynerga to'la sig'adi.
     final p = math.min(
       availW / diameterCm,
@@ -478,19 +499,26 @@ class _RoundSidePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RoundSidePainter old) =>
-      old.diameterCm != diameterCm || old.pieces != pieces;
+      old.diameterCm != diameterCm ||
+      old.heightCm != heightCm ||
+      old.pieces != pieces;
 }
 
 // ---- Bitta tilim (wedge) — dumaloq tortning kesilgan bo'lagi 3D ----
 
 class _WedgePainter extends CustomPainter {
   final int diameterCm;
+  final int? heightCm; // null — taxminiy balandlik
   final int pieces;
 
   static const double topPad = 8;
   static const double bottomPad = 8;
 
-  _WedgePainter({required this.diameterCm, required this.pieces});
+  _WedgePainter({
+    required this.diameterCm,
+    required this.pieces,
+    this.heightCm,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -502,7 +530,7 @@ class _WedgePainter extends CustomPainter {
     // Klassik tilim: UCHI OLDINGA (tomoshabinga) qaragan, yoy (qobiq) orqada.
     // Ko'rinadigan yuzalar: usti + ikkala kesilgan yon + uch vertikal qirra.
     final delta = math.pi / pieces; // yarim burchak
-    final hCm = _roundHeightCm(diameterCm);
+    final hCm = heightCm?.toDouble() ?? _roundHeightCm(diameterCm);
     // Chizma chegaralari (sm): eni = yoy proyeksiyasi, bo'yi = yoy→uch + devor.
     final halfW = math.sin(math.min(delta, math.pi / 2)) * diameterCm / 2;
     final p = math.min(
@@ -560,5 +588,7 @@ class _WedgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WedgePainter old) =>
-      old.diameterCm != diameterCm || old.pieces != pieces;
+      old.diameterCm != diameterCm ||
+      old.heightCm != heightCm ||
+      old.pieces != pieces;
 }
