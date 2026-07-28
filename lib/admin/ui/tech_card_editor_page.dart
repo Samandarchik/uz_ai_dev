@@ -439,43 +439,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
   }
 
-  // ---- Партия (Штук) va Размер (shakl) tahriri ----
-
-  Future<void> _editBatchQty() async {
-    final value = await showDialog<String>(
-      context: context,
-      builder: (_) => _TextFieldDialog(
-        title: 'Штук (1 лист)',
-        label: 'Bitta listdan nechta dona chiqadi',
-        initial: c.batchQty.toString(),
-        number: true,
-      ),
-    );
-    if (value == null) return;
-    final qty = int.tryParse(value) ?? c.batchQty;
-    setState(() => c.batchQty = qty < 1 ? 1 : qty);
-  }
-
-  // «Общее количество» — admin partiyadagi JAMI donani kiritadi; list soni
-  // undan hisoblanadi: listQty = jami ÷ Штук (yaxlitlab, kamida 1).
-  // Saqlashda baribir listQty ketadi — JSON kontrakt o'zgarmagan.
-  Future<void> _editTotalQty() async {
-    final value = await showDialog<String>(
-      context: context,
-      builder: (_) => _TextFieldDialog(
-        title: 'Общее количество',
-        label: 'Partiyadagi JAMI dona (Штукка bo\'linadi)',
-        initial: c.totalPieces.toString(),
-        number: true,
-      ),
-    );
-    if (value == null) return;
-    final total = int.tryParse(value);
-    if (total == null || total < 1) return;
-    final per = c.batchQty < 1 ? 1 : c.batchQty;
-    final lists = (total / per).round();
-    setState(() => c.listQty = lists < 1 ? 1 : lists);
-  }
+  // ---- Размер (shakl) tahriri ----
+  // (Штук va Общее количество endi sarlavha jadvalida JOYIDA tahrirlanadi —
+  // _InlineIntCell; eski dialog metodlari olib tashlangan.)
 
   // Bitta listdan chiqadigan bo'laklar soni (kesish sxemasi shunga chiziladi).
   // Yangi ma'no: Штук (batchQty) — AYNAN bitta list bo'laklari, bo'lish yo'q;
@@ -1393,7 +1359,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
           ]),
-          // 2-qator: qiymatlar (размер/лист/shtuk bosilганда tahrirlanadi)
+          // 2-qator: qiymatlar. Размер bosilganda dialog; Общее количество va
+          // Штук — JOYIDA tahrirlanadi (inline maydon, dialog yo'q).
           _gridRow([
             _flexCell(Text(widget.product.name, style: _kCellBold), flex: 5),
             _flexCell(
@@ -1412,33 +1379,29 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
               padded: false,
             ),
+            // Partiyadagi JAMI dona; listQty = jami ÷ Штук (yaxlitlab, min 1).
+            // Saqlashda baribir listQty ketadi — JSON kontrakt o'zgarmagan.
             _flexCell(
-              InkWell(
-                onTap: _editTotalQty,
-                child: Padding(
-                  padding: _kCellPad,
-                  child: Text(
-                    '${c.totalPieces}',
-                    style: _kCellStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+              _InlineIntCell(
+                value: c.totalPieces,
+                onValue: (total) {
+                  if (total < 1) return;
+                  final per = c.batchQty < 1 ? 1 : c.batchQty;
+                  final lists = (total / per).round();
+                  setState(() => c.listQty = lists < 1 ? 1 : lists);
+                },
               ),
               flex: 2,
               leftBorder: true,
               padded: false,
             ),
+            // Штук — bitta listdan chiqadigan dona (batchQty).
             _flexCell(
-              InkWell(
-                onTap: _editBatchQty,
-                child: Padding(
-                  padding: _kCellPad,
-                  child: Text(
-                    '${c.batchQty} шт',
-                    style: _kCellStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+              _InlineIntCell(
+                value: c.batchQty,
+                suffixText: 'шт',
+                onValue: (qty) =>
+                    setState(() => c.batchQty = qty < 1 ? 1 : qty),
               ),
               flex: 2,
               leftBorder: true,
@@ -2741,20 +2704,19 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
   }
 }
 
-// ---- Matn/son kiritish dialogi (nom, shtuk) ----
+// ---- Matn kiritish dialogi (baza/bosqich nomi) ----
 // O'z controllerini o'zi yaratadi va dispose qiladi (loyihadagi naqsh).
+// (Son kiritish endi joyida — _InlineAmountCell/_InlineIntCell.)
 
 class _TextFieldDialog extends StatefulWidget {
   final String title;
   final String label;
   final String initial;
-  final bool number;
 
   const _TextFieldDialog({
     required this.title,
     required this.label,
     required this.initial,
-    this.number = false,
   });
 
   @override
@@ -2789,9 +2751,6 @@ class _TextFieldDialogState extends State<_TextFieldDialog> {
       content: TextField(
         controller: _ctrl,
         autofocus: true,
-        keyboardType: widget.number ? TextInputType.number : null,
-        inputFormatters:
-            widget.number ? [FilteringTextInputFormatter.digitsOnly] : null,
         decoration: InputDecoration(
           labelText: widget.label,
           border: const OutlineInputBorder(),
@@ -2891,6 +2850,85 @@ class _InlineAmountCellState extends State<_InlineAmountCell> {
         isDense: true,
         border: InputBorder.none,
         contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      ),
+      onChanged: _onText,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+}
+
+// Sarlavha jadvalidagi butun-son katakni JOYIDA tahrirlash (Штук, Общее
+// количество). Yozilgan to'g'ri qiymat darhol onValue orqali modelga o'tadi
+// (clamp/yaxlitlashni chaqiruvchi qiladi); fokus ketganda matn modeldagi
+// yakuniy qiymatga qaytadi. Bo'sh/xato yozuv commit qilinmaydi.
+class _InlineIntCell extends StatefulWidget {
+  final int value;
+  final ValueChanged<int> onValue;
+  final String? suffixText;
+
+  const _InlineIntCell({
+    required this.value,
+    required this.onValue,
+    this.suffixText,
+  });
+
+  @override
+  State<_InlineIntCell> createState() => _InlineIntCellState();
+}
+
+class _InlineIntCellState extends State<_InlineIntCell> {
+  late final TextEditingController _controller;
+  final FocusNode _focus = FocusNode();
+
+  String get _canonical => widget.value.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _canonical);
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _controller.text != _canonical) {
+        _controller.text = _canonical;
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineIntCell old) {
+    super.didUpdateWidget(old);
+    // Tashqi o'zgarish — yozayotgan bo'lmasa sinxron.
+    if (!_focus.hasFocus && _controller.text != _canonical) {
+      _controller.text = _canonical;
+    }
+  }
+
+  void _onText(String raw) {
+    final v = int.tryParse(raw.trim());
+    if (v == null || v < 0) return;
+    if (v != widget.value) widget.onValue(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focus,
+      textAlign: TextAlign.center,
+      style: _kCellStyle,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        isDense: true,
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        suffixText: widget.suffixText,
+        suffixStyle: _kCellStyle,
       ),
       onChanged: _onText,
     );
