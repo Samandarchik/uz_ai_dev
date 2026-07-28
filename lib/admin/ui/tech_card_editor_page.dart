@@ -441,6 +441,29 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() => c.batchQty = qty < 1 ? 1 : qty);
   }
 
+  // Partiya nechta listda (противень/forma) pishiriladi.
+  Future<void> _editListQty() async {
+    final value = await showDialog<String>(
+      context: context,
+      builder: (_) => _TextFieldDialog(
+        title: 'Лист (партия)',
+        label: 'Partiya nechta listda pishiriladi',
+        initial: c.listQty.toString(),
+        number: true,
+      ),
+    );
+    if (value == null) return;
+    final qty = int.tryParse(value) ?? c.listQty;
+    setState(() => c.listQty = qty < 1 ? 1 : qty);
+  }
+
+  // Bitta listdan chiqadigan bo'laklar soni (kesish sxemasi shunga chiziladi).
+  int get _piecesPerList {
+    final l = c.listQty < 1 ? 1 : c.listQty;
+    final p = (c.batchQty / l).round();
+    return p < 1 ? 1 : p;
+  }
+
   // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik
   // (balandlik kiritilgan bo'lsa oxiriga qo'shiladi).
   String _sizeLabel() {
@@ -1338,13 +1361,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
             _flexCell(
+              const Text('Лист', style: _kCellBold,
+                  textAlign: TextAlign.center),
+              flex: 1,
+              leftBorder: true,
+            ),
+            _flexCell(
               const Text('Штук', style: _kCellBold,
                   textAlign: TextAlign.center),
               flex: 2,
               leftBorder: true,
             ),
           ]),
-          // 2-qator: qiymatlar (размер/shtuk bosilганда tahrirlanadi)
+          // 2-qator: qiymatlar (размер/лист/shtuk bosilганда tahrirlanadi)
           _gridRow([
             _flexCell(Text(widget.product.name, style: _kCellBold), flex: 5),
             _flexCell(
@@ -1360,6 +1389,22 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 ),
               ),
               flex: 2,
+              leftBorder: true,
+              padded: false,
+            ),
+            _flexCell(
+              InkWell(
+                onTap: _editListQty,
+                child: Padding(
+                  padding: _kCellPad,
+                  child: Text(
+                    '${c.listQty}',
+                    style: _kCellStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              flex: 1,
               leftBorder: true,
               padded: false,
             ),
@@ -1495,22 +1540,25 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
   // Yonida mahsulot rasmi va bir bo'lakning o'lchami/og'irligi chiqadi.
 
+  // Shakl kiritilgan bo'lsa sxema ko'rinadi (bo'lak 1 ta bo'lsa ham —
+  // masalan har list butun tort bo'lganda kesiksiz ko'rsatiladi).
   bool get _schemeVisible =>
-      c.batchQty >= 2 &&
-      ((c.shape == 'rect' &&
-              (c.widthCm ?? 0) > 0 &&
-              (c.lengthCm ?? 0) > 0) ||
-          (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
+      (c.shape == 'rect' &&
+          (c.widthCm ?? 0) > 0 &&
+          (c.lengthCm ?? 0) > 0) ||
+      (c.shape == 'round' && (c.diameterCm ?? 0) > 0);
 
   Widget _cuttingScheme() {
     if (!_schemeVisible) return const SizedBox.shrink();
     final url = _fullImageUrl(widget.product.imageUrl ?? '');
+    // Sxema BITTA LIST bo'yicha: undan batchQty/listQty dona chiqadi.
+    final pieces = _piecesPerList;
     final sizeText = CuttingSchemeView.pieceSizeText(
       shape: c.shape,
       widthCm: c.widthCm,
       lengthCm: c.lengthCm,
       diameterCm: c.diameterCm,
-      pieces: c.batchQty,
+      pieces: pieces,
     );
     // Bir bo'lak og'irligi (полуфабрикат hissasi bilan, headerdagi kabi).
     final pieceG = techPieceWeightG(c.build(), _productById);
@@ -1575,7 +1623,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                           ),
                         ),
                       ),
-                    // 2 — to'liq tort kesish sxemasi (3D).
+                    // 2 — bitta list/tort kesish sxemasi (3D).
                     tile(
                       "To'liq tort",
                       CuttingSchemeView(
@@ -1584,7 +1632,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         lengthCm: c.lengthCm,
                         diameterCm: c.diameterCm,
                         heightCm: c.heightCm,
-                        pieces: c.batchQty,
+                        pieces: pieces,
                       ),
                     ),
                     // 3 — kesilgan bitta bo'lak (3D) + o'lcham/og'irlik.
@@ -1596,7 +1644,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         lengthCm: c.lengthCm,
                         diameterCm: c.diameterCm,
                         heightCm: c.heightCm,
-                        pieces: c.batchQty,
+                        pieces: pieces,
                       ),
                       Text(
                         [

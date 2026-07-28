@@ -105,6 +105,8 @@ class CuttingSchemeView extends StatelessWidget {
       return '${_fmtCm(widthCm / cols)} × ${_fmtCm(lengthCm / rows)} sm';
     }
     if (_validRound(shape, diameterCm)) {
+      // 1 bo'lak = butun tort (masalan har list alohida tort bo'lganda).
+      if (pieces <= 1) return 'butun (⌀ $diameterCm sm)';
       return '1/$pieces (⌀ $diameterCm sm)';
     }
     return null;
@@ -112,7 +114,7 @@ class CuttingSchemeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (pieces < 2) return const SizedBox.shrink();
+    if (pieces < 1) return const SizedBox.shrink();
     if (_validRect(shape, widthCm, lengthCm)) {
       final (cols, rows) = _bestGrid(pieces, widthCm!, lengthCm!);
       return CustomPaint(
@@ -165,7 +167,7 @@ class PieceSchemeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (pieces < 2) return const SizedBox.shrink();
+    if (pieces < 1) return const SizedBox.shrink();
     if (_validRect(shape, widthCm, lengthCm)) {
       final (cols, rows) = _bestGrid(pieces, widthCm!, lengthCm!);
       final pw = widthCm! / cols;
@@ -186,6 +188,16 @@ class PieceSchemeView extends StatelessWidget {
       );
     }
     if (_validRound(shape, diameterCm)) {
+      // 1 bo'lak = butun tort — tilim o'rniga butun silindr ko'rsatiladi.
+      if (pieces <= 1) {
+        return CustomPaint(
+          painter: _RoundSidePainter(
+            diameterCm: diameterCm!,
+            heightCm: heightCm,
+            pieces: 1,
+          ),
+        );
+      }
       return CustomPaint(
         painter: _WedgePainter(
           diameterCm: diameterCm!,
@@ -364,9 +376,10 @@ class _SlabPainter extends CustomPainter {
     canvas.drawPath(sidePath, _borderPaint);
 
     // Bo'lak raqamlari ust yuzada (1 — orqa-chap, tepadan boshlanadi).
+    // Bitta bo'lak (butun list) — raqam yozilmaydi.
     final pieces = cols * rows;
     final rowPx = -depth.dy * rowCm; // bir qatorning ekran balandligi
-    if (showNumbers && pieces <= 60 && cellW >= 13 && rowPx >= 8) {
+    if (showNumbers && pieces >= 2 && pieces <= 60 && cellW >= 13 && rowPx >= 8) {
       for (int j = 0; j < rows; j++) {
         for (int i = 0; i < cols; i++) {
           final num = j * cols + i + 1;
@@ -466,22 +479,27 @@ class _RoundSidePainter extends CustomPainter {
     canvas.drawOval(topOval, _fill(_kCakeTop));
 
     // Sektor kesish chiziqlari (markazdan chetgacha, punktir).
-    final step = 2 * math.pi / pieces;
-    const start = -math.pi / 2; // orqadan (ekranda tepadan) boshlanadi
-    for (int i = 0; i < pieces; i++) {
-      final a = start + step * i;
-      final edge = center + Offset(math.cos(a) * rx, math.sin(a) * ry);
-      _drawDashedLine(canvas, center, edge, _cutPaint);
-      // Old yarim (sin a > 0) sektor chegaralari devorga ham tushadi.
-      if (math.sin(a) > 0.05) {
-        _drawDashedLine(canvas, edge, edge + Offset(0, h), _cutPaint);
+    // 1 bo'lak = butun tort — kesiksiz.
+    if (pieces >= 2) {
+      final step = 2 * math.pi / pieces;
+      const start = -math.pi / 2; // orqadan (ekranda tepadan) boshlanadi
+      for (int i = 0; i < pieces; i++) {
+        final a = start + step * i;
+        final edge = center + Offset(math.cos(a) * rx, math.sin(a) * ry);
+        _drawDashedLine(canvas, center, edge, _cutPaint);
+        // Old yarim (sin a > 0) sektor chegaralari devorga ham tushadi.
+        if (math.sin(a) > 0.05) {
+          _drawDashedLine(canvas, edge, edge + Offset(0, h), _cutPaint);
+        }
       }
     }
 
     canvas.drawOval(topOval, _borderPaint);
 
     // Sektor raqamlari (ko'p bo'lsa chalkashmasin deb yozilmaydi).
-    if (pieces <= 24) {
+    if (pieces >= 2 && pieces <= 24) {
+      final step = 2 * math.pi / pieces;
+      const start = -math.pi / 2;
       for (int i = 0; i < pieces; i++) {
         final mid = start + step * (i + 0.5);
         final pos = center +

@@ -16,6 +16,7 @@ class TechCardController {
   int? widthCm;
   int? lengthCm;
   int? heightCm; // balandlik, sm (round va rect uchun)
+  int listQty; // partiyada nechta list (противень); kamida 1
   // Bo'limlar (bosqichlar) — tex karta muharriridagi «Bo'limlar» qatori.
   final List<TechStage> stages;
   final List<TechBase> bases;
@@ -40,6 +41,7 @@ class TechCardController {
         widthCm = initial?.widthCm,
         lengthCm = initial?.lengthCm,
         heightCm = initial?.heightCm,
+        listQty = (initial?.listQty ?? 1) < 1 ? 1 : (initial?.listQty ?? 1),
         stages = List<TechStage>.from(initial?.stages ?? const []),
         bases = List<TechBase>.from(initial?.bases ?? const []),
         consumables = List<TechItem>.from(initial?.consumables ?? const []),
@@ -57,6 +59,7 @@ class TechCardController {
         widthCm: widthCm,
         lengthCm: lengthCm,
         heightCm: heightCm,
+        listQty: listQty < 1 ? 1 : listQty,
         stages: List<TechStage>.from(stages),
         bases: List<TechBase>.from(bases),
         consumables: List<TechItem>.from(consumables),

@@ -248,6 +248,9 @@ class TechCard {
   final int? widthCm; // to'rtburchak eni, sm (rect shakl)
   final int? lengthCm; // to'rtburchak uzunligi, sm (rect shakl)
   final int? heightCm; // tort balandligi, sm (round va rect uchun)
+  // Partiya nechta LISTda (противень/forma) pishiriladi. Bitta listdan
+  // batchQty/listQty dona chiqadi — kesish sxemasi shunga qarab chiziladi.
+  final int listQty;
   // Bo'limlar (bosqichlar) ro'yxati; bo'sh bo'lsa hammasi 1 ta bo'lim deb olinadi.
   final List<TechStage> stages;
   final List<TechBase> bases;
@@ -278,6 +281,7 @@ class TechCard {
     this.widthCm,
     this.lengthCm,
     this.heightCm,
+    this.listQty = 1,
     this.stages = const [],
     this.bases = const [],
     this.consumables = const [],
@@ -304,6 +308,7 @@ class TechCard {
       widthCm: json['width_cm'] == null ? null : _asInt(json['width_cm']),
       lengthCm: json['length_cm'] == null ? null : _asInt(json['length_cm']),
       heightCm: json['height_cm'] == null ? null : _asInt(json['height_cm']),
+      listQty: _asInt(json['list_qty']) < 1 ? 1 : _asInt(json['list_qty']),
       stages: TechStage.listFromJson(json['stages']),
       bases: TechBase.listFromJson(json['bases']),
       consumables: TechItem.listFromJson(json['consumables']),
@@ -335,6 +340,7 @@ class TechCard {
         'width_cm': widthCm,
         'length_cm': lengthCm,
         'height_cm': heightCm,
+        'list_qty': listQty < 1 ? 1 : listQty,
         'stages': stages.map((e) => e.toJson()).toList(),
         'bases': bases.map((e) => e.toJson()).toList(),
         'consumables': consumables.map((e) => e.toJson()).toList(),
@@ -358,6 +364,7 @@ class TechCard {
     bool clearLength = false,
     int? heightCm,
     bool clearHeight = false,
+    int? listQty,
     List<TechStage>? stages,
     List<TechBase>? bases,
     List<TechItem>? consumables,
@@ -376,6 +383,7 @@ class TechCard {
       widthCm: clearWidth ? null : (widthCm ?? this.widthCm),
       lengthCm: clearLength ? null : (lengthCm ?? this.lengthCm),
       heightCm: clearHeight ? null : (heightCm ?? this.heightCm),
+      listQty: listQty ?? this.listQty,
       stages: stages ?? this.stages,
       bases: bases ?? this.bases,
       consumables: consumables ?? this.consumables,
