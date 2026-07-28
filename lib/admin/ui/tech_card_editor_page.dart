@@ -1181,17 +1181,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
-  Future<void> _editIngredient(int baseIndex, int itemIndex) async {
-    final base = c.bases[baseIndex];
-    final updated = await showDialog<TechItem>(
-      context: context,
-      builder: (_) => EditTechItemDialog(
-        item: base.ingredients[itemIndex],
-        gramBlockedMessage: _gramBlockedMessage(base.ingredients[itemIndex]),
-      ),
-    );
-    if (updated == null || !mounted) return;
+  // Qator joyida tahrirlandi (inline miqdor maydoni yoki birlik menyusi).
+  void _updateIngredient(int baseIndex, int itemIndex, TechItem updated) {
     setState(() {
+      final base = c.bases[baseIndex];
       final list = List<TechItem>.from(base.ingredients);
       list[itemIndex] = updated;
       c.bases[baseIndex] = base.copyWith(ingredients: list);
@@ -1228,15 +1221,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
-  Future<void> _editConsumable(int index) async {
-    final updated = await showDialog<TechItem>(
-      context: context,
-      builder: (_) => EditTechItemDialog(
-        item: c.consumables[index],
-        gramBlockedMessage: _gramBlockedMessage(c.consumables[index]),
-      ),
-    );
-    if (updated == null || !mounted) return;
+  void _updateConsumable(int index, TechItem updated) {
     setState(() => c.consumables[index] = updated);
   }
 
@@ -2078,7 +2063,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           for (int j = 0; j < base.ingredients.length; j++)
             _itemRow(
               base.ingredients[j],
-              onTap: () => _editIngredient(index, j),
+              onChanged: (updated) => _updateIngredient(index, j, updated),
               onLongPress: () => _deleteIngredient(index, j),
             ),
 
@@ -2132,7 +2117,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           for (int i = 0; i < c.consumables.length; i++)
             _itemRow(
               c.consumables[i],
-              onTap: () => _editConsumable(i),
+              onChanged: (updated) => _updateConsumable(i, updated),
               onLongPress: () => _deleteConsumable(i),
             ),
           _addRow('+ Расходник', _addConsumable),
@@ -2153,12 +2138,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   // Bir blokdagi ingredient qatori: nom | birlik | miqdor | Цена | Сумма.
-  // Butun qator InkWell'i tahrirni ochadi; Цена katagining O'Z InkWell'i bor —
-  // bosilsa xarid tarixi sheet'i (ichki tap g'olib, long-press esa faqat
-  // tashqi InkWell'da bo'lgani uchun o'chirish ishlayveradi).
+  // Tahrir JOYIDA: miqdor katagi — inline TextField (g/ml da kg/litr sifatida
+  // yoziladi), birlik katagi — bosilganda menyu. Long-press (nom katagida)
+  // o'chiradi; Цена katagining o'z InkWell'i xarid tarixini ochadi.
   Widget _itemRow(
     TechItem item, {
-    required VoidCallback onTap,
+    required ValueChanged<TechItem> onChanged,
     required VoidCallback onLongPress,
   }) {
     final price = _rowUnitPrice(item);
@@ -2172,7 +2157,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         border: Border(bottom: _kSide),
       ),
       child: InkWell(
-        onTap: onTap,
         onLongPress: onLongPress,
         child: IntrinsicHeight(
           child: Row(
@@ -2199,17 +2183,42 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   ),
                 ),
               ),
-              Container(
-                width: _kUnitColW,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(border: Border(left: _kSide)),
-                child: Text(_excelUnitLabel(item.unit), style: _kCellStyle),
+              // Birlik — bosilsa tanlash menyusi. 'g' ga o'tish шт mahsulotda
+              // og'irlik yo'q bo'lsa bloklanadi (backend konvert qila olmaydi).
+              PopupMenuButton<String>(
+                tooltip: 'Birlikni almashtirish',
+                itemBuilder: (_) => [
+                  for (final u in kTechUnits)
+                    PopupMenuItem(
+                      value: u,
+                      child: Text(_excelUnitLabel(u)),
+                    ),
+                ],
+                onSelected: (u) {
+                  if (u == item.unit) return;
+                  final blocked = _gramBlockedMessage(item);
+                  if (u == 'g' && blocked != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(blocked)));
+                    return;
+                  }
+                  onChanged(item.copyWith(unit: u));
+                },
+                child: Container(
+                  width: _kUnitColW,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(border: Border(left: _kSide)),
+                  child: Text(_excelUnitLabel(item.unit), style: _kCellStyle),
+                ),
               ),
               Container(
                 width: _kAmountColW,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(border: Border(left: _kSide)),
-                child: Text(_excelAmount(item), style: _kCellStyle),
+                child: _InlineAmountCell(
+                  item: item,
+                  onAmount: (v) => onChanged(item.copyWith(amount: v)),
+                ),
               ),
               // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
               // Eski narx (>30 kun) — sariq fon; bosilsa xarid tarixi.
@@ -2795,5 +2804,97 @@ class _TextFieldDialogState extends State<_TextFieldDialog> {
         ),
       ],
     );
+  }
+}
+
+// Miqdor katagining JOYIDA tahrirlanadigan maydoni. g/ml qatorlarda qiymat
+// kg/litr sifatida yoziladi (masalan 1.5 -> 1500 gr, butun son saqlanadi),
+// pcs/m da butun son. Har bir to'g'ri yozuv darhol modelga o'tadi (tannarx va
+// og'irliklar jonli yangilanadi); fokus ketganda matn kanonik ko'rinishga
+// («1.500») qaytadi. Bo'sh/xato yozuv commit qilinmaydi.
+class _InlineAmountCell extends StatefulWidget {
+  final TechItem item;
+  final ValueChanged<int> onAmount;
+
+  const _InlineAmountCell({required this.item, required this.onAmount});
+
+  @override
+  State<_InlineAmountCell> createState() => _InlineAmountCellState();
+}
+
+class _InlineAmountCellState extends State<_InlineAmountCell> {
+  late final TextEditingController _controller;
+  final FocusNode _focus = FocusNode();
+
+  bool get _isMilli => widget.item.unit == 'g' || widget.item.unit == 'ml';
+
+  String get _canonical => _excelAmount(widget.item);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _canonical);
+    _focus.addListener(() {
+      // Fokus ketdi — oxirgi saqlangan qiymatning kanonik matni.
+      if (!_focus.hasFocus && _controller.text != _canonical) {
+        _controller.text = _canonical;
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineAmountCell old) {
+    super.didUpdateWidget(old);
+    // Tashqi o'zgarish (masalan, birlik almashdi) — yozayotgan bo'lmasa sinxron.
+    if (!_focus.hasFocus && _controller.text != _canonical) {
+      _controller.text = _canonical;
+    }
+  }
+
+  void _onText(String raw) {
+    final t = raw.trim().replaceAll(',', '.');
+    if (t.isEmpty) return;
+    final int next;
+    if (_isMilli) {
+      final v = double.tryParse(t);
+      if (v == null || v < 0) return;
+      next = (v * 1000).round(); // kg/litr -> gr/ml, faqat butun son
+    } else {
+      final v = int.tryParse(t);
+      if (v == null || v < 0) return;
+      next = v;
+    }
+    if (next != widget.item.amount) widget.onAmount(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focus,
+      textAlign: TextAlign.center,
+      style: _kCellStyle,
+      keyboardType: _isMilli
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.number,
+      inputFormatters: [
+        _isMilli
+            ? FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+            : FilteringTextInputFormatter.digitsOnly,
+      ],
+      decoration: const InputDecoration(
+        isDense: true,
+        border: InputBorder.none,
+        contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      ),
+      onChanged: _onText,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
   }
 }
