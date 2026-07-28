@@ -1242,7 +1242,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _productPhoto(),
+                // Sxema ko'rinsa mahsulot rasmi uning yonida chiqadi.
+                if (!_schemeVisible) _productPhoto(),
                 _headerTables(wide),
                 _cuttingScheme(),
                 _stagesRow(),
@@ -1488,14 +1489,79 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // --- «Kesish sxemasi» — shakl + partiya (Штук) dan avto diagramma ---
   // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
+  // Yonida mahsulot rasmi va bir bo'lakning o'lchami/og'irligi chiqadi.
+
+  bool get _schemeVisible =>
+      c.batchQty >= 2 &&
+      ((c.shape == 'rect' &&
+              (c.widthCm ?? 0) > 0 &&
+              (c.lengthCm ?? 0) > 0) ||
+          (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
+
+  // Sxema yonidagi blok: mahsulot rasmi + «Bir bo'lak» ma'lumoti.
+  Widget _schemeSideInfo() {
+    final url = _fullImageUrl(widget.product.imageUrl ?? '');
+    final sizeText = CuttingSchemeView.pieceSizeText(
+      shape: c.shape,
+      widthCm: c.widthCm,
+      lengthCm: c.lengthCm,
+      diameterCm: c.diameterCm,
+      pieces: c.batchQty,
+    );
+    // Bir bo'lak og'irligi (полуфабрикат hissasi bilan, headerdagi kabi).
+    final pieceG = techPieceWeightG(c.build(), _productById);
+    final weightText = pieceG <= 0
+        ? null
+        : (pieceG >= 1000 ? '${_kgComma(pieceG)} кг' : '$pieceG г');
+    return SizedBox(
+      width: 180,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (url.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: url,
+                height: 120,
+                width: 180,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  height: 120,
+                  width: 180,
+                  color: Colors.grey[200],
+                ),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          const SizedBox(height: 8),
+          const Text("Bir bo'lak:",
+              style: TextStyle(fontSize: 12, color: Colors.black54)),
+          if (sizeText != null)
+            Text(sizeText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+          if (weightText != null)
+            Text('~ $weightText',
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
 
   Widget _cuttingScheme() {
-    final show = c.batchQty >= 2 &&
-        ((c.shape == 'rect' &&
-                (c.widthCm ?? 0) > 0 &&
-                (c.lengthCm ?? 0) > 0) ||
-            (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
-    if (!show) return const SizedBox.shrink();
+    if (!_schemeVisible) return const SizedBox.shrink();
+    final scheme = CuttingSchemeView(
+      shape: c.shape,
+      widthCm: c.widthCm,
+      lengthCm: c.lengthCm,
+      diameterCm: c.diameterCm,
+      pieces: c.batchQty,
+    );
+    final info = _schemeSideInfo();
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
@@ -1505,14 +1571,29 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           const SizedBox(height: 6),
           Center(
             child: ConstrainedBox(
-              // Keng ekranda «Tepadan» + «Yon tomondan» yonma-yon sig'adi.
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: CuttingSchemeView(
-                shape: c.shape,
-                widthCm: c.widthCm,
-                lengthCm: c.lengthCm,
-                diameterCm: c.diameterCm,
-                pieces: c.batchQty,
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: LayoutBuilder(
+                builder: (context, cons) {
+                  // Keng ekranda rasm/info sxema yonida, torda ostida.
+                  if (cons.maxWidth >= 520) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: scheme),
+                        const SizedBox(width: 16),
+                        info,
+                      ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      scheme,
+                      const SizedBox(height: 10),
+                      Center(child: info),
+                    ],
+                  );
+                },
               ),
             ),
           ),
