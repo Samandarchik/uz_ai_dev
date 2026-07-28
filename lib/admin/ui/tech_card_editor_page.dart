@@ -440,8 +440,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   // ---- Размер (shakl) tahriri ----
-  // (Штук va Общее количество endi sarlavha jadvalida JOYIDA tahrirlanadi —
-  // _InlineIntCell; eski dialog metodlari olib tashlangan.)
+  // (Штук sarlavha jadvalida, Общее количество «Bo'limlar» qatorida JOYIDA
+  // tahrirlanadi — _InlineIntCell; eski dialog metodlari olib tashlangan.)
 
   // Bitta listdan chiqadigan bo'laklar soni (kesish sxemasi shunga chiziladi).
   // Yangi ma'no: Штук (batchQty) — AYNAN bitta list bo'laklari, bo'lish yo'q;
@@ -1358,20 +1358,14 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
             _flexCell(
-              const Text('Общее количество', style: _kCellBold,
-                  textAlign: TextAlign.center),
-              flex: 2,
-              leftBorder: true,
-            ),
-            _flexCell(
               const Text('Штук', style: _kCellBold,
                   textAlign: TextAlign.center),
               flex: 2,
               leftBorder: true,
             ),
           ]),
-          // 2-qator: qiymatlar. Размер bosilganda dialog; Общее количество va
-          // Штук — JOYIDA tahrirlanadi (inline maydon, dialog yo'q).
+          // 2-qator: qiymatlar. Размер bosilganda dialog; Штук — JOYIDA
+          // tahrirlanadi (inline maydon, dialog yo'q).
           _gridRow([
             _flexCell(Text(widget.product.name, style: _kCellBold), flex: 5),
             _flexCell(
@@ -1390,17 +1384,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
               padded: false,
             ),
-            // Partiyadagi JAMI dona (tahriri _setTotalPieces orqali).
-            _flexCell(
-              _InlineIntCell(
-                value: c.totalPieces,
-                onValue: _setTotalPieces,
-              ),
-              flex: 2,
-              leftBorder: true,
-              padded: false,
-            ),
             // Штук — bitta listdan chiqadigan dona (batchQty).
+            // (JAMI dona — «Bo'limlar» qatoridagi «Общее количество» katagida.)
             _flexCell(
               _InlineIntCell(
                 value: c.batchQty,
