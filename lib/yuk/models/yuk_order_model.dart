@@ -124,8 +124,9 @@ class YukAddedItem {
   Map<String, dynamic> toJson() => {
         'item_type': itemType,
         'name': name,
-        'taken': taken,
-        'subtotal': subtotal,
+        // Butun qiymatlar kasrsiz (int) yuborilsin (naqsh: _asWire)
+        'taken': taken % 1 == 0 ? taken.toInt() : taken,
+        'subtotal': subtotal % 1 == 0 ? subtotal.toInt() : subtotal,
       };
 }
 

@@ -32,7 +32,14 @@ class _UserHomeUiState extends State<UserHomeUi> {
 
   Future<void> getMe() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('name') ?? '';
+    var savedName = prefs.getString('name') ?? '';
+    // Eski o'rnatishlar nomni jsonEncode bilan ("Ism") saqlagan —
+    // atrofidagi qo'shtirnoqlarni olib tashlaymiz (backward-compat).
+    if (savedName.length >= 2 &&
+        savedName.startsWith('"') &&
+        savedName.endsWith('"')) {
+      savedName = savedName.substring(1, savedName.length - 1);
+    }
     if (!mounted) return;
     setState(() {
       name = savedName;
@@ -43,6 +50,7 @@ class _UserHomeUiState extends State<UserHomeUi> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProductProvider>().fetchCategories();
       context.read<ProductProvider>().fetchProducts();
     });

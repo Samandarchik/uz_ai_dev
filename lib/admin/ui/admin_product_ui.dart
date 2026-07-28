@@ -38,6 +38,7 @@ class _AdminProductUiState extends State<AdminProductUi> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _filterProducts();
       // Eski PDF fayllarni tozalash (optional)
       pdfService.cleanupOldPdfs();

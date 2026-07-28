@@ -22,6 +22,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<CategoryProviderAdminUpload>().getCategories();
     });
   }

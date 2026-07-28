@@ -36,7 +36,7 @@ class ApiPdfService {
     // Request setup (STREAM MODE)
     try {
       final response = await _simpleDio.post(
-        '${AppUrls.baseUrl}/api/products/category/$categoryId/pdf',
+        AppUrls.categoryPdf(categoryId),
         options: Options(responseType: ResponseType.stream),
       );
 

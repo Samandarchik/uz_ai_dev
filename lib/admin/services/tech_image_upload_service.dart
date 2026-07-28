@@ -16,7 +16,8 @@ class TechImageUploadService {
 
   Future<String?> upload(File imageFile) async {
     try {
-      final fileName = imageFile.path.split('/').last;
+      // Fayl nomi — Windows/Unix separatorlarga chidamli
+      final fileName = imageFile.path.split(RegExp(r'[\\/]')).last;
       final formData = FormData.fromMap({
         'image': await MultipartFile.fromFile(
           imageFile.path,

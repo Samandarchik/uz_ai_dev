@@ -77,6 +77,7 @@ class _AddProductPageState extends State<AddProductPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
     });

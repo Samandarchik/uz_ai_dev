@@ -1406,15 +1406,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
               padded: false,
             ),
-            // Штук — bitta listdan chiqadigan dona (batchQty). Полуфабрикатда
-            // birlikni шт↔кг almashtirsa bo'ladi (soni o'zgarmaydi).
-            // (JAMI dona — «Bo'limlar» qatoridagi «Общее количество» katagida.)
+            // Штук — bitta listdan chiqadigan dona (batchQty). Birlik (шт↔гр)
+            // almashtirish tugmasi BITTA — «Bo'limlar» qatoridagi «Общее
+            // количество» yonida; bu katak faqat joriy birlikni ko'rsatadi.
             _flexCell(
               _InlineIntCell(
                 value: c.batchQty,
                 suffixText: _unitShort,
-                suffix:
-                    widget.product.isSemiFinished ? _unitToggle() : null,
                 onValue: (qty) =>
                     setState(() => c.batchQty = qty < 1 ? 1 : qty),
               ),
@@ -2915,15 +2913,11 @@ class _InlineIntCell extends StatefulWidget {
   final int value;
   final ValueChanged<int> onValue;
   final String? suffixText;
-  // Berilsa suffixText o'rniga vidjet chiqadi (masalan bosiladigan шт↔кг
-  // birlik almashtirgichi).
-  final Widget? suffix;
 
   const _InlineIntCell({
     required this.value,
     required this.onValue,
     this.suffixText,
-    this.suffix,
   });
 
   @override
@@ -2975,8 +2969,7 @@ class _InlineIntCellState extends State<_InlineIntCell> {
         isDense: true,
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        suffix: widget.suffix,
-        suffixText: widget.suffix == null ? widget.suffixText : null,
+        suffixText: widget.suffixText,
         suffixStyle: _kCellStyle,
       ),
       onChanged: _onText,

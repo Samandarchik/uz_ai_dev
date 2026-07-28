@@ -43,6 +43,7 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _loadInitialData();
     });
   }

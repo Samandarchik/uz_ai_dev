@@ -39,7 +39,9 @@ class ProductProviderAdmin extends ChangeNotifier with ClearableProvider {
 
     try {
       _allProducts = await _service.getAllProducts();
-      _filteredProducts = _allProducts;
+      // Nusxa olamiz — bir xil List'ga alias bo'lsa, filter/remove'lar
+      // _allProducts'ni ham buzib yuborardi.
+      _filteredProducts = List.of(_allProducts);
       _isInitialized = true;
       _isLoading = false;
       notifyListeners();

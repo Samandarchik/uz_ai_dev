@@ -8,6 +8,19 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 
+// Tolerant JSON yordamchilari (naqsh: production/models/stock_model.dart) —
+// server int/double/string/null yuborsa ham parsing yiqilmaydi.
+int _asInt(dynamic v) {
+  if (v is num) return v.toInt();
+  return int.tryParse(v?.toString() ?? '') ??
+      (double.tryParse(v?.toString() ?? '')?.toInt() ?? 0);
+}
+
+num? _asNumOrNull(dynamic v) {
+  if (v is num) return v;
+  return num.tryParse(v?.toString() ?? '');
+}
+
 class ProductModel {
   final int id;
   final String name;
@@ -29,13 +42,13 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'],
-      name: json['name'],
-      type: json['type'],
-      grams: json['grams'],
-      ingredients: json['ingredients'],
-      category: json['category'],
-      imageUrl: json['image_url'],
+      id: _asInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      type: json['type']?.toString(),
+      grams: _asNumOrNull(json['grams']),
+      ingredients: json['ingredients']?.toString(),
+      category: json['category']?.toString(),
+      imageUrl: json['image_url']?.toString(),
     );
   }
 }
@@ -56,10 +69,10 @@ class CategoryModel {
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'],
-      name: json['name'],
-      print: json['printer'],
-      imageUrl: json['image_url'],
+      id: _asInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      print: _asInt(json['printer']),
+      imageUrl: json['image_url']?.toString(),
     );
   }
 }

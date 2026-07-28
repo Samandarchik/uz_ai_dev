@@ -134,6 +134,7 @@ class _EditProductPageState extends State<EditProductPage> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<CategoryProviderAdmin>().getCategories();
       context.read<FilialProviderAdmin>().getFilials();
     });

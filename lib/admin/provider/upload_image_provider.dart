@@ -14,7 +14,6 @@ import 'package:uz_ai_dev/core/di/di.dart';
 class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider {
   final ApiAdminService _service = ApiAdminService();
   final Dio _dio = sl<Dio>(); // Dio();
-  final String baseUrl = AppUrls.baseUrl; // Replace with your base URL
 
   List<CategoryProductAdmin> _categories = [];
   bool _isLoading = false;
@@ -38,8 +37,8 @@ class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider 
 
     try {
 
-      // Create FormData
-      String fileName = imageFile.path.split('/').last;
+      // Create FormData (fayl nomi — Windows/Unix separatorlarga chidamli)
+      String fileName = imageFile.path.split(RegExp(r'[\\/]')).last;
       FormData formData = FormData.fromMap({
         'image': await MultipartFile.fromFile(
           imageFile.path,
@@ -50,7 +49,7 @@ class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider 
 
       // Send request with progress tracking
       final response = await _dio.post(
-        '$baseUrl/api/upload',
+        AppUrls.upload,
         data: formData,
         onSendProgress: (sent, total) {
           _uploadProgress = sent / total;

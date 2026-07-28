@@ -151,4 +151,8 @@ abstract final class AppUrls {
 
   // Upload
   static const String upload = '$baseUrl/api/upload';
+
+  // Kategoriya mahsulotlari PDF katalogi (POST — stream yuklab olinadi).
+  static String categoryPdf(int categoryId) =>
+      '$baseUrl/api/products/category/$categoryId/pdf';
 }

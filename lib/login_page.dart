@@ -36,7 +36,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    getAppVersion().then((v) => setState(() => version = v));
+    getAppVersion().then((v) {
+      if (mounted) setState(() => version = v);
+    });
   }
 
   Future<void> _login() async {
@@ -57,15 +59,25 @@ class _LoginPageState extends State<LoginPage> {
     if (result['success'] == true) {
       TextInput.finishAutofillContext();
 
-      final user = result['data']['user'];
+      // Server javobida data/token/user bo'lmasa — throw emas, xato dialogi.
+      final data = result['data'];
+      final token = data is Map ? data['token'] : null;
+      final rawUser = data is Map ? data['user'] : null;
+      if (token is! String || rawUser is! Map) {
+        _showErrorDialog(result['message'] ?? 'Login xatosi');
+        return;
+      }
+      final user = Map<String, dynamic>.from(rawUser);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', result['data']['token']);
-      await prefs.setString('name', jsonEncode(user["name"]));
+      await prefs.setString('token', token);
+      // Nomni JSON qo'shtirnoqsiz, toza matn sifatida saqlaymiz.
+      await prefs.setString('name', (user["name"] ?? '').toString());
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setString("role", user["role"] ?? AppRoles.seller);
       await prefs.setString('user', jsonEncode(user));
 
+      if (!mounted) return;
       _navigateByRole(user);
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');
@@ -87,14 +99,23 @@ class _LoginPageState extends State<LoginPage> {
     if (result['success'] == true) {
       TextInput.finishAutofillContext();
 
-      final user = result['data']['user'];
+      // Server javobida data/token/user bo'lmasa — throw emas, xato dialogi.
+      final data = result['data'];
+      final token = data is Map ? data['token'] : null;
+      final rawUser = data is Map ? data['user'] : null;
+      if (token is! String || rawUser is! Map) {
+        _showErrorDialog(result['message'] ?? 'Login xatosi');
+        return;
+      }
+      final user = Map<String, dynamic>.from(rawUser);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', result['data']['token']);
+      await prefs.setString('token', token);
       await prefs.setString('user', jsonEncode(user));
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setString("role", user["role"] ?? AppRoles.seller);
 
+      if (!mounted) return;
       _navigateByRole(user);
     } else {
       _showErrorDialog(result['message'] ?? 'Login xatosi');

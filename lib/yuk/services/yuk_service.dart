@@ -9,6 +9,10 @@ import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 
+// Butun qiymatlar kasrsiz (int) yuborilsin (3000.0 emas 3000) —
+// yuk_provider.dart dagi _asWire bilan bir xil idiom.
+num _asWire(double v) => v % 1 == 0 ? v.toInt() : v;
+
 // Yuk keltiruvchi sklad buyurtmalari uchun Dio servis.
 // Bearer token avtomatik ravishda Dio interceptor orqali qo'shiladi.
 class YukService {
@@ -204,7 +208,7 @@ class YukService {
         '${AppUrls.yukOrders}/$orderId',
         data: {
           'items': items,
-          'total': total,
+          'total': _asWire(total),
           'attachments': attachments,
           'added_items': addedItems,
         },
@@ -245,7 +249,7 @@ class YukService {
       '${AppUrls.yukOrders}/$orderId/draft',
       data: {
         'items': items,
-        'total': total,
+        'total': _asWire(total),
         // Qo'shilgan proche/rasxod itemlar — ledger'dagi Rasxod real time
         // yangilanishi uchun qoralamada ham yuboriladi.
         'added_items': addedItems,

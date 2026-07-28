@@ -354,8 +354,9 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
       }
     }
 
-    // short = kerak − qoldiq (yozuv yo'q — 0). Yuqoriga 2 xonaga yaxlitlash
-    // (epsilon — float shovqini ortiqcha 0.01 qo'shmasligi uchun).
+    // short = kerak − qoldiq (yozuv yo'q — 0). кг/л (API'da butun gramm/ml)
+    // uchun BUTUN birlikka, boshqa birliklar uchun 2 xonaga yuqoriga
+    // yaxlitlash (epsilon — float shovqini ortiqcha qo'shmasligi uchun).
     // Полуфабрикат (ishlab chiqariladigan) qatorlar sklad-buyurtmaga
     // KIRMAYDI — ular alohida ro'yxatda faqat eslatma sifatida ko'rinadi.
     final shorts = <int, double>{};
@@ -364,7 +365,9 @@ class _OmborProductionDetailUiState extends State<OmborProductionDetailUi> {
       final qoldiq = stockProvider.qtyFor(order.skladId, pid) ?? 0;
       final short = total - qoldiq;
       if (short > 0) {
-        final rounded = (short * 100 - 1e-9).ceilToDouble() / 100;
+        final rounded = qtyUnitFactor(units[pid]) == 1000
+            ? (short - 1e-9).ceilToDouble()
+            : (short * 100 - 1e-9).ceilToDouble() / 100;
         if (_producedIds.contains(pid)) {
           pfShorts[pid] = rounded;
         } else {
