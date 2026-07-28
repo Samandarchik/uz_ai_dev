@@ -1255,11 +1255,11 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Mahsulot rasmi HAR DOIM eng tepada — sahifaga kirganda
-                // birinchi bo'lib ko'rinadi (sxema bor-yo'qligidan qat'i nazar).
-                _productPhoto(),
+                // Rasm + TO'LIQ kesish sxemasi — hammasi eng tepada,
+                // jadvaldan oldin. Sxema yo'q bo'lsa (shakl kiritilmagan
+                // yoki Штук = 1 — kesish yo'q) faqat mahsulot rasmi chiqadi.
+                if (_schemeVisible) _cuttingScheme() else _productPhoto(),
                 _headerTables(wide),
-                _cuttingScheme(),
                 _stagesRow(),
                 const SizedBox(height: 12),
                 _blocksArea(wide),
@@ -1513,13 +1513,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
   // Yonida mahsulot rasmi va bir bo'lakning o'lchami/og'irligi chiqadi.
 
-  // Shakl kiritilgan bo'lsa sxema ko'rinadi (bo'lak 1 ta bo'lsa ham —
-  // masalan har list butun tort bo'lganda kesiksiz ko'rsatiladi).
+  // Shakl kiritilgan VA bitta list bir necha bo'lakka kesilsa sxema
+  // ko'rinadi. Штук = 1 bo'lsa kesish yo'q — 3D chizma chiqmaydi,
+  // faqat mahsulot rasmi qoladi.
   bool get _schemeVisible =>
-      (c.shape == 'rect' &&
-          (c.widthCm ?? 0) > 0 &&
-          (c.lengthCm ?? 0) > 0) ||
-      (c.shape == 'round' && (c.diameterCm ?? 0) > 0);
+      _piecesPerList > 1 &&
+      ((c.shape == 'rect' &&
+              (c.widthCm ?? 0) > 0 &&
+              (c.lengthCm ?? 0) > 0) ||
+          (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
 
   Widget _cuttingScheme() {
     if (!_schemeVisible) return const SizedBox.shrink();
@@ -1542,7 +1544,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     const valStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
