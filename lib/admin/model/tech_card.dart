@@ -241,6 +241,9 @@ class TechCard {
   // BITTA LISTdan (противень) chiqadigan dona. Partiya JAMI donasi =
   // batchQty × listQty (totalPieces) — 1 dona hisoblari shunga bo'linadi.
   final int batchQty;
+  // batchQty ning KO'RSATISH birligi: '' (шт, default) | 'kg' (полуфабрикат
+  // uchun; kelishuv: 1 шт = 1 kg — soni o'zgarmaydi, faqat birlik yozuvi).
+  final String batchUnit;
   final int batchWeightG; // server avto hisoblaydi
   final int pieceWeightG; // server avto hisoblaydi
   // Shakl: '' — belgilanmagan, 'round' — dumaloq (diameterCm),
@@ -277,6 +280,7 @@ class TechCard {
 
   const TechCard({
     this.batchQty = 1,
+    this.batchUnit = '',
     this.batchWeightG = 0,
     this.pieceWeightG = 0,
     this.shape = '',
@@ -303,6 +307,7 @@ class TechCard {
     final rawShape = normalizeTechShape(json['shape']?.toString());
     return TechCard(
       batchQty: json['batch_qty'] == null ? 1 : _asInt(json['batch_qty']),
+      batchUnit: json['batch_unit']?.toString() == 'kg' ? 'kg' : '',
       batchWeightG: _asInt(json['batch_weight_g']),
       pieceWeightG: _asInt(json['piece_weight_g']),
       // Eski karta: shape yo'q, lekin diametr bor — round deb olinadi.
@@ -339,6 +344,7 @@ class TechCard {
 
   Map<String, dynamic> toJson() => {
         'batch_qty': batchQty,
+        'batch_unit': batchUnit,
         // Mahalliy hisoblangan qiymatlar (server qayta hisoblaydi).
         'batch_weight_g': computedBatchWeightG,
         'piece_weight_g': computedPieceWeightG,
@@ -360,6 +366,7 @@ class TechCard {
 
   TechCard copyWith({
     int? batchQty,
+    String? batchUnit,
     int? batchWeightG,
     int? pieceWeightG,
     String? shape,
@@ -383,6 +390,7 @@ class TechCard {
   }) {
     return TechCard(
       batchQty: batchQty ?? this.batchQty,
+      batchUnit: batchUnit ?? this.batchUnit,
       batchWeightG: batchWeightG ?? this.batchWeightG,
       pieceWeightG: pieceWeightG ?? this.pieceWeightG,
       shape: normalizeTechShape(shape ?? this.shape),

@@ -10,6 +10,8 @@ import 'package:uz_ai_dev/admin/model/tech_card.dart';
 // sahifalari o'lik kod sifatida o'chirilgan.
 class TechCardController {
   int batchQty;
+  // batchQty birligi: '' (шт) | 'kg' (полуфабрикат; 1 шт = 1 kg kelishuvi).
+  String batchUnit;
   // Shakl: '' | 'round' (diameterCm) | 'rect' (widthCm × lengthCm).
   String shape;
   int? diameterCm;
@@ -36,6 +38,7 @@ class TechCardController {
 
   TechCardController([TechCard? initial])
       : batchQty = (initial?.batchQty ?? 1) < 1 ? 1 : (initial?.batchQty ?? 1),
+        batchUnit = initial?.batchUnit == 'kg' ? 'kg' : '',
         shape = normalizeTechShape(initial?.shape),
         diameterCm = initial?.diameterCm,
         widthCm = initial?.widthCm,
@@ -59,6 +62,7 @@ class TechCardController {
   // To'liq TechCard ni yig'ib qaytaradi (weight maydonlari mahalliy hisoblanadi).
   TechCard build() => TechCard(
         batchQty: batchQty < 1 ? 1 : batchQty,
+        batchUnit: batchUnit == 'kg' ? 'kg' : '',
         shape: normalizeTechShape(shape),
         diameterCm: diameterCm,
         widthCm: widthCm,

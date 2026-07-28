@@ -448,6 +448,28 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // partiya JAMI donasi esa batchQty × listQty (c.totalPieces).
   int get _piecesPerList => c.batchQty < 1 ? 1 : c.batchQty;
 
+  // --- Partiya birligi (полуфабрикат uchun шт ↔ кг) ---
+  // 'kg' rejimi FAQAT yozuv birligi: 1 шт = 1 kg kelishuvi, batchQty soni
+  // o'sha-o'sha butun son (sklad/tannarx/pf hisoblari шт'da qolaveradi).
+  bool get _kgMode => c.batchUnit == 'kg';
+  String get _unitShort => _kgMode ? 'кг' : 'шт'; // katak suffiksi
+  String get _unitPlural => _kgMode ? 'кг' : 'штук'; // «за N штук/кг»
+  String get _unitOne => _kgMode ? '1 кг' : '1 штуку'; // «за 1 штуку/кг»
+
+  // шт ↔ кг almashtirgich (faqat полуфабрикат tex kartasida ko'rinadi).
+  Widget _unitToggle() {
+    return InkWell(
+      onTap: () => setState(() => c.batchUnit = _kgMode ? '' : 'kg'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_unitShort, style: _kCellStyle),
+          const Icon(Icons.swap_horiz, size: 14, color: Colors.black45),
+        ],
+      ),
+    );
+  }
+
   // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik
   // (balandlik kiritilgan bo'lsa oxiriga qo'shiladi).
   String _sizeLabel() {
@@ -1358,8 +1380,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
             _flexCell(
-              const Text('Штук', style: _kCellBold,
-                  textAlign: TextAlign.center),
+              Text(_kgMode ? 'Кг' : 'Штук',
+                  style: _kCellBold, textAlign: TextAlign.center),
               flex: 2,
               leftBorder: true,
             ),
@@ -1384,12 +1406,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
               padded: false,
             ),
-            // Штук — bitta listdan chiqadigan dona (batchQty).
+            // Штук — bitta listdan chiqadigan dona (batchQty). Полуфабрикатда
+            // birlikni шт↔кг almashtirsa bo'ladi (soni o'zgarmaydi).
             // (JAMI dona — «Bo'limlar» qatoridagi «Общее количество» katagida.)
             _flexCell(
               _InlineIntCell(
                 value: c.batchQty,
-                suffixText: 'шт',
+                suffixText: _unitShort,
+                suffix:
+                    widget.product.isSemiFinished ? _unitToggle() : null,
                 onValue: (qty) =>
                     setState(() => c.batchQty = qty < 1 ? 1 : qty),
               ),
@@ -1420,7 +1445,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Общий вес за ${c.totalPieces} штук - '
+                    'Общий вес за ${c.totalPieces} $_unitPlural - '
                     '${_kgComma(techBatchWeightG(card, _productById))} кг',
                     style: _kCellBold,
                   ),
@@ -1429,7 +1454,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Общий вес за 1 штуку - '
+                    'Общий вес за $_unitOne - '
                     '${_kgComma(techPieceWeightG(card, _productById))} кг',
                     style: _kCellBold,
                   ),
@@ -1439,7 +1464,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Себестоимость за ${c.totalPieces} штук - '
+                    'Себестоимость за ${c.totalPieces} $_unitPlural - '
                     '${_pricesLoaded ? fmtCostMoney(_batchCost) : '—'} сум',
                     style: _kCellBold,
                   ),
@@ -1448,7 +1473,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Себестоимость за 1 штуку - '
+                    'Себестоимость за $_unitOne - '
                     '${_pricesLoaded ? fmtCostMoney(_pieceCost) : '—'} сум',
                     style: _kCellBold,
                   ),
@@ -1462,7 +1487,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Полная себестоимость за 1 штуку - '
+                    'Полная себестоимость за $_unitOne - '
                     '${_pricesLoaded ? fmtCostMoney(_fullPieceCost) : '—'} сум',
                     style: _kCellBold,
                   ),
@@ -1720,7 +1745,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Цена продажи за 1 штуку - '
+            'Цена продажи за $_unitOne - '
             '${stored > 0 ? fmtCostMoney(stored) : '—'} сум',
             style: _kCellBold,
           ),
@@ -1862,7 +1887,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 ),
                 child: _InlineIntCell(
                   value: c.totalPieces,
-                  suffixText: 'шт',
+                  suffixText: _unitShort,
+                  suffix:
+                      widget.product.isSemiFinished ? _unitToggle() : null,
                   onValue: _setTotalPieces,
                 ),
               ),
@@ -2884,11 +2911,15 @@ class _InlineIntCell extends StatefulWidget {
   final int value;
   final ValueChanged<int> onValue;
   final String? suffixText;
+  // Berilsa suffixText o'rniga vidjet chiqadi (masalan bosiladigan шт↔кг
+  // birlik almashtirgichi).
+  final Widget? suffix;
 
   const _InlineIntCell({
     required this.value,
     required this.onValue,
     this.suffixText,
+    this.suffix,
   });
 
   @override
@@ -2940,7 +2971,8 @@ class _InlineIntCellState extends State<_InlineIntCell> {
         isDense: true,
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        suffixText: widget.suffixText,
+        suffix: widget.suffix,
+        suffixText: widget.suffix == null ? widget.suffixText : null,
         suffixStyle: _kCellStyle,
       ),
       onChanged: _onText,
