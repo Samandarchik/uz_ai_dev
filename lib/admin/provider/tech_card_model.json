@@ -10,7 +10,10 @@
     "tech_card_maydonlari": {
       "id": "string — barqaror kalit (slug)",
       "name": "string — tort nomi",
-      "diameter_cm": "int — diametri (sm); leden/merenga uchun null",
+      "shape": "string — shakl: '' (belgilanmagan) | 'round' (dumaloq, diameter_cm) | 'rect' (to'rtburchak, width_cm×length_cm)",
+      "diameter_cm": "int — diametri (sm), faqat round; leden/merenga uchun null",
+      "width_cm": "int — to'rtburchak eni (sm), faqat rect; aks holda null",
+      "length_cm": "int — to'rtburchak uzunligi (sm), faqat rect; aks holda null",
       "batch_qty": "int — partiyada nechta dona",
       "batch_weight_g": "int — partiyaning umumiy vazni (g)",
       "piece_weight_g": "int — 1 dona vazni (g)",
@@ -32,7 +35,10 @@
     {
       "id": "rafaello-18",
       "name": "Тортик Рафаэлло",
+      "shape": "round",
       "diameter_cm": 18,
+      "width_cm": null,
+      "length_cm": null,
       "batch_qty": 20,
       "batch_weight_g": 26657,
       "piece_weight_g": 1332,
@@ -198,7 +204,10 @@
     {
       "id": "rafaello-20",
       "name": "Тортик Рафаэлло",
+      "shape": "round",
       "diameter_cm": 20,
+      "width_cm": null,
+      "length_cm": null,
       "batch_qty": 26,
       "batch_weight_g": 52626,
       "piece_weight_g": 2024,

@@ -10,7 +10,11 @@ import 'package:uz_ai_dev/admin/model/tech_card.dart';
 // sahifalari o'lik kod sifatida o'chirilgan.
 class TechCardController {
   int batchQty;
+  // Shakl: '' | 'round' (diameterCm) | 'rect' (widthCm × lengthCm).
+  String shape;
   int? diameterCm;
+  int? widthCm;
+  int? lengthCm;
   // Bo'limlar (bosqichlar) — tex karta muharriridagi «Bo'limlar» qatori.
   final List<TechStage> stages;
   final List<TechBase> bases;
@@ -30,7 +34,10 @@ class TechCardController {
 
   TechCardController([TechCard? initial])
       : batchQty = (initial?.batchQty ?? 1) < 1 ? 1 : (initial?.batchQty ?? 1),
+        shape = normalizeTechShape(initial?.shape),
         diameterCm = initial?.diameterCm,
+        widthCm = initial?.widthCm,
+        lengthCm = initial?.lengthCm,
         stages = List<TechStage>.from(initial?.stages ?? const []),
         bases = List<TechBase>.from(initial?.bases ?? const []),
         consumables = List<TechItem>.from(initial?.consumables ?? const []),
@@ -43,7 +50,10 @@ class TechCardController {
   // To'liq TechCard ni yig'ib qaytaradi (weight maydonlari mahalliy hisoblanadi).
   TechCard build() => TechCard(
         batchQty: batchQty < 1 ? 1 : batchQty,
+        shape: normalizeTechShape(shape),
         diameterCm: diameterCm,
+        widthCm: widthCm,
+        lengthCm: lengthCm,
         stages: List<TechStage>.from(stages),
         bases: List<TechBase>.from(bases),
         consumables: List<TechItem>.from(consumables),

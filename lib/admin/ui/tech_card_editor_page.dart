@@ -14,6 +14,7 @@ import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/tech_image_upload_service.dart';
 import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/cutting_scheme.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_item_editor.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -26,9 +27,10 @@ import 'package:uz_ai_dev/production/ui/widgets/price_history_sheet.dart';
 // ko'rinishda tahrirlash sahifasi. Ro'yxatda double-tap orqali ochiladi.
 // Saqlanganda mahsulot update qilinadi (faqat tech_card o'zgaradi).
 //
-// Excel tartibi: mahsulot rasmi → sarlavha jadvali (Наименование/Диаметр/Штук
-// + umumiy og'irliklar) → rangli sarlavhali baza bloklari → to'q sariq
-// «Расходник» bloki. Keng ekranda bloklar 2 ustunda, telefonda 1 ustunda.
+// Excel tartibi: mahsulot rasmi → sarlavha jadvali (Наименование/Размер/Штук
+// + umumiy og'irliklar) → «Kesish sxemasi» diagrammasi (shakl kiritilganda) →
+// rangli sarlavhali baza bloklari → to'q sariq «Расходник» bloki.
+// Keng ekranda bloklar 2 ustunda, telefonda 1 ustunda.
 
 // ---- Excel uslubi konstantalar ----
 
@@ -422,7 +424,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
   }
 
-  // ---- Партия (Штук) va Диаметр tahriri ----
+  // ---- Партия (Штук) va Размер (shakl) tahriri ----
 
   Future<void> _editBatchQty() async {
     final value = await showDialog<String>(
@@ -439,20 +441,35 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() => c.batchQty = qty < 1 ? 1 : qty);
   }
 
-  Future<void> _editDiameter() async {
-    final value = await showDialog<String>(
+  // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik.
+  String _sizeLabel() {
+    if (c.shape == 'round' && c.diameterCm != null) {
+      return '⌀ ${c.diameterCm} см';
+    }
+    if (c.shape == 'rect' && c.widthCm != null && c.lengthCm != null) {
+      return '${c.widthCm}×${c.lengthCm} см';
+    }
+    return '-';
+  }
+
+  // Shakl + o'lcham dialogi: Круг (диаметр) / Прямоугольник (ширина×длина) / «-».
+  // Natija doim izchil: rect'da diametr null, round'da eni/uzunlik null.
+  Future<void> _editShape() async {
+    final res = await showDialog<_ShapeResult>(
       context: context,
-      builder: (_) => _TextFieldDialog(
-        title: 'Диаметр (см)',
-        label: 'Diametr — bo\'sh qoldirsa bo\'ladi',
-        initial: c.diameterCm?.toString() ?? '',
-        number: true,
-        allowEmpty: true,
+      builder: (_) => _ShapeDialog(
+        shape: c.shape,
+        diameterCm: c.diameterCm,
+        widthCm: c.widthCm,
+        lengthCm: c.lengthCm,
       ),
     );
-    if (value == null) return;
+    if (res == null || !mounted) return;
     setState(() {
-      c.diameterCm = value.isEmpty ? null : int.tryParse(value);
+      c.shape = res.shape;
+      c.diameterCm = res.diameterCm;
+      c.widthCm = res.widthCm;
+      c.lengthCm = res.lengthCm;
     });
   }
 
@@ -1227,6 +1244,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               children: [
                 _productPhoto(),
                 _headerTables(wide),
+                _cuttingScheme(),
                 _stagesRow(),
                 const SizedBox(height: 12),
                 _blocksArea(wide),
@@ -1298,7 +1316,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   Widget _headerLeftTable() {
-    final diameter = c.diameterCm;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1310,7 +1327,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           _gridRow([
             _flexCell(const Text('Наименование', style: _kCellBold), flex: 5),
             _flexCell(
-              const Text('Диаметр',
+              const Text('Размер',
                   style: _kCellBold, textAlign: TextAlign.center),
               flex: 2,
               leftBorder: true,
@@ -1322,16 +1339,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
           ]),
-          // 2-qator: qiymatlar (diametr/shtuk bosilганда tahrirlanadi)
+          // 2-qator: qiymatlar (размер/shtuk bosilганда tahrirlanadi)
           _gridRow([
             _flexCell(Text(widget.product.name, style: _kCellBold), flex: 5),
             _flexCell(
               InkWell(
-                onTap: _editDiameter,
+                onTap: _editShape,
                 child: Padding(
                   padding: _kCellPad,
                   child: Text(
-                    diameter == null ? '-' : '$diameter см',
+                    _sizeLabel(),
                     style: _kCellStyle,
                     textAlign: TextAlign.center,
                   ),
@@ -1466,6 +1483,40 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             ),
           ),
       ],
+    );
+  }
+
+  // --- «Kesish sxemasi» — shakl + partiya (Штук) dan avto diagramma ---
+  // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
+
+  Widget _cuttingScheme() {
+    final show = c.batchQty >= 2 &&
+        ((c.shape == 'rect' &&
+                (c.widthCm ?? 0) > 0 &&
+                (c.lengthCm ?? 0) > 0) ||
+            (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
+    if (!show) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Kesish sxemasi', style: _kCellBold),
+          const SizedBox(height: 6),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: CuttingSchemeView(
+                shape: c.shape,
+                widthCm: c.widthCm,
+                lengthCm: c.lengthCm,
+                diameterCm: c.diameterCm,
+                pieces: c.batchQty,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2168,7 +2219,194 @@ class _ColorPickerDialog extends StatelessWidget {
   }
 }
 
-// ---- Matn/son kiritish dialogi (nom, diametr, shtuk) ----
+// ---- Shakl (Размер) dialogi natijasi ----
+// Doim izchil: '' — hammasi null, 'round' — faqat diametr, 'rect' — faqat
+// eni/uzunlik. Hech qachon float bo'lmaydi — sm qiymatlari butun son.
+
+class _ShapeResult {
+  final String shape; // '' | 'round' | 'rect'
+  final int? diameterCm;
+  final int? widthCm;
+  final int? lengthCm;
+
+  const _ShapeResult({
+    required this.shape,
+    this.diameterCm,
+    this.widthCm,
+    this.lengthCm,
+  });
+}
+
+// ---- Shakl tanlash dialogi: Круг / Прямоугольник / «-» ----
+// Round — diametr maydoni, rect — ширина×длина maydonlari. Bo'sh qoldirilsa
+// shakl «-» (belgilanmagan) deb saqlanadi.
+
+class _ShapeDialog extends StatefulWidget {
+  final String shape;
+  final int? diameterCm;
+  final int? widthCm;
+  final int? lengthCm;
+
+  const _ShapeDialog({
+    required this.shape,
+    this.diameterCm,
+    this.widthCm,
+    this.lengthCm,
+  });
+
+  @override
+  State<_ShapeDialog> createState() => _ShapeDialogState();
+}
+
+class _ShapeDialogState extends State<_ShapeDialog> {
+  late String _shape;
+  late final TextEditingController _diameterCtrl;
+  late final TextEditingController _widthCtrl;
+  late final TextEditingController _lengthCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _shape = widget.shape;
+    _diameterCtrl =
+        TextEditingController(text: widget.diameterCm?.toString() ?? '');
+    _widthCtrl = TextEditingController(text: widget.widthCm?.toString() ?? '');
+    _lengthCtrl =
+        TextEditingController(text: widget.lengthCm?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _diameterCtrl.dispose();
+    _widthCtrl.dispose();
+    _lengthCtrl.dispose();
+    super.dispose();
+  }
+
+  // Musbat butun son yoki null (bo'sh/0/xato).
+  int? _posInt(TextEditingController ctrl) {
+    final v = int.tryParse(ctrl.text.trim());
+    return (v == null || v <= 0) ? null : v;
+  }
+
+  void _submit() {
+    if (_shape == 'round') {
+      final d = _posInt(_diameterCtrl);
+      if (d == null && _diameterCtrl.text.trim().isNotEmpty) return; // 0 — xato
+      Navigator.pop(
+        context,
+        d == null
+            ? const _ShapeResult(shape: '')
+            : _ShapeResult(shape: 'round', diameterCm: d),
+      );
+      return;
+    }
+    if (_shape == 'rect') {
+      final w = _posInt(_widthCtrl);
+      final l = _posInt(_lengthCtrl);
+      final bothEmpty =
+          _widthCtrl.text.trim().isEmpty && _lengthCtrl.text.trim().isEmpty;
+      if (bothEmpty) {
+        Navigator.pop(context, const _ShapeResult(shape: ''));
+        return;
+      }
+      if (w == null || l == null) return; // biri yetishmaydi — yopilmaydi
+      Navigator.pop(
+        context,
+        _ShapeResult(shape: 'rect', widthCm: w, lengthCm: l),
+      );
+      return;
+    }
+    Navigator.pop(context, const _ShapeResult(shape: ''));
+  }
+
+  Widget _numField(TextEditingController ctrl, String label,
+      {bool autofocus = false}) {
+    return TextField(
+      controller: ctrl,
+      autofocus: autofocus,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      onSubmitted: (_) => _submit(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Размер'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            RadioGroup<String>(
+              groupValue: _shape,
+              onChanged: (v) => setState(() => _shape = v ?? ''),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    value: 'round',
+                    dense: true,
+                    title: Text('Круг (диаметр)'),
+                  ),
+                  RadioListTile<String>(
+                    value: 'rect',
+                    dense: true,
+                    title: Text('Прямоугольник (ширина×длина)'),
+                  ),
+                  RadioListTile<String>(
+                    value: '',
+                    dense: true,
+                    title: Text('-'),
+                  ),
+                ],
+              ),
+            ),
+            if (_shape == 'round') ...[
+              const SizedBox(height: 8),
+              _numField(_diameterCtrl, 'Диаметр (см)', autofocus: true),
+            ],
+            if (_shape == 'rect') ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child:
+                        _numField(_widthCtrl, 'Ширина (см)', autofocus: true),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('×', style: _kCellBold),
+                  ),
+                  Expanded(child: _numField(_lengthCtrl, 'Длина (см)')),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---- Matn/son kiritish dialogi (nom, shtuk) ----
 // O'z controllerini o'zi yaratadi va dispose qiladi (loyihadagi naqsh).
 
 class _TextFieldDialog extends StatefulWidget {
@@ -2176,14 +2414,12 @@ class _TextFieldDialog extends StatefulWidget {
   final String label;
   final String initial;
   final bool number;
-  final bool allowEmpty;
 
   const _TextFieldDialog({
     required this.title,
     required this.label,
     required this.initial,
     this.number = false,
-    this.allowEmpty = false,
   });
 
   @override
@@ -2207,7 +2443,7 @@ class _TextFieldDialogState extends State<_TextFieldDialog> {
 
   void _submit() {
     final value = _ctrl.text.trim();
-    if (value.isEmpty && !widget.allowEmpty) return;
+    if (value.isEmpty) return;
     Navigator.pop(context, value);
   }
 

@@ -50,6 +50,12 @@ String normalizeTechUnit(String? unit) {
   }
 }
 
+// Shakl qiymatini normallashtiradi: faqat '' | 'round' | 'rect' qabul qilinadi.
+String normalizeTechShape(String? shape) {
+  final s = (shape ?? '').trim().toLowerCase();
+  return (s == 'round' || s == 'rect') ? s : '';
+}
+
 int _asInt(dynamic v) {
   if (v is num) return v.toInt();
   return int.tryParse(v?.toString() ?? '') ??
@@ -234,7 +240,13 @@ class TechCard {
   final int batchQty; // partiyada nechta dona
   final int batchWeightG; // server avto hisoblaydi
   final int pieceWeightG; // server avto hisoblaydi
-  final int? diameterCm; // tort uchun ixtiyoriy
+  // Shakl: '' — belgilanmagan, 'round' — dumaloq (diameterCm),
+  // 'rect' — to'rtburchak (widthCm × lengthCm). Backend sanitizatsiya qiladi:
+  // rect'da diametr, round'da eni/uzunlik tozalanadi.
+  final String shape;
+  final int? diameterCm; // tort uchun ixtiyoriy (round shakl)
+  final int? widthCm; // to'rtburchak eni, sm (rect shakl)
+  final int? lengthCm; // to'rtburchak uzunligi, sm (rect shakl)
   // Bo'limlar (bosqichlar) ro'yxati; bo'sh bo'lsa hammasi 1 ta bo'lim deb olinadi.
   final List<TechStage> stages;
   final List<TechBase> bases;
@@ -260,7 +272,10 @@ class TechCard {
     this.batchQty = 1,
     this.batchWeightG = 0,
     this.pieceWeightG = 0,
+    this.shape = '',
     this.diameterCm,
+    this.widthCm,
+    this.lengthCm,
     this.stages = const [],
     this.bases = const [],
     this.consumables = const [],
@@ -274,12 +289,18 @@ class TechCard {
   factory TechCard.fromJson(Map<String, dynamic> json) {
     final rawMode = json['profit_mode']?.toString() ?? '';
     final rawOverhead = json['overhead_mode']?.toString() ?? '';
+    final diameter =
+        json['diameter_cm'] == null ? null : _asInt(json['diameter_cm']);
+    final rawShape = normalizeTechShape(json['shape']?.toString());
     return TechCard(
       batchQty: json['batch_qty'] == null ? 1 : _asInt(json['batch_qty']),
       batchWeightG: _asInt(json['batch_weight_g']),
       pieceWeightG: _asInt(json['piece_weight_g']),
-      diameterCm:
-          json['diameter_cm'] == null ? null : _asInt(json['diameter_cm']),
+      // Eski karta: shape yo'q, lekin diametr bor — round deb olinadi.
+      shape: (rawShape.isEmpty && diameter != null) ? 'round' : rawShape,
+      diameterCm: diameter,
+      widthCm: json['width_cm'] == null ? null : _asInt(json['width_cm']),
+      lengthCm: json['length_cm'] == null ? null : _asInt(json['length_cm']),
       stages: TechStage.listFromJson(json['stages']),
       bases: TechBase.listFromJson(json['bases']),
       consumables: TechItem.listFromJson(json['consumables']),
@@ -306,7 +327,10 @@ class TechCard {
         // Mahalliy hisoblangan qiymatlar (server qayta hisoblaydi).
         'batch_weight_g': computedBatchWeightG,
         'piece_weight_g': computedPieceWeightG,
+        'shape': shape,
         'diameter_cm': diameterCm,
+        'width_cm': widthCm,
+        'length_cm': lengthCm,
         'stages': stages.map((e) => e.toJson()).toList(),
         'bases': bases.map((e) => e.toJson()).toList(),
         'consumables': consumables.map((e) => e.toJson()).toList(),
@@ -321,8 +345,13 @@ class TechCard {
     int? batchQty,
     int? batchWeightG,
     int? pieceWeightG,
+    String? shape,
     int? diameterCm,
     bool clearDiameter = false,
+    int? widthCm,
+    bool clearWidth = false,
+    int? lengthCm,
+    bool clearLength = false,
     List<TechStage>? stages,
     List<TechBase>? bases,
     List<TechItem>? consumables,
@@ -336,7 +365,10 @@ class TechCard {
       batchQty: batchQty ?? this.batchQty,
       batchWeightG: batchWeightG ?? this.batchWeightG,
       pieceWeightG: pieceWeightG ?? this.pieceWeightG,
+      shape: normalizeTechShape(shape ?? this.shape),
       diameterCm: clearDiameter ? null : (diameterCm ?? this.diameterCm),
+      widthCm: clearWidth ? null : (widthCm ?? this.widthCm),
+      lengthCm: clearLength ? null : (lengthCm ?? this.lengthCm),
       stages: stages ?? this.stages,
       bases: bases ?? this.bases,
       consumables: consumables ?? this.consumables,
