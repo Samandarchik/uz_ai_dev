@@ -456,20 +456,25 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() => c.batchQty = qty < 1 ? 1 : qty);
   }
 
-  // Partiya nechta listda (противень/forma) pishiriladi.
-  Future<void> _editListQty() async {
+  // «Общее количество» — admin partiyadagi JAMI donani kiritadi; list soni
+  // undan hisoblanadi: listQty = jami ÷ Штук (yaxlitlab, kamida 1).
+  // Saqlashda baribir listQty ketadi — JSON kontrakt o'zgarmagan.
+  Future<void> _editTotalQty() async {
     final value = await showDialog<String>(
       context: context,
       builder: (_) => _TextFieldDialog(
-        title: 'Лист (партия)',
-        label: 'Partiya nechta listda pishiriladi',
-        initial: c.listQty.toString(),
+        title: 'Общее количество',
+        label: 'Partiyadagi JAMI dona (Штукка bo\'linadi)',
+        initial: c.totalPieces.toString(),
         number: true,
       ),
     );
     if (value == null) return;
-    final qty = int.tryParse(value) ?? c.listQty;
-    setState(() => c.listQty = qty < 1 ? 1 : qty);
+    final total = int.tryParse(value);
+    if (total == null || total < 1) return;
+    final per = c.batchQty < 1 ? 1 : c.batchQty;
+    final lists = (total / per).round();
+    setState(() => c.listQty = lists < 1 ? 1 : lists);
   }
 
   // Bitta listdan chiqadigan bo'laklar soni (kesish sxemasi shunga chiziladi).
@@ -1376,9 +1381,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               leftBorder: true,
             ),
             _flexCell(
-              const Text('Лист', style: _kCellBold,
+              const Text('Общее количество', style: _kCellBold,
                   textAlign: TextAlign.center),
-              flex: 1,
+              flex: 2,
               leftBorder: true,
             ),
             _flexCell(
@@ -1409,17 +1414,17 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             ),
             _flexCell(
               InkWell(
-                onTap: _editListQty,
+                onTap: _editTotalQty,
                 child: Padding(
                   padding: _kCellPad,
                   child: Text(
-                    '${c.listQty}',
+                    '${c.totalPieces}',
                     style: _kCellStyle,
                     textAlign: TextAlign.center,
                   ),
                 ),
               ),
-              flex: 1,
+              flex: 2,
               leftBorder: true,
               padded: false,
             ),
