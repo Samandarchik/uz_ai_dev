@@ -1,11 +1,13 @@
-// admin/ui/widgets/cutting_scheme.dart — «Kesish sxemasi» diagrammasi:
-// CuttingSchemeView — tex kartadagi shakl (round/rect) va partiya (Штук) dan
-// tortni bo'laklarga kesish sxemasini 3D (yon-burchakdan, kabinet proyeksiya)
-// chizadi. To'rtburchakda bo'lak kvadratga eng yaqin bo'ladigan ustun×qator
-// to'ri, dumaloqda teng sektorlar; kesish chiziqlari old/yon yuzlarga tushadi.
-// pieceSizeText() — bir bo'lak o'lchami matni (editor'dagi info blok uchun).
-// Ranglar tort_30x50_10_bolak_kesish_sxemasi.svg namunasidan: tort FAEEDA,
-// jigarrang ramka, punktir kesish chiziqlari, kulrang o'lchov strelkalari.
+// admin/ui/widgets/cutting_scheme.dart — «Kesish sxemasi» diagrammalari (3D):
+// CuttingSchemeView — TO'LIQ tort kesish sxemasi (kabinet proyeksiya):
+// to'rtburchakda bo'lak kvadratga eng yaqin ustun×qator to'ri, dumaloqda teng
+// sektorlar; kesish chiziqlari old/yon yuzlarga tushadi.
+// PieceSchemeView — kesilgan BITTA bo'lak 3D: to'rtburchakda kichik plita,
+// dumaloqda tort tilimi (wedge).
+// Ikkalasi ham berilgan konteynerga masshtablanadi — kiritilgan sm qiymati
+// qancha bo'lsa ham EKRANDAGI O'LCHAM BIR XIL (faqat proporsiya va yorliqlar
+// o'zgaradi). pieceSizeText() — bir bo'lak o'lchami matni (info blok uchun).
+// Ranglar tort_30x50_10_bolak_kesish_sxemasi.svg namunasidan.
 // 3D balandlik SAQLANMAYDI — faqat vizual (o'lchamdan taxminiy).
 import 'dart:math' as math;
 
@@ -21,12 +23,13 @@ const Color _kNumber = Color(0xFF633806);
 const Color _kArrow = Color(0xFF898781);
 const Color _kLabel = Color(0xFF52514E);
 
+// Kichik plitka (tile) rejimiga mos ixcham shriftlar.
 const TextStyle _kNumberStyle = TextStyle(
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: FontWeight.w500,
   color: _kNumber,
 );
-const TextStyle _kLabelStyle = TextStyle(fontSize: 11, color: _kLabel);
+const TextStyle _kLabelStyle = TextStyle(fontSize: 10, color: _kLabel);
 
 // sm qiymatini chiroyli yozadi: 15.0 → «15», 16.666 → «16.7».
 String _fmtCm(double v) {
@@ -63,8 +66,11 @@ const double _kEllipseK = 0.38;
   return best;
 }
 
-// Kesish sxemasi vidjeti (3D). Mavjud kenglikka moslashadi (balandlik shakl
-// nisbatidan hisoblanadi, qat'iy piksel o'lchov yo'q).
+bool _validRect(String shape, int? w, int? l) =>
+    shape == 'rect' && (w ?? 0) > 0 && (l ?? 0) > 0;
+bool _validRound(String shape, int? d) => shape == 'round' && (d ?? 0) > 0;
+
+// TO'LIQ tort kesish sxemasi (3D). O'lchamni parent (SizedBox) beradi.
 class CuttingSchemeView extends StatelessWidget {
   final String shape; // 'round' | 'rect'
   final int? widthCm;
@@ -81,11 +87,6 @@ class CuttingSchemeView extends StatelessWidget {
     this.diameterCm,
   });
 
-  bool get _isRect =>
-      shape == 'rect' && (widthCm ?? 0) > 0 && (lengthCm ?? 0) > 0;
-
-  bool get _isRound => shape == 'round' && (diameterCm ?? 0) > 0;
-
   // Bir bo'lak o'lchami matni: rect — «15 × 10 sm», round — «1/8 (⌀ 24 sm)».
   // Shakl to'liq kiritilmagan bo'lsa null.
   static String? pieceSizeText({
@@ -96,11 +97,11 @@ class CuttingSchemeView extends StatelessWidget {
     required int pieces,
   }) {
     if (pieces < 1) return null;
-    if (shape == 'rect' && (widthCm ?? 0) > 0 && (lengthCm ?? 0) > 0) {
+    if (_validRect(shape, widthCm, lengthCm)) {
       final (cols, rows) = _bestGrid(pieces, widthCm!, lengthCm!);
       return '${_fmtCm(widthCm / cols)} × ${_fmtCm(lengthCm / rows)} sm';
     }
-    if (shape == 'round' && (diameterCm ?? 0) > 0) {
+    if (_validRound(shape, diameterCm)) {
       return '1/$pieces (⌀ $diameterCm sm)';
     }
     return null;
@@ -108,48 +109,76 @@ class CuttingSchemeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if ((!_isRect && !_isRound) || pieces < 2) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final maxW = constraints.maxWidth;
-            final double height;
-            final CustomPainter painter;
-            if (_isRect) {
-              final w = widthCm!, l = lengthCm!;
-              painter =
-                  _RectSidePainter(widthCm: w, lengthCm: l, pieces: pieces);
-              final innerW = math.max(50.0,
-                  maxW - _RectSidePainter.leftPad - _RectSidePainter.rightPad);
-              final s = innerW / (w + _RectSidePainter.depthX * l);
-              height = (_RectSidePainter.topPad +
-                      _RectSidePainter.bottomPad +
-                      s * (_rectHeightCm(w, l) - _RectSidePainter.depthY * l))
-                  .clamp(150.0, 460.0);
-            } else {
-              final d = diameterCm!;
-              painter = _RoundSidePainter(diameterCm: d, pieces: pieces);
-              final innerW = math.max(50.0, maxW - 32);
-              final p = innerW / d;
-              height = (_RoundSidePainter.top +
-                      _RoundSidePainter.bottom +
-                      p * (_kEllipseK * d + _roundHeightCm(d)))
-                  .clamp(150.0, 420.0);
-            }
-            return SizedBox(
-              width: double.infinity,
-              height: height,
-              child: CustomPaint(painter: painter),
-            );
-          },
+    if (pieces < 2) return const SizedBox.shrink();
+    if (_validRect(shape, widthCm, lengthCm)) {
+      final (cols, rows) = _bestGrid(pieces, widthCm!, lengthCm!);
+      return CustomPaint(
+        painter: _SlabPainter(
+          widthCm: widthCm!.toDouble(),
+          depthCm: lengthCm!.toDouble(),
+          heightCm: _rectHeightCm(widthCm!, lengthCm!),
+          cols: cols,
+          rows: rows,
+          wLabel: '$widthCm sm',
+          dLabel: '$lengthCm sm',
+          showNumbers: true,
         ),
-        const SizedBox(height: 4),
-        const Text('Punktir chiziqlar — kesish joylari',
-            textAlign: TextAlign.center, style: _kLabelStyle),
-      ],
-    );
+      );
+    }
+    if (_validRound(shape, diameterCm)) {
+      return CustomPaint(
+        painter: _RoundSidePainter(diameterCm: diameterCm!, pieces: pieces),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+// Kesilgan BITTA bo'lak (3D): rect — kichik plita, round — tort tilimi.
+// O'lchamni parent (SizedBox) beradi.
+class PieceSchemeView extends StatelessWidget {
+  final String shape; // 'round' | 'rect'
+  final int? widthCm;
+  final int? lengthCm;
+  final int? diameterCm;
+  final int pieces;
+
+  const PieceSchemeView({
+    super.key,
+    required this.shape,
+    required this.pieces,
+    this.widthCm,
+    this.lengthCm,
+    this.diameterCm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (pieces < 2) return const SizedBox.shrink();
+    if (_validRect(shape, widthCm, lengthCm)) {
+      final (cols, rows) = _bestGrid(pieces, widthCm!, lengthCm!);
+      final pw = widthCm! / cols;
+      final pd = lengthCm! / rows;
+      return CustomPaint(
+        painter: _SlabPainter(
+          widthCm: pw,
+          depthCm: pd,
+          // Balandlik to'liq tortniki bilan bir xil (bir tortning bo'lagi).
+          heightCm: _rectHeightCm(widthCm!, lengthCm!),
+          cols: 1,
+          rows: 1,
+          wLabel: '${_fmtCm(pw)} sm',
+          dLabel: '${_fmtCm(pd)} sm',
+          showNumbers: false,
+        ),
+      );
+    }
+    if (_validRound(shape, diameterCm)) {
+      return CustomPaint(
+        painter: _WedgePainter(diameterCm: diameterCm!, pieces: pieces),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
@@ -172,13 +201,13 @@ void _drawDashedLine(Canvas canvas, Offset a, Offset b, Paint paint,
 void _drawArrow(Canvas canvas, Offset a, Offset b) {
   final paint = Paint()
     ..color = _kArrow
-    ..strokeWidth = 1.5
+    ..strokeWidth = 1.2
     ..strokeCap = StrokeCap.round
     ..style = PaintingStyle.stroke;
   canvas.drawLine(a, b, paint);
   final dir = (b - a) / (b - a).distance;
-  const headLen = 6.0;
-  const headHalf = 4.0;
+  const headLen = 5.0;
+  const headHalf = 3.5;
   // b uchidagi chevron (tashqariga qaraydi)
   final n = Offset(-dir.dy, dir.dx); // normal
   canvas.drawLine(b - dir * headLen + n * headHalf, b, paint);
@@ -224,27 +253,38 @@ Path _quad(Offset a, Offset b, Offset c, Offset d) => Path()
   ..lineTo(d.dx, d.dy)
   ..close();
 
-// ---- To'rtburchak (3D plita, kabinet proyeksiya) ----
+// ---- 3D plita (kabinet proyeksiya): to'liq to'rtburchak tort HAM bitta
+// bo'lak HAM shu painter bilan chiziladi (bo'lakda to'r 1×1, raqamsiz) ----
 
-class _RectSidePainter extends CustomPainter {
-  final int widthCm;
-  final int lengthCm;
-  final int pieces;
+class _SlabPainter extends CustomPainter {
+  final double widthCm;
+  final double depthCm;
+  final double heightCm;
+  final int cols;
+  final int rows;
+  final String wLabel; // pastdagi eni yorlig'i
+  final String dLabel; // yon qirradagi uzunlik yorlig'i
+  final bool showNumbers;
 
   // Chuqurlik (orqaga ketish) birlik vektori: 1 sm ekranda shuncha
   // (masshtabdan keyin) o'ng-yuqoriga suriladi.
   static const double depthX = 0.55;
   static const double depthY = -0.35;
 
-  static const double topPad = 20;
-  static const double bottomPad = 36; // eni strelkasi + «30 sm»
-  static const double leftPad = 16;
-  static const double rightPad = 76; // uzunlik strelkasi + «50 sm»
+  static const double topPad = 8;
+  static const double bottomPad = 28; // eni strelkasi + yorliq
+  static const double leftPad = 8;
+  static const double rightPad = 44; // uzunlik strelkasi + yorliq
 
-  _RectSidePainter({
+  _SlabPainter({
     required this.widthCm,
-    required this.lengthCm,
-    required this.pieces,
+    required this.depthCm,
+    required this.heightCm,
+    required this.cols,
+    required this.rows,
+    required this.wLabel,
+    required this.dLabel,
+    required this.showNumbers,
   });
 
   @override
@@ -253,16 +293,16 @@ class _RectSidePainter extends CustomPainter {
     final availH = size.height - topPad - bottomPad;
     if (availW <= 0 || availH <= 0) return;
 
-    final hCm = _rectHeightCm(widthCm, lengthCm);
-    // Masshtab: proyeksiya eni (W + dx·L) va bo'yi (h + |dy|·L) sig'sin.
+    // Masshtab: proyeksiya eni (W + dx·D) va bo'yi (h + |dy|·D) sig'sin —
+    // sm qiymati qancha bo'lsa ham chizma konteynerni to'ldiradi.
     final s = math.min(
-      availW / (widthCm + depthX * lengthCm),
-      availH / (hCm - depthY * lengthCm),
+      availW / (widthCm + depthX * depthCm),
+      availH / (heightCm - depthY * depthCm),
     );
     final depth = Offset(depthX, depthY) * s; // 1 sm chuqurlik
     final w = widthCm * s;
-    final h = hCm * s;
-    final dTotal = depth * lengthCm.toDouble();
+    final h = heightCm * s;
+    final dTotal = depth * depthCm;
 
     // Markazlash: old-pastki chap burchakdan boshlaymiz.
     final totalW = w + dTotal.dx;
@@ -286,10 +326,8 @@ class _RectSidePainter extends CustomPainter {
     canvas.drawPath(frontPath, _fill(_kCakeFront));
     canvas.drawPath(topPath, _fill(_kCakeTop));
 
-    // To'r: bo'lak kvadratga eng yaqin bo'ladigan ustun×qator.
-    final (cols, rows) = _bestGrid(pieces, widthCm, lengthCm);
     final cellW = w / cols; // ekran px (eni bo'ylab)
-    final rowCm = lengthCm / rows; // sm (chuqurlik bo'ylab)
+    final rowCm = depthCm / rows; // sm (chuqurlik bo'ylab)
 
     // Ustun kesiklari: ust yuzada orqaga, old yuzada pastga davom etadi.
     for (int i = 1; i < cols; i++) {
@@ -310,8 +348,9 @@ class _RectSidePainter extends CustomPainter {
     canvas.drawPath(sidePath, _borderPaint);
 
     // Bo'lak raqamlari ust yuzada (1 — orqa-chap, tepadan boshlanadi).
+    final pieces = cols * rows;
     final rowPx = -depth.dy * rowCm; // bir qatorning ekran balandligi
-    if (pieces <= 60 && cellW >= 16 && rowPx >= 10) {
+    if (showNumbers && pieces <= 60 && cellW >= 13 && rowPx >= 8) {
       for (int j = 0; j < rows; j++) {
         for (int i = 0; i < cols; i++) {
           final num = j * cols + i + 1;
@@ -324,51 +363,55 @@ class _RectSidePainter extends CustomPainter {
       }
     }
 
-    // Eni strelkasi: old-pastki qirra ostida («30 sm»).
-    final wArrowY = yBottom + 12;
+    // Eni strelkasi: old-pastki qirra ostida.
+    final wArrowY = yBottom + 9;
     _drawArrow(canvas, Offset(fbl.dx, wArrowY), Offset(fbr.dx, wArrowY));
-    final wLabel = _layoutText('$widthCm sm', _kLabelStyle);
-    wLabel.paint(
-        canvas, Offset(fbl.dx + w / 2 - wLabel.width / 2, wArrowY + 5));
+    final wl = _layoutText(wLabel, _kLabelStyle);
+    wl.paint(canvas, Offset(fbl.dx + w / 2 - wl.width / 2, wArrowY + 3));
 
-    // Uzunlik strelkasi: o'ng yon qirraga parallel («50 sm»).
+    // Uzunlik strelkasi: o'ng yon qirraga parallel.
     final dDir = dTotal / dTotal.distance;
     final dNorm = Offset(-dDir.dy, dDir.dx); // tashqariga (o'ng-past)
-    final aStart = fbr + dNorm * 12;
-    final aEnd = bbr + dNorm * 12;
+    final aStart = fbr + dNorm * 9;
+    final aEnd = bbr + dNorm * 9;
     _drawArrow(canvas, aStart, aEnd);
-    final lLabel = _layoutText('$lengthCm sm', _kLabelStyle);
-    final lMid = (aStart + aEnd) / 2 + dNorm * 8;
-    lLabel.paint(canvas, Offset(lMid.dx, lMid.dy - lLabel.height / 2));
+    final dl = _layoutText(dLabel, _kLabelStyle);
+    final lMid = (aStart + aEnd) / 2 + dNorm * 6;
+    dl.paint(canvas, Offset(lMid.dx, lMid.dy - dl.height / 2));
   }
 
   @override
-  bool shouldRepaint(_RectSidePainter old) =>
+  bool shouldRepaint(_SlabPainter old) =>
       old.widthCm != widthCm ||
-      old.lengthCm != lengthCm ||
-      old.pieces != pieces;
+      old.depthCm != depthCm ||
+      old.heightCm != heightCm ||
+      old.cols != cols ||
+      old.rows != rows ||
+      old.wLabel != wLabel ||
+      old.dLabel != dLabel ||
+      old.showNumbers != showNumbers;
 }
 
-// ---- Dumaloq (3D silindr, teng sektorlar) ----
+// ---- To'liq dumaloq tort (3D silindr, teng sektorlar) ----
 
 class _RoundSidePainter extends CustomPainter {
   final int diameterCm;
   final int pieces;
 
-  static const double top = 36; // diametr strelkasi + yorliq
-  static const double bottom = 10;
+  static const double top = 28; // diametr strelkasi + yorliq
+  static const double bottom = 6;
 
   _RoundSidePainter({required this.diameterCm, required this.pieces});
 
   @override
   void paint(Canvas canvas, Size size) {
-    const side = 16.0;
+    const side = 8.0;
     final availW = size.width - side * 2;
     final availH = size.height - top - bottom;
     if (availW <= 0 || availH <= 0) return;
 
     final hCm = _roundHeightCm(diameterCm);
-    // Masshtab (px/sm): eni bo'yicha diametr, bo'yi bo'yicha ellips + devor.
+    // Masshtab (px/sm): diametr qancha bo'lsa ham konteynerga to'la sig'adi.
     final p = math.min(
       availW / diameterCm,
       availH / (_kEllipseK * diameterCm + hCm),
@@ -427,13 +470,95 @@ class _RoundSidePainter extends CustomPainter {
     }
 
     // Diametr strelkasi (ust ellips tepasida) + «⌀ 24 sm» yorlig'i.
-    final arrowY = cy - ry - 12;
+    final arrowY = cy - ry - 9;
     _drawArrow(canvas, Offset(cx - rx, arrowY), Offset(cx + rx, arrowY));
     final label = _layoutText('⌀ $diameterCm sm', _kLabelStyle);
-    label.paint(canvas, Offset(cx - label.width / 2, arrowY - 16));
+    label.paint(canvas, Offset(cx - label.width / 2, arrowY - 14));
   }
 
   @override
   bool shouldRepaint(_RoundSidePainter old) =>
+      old.diameterCm != diameterCm || old.pieces != pieces;
+}
+
+// ---- Bitta tilim (wedge) — dumaloq tortning kesilgan bo'lagi 3D ----
+
+class _WedgePainter extends CustomPainter {
+  final int diameterCm;
+  final int pieces;
+
+  static const double topPad = 8;
+  static const double bottomPad = 8;
+
+  _WedgePainter({required this.diameterCm, required this.pieces});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const side = 8.0;
+    final availW = size.width - side * 2;
+    final availH = size.height - topPad - bottomPad;
+    if (availW <= 0 || availH <= 0 || pieces < 2) return;
+
+    // Klassik tilim: UCHI OLDINGA (tomoshabinga) qaragan, yoy (qobiq) orqada.
+    // Ko'rinadigan yuzalar: usti + ikkala kesilgan yon + uch vertikal qirra.
+    final delta = math.pi / pieces; // yarim burchak
+    final hCm = _roundHeightCm(diameterCm);
+    // Chizma chegaralari (sm): eni = yoy proyeksiyasi, bo'yi = yoy→uch + devor.
+    final halfW = math.sin(math.min(delta, math.pi / 2)) * diameterCm / 2;
+    final p = math.min(
+      availW / (2 * halfW),
+      availH / (_kEllipseK * diameterCm / 2 + hCm),
+    );
+    final rx = diameterCm * p / 2;
+    final ry = rx * _kEllipseK;
+    final h = hCm * p;
+
+    final cx = side + availW / 2;
+    final blockH = ry + h; // yoy (orqa) → uch (old) → uch pastki nuqtasi
+    final apexY = topPad + (availH - blockH) / 2 + ry; // uch — ellips markazi
+    final apex = Offset(cx, apexY);
+    final topOval =
+        Rect.fromCenter(center: apex, width: 2 * rx, height: 2 * ry);
+    final bottomOval = Rect.fromCenter(
+        center: apex + Offset(0, h), width: 2 * rx, height: 2 * ry);
+
+    // Yoy orqada (ekranda tepada): -π/2 atrofida.
+    final a1 = -math.pi / 2 - delta; // chap-orqa qirra
+    final a2 = -math.pi / 2 + delta; // o'ng-orqa qirra
+    Offset edge(double a) =>
+        apex + Offset(math.cos(a) * rx, math.sin(a) * ry);
+    final e1 = edge(a1);
+    final e2 = edge(a2);
+
+    // Orqa qobiq (devor) — asosan tilim tanasi ortida, chetlarida ko'rinadi.
+    final crust = Path()
+      ..moveTo(e1.dx, e1.dy)
+      ..arcTo(topOval, a1, a2 - a1, false)
+      ..lineTo(e2.dx, e2.dy + h)
+      ..arcTo(bottomOval, a2, a1 - a2, false)
+      ..close();
+    canvas.drawPath(crust, _fill(_kCakeSide));
+    canvas.drawPath(crust, _borderPaint);
+
+    // Kesilgan ich yuzalar (ikkala yon) — ochroq (biskvit ichi).
+    final cut1 = _quad(apex, e1, e1 + Offset(0, h), apex + Offset(0, h));
+    final cut2 = _quad(apex, e2, e2 + Offset(0, h), apex + Offset(0, h));
+    canvas.drawPath(cut1, _fill(_kCakeFront));
+    canvas.drawPath(cut2, _fill(_kCakeFront));
+    canvas.drawPath(cut1, _borderPaint);
+    canvas.drawPath(cut2, _borderPaint);
+
+    // Ust yuza (tilim usti) — uchi oldinda turgan yupqa bo'lak.
+    final topFace = Path()
+      ..moveTo(apex.dx, apex.dy)
+      ..lineTo(e1.dx, e1.dy)
+      ..arcTo(topOval, a1, a2 - a1, false)
+      ..close();
+    canvas.drawPath(topFace, _fill(_kCakeTop));
+    canvas.drawPath(topFace, _borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(_WedgePainter old) =>
       old.diameterCm != diameterCm || old.pieces != pieces;
 }

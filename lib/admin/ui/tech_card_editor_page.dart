@@ -1498,8 +1498,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               (c.lengthCm ?? 0) > 0) ||
           (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
 
-  // Sxema yonidagi blok: mahsulot rasmi + «Bir bo'lak» ma'lumoti.
-  Widget _schemeSideInfo() {
+  Widget _cuttingScheme() {
+    if (!_schemeVisible) return const SizedBox.shrink();
     final url = _fullImageUrl(widget.product.imageUrl ?? '');
     final sizeText = CuttingSchemeView.pieceSizeText(
       shape: c.shape,
@@ -1513,55 +1513,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final weightText = pieceG <= 0
         ? null
         : (pieceG >= 1000 ? '${_kgComma(pieceG)} кг' : '$pieceG г');
-    return SizedBox(
-      width: 180,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (url.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: url,
-                height: 120,
-                width: 180,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  height: 120,
-                  width: 180,
-                  color: Colors.grey[200],
-                ),
-                errorWidget: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-          const SizedBox(height: 8),
-          const Text("Bir bo'lak:",
-              style: TextStyle(fontSize: 12, color: Colors.black54)),
-          if (sizeText != null)
-            Text(sizeText,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
-          if (weightText != null)
-            Text('~ $weightText',
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
+    const capStyle = TextStyle(fontSize: 12, color: Colors.black54);
+    const valStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
 
-  Widget _cuttingScheme() {
-    if (!_schemeVisible) return const SizedBox.shrink();
-    final scheme = CuttingSchemeView(
-      shape: c.shape,
-      widthCm: c.widthCm,
-      lengthCm: c.lengthCm,
-      diameterCm: c.diameterCm,
-      pieces: c.batchQty,
-    );
-    final info = _schemeSideInfo();
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
@@ -1570,33 +1524,89 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           const Text('Kesish sxemasi', style: _kCellBold),
           const SizedBox(height: 6),
           Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: LayoutBuilder(
-                builder: (context, cons) {
-                  // Keng ekranda rasm/info sxema yonida, torda ostida.
-                  if (cons.maxWidth >= 520) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+            child: LayoutBuilder(
+              builder: (context, cons) {
+                // 3 ta BIR XIL o'lchamdagi plitka: to'liq 3D, mahsulot rasmi,
+                // bitta bo'lak 3D. Keng ekranda yonma-yon, torda o'raladi.
+                final maxW = cons.maxWidth;
+                final double tileW = maxW >= 3 * 200 + 24
+                    ? ((maxW - 24) / 3).clamp(200.0, 250.0)
+                    : (maxW - 12).clamp(140.0, 250.0);
+                final tileH = tileW * 0.8;
+                Widget tile(String caption, Widget child, [Widget? extra]) {
+                  return SizedBox(
+                    width: tileW,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(child: scheme),
-                        const SizedBox(width: 16),
-                        info,
+                        SizedBox(width: tileW, height: tileH, child: child),
+                        const SizedBox(height: 4),
+                        Text(caption,
+                            textAlign: TextAlign.center, style: capStyle),
+                        if (extra != null) extra,
                       ],
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      scheme,
-                      const SizedBox(height: 10),
-                      Center(child: info),
-                    ],
+                    ),
                   );
-                },
-              ),
+                }
+
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.start,
+                  children: [
+                    tile(
+                      "To'liq tort",
+                      CuttingSchemeView(
+                        shape: c.shape,
+                        widthCm: c.widthCm,
+                        lengthCm: c.lengthCm,
+                        diameterCm: c.diameterCm,
+                        pieces: c.batchQty,
+                      ),
+                    ),
+                    if (url.isNotEmpty)
+                      tile(
+                        'Tayyor ko\'rinishi',
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: CachedNetworkImage(
+                            imageUrl: url,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) =>
+                                Container(color: Colors.grey[200]),
+                            errorWidget: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    tile(
+                      "Bir bo'lak",
+                      PieceSchemeView(
+                        shape: c.shape,
+                        widthCm: c.widthCm,
+                        lengthCm: c.lengthCm,
+                        diameterCm: c.diameterCm,
+                        pieces: c.batchQty,
+                      ),
+                      Text(
+                        [
+                          if (sizeText != null) sizeText,
+                          if (weightText != null) '~ $weightText',
+                        ].join(' • '),
+                        textAlign: TextAlign.center,
+                        style: valStyle,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
+          const SizedBox(height: 6),
+          const Text('Punktir chiziqlar — kesish joylari',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Colors.black54)),
         ],
       ),
     );
