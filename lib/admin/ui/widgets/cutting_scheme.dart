@@ -1,16 +1,20 @@
-// admin/ui/widgets/cutting_scheme.dart — «Kesish sxemasi» diagrammasi:
+// admin/ui/widgets/cutting_scheme.dart — «Kesish sxemasi» diagrammasi (3D):
 // CuttingSchemeView — tex kartadagi shakl (round/rect) va partiya (Штук) dan
-// tortni bo'laklarga kesish sxemasini chizadi (CustomPaint). To'rtburchak
-// uchun bo'lak kvadratga eng yaqin bo'ladigan ustun×qator to'ri, dumaloq
-// uchun teng sektorlar. Ko'rinish tort_30x50_10_bolak_kesish_sxemasi.svg
-// namunasiga mos: tort rang FAEEDA, jigarrang ramka, punktir kesish
-// chiziqlari, bo'lak raqamlari, kulrang o'lchov strelkalari.
+// tortni bo'laklarga kesish sxemasini YON-BURCHAKDAN (kabinet proyeksiya,
+// balandligi bilan) chizadi. To'rtburchak — 3D plita: bo'lak kvadratga eng
+// yaqin bo'ladigan ustun×qator to'ri, kesish chiziqlari old/yon yuzlarga ham
+// tushadi. Dumaloq — 3D silindr: teng sektorlar, old yarmida devor kesiklari.
+// Ranglar tort_30x50_10_bolak_kesish_sxemasi.svg namunasidan: tort FAEEDA,
+// jigarrang ramka, punktir kesish chiziqlari, kulrang o'lchov strelkalari.
+// Balandlik SAQLANMAYDI — faqat vizual (o'lchamdan taxminiy).
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-// ---- Namuna SVG'dagi ranglar ----
-const Color _kCakeFill = Color(0xFFFAEEDA);
+// ---- Namuna SVG'dagi ranglar (3D uchun old/yon yuzlar quyuqroq) ----
+const Color _kCakeTop = Color(0xFFFAEEDA);
+const Color _kCakeFront = Color(0xFFEFDABB);
+const Color _kCakeSide = Color(0xFFE5C99F);
 const Color _kCakeBorder = Color(0xFF854F0B);
 const Color _kCutLine = Color(0xFFBA7517);
 const Color _kNumber = Color(0xFF633806);
@@ -30,6 +34,14 @@ String _fmtCm(double v) {
   if (r == r.roundToDouble()) return r.round().toString();
   return r.toStringAsFixed(1);
 }
+
+// Vizual balandlik (sm) — saqlanmaydi, faqat 3D ko'rinish uchun.
+double _rectHeightCm(int w, int l) =>
+    (math.max(w, l) * 0.12).clamp(4.0, 10.0);
+double _roundHeightCm(int d) => (d * 0.4).clamp(6.0, 12.0);
+
+// Dumaloq tort usti ellipsining siqilish koeffitsienti (yon-burchak ko'rinish).
+const double _kEllipseK = 0.38;
 
 // pieces uchun eng yaxshi (ustun, qator) to'rini tanlaydi: bo'lak tomonlari
 // nisbati (max/min) eng kichik — ya'ni bo'lak kvadratga eng yaqin bo'lsin.
@@ -69,7 +81,8 @@ class CuttingSchemeView extends StatelessWidget {
     this.diameterCm,
   });
 
-  bool get _isRect => shape == 'rect' && (widthCm ?? 0) > 0 && (lengthCm ?? 0) > 0;
+  bool get _isRect =>
+      shape == 'rect' && (widthCm ?? 0) > 0 && (lengthCm ?? 0) > 0;
 
   bool get _isRound => shape == 'round' && (diameterCm ?? 0) > 0;
 
@@ -86,20 +99,26 @@ class CuttingSchemeView extends StatelessWidget {
                 pieces: pieces,
               )
             : _RoundSchemePainter(diameterCm: diameterCm!, pieces: pieces);
-        // Balandlik: tort maydoni + strelka/izoh joylari (moslashuvchan).
+        // Balandlik: 3D tort maydoni + strelka/izoh joylari (moslashuvchan).
         final double height;
         if (_isRect) {
-          final cakeW = math.max(
+          final w = widthCm!, l = lengthCm!;
+          final availW = math.max(
               60.0, maxW - _SchemeLayout.leftRect - _SchemeLayout.rightRect);
-          height = (_SchemeLayout.top +
-                  _SchemeLayout.bottom +
-                  cakeW * (lengthCm! / widthCm!))
-              .clamp(220.0, 460.0);
+          final s = availW / (w + _RectSchemePainter.depthX * l);
+          height = (_SchemeLayout.topRect +
+                  _SchemeLayout.bottomRect +
+                  s * (_rectHeightCm(w, l) - _RectSchemePainter.depthY * l))
+              .clamp(240.0, 480.0);
         } else {
-          final d = math.max(
+          final d = diameterCm!;
+          final availW = math.max(
               60.0, maxW - _SchemeLayout.leftRound - _SchemeLayout.rightRound);
-          height =
-              (_SchemeLayout.top + _SchemeLayout.bottom + d).clamp(220.0, 420.0);
+          final p = availW / d;
+          height = (_SchemeLayout.topRound +
+                  _SchemeLayout.bottomRound +
+                  p * (_kEllipseK * d + _roundHeightCm(d)))
+              .clamp(220.0, 440.0);
         }
         return SizedBox(
           width: double.infinity,
@@ -111,12 +130,15 @@ class CuttingSchemeView extends StatelessWidget {
   }
 }
 
-// Chekka joylar (strelka, yorliq, yon izoh, pastki izoh uchun).
+// Chekka joylar (strelka, yorliq, pastki izohlar uchun).
 class _SchemeLayout {
-  static const double top = 36; // yuqori strelka + «30 sm» yorlig'i
-  static const double bottom = 26; // pastki «Punktir chiziqlar...» izohi
-  static const double leftRect = 58; // chap strelka + «50 sm» yorlig'i
-  static const double rightRect = 92; // «Har bo'lak ...» yon izohi
+  static const double topRect = 20; // orqa qirra ustidagi bo'sh joy
+  // pastda: eni strelkasi + «30 sm» + 2 qatorli izoh
+  static const double bottomRect = 76;
+  static const double leftRect = 16;
+  static const double rightRect = 76; // uzunlik strelkasi + «50 sm»
+  static const double topRound = 36; // diametr strelkasi + yorliq
+  static const double bottomRound = 30; // pastki izoh
   static const double leftRound = 16;
   static const double rightRound = 16;
 }
@@ -172,34 +194,37 @@ void _paintTextCentered(
   tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
 }
 
-// Pastki izoh: «Punktir chiziqlar — kesish joylari».
-void _paintFooter(Canvas canvas, Size size) {
-  _paintTextCentered(
-    canvas,
-    'Punktir chiziqlar — kesish joylari',
-    Offset(size.width / 2, size.height - _SchemeLayout.bottom / 2),
-    _kLabelStyle,
-  );
-}
+Paint _fill(Color c) => Paint()..color = c;
 
-Paint get _cakeFillPaint => Paint()..color = _kCakeFill;
-
-Paint get _cakeBorderPaint => Paint()
+Paint get _borderPaint => Paint()
   ..color = _kCakeBorder
   ..strokeWidth = 1
-  ..style = PaintingStyle.stroke;
+  ..style = PaintingStyle.stroke
+  ..strokeJoin = StrokeJoin.round;
 
 Paint get _cutPaint => Paint()
   ..color = _kCutLine
   ..strokeWidth = 0.8
   ..style = PaintingStyle.stroke;
 
-// ---- To'rtburchak sxema ----
+Path _quad(Offset a, Offset b, Offset c, Offset d) => Path()
+  ..moveTo(a.dx, a.dy)
+  ..lineTo(b.dx, b.dy)
+  ..lineTo(c.dx, c.dy)
+  ..lineTo(d.dx, d.dy)
+  ..close();
+
+// ---- To'rtburchak sxema (3D plita, kabinet proyeksiya) ----
 
 class _RectSchemePainter extends CustomPainter {
   final int widthCm;
   final int lengthCm;
   final int pieces;
+
+  // Chuqurlik (orqaga ketish) birlik vektori: 1 sm ekranda shuncha
+  // (masshtabdan keyin) o'ng-yuqoriga suriladi.
+  static const double depthX = 0.55;
+  static const double depthY = -0.35;
 
   _RectSchemePainter({
     required this.widthCm,
@@ -209,81 +234,116 @@ class _RectSchemePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final availW = size.width - _SchemeLayout.leftRect - _SchemeLayout.rightRect;
-    final availH = size.height - _SchemeLayout.top - _SchemeLayout.bottom;
+    final availW =
+        size.width - _SchemeLayout.leftRect - _SchemeLayout.rightRect;
+    final availH =
+        size.height - _SchemeLayout.topRect - _SchemeLayout.bottomRect;
     if (availW <= 0 || availH <= 0) return;
 
-    // Tortni mavjud maydonga masshtablab joylashtiramiz (nisbat saqlanadi).
-    final scale = math.min(availW / widthCm, availH / lengthCm);
-    final cakeW = widthCm * scale;
-    final cakeH = lengthCm * scale;
-    final left = _SchemeLayout.leftRect + (availW - cakeW) / 2;
-    final top = _SchemeLayout.top + (availH - cakeH) / 2;
-    final rect = Rect.fromLTWH(left, top, cakeW, cakeH);
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
+    final hCm = _rectHeightCm(widthCm, lengthCm);
+    // Masshtab: proyeksiya eni (W + dx·L) va bo'yi (h + |dy|·L) sig'sin.
+    final s = math.min(
+      availW / (widthCm + depthX * lengthCm),
+      availH / (hCm - depthY * lengthCm),
+    );
+    final depth = Offset(depthX, depthY) * s; // 1 sm chuqurlik
+    final w = widthCm * s;
+    final h = hCm * s;
+    final dTotal = depth * lengthCm.toDouble();
 
-    canvas.drawRRect(rrect, _cakeFillPaint);
-    canvas.drawRRect(rrect, _cakeBorderPaint);
+    // Markazlash: old-pastki chap burchakdan boshlaymiz.
+    final totalW = w + dTotal.dx;
+    final totalH = h - dTotal.dy;
+    final x0 = _SchemeLayout.leftRect + (availW - totalW) / 2;
+    final yBottom =
+        _SchemeLayout.topRect + (availH - totalH) / 2 + totalH;
+
+    final fbl = Offset(x0, yBottom); // old-past-chap
+    final fbr = fbl + Offset(w, 0); // old-past-o'ng
+    final ftl = fbl - Offset(0, h); // old-ust-chap (ust yuzaning old qirrasi)
+    final ftr = fbr - Offset(0, h);
+    final btl = ftl + dTotal; // orqa-ust-chap
+    final btr = ftr + dTotal;
+    final bbr = fbr + dTotal; // orqa-past-o'ng (yon yuza uchun)
+
+    // Yuzalar: avval yon/old (quyuqroq), keyin ust (och) — chiziqlar ustida.
+    final sidePath = _quad(fbr, bbr, btr, ftr);
+    final frontPath = _quad(fbl, fbr, ftr, ftl);
+    final topPath = _quad(ftl, ftr, btr, btl);
+    canvas.drawPath(sidePath, _fill(_kCakeSide));
+    canvas.drawPath(frontPath, _fill(_kCakeFront));
+    canvas.drawPath(topPath, _fill(_kCakeTop));
 
     // To'r: bo'lak kvadratga eng yaqin bo'ladigan ustun×qator.
     final (cols, rows) = _bestGrid(pieces, widthCm, lengthCm);
-    final cellW = cakeW / cols;
-    final cellH = cakeH / rows;
+    final cellW = w / cols; // ekran px (eni bo'ylab)
+    final rowCm = lengthCm / rows; // sm (chuqurlik bo'ylab)
 
-    // Punktir kesish chiziqlari.
+    // Ustun kesiklari: ust yuzada orqaga, old yuzada pastga davom etadi.
     for (int i = 1; i < cols; i++) {
-      final x = left + cellW * i;
-      _drawDashedLine(canvas, Offset(x, top), Offset(x, top + cakeH), _cutPaint);
+      final t = ftl + Offset(cellW * i, 0);
+      _drawDashedLine(canvas, t, t + dTotal, _cutPaint);
+      _drawDashedLine(canvas, t, fbl + Offset(cellW * i, 0), _cutPaint);
     }
+    // Qator kesiklari: ust yuzada eni bo'ylab, yon yuzada pastga davom etadi.
     for (int j = 1; j < rows; j++) {
-      final y = top + cellH * j;
-      _drawDashedLine(
-          canvas, Offset(left, y), Offset(left + cakeW, y), _cutPaint);
+      final off = depth * (rowCm * j);
+      _drawDashedLine(canvas, ftl + off, ftr + off, _cutPaint);
+      _drawDashedLine(canvas, ftr + off, fbr + off, _cutPaint);
     }
 
-    // Bo'lak raqamlari (qator bo'ylab). Katak juda kichik bo'lsa yozmaymiz.
-    if (pieces <= 60 && cellW >= 16 && cellH >= 14) {
+    // Yuzalar konturi (kesish chiziqlari ustidan toza ramka).
+    canvas.drawPath(topPath, _borderPaint);
+    canvas.drawPath(frontPath, _borderPaint);
+    canvas.drawPath(sidePath, _borderPaint);
+
+    // Bo'lak raqamlari ust yuzada (1 — orqa-chap, eski sxemadagidek yuqoridan).
+    final rowPx = -depth.dy * rowCm; // bir qatorning ekran balandligi
+    if (pieces <= 60 && cellW >= 16 && rowPx >= 10) {
       for (int j = 0; j < rows; j++) {
         for (int i = 0; i < cols; i++) {
           final num = j * cols + i + 1;
-          _paintTextCentered(
-            canvas,
-            '$num',
-            Offset(left + cellW * (i + 0.5), top + cellH * (j + 0.5)),
-            _kNumberStyle,
-          );
+          // j=0 orqa qator (ekranda tepada) — raqamlash yuqoridan boshlansin.
+          final center = ftl +
+              Offset(cellW * (i + 0.5), 0) +
+              depth * (rowCm * (rows - j - 0.5));
+          _paintTextCentered(canvas, '$num', center, _kNumberStyle);
         }
       }
     }
 
-    // Yuqori o'lchov strelkasi: eni («30 sm»).
-    final topArrowY = top - 12;
-    _drawArrow(canvas, Offset(left, topArrowY), Offset(left + cakeW, topArrowY));
+    // Eni strelkasi: old-pastki qirra ostida («30 sm»).
+    final wArrowY = yBottom + 12;
+    _drawArrow(canvas, Offset(fbl.dx, wArrowY), Offset(fbr.dx, wArrowY));
     final wLabel = _layoutText('$widthCm sm', _kLabelStyle);
-    wLabel.paint(
-        canvas, Offset(left + cakeW / 2 - wLabel.width / 2, topArrowY - 16));
+    wLabel.paint(canvas,
+        Offset(fbl.dx + w / 2 - wLabel.width / 2, wArrowY + 5));
 
-    // Chap o'lchov strelkasi: uzunligi («50 sm»).
-    final leftArrowX = left - 14;
-    _drawArrow(canvas, Offset(leftArrowX, top), Offset(leftArrowX, top + cakeH));
+    // Uzunlik strelkasi: o'ng yon qirraga parallel («50 sm»).
+    final dDir = dTotal / dTotal.distance;
+    final dNorm = Offset(-dDir.dy, dDir.dx); // tashqariga (o'ng-past)
+    final aStart = fbr + dNorm * 12;
+    final aEnd = bbr + dNorm * 12;
+    _drawArrow(canvas, aStart, aEnd);
     final lLabel = _layoutText('$lengthCm sm', _kLabelStyle);
-    lLabel.paint(
-      canvas,
-      Offset(leftArrowX - 6 - lLabel.width, top + cakeH / 2 - lLabel.height / 2),
-    );
+    final lMid = (aStart + aEnd) / 2 + dNorm * 8;
+    lLabel.paint(canvas, Offset(lMid.dx, lMid.dy - lLabel.height / 2));
 
-    // Yon izoh: «Har bo'lak 15 × 10 sm».
+    // Pastki izohlar: har bo'lak o'lchami + punktir tushuntirishi.
     final pieceW = widthCm / cols;
     final pieceH = lengthCm / rows;
-    final note1 = _layoutText("Har bo'lak", _kLabelStyle);
-    final note2 =
-        _layoutText('${_fmtCm(pieceW)} × ${_fmtCm(pieceH)} sm', _kLabelStyle);
-    final noteX = left + cakeW + 10;
-    final noteY = top + cakeH / 2 - (note1.height + note2.height + 4) / 2;
-    note1.paint(canvas, Offset(noteX, noteY));
-    note2.paint(canvas, Offset(noteX, noteY + note1.height + 4));
-
-    _paintFooter(canvas, size);
+    _paintTextCentered(
+      canvas,
+      "Har bo'lak ${_fmtCm(pieceW)} × ${_fmtCm(pieceH)} sm",
+      Offset(size.width / 2, size.height - 34),
+      _kLabelStyle,
+    );
+    _paintTextCentered(
+      canvas,
+      'Punktir chiziqlar — kesish joylari',
+      Offset(size.width / 2, size.height - 14),
+      _kLabelStyle,
+    );
   }
 
   @override
@@ -293,7 +353,7 @@ class _RectSchemePainter extends CustomPainter {
       old.pieces != pieces;
 }
 
-// ---- Dumaloq sxema (teng sektorlar) ----
+// ---- Dumaloq sxema (3D silindr, teng sektorlar) ----
 
 class _RoundSchemePainter extends CustomPainter {
   final int diameterCm;
@@ -305,44 +365,82 @@ class _RoundSchemePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final availW =
         size.width - _SchemeLayout.leftRound - _SchemeLayout.rightRound;
-    final availH = size.height - _SchemeLayout.top - _SchemeLayout.bottom;
+    final availH =
+        size.height - _SchemeLayout.topRound - _SchemeLayout.bottomRound;
     if (availW <= 0 || availH <= 0) return;
 
-    final r = math.min(availW, availH) / 2;
-    final center = Offset(
-      _SchemeLayout.leftRound + availW / 2,
-      _SchemeLayout.top + availH / 2,
+    final hCm = _roundHeightCm(diameterCm);
+    // Masshtab (px/sm): eni bo'yicha diametr, bo'yi bo'yicha ellips + devor.
+    final p = math.min(
+      availW / diameterCm,
+      availH / (_kEllipseK * diameterCm + hCm),
     );
+    final rx = diameterCm * p / 2;
+    final ry = rx * _kEllipseK;
+    final h = hCm * p;
 
-    canvas.drawCircle(center, r, _cakeFillPaint);
-    canvas.drawCircle(center, r, _cakeBorderPaint);
+    final cx = _SchemeLayout.leftRound + availW / 2;
+    // Vertikal markazlash: ust ellips + devor.
+    final blockH = 2 * ry + h;
+    final cy = _SchemeLayout.topRound + (availH - blockH) / 2 + ry;
+    final center = Offset(cx, cy);
+    final topOval =
+        Rect.fromCenter(center: center, width: 2 * rx, height: 2 * ry);
+    final bottomOval = Rect.fromCenter(
+        center: Offset(cx, cy + h), width: 2 * rx, height: 2 * ry);
+
+    // Yon devor: chap qirra → pastki ellips old yarmi → o'ng qirra.
+    final wall = Path()
+      ..moveTo(cx - rx, cy)
+      ..lineTo(cx - rx, cy + h)
+      ..arcTo(bottomOval, math.pi, -math.pi, false)
+      ..lineTo(cx + rx, cy)
+      ..arcTo(topOval, 0, math.pi, false)
+      ..close();
+    canvas.drawPath(wall, _fill(_kCakeSide));
+    canvas.drawPath(wall, _borderPaint);
+
+    // Ust yuza (ellips).
+    canvas.drawOval(topOval, _fill(_kCakeTop));
 
     // Sektor kesish chiziqlari (markazdan chetgacha, punktir).
     final step = 2 * math.pi / pieces;
-    const start = -math.pi / 2; // yuqoridan boshlanadi
+    const start = -math.pi / 2; // orqadan (ekranda tepadan) boshlanadi
     for (int i = 0; i < pieces; i++) {
       final a = start + step * i;
-      final edge = center + Offset(math.cos(a), math.sin(a)) * r;
+      final edge = center + Offset(math.cos(a) * rx, math.sin(a) * ry);
       _drawDashedLine(canvas, center, edge, _cutPaint);
+      // Old yarim (sin a > 0) sektor chegaralari devorga ham tushadi.
+      if (math.sin(a) > 0.05) {
+        _drawDashedLine(canvas, edge, edge + Offset(0, h), _cutPaint);
+      }
     }
+
+    canvas.drawOval(topOval, _borderPaint);
 
     // Sektor raqamlari (ko'p bo'lsa chalkashmasin deb yozilmaydi).
     if (pieces <= 24) {
       for (int i = 0; i < pieces; i++) {
         final mid = start + step * (i + 0.5);
-        final pos = center + Offset(math.cos(mid), math.sin(mid)) * (r * 0.62);
+        final pos = center +
+            Offset(math.cos(mid) * rx * 0.62, math.sin(mid) * ry * 0.62);
         _paintTextCentered(canvas, '${i + 1}', pos, _kNumberStyle);
       }
     }
 
-    // Diametr strelkasi (aylana ustida) + «⌀ 24 sm» yorlig'i.
-    final arrowY = center.dy - r - 12;
-    _drawArrow(
-        canvas, Offset(center.dx - r, arrowY), Offset(center.dx + r, arrowY));
+    // Diametr strelkasi (ust ellips tepasida) + «⌀ 24 sm» yorlig'i.
+    final arrowY = cy - ry - 12;
+    _drawArrow(canvas, Offset(cx - rx, arrowY), Offset(cx + rx, arrowY));
     final label = _layoutText('⌀ $diameterCm sm', _kLabelStyle);
-    label.paint(canvas, Offset(center.dx - label.width / 2, arrowY - 16));
+    label.paint(canvas, Offset(cx - label.width / 2, arrowY - 16));
 
-    _paintFooter(canvas, size);
+    // Pastki izoh.
+    _paintTextCentered(
+      canvas,
+      'Punktir chiziqlar — kesish joylari',
+      Offset(size.width / 2, size.height - _SchemeLayout.bottomRound / 2),
+      _kLabelStyle,
+    );
   }
 
   @override
