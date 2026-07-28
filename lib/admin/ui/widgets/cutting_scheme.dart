@@ -8,7 +8,9 @@
 // qancha bo'lsa ham EKRANDAGI O'LCHAM BIR XIL (faqat proporsiya va yorliqlar
 // o'zgaradi). pieceSizeText() — bir bo'lak o'lchami matni (info blok uchun).
 // Ranglar tort_30x50_10_bolak_kesish_sxemasi.svg namunasidan.
-// 3D balandlik SAQLANMAYDI — faqat vizual (o'lchamdan taxminiy).
+// Kiritilgan height_cm chizma GEOMETRIYASIGA TA'SIR QILMAYDI — 3D balandlik
+// doim o'lchamdan taxminiy; height_cm faqat yorliq (strelka + «X sm»)
+// sifatida ko'rsatiladi — ma'lumot uchun.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -76,7 +78,7 @@ class CuttingSchemeView extends StatelessWidget {
   final int? widthCm;
   final int? lengthCm;
   final int? diameterCm;
-  // Haqiqiy balandlik (sm, admin kiritadi); null — o'lchamdan taxminiy.
+  // Admin kiritgan balandlik (sm) — FAQAT yorliq uchun, chizmani kattalashtirmaydi.
   final int? heightCm;
   final int pieces; // batchQty — BITTA LIST nechta bo'lakka kesiladi
 
@@ -121,12 +123,12 @@ class CuttingSchemeView extends StatelessWidget {
         painter: _SlabPainter(
           widthCm: widthCm!.toDouble(),
           depthCm: lengthCm!.toDouble(),
-          heightCm:
-              heightCm?.toDouble() ?? _rectHeightCm(widthCm!, lengthCm!),
+          heightCm: _rectHeightCm(widthCm!, lengthCm!),
           cols: cols,
           rows: rows,
           wLabel: '$widthCm sm',
           dLabel: '$lengthCm sm',
+          hLabel: heightCm == null ? null : '$heightCm sm',
           showNumbers: true,
         ),
       );
@@ -135,7 +137,7 @@ class CuttingSchemeView extends StatelessWidget {
       return CustomPaint(
         painter: _RoundSidePainter(
           diameterCm: diameterCm!,
-          heightCm: heightCm,
+          hLabel: heightCm == null ? null : '$heightCm sm',
           pieces: pieces,
         ),
       );
@@ -151,7 +153,7 @@ class PieceSchemeView extends StatelessWidget {
   final int? widthCm;
   final int? lengthCm;
   final int? diameterCm;
-  // Haqiqiy balandlik (sm, admin kiritadi); null — o'lchamdan taxminiy.
+  // Admin kiritgan balandlik (sm) — FAQAT yorliq uchun, chizmani kattalashtirmaydi.
   final int? heightCm;
   final int pieces;
 
@@ -177,12 +179,12 @@ class PieceSchemeView extends StatelessWidget {
           widthCm: pw,
           depthCm: pd,
           // Balandlik to'liq tortniki bilan bir xil (bir tortning bo'lagi).
-          heightCm:
-              heightCm?.toDouble() ?? _rectHeightCm(widthCm!, lengthCm!),
+          heightCm: _rectHeightCm(widthCm!, lengthCm!),
           cols: 1,
           rows: 1,
           wLabel: '${_fmtCm(pw)} sm',
           dLabel: '${_fmtCm(pd)} sm',
+          hLabel: heightCm == null ? null : '$heightCm sm',
           showNumbers: false,
         ),
       );
@@ -193,7 +195,7 @@ class PieceSchemeView extends StatelessWidget {
         return CustomPaint(
           painter: _RoundSidePainter(
             diameterCm: diameterCm!,
-            heightCm: heightCm,
+            hLabel: heightCm == null ? null : '$heightCm sm',
             pieces: 1,
           ),
         );
@@ -201,7 +203,7 @@ class PieceSchemeView extends StatelessWidget {
       return CustomPaint(
         painter: _WedgePainter(
           diameterCm: diameterCm!,
-          heightCm: heightCm,
+          hLabel: heightCm == null ? null : '$heightCm sm',
           pieces: pieces,
         ),
       );
@@ -287,11 +289,12 @@ Path _quad(Offset a, Offset b, Offset c, Offset d) => Path()
 class _SlabPainter extends CustomPainter {
   final double widthCm;
   final double depthCm;
-  final double heightCm;
+  final double heightCm; // VIZUAL balandlik (taxminiy) — masshtab uchun
   final int cols;
   final int rows;
   final String wLabel; // pastdagi eni yorlig'i
   final String dLabel; // yon qirradagi uzunlik yorlig'i
+  final String? hLabel; // chap qirradagi balandlik yorlig'i (ma'lumot uchun)
   final bool showNumbers;
 
   // Chuqurlik (orqaga ketish) birlik vektori: 1 sm ekranda shuncha
@@ -312,12 +315,16 @@ class _SlabPainter extends CustomPainter {
     required this.rows,
     required this.wLabel,
     required this.dLabel,
+    this.hLabel,
     required this.showNumbers,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final availW = size.width - leftPad - rightPad;
+    // Balandlik yorlig'i bo'lsa chapdan strelka + matnga joy ochiladi.
+    final hl = hLabel == null ? null : _layoutText(hLabel!, _kLabelStyle);
+    final padL = hl == null ? leftPad : leftPad + hl.width + 16;
+    final availW = size.width - padL - rightPad;
     final availH = size.height - topPad - bottomPad;
     if (availW <= 0 || availH <= 0) return;
 
@@ -335,7 +342,7 @@ class _SlabPainter extends CustomPainter {
     // Markazlash: old-pastki chap burchakdan boshlaymiz.
     final totalW = w + dTotal.dx;
     final totalH = h - dTotal.dy;
-    final x0 = leftPad + (availW - totalW) / 2;
+    final x0 = padL + (availW - totalW) / 2;
     final yBottom = topPad + (availH - totalH) / 2 + totalH;
 
     final fbl = Offset(x0, yBottom); // old-past-chap
@@ -407,6 +414,15 @@ class _SlabPainter extends CustomPainter {
     final dl = _layoutText(dLabel, _kLabelStyle);
     final lMid = (aStart + aEnd) / 2 + dNorm * 6;
     dl.paint(canvas, Offset(lMid.dx, lMid.dy - dl.height / 2));
+
+    // Balandlik strelkasi (ma'lumot uchun): old-chap qirra yonida vertikal.
+    // Kiritilgan qiymat chizma masshtabiga ta'sir qilmaydi.
+    if (hl != null) {
+      final ax = fbl.dx - 9;
+      _drawArrow(canvas, Offset(ax, fbl.dy), Offset(ax, ftl.dy));
+      hl.paint(canvas,
+          Offset(ax - 4 - hl.width, (fbl.dy + ftl.dy) / 2 - hl.height / 2));
+    }
   }
 
   @override
@@ -418,6 +434,7 @@ class _SlabPainter extends CustomPainter {
       old.rows != rows ||
       old.wLabel != wLabel ||
       old.dLabel != dLabel ||
+      old.hLabel != hLabel ||
       old.showNumbers != showNumbers;
 }
 
@@ -425,7 +442,7 @@ class _SlabPainter extends CustomPainter {
 
 class _RoundSidePainter extends CustomPainter {
   final int diameterCm;
-  final int? heightCm; // null — taxminiy balandlik
+  final String? hLabel; // balandlik yorlig'i (ma'lumot uchun, masshtabsiz)
   final int pieces;
 
   static const double top = 28; // diametr strelkasi + yorliq
@@ -434,17 +451,21 @@ class _RoundSidePainter extends CustomPainter {
   _RoundSidePainter({
     required this.diameterCm,
     required this.pieces,
-    this.heightCm,
+    this.hLabel,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     const side = 8.0;
-    final availW = size.width - side * 2;
+    // Balandlik yorlig'i bo'lsa chapdan strelka + matnga joy ochiladi.
+    final hl = hLabel == null ? null : _layoutText(hLabel!, _kLabelStyle);
+    final padL = hl == null ? side : side + hl.width + 16;
+    final availW = size.width - padL - side;
     final availH = size.height - top - bottom;
     if (availW <= 0 || availH <= 0) return;
 
-    final hCm = heightCm?.toDouble() ?? _roundHeightCm(diameterCm);
+    // Vizual balandlik doim taxminiy — kiritilgan qiymat masshtabga ta'sir qilmaydi.
+    final hCm = _roundHeightCm(diameterCm);
     // Masshtab (px/sm): diametr qancha bo'lsa ham konteynerga to'la sig'adi.
     final p = math.min(
       availW / diameterCm,
@@ -454,7 +475,7 @@ class _RoundSidePainter extends CustomPainter {
     final ry = rx * _kEllipseK;
     final h = hCm * p;
 
-    final cx = side + availW / 2;
+    final cx = padL + availW / 2;
     // Vertikal markazlash: ust ellips + devor.
     final blockH = 2 * ry + h;
     final cy = top + (availH - blockH) / 2 + ry;
@@ -513,12 +534,20 @@ class _RoundSidePainter extends CustomPainter {
     _drawArrow(canvas, Offset(cx - rx, arrowY), Offset(cx + rx, arrowY));
     final label = _layoutText('⌀ $diameterCm sm', _kLabelStyle);
     label.paint(canvas, Offset(cx - label.width / 2, arrowY - 14));
+
+    // Balandlik strelkasi (ma'lumot uchun): chap devor qirrasi yonida.
+    if (hl != null) {
+      final ax = cx - rx - 9;
+      _drawArrow(canvas, Offset(ax, cy), Offset(ax, cy + h));
+      hl.paint(
+          canvas, Offset(ax - 4 - hl.width, cy + h / 2 - hl.height / 2));
+    }
   }
 
   @override
   bool shouldRepaint(_RoundSidePainter old) =>
       old.diameterCm != diameterCm ||
-      old.heightCm != heightCm ||
+      old.hLabel != hLabel ||
       old.pieces != pieces;
 }
 
@@ -526,7 +555,7 @@ class _RoundSidePainter extends CustomPainter {
 
 class _WedgePainter extends CustomPainter {
   final int diameterCm;
-  final int? heightCm; // null — taxminiy balandlik
+  final String? hLabel; // balandlik yorlig'i (ma'lumot uchun, masshtabsiz)
   final int pieces;
 
   static const double topPad = 8;
@@ -535,20 +564,24 @@ class _WedgePainter extends CustomPainter {
   _WedgePainter({
     required this.diameterCm,
     required this.pieces,
-    this.heightCm,
+    this.hLabel,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     const side = 8.0;
-    final availW = size.width - side * 2;
+    // Balandlik yorlig'i bo'lsa chapdan strelka + matnga joy ochiladi.
+    final hl = hLabel == null ? null : _layoutText(hLabel!, _kLabelStyle);
+    final padL = hl == null ? side : side + hl.width + 16;
+    final availW = size.width - padL - side;
     final availH = size.height - topPad - bottomPad;
     if (availW <= 0 || availH <= 0 || pieces < 2) return;
 
     // Klassik tilim: UCHI OLDINGA (tomoshabinga) qaragan, yoy (qobiq) orqada.
     // Ko'rinadigan yuzalar: usti + ikkala kesilgan yon + uch vertikal qirra.
     final delta = math.pi / pieces; // yarim burchak
-    final hCm = heightCm?.toDouble() ?? _roundHeightCm(diameterCm);
+    // Vizual balandlik doim taxminiy — kiritilgan qiymat masshtabga ta'sir qilmaydi.
+    final hCm = _roundHeightCm(diameterCm);
     // Chizma chegaralari (sm): eni = yoy proyeksiyasi, bo'yi = yoy→uch + devor.
     final halfW = math.sin(math.min(delta, math.pi / 2)) * diameterCm / 2;
     final p = math.min(
@@ -559,7 +592,7 @@ class _WedgePainter extends CustomPainter {
     final ry = rx * _kEllipseK;
     final h = hCm * p;
 
-    final cx = side + availW / 2;
+    final cx = padL + availW / 2;
     final blockH = ry + h; // yoy (orqa) → uch (old) → uch pastki nuqtasi
     final apexY = topPad + (availH - blockH) / 2 + ry; // uch — ellips markazi
     final apex = Offset(cx, apexY);
@@ -602,11 +635,19 @@ class _WedgePainter extends CustomPainter {
       ..close();
     canvas.drawPath(topFace, _fill(_kCakeTop));
     canvas.drawPath(topFace, _borderPaint);
+
+    // Balandlik strelkasi (ma'lumot uchun): chap-orqa vertikal qirra yonida.
+    if (hl != null) {
+      final ax = e1.dx - 9;
+      _drawArrow(canvas, Offset(ax, e1.dy), Offset(ax, e1.dy + h));
+      hl.paint(canvas,
+          Offset(ax - 4 - hl.width, e1.dy + h / 2 - hl.height / 2));
+    }
   }
 
   @override
   bool shouldRepaint(_WedgePainter old) =>
       old.diameterCm != diameterCm ||
-      old.heightCm != heightCm ||
+      old.hLabel != hLabel ||
       old.pieces != pieces;
 }
