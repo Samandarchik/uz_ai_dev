@@ -278,8 +278,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       c.bases.fold<double>(0, (sum, b) => sum + _baseCost(b)) +
       _consumablesCost;
 
-  // C0 — 1 dona MASALLIQ tannarxi.
-  double get _pieceCost => c.batchQty > 0 ? _batchCost / c.batchQty : 0;
+  // C0 — 1 dona MASALLIQ tannarxi (partiya JAMI donasiga bo'linadi).
+  double get _pieceCost => c.batchQty > 0 ? _batchCost / c.totalPieces : 0;
 
   // C — 1 dona TO'LIQ tannarx = C0 + dop. rasxod.
   double get _fullPieceCost =>
@@ -445,8 +445,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final value = await showDialog<String>(
       context: context,
       builder: (_) => _TextFieldDialog(
-        title: 'Штук (партия)',
-        label: 'Nechta donaga',
+        title: 'Штук (1 лист)',
+        label: 'Bitta listdan nechta dona chiqadi',
         initial: c.batchQty.toString(),
         number: true,
       ),
@@ -473,11 +473,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   }
 
   // Bitta listdan chiqadigan bo'laklar soni (kesish sxemasi shunga chiziladi).
-  int get _piecesPerList {
-    final l = c.listQty < 1 ? 1 : c.listQty;
-    final p = (c.batchQty / l).round();
-    return p < 1 ? 1 : p;
-  }
+  // Yangi ma'no: Штук (batchQty) — AYNAN bitta list bo'laklari, bo'lish yo'q;
+  // partiya JAMI donasi esa batchQty × listQty (c.totalPieces).
+  int get _piecesPerList => c.batchQty < 1 ? 1 : c.batchQty;
 
   // «Размер» katagidagi matn: shaklga qarab diametr yoki eni×uzunlik
   // (balandlik kiritilgan bo'lsa oxiriga qo'shiladi).
@@ -1006,7 +1004,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'Partiya: ${tc.batchQty} dona'
+                'Partiya: ${techTotalPieces(tc)} dona'
                 '${pieceW > 0 ? ' • 1 dona ≈ $pieceW г' : ''}',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
@@ -1162,7 +1160,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       context: context,
       builder: (_) => _PfAmountDialog(
         title: picked.name,
-        batchQty: c.batchQty,
+        batchQty: c.totalPieces,
         pieceWeightG: techPfPieceWeightG(picked.id, _productById),
       ),
     );
@@ -1479,7 +1477,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Общий вес за ${c.batchQty} штук - '
+                    'Общий вес за ${c.totalPieces} штук - '
                     '${_kgComma(techBatchWeightG(card, _productById))} кг',
                     style: _kCellBold,
                   ),
@@ -1498,7 +1496,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               _gridRow([
                 _flexCell(
                   Text(
-                    'Себестоимость за ${c.batchQty} штук - '
+                    'Себестоимость за ${c.totalPieces} штук - '
                     '${_pricesLoaded ? fmtCostMoney(_batchCost) : '—'} сум',
                     style: _kCellBold,
                   ),
@@ -1583,7 +1581,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   Widget _cuttingScheme() {
     if (!_schemeVisible) return const SizedBox.shrink();
     final url = _fullImageUrl(widget.product.imageUrl ?? '');
-    // Sxema BITTA LIST bo'yicha: undan batchQty/listQty dona chiqadi.
+    // Sxema BITTA LIST bo'yicha: bitta list batchQty (Штук) bo'lakka kesiladi.
     final pieces = _piecesPerList;
     final sizeText = CuttingSchemeView.pieceSizeText(
       shape: c.shape,
@@ -1981,9 +1979,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                                 padding: _kCellPad,
                                 child: Text(
                                   c.stages.isEmpty
-                                      ? '${base.name} ( на ${c.batchQty} тортов )'
+                                      ? '${base.name} ( на ${c.totalPieces} тортов )'
                                       : '[${_stageOfBase(base)}] ${base.name} '
-                                          '( на ${c.batchQty} тортов )',
+                                          '( на ${c.totalPieces} тортов )',
                                   style: _kCellBold,
                                 ),
                               ),
@@ -2115,7 +2113,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     child: Padding(
                       padding: _kCellPad,
                       child: Text(
-                        'Расходник ( на ${c.batchQty} тортов )',
+                        'Расходник ( на ${c.totalPieces} тортов )',
                         style: _kCellBold,
                       ),
                     ),
@@ -2613,7 +2611,7 @@ class _PfAmountResult {
 
 class _PfAmountDialog extends StatefulWidget {
   final String title;
-  final int batchQty; // joriy karta partiyasi (label uchun)
+  final int batchQty; // joriy karta partiyasi JAMI donasi (label uchun)
   final int pieceWeightG; // pf 1 dona og'irligi; 0 — грамм tanlab bo'lmaydi
 
   const _PfAmountDialog({

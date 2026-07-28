@@ -21,7 +21,8 @@ class ProductionProduct {
   final int id;
   final String name;
   final String imageUrl; // '/static/...' yoki to'liq URL yoki ''
-  final int batchQty; // partiyada nechta dona (>= 1)
+  final int batchQty; // BITTA LISTdan chiqadigan dona (>= 1)
+  final int listQty; // partiyada nechta list (противень); >= 1
   // Полуфабрикат (biskvit kabi) — ro'yxatda qatnashadi, chunki u ham
   // ishlab chiqariladi.
   final bool isSemiFinished;
@@ -31,22 +32,29 @@ class ProductionProduct {
     required this.name,
     this.imageUrl = '',
     this.batchQty = 1,
+    this.listQty = 1,
     this.isSemiFinished = false,
   });
 
   factory ProductionProduct.fromJson(Map<String, dynamic> json) {
     final bq = _asInt(json['batch_qty']);
+    final lq = _asInt(json['list_qty']);
     return ProductionProduct(
       id: _asInt(json['id']),
       name: json['name']?.toString() ?? '',
       imageUrl: json['image_url']?.toString() ?? '',
       batchQty: bq < 1 ? 1 : bq,
+      listQty: lq < 1 ? 1 : lq,
       isSemiFinished: json['is_semi_finished'] == true,
     );
   }
 
-  // Partiya soni: yuqoriga yaxlitlash — ceil(qty / batchQty).
-  int batchesFor(int qty) => qty <= 0 ? 0 : (qty + batchQty - 1) ~/ batchQty;
+  // Partiya JAMI donasi = bitta list donasi (batchQty) × list soni (listQty).
+  int get totalPieces => batchQty * listQty;
+
+  // Partiya soni: yuqoriga yaxlitlash — ceil(qty / totalPieces).
+  int batchesFor(int qty) =>
+      qty <= 0 ? 0 : (qty + totalPieces - 1) ~/ totalPieces;
 
   static List<ProductionProduct> listFromJson(dynamic data) {
     if (data is List) {

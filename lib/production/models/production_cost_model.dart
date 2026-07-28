@@ -60,11 +60,12 @@ class ProductionCostItem {
   }
 }
 
-// Mahsulot tannarxi: 1 partiya (batch_qty dona) va 1 dona.
+// Mahsulot tannarxi: 1 partiya (batch_qty × list_qty dona) va 1 dona.
 class ProductionCost {
   final int productId;
   final String name;
-  final int batchQty; // partiyada nechta dona
+  final int batchQty; // BITTA LISTdan chiqadigan dona
+  final int listQty; // partiyada nechta list; >= 1
   final double batchCost; // 1 partiya tannarxi (so'm)
   final double pieceCost; // 1 dona MASALLIQ tannarxi (so'm)
   final double overheadCost; // 1 dona dop. rasxod (so'm), 0 — yo'q
@@ -77,6 +78,7 @@ class ProductionCost {
     required this.productId,
     this.name = '',
     this.batchQty = 1,
+    this.listQty = 1,
     this.batchCost = 0,
     this.pieceCost = 0,
     this.overheadCost = 0,
@@ -86,12 +88,17 @@ class ProductionCost {
     this.items = const [],
   });
 
+  // Partiya JAMI donasi = bitta list donasi (batchQty) × list soni (listQty).
+  int get totalPieces => batchQty * listQty;
+
   factory ProductionCost.fromJson(Map<String, dynamic> json) {
     final bq = _asInt(json['batch_qty']);
+    final lq = _asInt(json['list_qty']);
     return ProductionCost(
       productId: _asInt(json['product_id']),
       name: json['name']?.toString() ?? '',
       batchQty: bq < 1 ? 1 : bq,
+      listQty: lq < 1 ? 1 : lq,
       batchCost: _asDouble(json['batch_cost']),
       pieceCost: _asDouble(json['piece_cost']),
       overheadCost: _asDouble(json['overhead_cost']),

@@ -175,7 +175,8 @@ class _CostBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Partiya (${cost.batchQty} ta): '
+                // Partiya JAMI donasi = batchQty × listQty.
+                'Partiya (${cost.totalPieces} ta): '
                 '${fmtCostMoney(cost.batchCost)} so\'m',
                 style: TextStyle(
                   fontSize: 13.5,

@@ -246,7 +246,7 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
             ? Text(
                 // Partiya yaxlitlashi jonli: 130 dona → 7 partiya (140 talik).
                 '$qty dona → $batches partiya '
-                '(${batches * product.batchQty} talik masalliq)',
+                '(${batches * product.totalPieces} talik masalliq)',
                 style: TextStyle(
                   fontSize: 12.5,
                   color: Colors.brown.shade700,
@@ -254,7 +254,7 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
                 ),
               )
             : Text(
-                'Partiya: ${product.batchQty} dona',
+                'Partiya: ${product.totalPieces} dona',
                 style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
               ),
         trailing: qty > 0
@@ -549,8 +549,8 @@ class _QtyDialogState extends State<_QtyDialog> {
           Text(
             _cappedQty > 0
                 ? '$_cappedQty dona → $batches partiya '
-                    '(${batches * widget.product.batchQty} talik masalliq)'
-                : 'Partiya: ${widget.product.batchQty} dona',
+                    '(${batches * widget.product.totalPieces} talik masalliq)'
+                : 'Partiya: ${widget.product.totalPieces} dona',
             style: TextStyle(
               fontSize: 13,
               color: _cappedQty > 0

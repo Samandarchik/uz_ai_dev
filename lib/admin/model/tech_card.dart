@@ -1,7 +1,8 @@
 // Tortlar «tex karta» (тех карта) modeli.
 // Barcha OG'IRLIK/HAJM butun son (int) — eng kichik birlikda: g yoki ml.
 // Dona (pcs) va metr (m) o'z birligida butun son. float ISHLATILMAYDI.
-// amount — PARTIYA uchun (batch_qty dona). 1 dona uchun = amount / batch_qty.
+// amount — BUTUN PARTIYA uchun (jami batch_qty × list_qty dona).
+// 1 dona uchun = amount / (batch_qty × list_qty).
 // Backend JSON snake_case.
 
 // Ruxsat etilgan birliklar (faqat shular).
@@ -237,7 +238,9 @@ class TechBase {
 
 // To'liq tex karta.
 class TechCard {
-  final int batchQty; // partiyada nechta dona
+  // BITTA LISTdan (противень) chiqadigan dona. Partiya JAMI donasi =
+  // batchQty × listQty (totalPieces) — 1 dona hisoblari shunga bo'linadi.
+  final int batchQty;
   final int batchWeightG; // server avto hisoblaydi
   final int pieceWeightG; // server avto hisoblaydi
   // Shakl: '' — belgilanmagan, 'round' — dumaloq (diameterCm),
@@ -248,8 +251,8 @@ class TechCard {
   final int? widthCm; // to'rtburchak eni, sm (rect shakl)
   final int? lengthCm; // to'rtburchak uzunligi, sm (rect shakl)
   final int? heightCm; // tort balandligi, sm (round va rect uchun)
-  // Partiya nechta LISTda (противень/forma) pishiriladi. Bitta listdan
-  // batchQty/listQty dona chiqadi — kesish sxemasi shunga qarab chiziladi.
+  // Partiya nechta LISTda (противень/forma) pishiriladi. Bitta list
+  // batchQty (Штук) bo'lakka kesiladi — kesish sxemasi shunga qarab chiziladi.
   final int listQty;
   // Bo'limlar (bosqichlar) ro'yxati; bo'sh bo'lsa hammasi 1 ta bo'lim deb olinadi.
   final List<TechStage> stages;
@@ -326,9 +329,13 @@ class TechCard {
   int get computedBatchWeightG =>
       bases.fold(0, (sum, b) => sum + b.computedWeightG);
 
-  // Mahalliy hisoblangan 1 dona og'irligi.
+  // Partiya JAMI donasi = bitta list donasi (batchQty) × list soni (listQty).
+  int get totalPieces =>
+      (batchQty < 1 ? 1 : batchQty) * (listQty < 1 ? 1 : listQty);
+
+  // Mahalliy hisoblangan 1 dona og'irligi (partiya JAMI donasiga bo'linadi).
   int get computedPieceWeightG =>
-      batchQty > 0 ? computedBatchWeightG ~/ batchQty : 0;
+      batchQty > 0 ? computedBatchWeightG ~/ totalPieces : 0;
 
   Map<String, dynamic> toJson() => {
         'batch_qty': batchQty,

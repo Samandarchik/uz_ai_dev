@@ -51,6 +51,11 @@ class TechCardController {
         overheadValue = initial?.overheadValue ?? 0,
         salePrice = initial?.salePrice ?? 0;
 
+  // Partiya JAMI donasi = bitta list donasi (batchQty) × list soni (listQty).
+  // Barcha «1 dona» / «за N штук» hisob-ko'rsatishlar shu songa tayanadi.
+  int get totalPieces =>
+      (batchQty < 1 ? 1 : batchQty) * (listQty < 1 ? 1 : listQty);
+
   // To'liq TechCard ni yig'ib qaytaradi (weight maydonlari mahalliy hisoblanadi).
   TechCard build() => TechCard(
         batchQty: batchQty < 1 ? 1 : batchQty,

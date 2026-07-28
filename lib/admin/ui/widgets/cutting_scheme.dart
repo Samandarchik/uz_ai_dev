@@ -78,7 +78,7 @@ class CuttingSchemeView extends StatelessWidget {
   final int? diameterCm;
   // Haqiqiy balandlik (sm, admin kiritadi); null — o'lchamdan taxminiy.
   final int? heightCm;
-  final int pieces; // batchQty — nechta bo'lakka kesiladi
+  final int pieces; // batchQty — BITTA LIST nechta bo'lakka kesiladi
 
   const CuttingSchemeView({
     super.key,

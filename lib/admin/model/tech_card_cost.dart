@@ -38,6 +38,11 @@ Map<int, ProductModelAdmin> techProductsById(
 // Полуфабрикат ichma-ich chuqurligi chegarasi (pf ichida pf ...).
 const int kTechPfMaxDepth = 5;
 
+// Partiya JAMI donasi = bitta list donasi (batchQty) × list soni (listQty).
+// Retsept (bazalar/расходник miqdorlari) BUTUN partiyani qoplaydi, shuning
+// uchun barcha «1 dona» hisoblari SHU songa bo'linadi (batchQty ga emas).
+int techTotalPieces(TechCard card) => card.totalPieces;
+
 // Полуфабрикат 1 DONA tannarxi — pf mahsulotning O'Z tex kartasi bo'yicha
 // rekursiv hisob (xom qatorlar: oxirgi narx * wasteFactor; ichki pf qatorlar
 // yana shu funksiya bilan). null — hisoblab bo'lmaydi: tex karta yo'q/bo'sh,
@@ -72,7 +77,7 @@ double? techPfPieceCost(
             0;
       }
     }
-    return sum / card.batchQty;
+    return sum / techTotalPieces(card);
   } finally {
     seen.remove(pf.id);
   }
@@ -195,7 +200,7 @@ double techIngredientPieceCost(
 }) {
   if (card.batchQty <= 0) return 0;
   return techBatchCost(card, prices, wasteFactors, products: products) /
-      card.batchQty;
+      techTotalPieces(card);
 }
 
 // ---- Og'irlik (полуфабрикат / dona qatorlar hissasi bilan) ----
@@ -258,9 +263,11 @@ int techBatchWeightG(TechCard card, Map<int, ProductModelAdmin> products) {
   return sum;
 }
 
-// 1 dona og'irligi (pf hissasi bilan).
+// 1 dona og'irligi (pf hissasi bilan) — partiya JAMI donasiga bo'linadi.
 int techPieceWeightG(TechCard card, Map<int, ProductModelAdmin> products) =>
-    card.batchQty > 0 ? techBatchWeightG(card, products) ~/ card.batchQty : 0;
+    card.batchQty > 0
+        ? techBatchWeightG(card, products) ~/ techTotalPieces(card)
+        : 0;
 
 // Dop. rasxod 1 dona uchun (so'm). 'percent' — C0 dan foiz, 'sum' — so'm,
 // belgilanmagan ('') — 0.
