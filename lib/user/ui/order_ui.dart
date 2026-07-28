@@ -67,11 +67,77 @@ class CartPage extends StatelessWidget {
     );
   }
 
+  // Tugma matni: "Заказ (4)" yoki kasr bo'lsa "Заказ (1.500)"
+  String _orderLabel(ProductProvider provider) {
+    final total = provider.totalSelectedProducts;
+    return "Заказ (${total % 1 == 0 ? total.toInt() : total.toStringAsFixed(3)})";
+  }
+
+  // Buyurtma yuborish — AppBar va pastki tugma uchun umumiy handler
+  Future<void> _submitOrder(
+      BuildContext context, ProductProvider provider) async {
+    try {
+      final warning = await provider.submitOrder();
+      if (!context.mounted) return;
+      if (warning != null) {
+        // Buyurtma qabul qilindi, lekin chek chiqmadi —
+        // pop'dan keyin ham ko'rinishi uchun messenger'ni oldindan olamiz
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(warning),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Заказ отправлен ✅")),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      // 'Exception: ' prefiks(lar)ini olib tashlab toza xabar ko'rsatamiz
+      var message = e.toString();
+      while (message.startsWith('Exception: ')) {
+        message = message.substring('Exception: '.length);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Корзина'),
+        actions: [
+          Consumer<ProductProvider>(
+            builder: (context, provider, child) {
+              if (provider.selectedProducts.isEmpty) return const SizedBox();
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Center(
+                  child: provider.isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator.adaptive(
+                              strokeWidth: 2),
+                        )
+                      : ElevatedButton(
+                          onPressed: () => _submitOrder(context, provider),
+                          child: Text(_orderLabel(provider)),
+                        ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Consumer<ProductProvider>(
         builder: (context, provider, child) {
@@ -168,53 +234,21 @@ class CartPage extends StatelessWidget {
       bottomNavigationBar: Consumer<ProductProvider>(
         builder: (context, provider, child) {
           if (provider.selectedProducts.isEmpty) return const SizedBox();
-          return Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: provider.isSubmitting
-                ? const Center(child: CircularProgressIndicator.adaptive())
-                : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(fontSize: 18),
+          // SafeArea — tugma tizim navigatsiya paneli ostida qolib ketmasligi uchun
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+              child: provider.isSubmitting
+                  ? const Center(child: CircularProgressIndicator.adaptive())
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 18),
+                      ),
+                      onPressed: () => _submitOrder(context, provider),
+                      child: Text(_orderLabel(provider)),
                     ),
-                    onPressed: () async {
-                      try {
-                        final warning = await provider.submitOrder();
-                        if (!context.mounted) return;
-                        if (warning != null) {
-                          // Buyurtma qabul qilindi, lekin chek chiqmadi —
-                          // pop'dan keyin ham ko'rinishi uchun messenger'ni oldindan olamiz
-                          final messenger = ScaffoldMessenger.of(context);
-                          Navigator.pop(context);
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(warning),
-                              backgroundColor: Colors.orange,
-                              duration: const Duration(seconds: 6),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Заказ отправлен ✅")),
-                          );
-                          Navigator.pop(context);
-                        }
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        // 'Exception: ' prefiks(lar)ini olib tashlab toza xabar ko'rsatamiz
-                        var message = e.toString();
-                        while (message.startsWith('Exception: ')) {
-                          message = message.substring('Exception: '.length);
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(message)),
-                        );
-                      }
-                    },
-                    child: Text(
-                      "Заказ (${provider.totalSelectedProducts % 1 == 0 ? provider.totalSelectedProducts.toInt() : provider.totalSelectedProducts.toStringAsFixed(3)})",
-                    ),
-                  ),
+            ),
           );
         },
       ),
