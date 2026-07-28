@@ -63,12 +63,21 @@ class ApiService {
 
   // ────────────────────────── ORDERS ──────────────────────────
 
+  // days/all — tarix oynasi: aktiv buyurtmalar har doim keladi, yopiqlari
+  // esa faqat oxirgi `days` kun ichida (null — server default 30 kun,
+  // all=true -> to'liq tarix).
   static Future<Map<String, dynamic>> getOrders(String token,
-      {int page = 1, int limit = 30}) async {
+      {int page = 1, int limit = 30, int? days, bool all = false}) async {
     try {
+      final query = <String, dynamic>{'page': page, 'limit': limit};
+      if (all) {
+        query['all'] = 1;
+      } else if (days != null) {
+        query['days'] = days;
+      }
       final response = await _dio.get(
         AppUrls.orders,
-        queryParameters: {'page': page, 'limit': limit},
+        queryParameters: query,
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
         ),

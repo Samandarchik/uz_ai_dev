@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Bugalter bosh ekrani uchun holat boshqaruvchi: barcha skladlarning
@@ -16,19 +17,33 @@ class BugalterProvider extends ChangeNotifier with ClearableProvider {
   bool isLoading = false;
   String? errorMessage;
 
+  // Yopiq buyurtmalar tarixi oynasi (30/90 kun yoki hammasi).
+  // Saqlanmaydi — ilova qayta ochilganda default 30 kunga qaytadi.
+  OrderPeriod ordersPeriod = OrderPeriod.last30;
+
   Future<void> fetchOrders() async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      orders = await _service.fetchOrders();
+      orders = await _service.fetchOrders(
+        days: ordersPeriod.days,
+        all: ordersPeriod.isAll,
+      );
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Davr almashtirilganda ro'yxat serverdan qayta yuklanadi.
+  Future<void> setOrdersPeriod(OrderPeriod period) async {
+    if (period == ordersPeriod) return;
+    ordersPeriod = period;
+    await fetchOrders();
   }
 
   // Buyurtma ichidagi mahsulot miqdorini tuzatish (gram xatolari uchun).
@@ -107,6 +122,7 @@ class BugalterProvider extends ChangeNotifier with ClearableProvider {
     orders = [];
     isLoading = false;
     errorMessage = null;
+    ordersPeriod = OrderPeriod.last30;
     yukUsers = [];
     isLoadingYukUsers = false;
     yukUsersError = null;

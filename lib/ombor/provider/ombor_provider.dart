@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/ombor/services/ombor_service.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
 
@@ -165,6 +166,10 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
   bool isLoadingOrders = false;
   String? ordersError;
 
+  // Yopiq buyurtmalar tarixi oynasi (30/90 kun yoki hammasi).
+  // Saqlanmaydi — ilova qayta ochilganda default 30 kunga qaytadi.
+  OrderPeriod ordersPeriod = OrderPeriod.last30;
+
   // Hozir qabul qilinayotgan item (order id + product id) — qator tugmasida
   // spinner ko'rsatish uchun.
   int? acceptingItemOrderId;
@@ -188,7 +193,10 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
 
     try {
-      final orders = await _service.fetchMyOrders();
+      final orders = await _service.fetchMyOrders(
+        days: ordersPeriod.days,
+        all: ordersPeriod.isAll,
+      );
       orders.sort((a, b) => b.id.compareTo(a.id));
       myOrders = orders;
     } catch (e) {
@@ -197,6 +205,14 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
       isLoadingOrders = false;
       notifyListeners();
     }
+  }
+
+  // Davr almashtirilganda ro'yxat serverdan qayta yuklanadi.
+  Future<void> setOrdersPeriod(OrderPeriod period) async {
+    if (period == ordersPeriod) return;
+    ordersPeriod = period;
+    notifyListeners();
+    await fetchMyOrders();
   }
 
   // Shu mahsulotga BUYURTMA BERILGAN, lekin HALI KELMAGAN miqdor.
@@ -380,6 +396,7 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
     myOrders = [];
     isLoadingOrders = false;
     ordersError = null;
+    ordersPeriod = OrderPeriod.last30;
     acceptingItemOrderId = null;
     acceptingItemProductId = null;
     deletingItemOrderId = null;

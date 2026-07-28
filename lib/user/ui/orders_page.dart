@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/user/services/api_service.dart';
 import '../../login_page.dart';
 
@@ -26,6 +27,9 @@ class _OrdersPageState extends State<OrdersPage> {
   int _totalPages = 1;
   final int _limit = 30;
   bool _hasMore = true;
+
+  // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi). Saqlanmaydi.
+  OrderPeriod _period = OrderPeriod.last30;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -75,8 +79,11 @@ class _OrdersPageState extends State<OrdersPage> {
       return;
     }
 
-    final result =
-        await ApiService.getOrders(token, page: _currentPage, limit: _limit);
+    final result = await ApiService.getOrders(token,
+        page: _currentPage,
+        limit: _limit,
+        days: _period.days,
+        all: _period.isAll);
 
     if (!mounted) return;
     setState(() {
@@ -130,7 +137,10 @@ class _OrdersPageState extends State<OrdersPage> {
     }
 
     final result = await ApiService.getOrders(token,
-        page: _currentPage + 1, limit: _limit);
+        page: _currentPage + 1,
+        limit: _limit,
+        days: _period.days,
+        all: _period.isAll);
 
     if (!mounted) return;
     setState(() {
@@ -201,6 +211,15 @@ class _OrdersPageState extends State<OrdersPage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi) —
+          // almashtirilganda ro'yxat qayta yuklanadi.
+          OrderPeriodButton(
+            value: _period,
+            onChanged: (p) {
+              setState(() => _period = p);
+              _refresh();
+            },
+          ),
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _refresh,

@@ -3,6 +3,7 @@
 // (backenddan ?status=done bilan yuklanadi).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/yuk_day_cards.dart';
 
@@ -54,6 +55,14 @@ class _YukHistoryUiState extends State<YukHistoryUi> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi) —
+          // almashtirilganda tarix serverdan qayta yuklanadi.
+          Consumer<YukProvider>(
+            builder: (context, provider, _) => OrderPeriodButton(
+              value: provider.historyPeriod,
+              onChanged: (p) => provider.setHistoryPeriod(p),
+            ),
+          ),
           IconButton(
             tooltip: _showImages
                 ? 'Rasmlarni yashirish'

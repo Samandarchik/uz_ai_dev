@@ -11,6 +11,7 @@ import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
@@ -37,6 +38,15 @@ class _OmborOrdersUiState extends State<OmborOrdersUi> {
           'Mening buyurtmalarim',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi).
+          Consumer<OmborProvider>(
+            builder: (context, provider, _) => OrderPeriodButton(
+              value: provider.ordersPeriod,
+              onChanged: (p) => provider.setOrdersPeriod(p),
+            ),
+          ),
+        ],
       ),
       body: const OmborOrdersView(),
     );
@@ -62,6 +72,16 @@ class OmborOrdersHistoryUi extends StatelessWidget {
           'Qabul qilinganlar tarixi',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi) —
+          // eski kunlarni ko'rish uchun 90 kun yoki "Hammasi" tanlanadi.
+          Consumer<OmborProvider>(
+            builder: (context, provider, _) => OrderPeriodButton(
+              value: provider.ordersPeriod,
+              onChanged: (p) => provider.setOrdersPeriod(p),
+            ),
+          ),
+        ],
       ),
       body: const OmborOrdersView(acceptedOnly: true),
     );

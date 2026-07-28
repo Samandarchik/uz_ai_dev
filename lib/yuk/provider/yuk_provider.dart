@@ -10,6 +10,7 @@ import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -38,6 +39,10 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
   List<YukOrder> historyOrders = [];
   bool isHistoryLoading = false;
   String? historyError;
+
+  // Tarix ekrani davri oynasi (30/90 kun yoki hammasi). Saqlanmaydi —
+  // ilova qayta ochilganda default 30 kunga qaytadi.
+  OrderPeriod historyPeriod = OrderPeriod.last30;
 
   // Profil ekrani: kunlik hisob daftari (ostatok/rasxod/prixod).
   // Backenddan kamayuvchi tartibda (eng yangi kun birinchi) keladi.
@@ -287,13 +292,24 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
 
     try {
-      historyOrders = await _service.fetchOrders(status: 'done');
+      historyOrders = await _service.fetchOrders(
+        status: 'done',
+        days: historyPeriod.days,
+        all: historyPeriod.isAll,
+      );
     } catch (e) {
       historyError = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isHistoryLoading = false;
       notifyListeners();
     }
+  }
+
+  // Tarix davri almashtirilganda ro'yxat serverdan qayta yuklanadi.
+  Future<void> setHistoryPeriod(OrderPeriod period) async {
+    if (period == historyPeriod) return;
+    historyPeriod = period;
+    await fetchHistory();
   }
 
   // Ledger kamida bir marta yuklanganmi — socket hodisalarida jim yangilash
@@ -1136,6 +1152,7 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
     historyOrders = [];
     isHistoryLoading = false;
     historyError = null;
+    historyPeriod = OrderPeriod.last30;
     ledger = [];
     isLoadingLedger = false;
     ledgerError = null;

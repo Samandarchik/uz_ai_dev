@@ -1,7 +1,12 @@
 // bugalter/services/bugalter_service.dart — Bugalter Dio servisi: BugalterService. Endpointlar
 // AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT) va payments (POST to'lov);
 // buyurtma JSON'i yuk keltiruvchiniki bilan bir xil, YukOrder modeli qayta ishlatiladi.
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -16,10 +21,22 @@ class BugalterService {
 
   // GET /api/bugalter/orders -> BARCHA skladlarning narxlangan/qabul qilingan
   // buyurtmalari (yangisi tepada).
+  // days/all — tarix oynasi: aktiv buyurtmalar har doim keladi, yopiqlari
+  // esa faqat oxirgi `days` kun ichida (null — server default 30 kun,
+  // all=true -> to'liq tarix).
   // Javob: { "success": true, "data": [ {order}, ... ] }
-  Future<List<YukOrder>> fetchOrders() async {
+  Future<List<YukOrder>> fetchOrders({int? days, bool all = false}) async {
     try {
-      final response = await dio.get(AppUrls.bugalterOrders);
+      final query = <String, dynamic>{};
+      if (all) {
+        query['all'] = 1;
+      } else if (days != null) {
+        query['days'] = days;
+      }
+      final response = await dio.get(
+        AppUrls.bugalterOrders,
+        queryParameters: query.isEmpty ? null : query,
+      );
 
       if (response.statusCode == 200) {
         final body = response.data;
@@ -156,5 +173,60 @@ class BugalterService {
     } catch (e) {
       throw Exception('Pul berishda kutilmagan xato: $e');
     }
+  }
+
+  // GET /api/bugalter/export?from=YYYY-MM-DD&to=YYYY-MM-DD -> Excel (.xlsx)
+  // hisobot (`to` kuni ham kiradi). Binar javob vaqtinchalik papkaga
+  // yoziladi va faylning to'liq yo'li qaytariladi (UI share_plus bilan
+  // ulashadi). Xatoda server JSON {success:false, message} qaytaradi.
+  Future<String> downloadExport(DateTime from, DateTime to) async {
+    final df = DateFormat('yyyy-MM-dd');
+    final fromStr = df.format(from);
+    final toStr = df.format(to);
+    try {
+      final response = await dio.get(
+        AppUrls.bugalterExport,
+        queryParameters: {'from': fromStr, 'to': toStr},
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      if (response.statusCode == 200 && response.data is List) {
+        final dir = await getTemporaryDirectory();
+        final path = '${dir.path}/mone_hisobot_${fromStr}_$toStr.xlsx';
+        final file = File(path);
+        await file.writeAsBytes(
+          List<int>.from(response.data as List),
+          flush: true,
+        );
+        return path;
+      }
+      throw Exception('Hisobotni yuklab bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      throw Exception(_exportErrorMessage(e));
+    } catch (e) {
+      throw Exception(
+          e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  // ResponseType.bytes bilan kelgan xato javobi baytlarda bo'ladi —
+  // ichidan JSON {message} ni ajratib olamiz (bo'lmasa umumiy matn).
+  String _exportErrorMessage(DioException e) {
+    final body = e.response?.data;
+    if (body != null) {
+      try {
+        dynamic decoded = body;
+        if (body is List<int>) decoded = jsonDecode(utf8.decode(body));
+        if (decoded is Map && decoded['message'] != null) {
+          return decoded['message'].toString();
+        }
+      } catch (_) {
+        // JSON emas — pastdagi umumiy matnga tushamiz.
+      }
+    }
+    if (e.response != null) {
+      return 'Server xatosi: ${e.response!.statusCode}';
+    }
+    return 'Tarmoq xatosi: ${e.message}';
   }
 }

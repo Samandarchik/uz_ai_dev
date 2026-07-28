@@ -148,10 +148,22 @@ class OmborService {
   }
 
   // GET /api/orders -> ombor userning O'Z buyurtmalari ro'yxati.
+  // days/all — tarix oynasi: aktiv buyurtmalar har doim keladi, yopiqlari
+  // esa faqat oxirgi `days` kun ichida (null — server default 30 kun,
+  // all=true -> to'liq tarix).
   // Javob: {"success": true, "message": "...", "data": [ {order}, ... ]}
-  Future<List<OmborOrder>> fetchMyOrders() async {
+  Future<List<OmborOrder>> fetchMyOrders({int? days, bool all = false}) async {
     try {
-      final response = await dio.get(AppUrls.orders);
+      final query = <String, dynamic>{};
+      if (all) {
+        query['all'] = 1;
+      } else if (days != null) {
+        query['days'] = days;
+      }
+      final response = await dio.get(
+        AppUrls.orders,
+        queryParameters: query.isEmpty ? null : query,
+      );
 
       if (response.statusCode == 200) {
         final body = response.data;

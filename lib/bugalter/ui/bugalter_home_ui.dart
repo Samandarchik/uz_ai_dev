@@ -3,12 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
+import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';
 import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/yuk_day_cards.dart';
 
@@ -39,6 +42,49 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
   // Yuk keltiruvchi bo'yicha filtr (null -> hammasi). Buyurtma priced_by
   // maydoni bilan solishtiriladi.
   int? _selectedYukUserId;
+
+  // Excel hisobot hozir yuklanmoqdami (AppBar tugmasida spinner uchun).
+  bool _exporting = false;
+
+  // Excel hisobot uchun alohida servis (provider'nikidan mustaqil).
+  final BugalterService _exportService = BugalterService();
+
+  // Excel hisobot: davr tanlanadi (standart — joriy oy boshi..bugun),
+  // .xlsx fayl yuklab olinadi va share oynasi ochiladi.
+  Future<void> _exportExcel() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: today,
+      initialDateRange: DateTimeRange(
+        start: DateTime(now.year, now.month, 1),
+        end: today,
+      ),
+    );
+    if (range == null || !mounted) return;
+
+    setState(() => _exporting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final path = await _exportService.downloadExport(range.start, range.end);
+      if (!mounted) return;
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(path)],
+        text: 'Mone Excel hisobot',
+      ));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   void initState() {
@@ -136,6 +182,30 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
+            // Excel hisobot (.xlsx): davr tanlab yuklab olish va ulashish.
+            _exporting
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Excel hisobot',
+                    onPressed: _exportExcel,
+                    icon: const Icon(Icons.download),
+                  ),
+            // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi).
+            Consumer<BugalterProvider>(
+              builder: (context, provider, _) => OrderPeriodButton(
+                value: provider.ordersPeriod,
+                onChanged: (p) => provider.setOrdersPeriod(p),
+              ),
+            ),
             // Ishlab chiqarish buyurtmalari (o'chirish + status — faqat bugalter).
             IconButton(
               tooltip: 'Ishlab chiqarish',

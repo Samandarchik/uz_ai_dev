@@ -22,11 +22,25 @@ class YukService {
   // buyurtmalari. Javob: { "success": true, "message": "...", "data": [ ... ] }
   // status: 'pending' — faqat yuborilmaganlar (asosiy sahifa),
   //         'done'    — faqat yuborilganlar (tarix ekrani), null — hammasi.
-  Future<List<YukOrder>> fetchOrders({String? status}) async {
+  // days/all — tarix oynasi: aktiv buyurtmalar har doim keladi, yopiqlari
+  // esa faqat oxirgi `days` kun ichida (null — server default 30 kun,
+  // all=true -> to'liq tarix).
+  Future<List<YukOrder>> fetchOrders({
+    String? status,
+    int? days,
+    bool all = false,
+  }) async {
     try {
+      final query = <String, dynamic>{};
+      if (status != null) query['status'] = status;
+      if (all) {
+        query['all'] = 1;
+      } else if (days != null) {
+        query['days'] = days;
+      }
       final response = await dio.get(
         AppUrls.yukOrders,
-        queryParameters: status == null ? null : {'status': status},
+        queryParameters: query.isEmpty ? null : query,
       );
 
       if (response.statusCode == 200) {

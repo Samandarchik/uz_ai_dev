@@ -51,6 +51,10 @@ abstract final class AppUrls {
   // birlikda (кг/л -> butun gr/ml).
   static String bugalterOrderItemQty(int orderId, int productId) =>
       '$baseUrl/api/bugalter/orders/$orderId/items/$productId/qty';
+  // Bugalter Excel hisobot: GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (ikkalasi
+  // majburiy, `to` kuni ham kiradi) -> .xlsx binar fayl (attachment).
+  // Rollar: bugalter yoki admin. Xato JSON {success:false, message}.
+  static String bugalterExport = '$baseUrl/api/bugalter/export';
 
   // Ishlab chiqarish (производство) — shef roli.
   // Tex kartasi bor mahsulotlar ro'yxati (buyurtma yaratish uchun).
