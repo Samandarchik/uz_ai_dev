@@ -1,3 +1,8 @@
+# Telegram build bot maxfiy sozlamalari (token, chat id) - HECH QACHON commit qilinmasin
+.telegram_bot.config.txt
+# Bot holati: loyiha -> oxirgi build qilingan versiya + release havolasi
+.telegram_bot_state.json
+
 # Miscellaneous
 *.class
 *.log

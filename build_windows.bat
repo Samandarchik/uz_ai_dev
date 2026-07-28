@@ -162,7 +162,7 @@ echo   Zip    : %SRC%\%ZIPNAME%
 echo   Release: %OUTDIR%
 echo ============================================================
 echo.
-pause
+if not defined UZ_BOT pause
 exit /b 0
 
 :fail
@@ -171,5 +171,5 @@ echo ============================================================
 echo   BUILD TUGAMADI - yuqoridagi xatoga qarang.
 echo ============================================================
 echo.
-pause
+if not defined UZ_BOT pause
 exit /b 1
