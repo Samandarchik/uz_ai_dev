@@ -1,19 +1,23 @@
 // admin/ui/composition_picker_page.dart — ingredient (tarkib) tanlash sahifasi
-// (CompositionPickerPage): ProductProviderAdmin ro'yxatidan qidirib tanlaydi,
+// (CompositionPickerPage): home page kabi kategoriya ro'yxati, kategoriya ichida
+// mahsulotlar; AppBar qidiruvi barcha mahsulotlar bo'yicha ishlaydi. Tanlangach
 // miqdor+birlik dialogi (_AmountUnitDialog) orqali natijani TechItem qilib qaytaradi.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
+import 'package:uz_ai_dev/admin/provider/admin_categoriy_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 // Ingredient (tarkib) tanlash sahifasi.
-// AppBar'da qidiruv maydoni, pastda barcha mahsulotlar ro'yxati.
-// Mahsulot tanlanganda miqdor (butun son) + birlik so'raydigan dialog ochiladi
-// va natija sifatida [TechItem] qaytaradi.
+// Qidiruv bo'sh bo'lsa — home page'dagi kabi KATEGORIYA ro'yxati chiqadi;
+// kategoriya bosilsa shu kategoriya mahsulotlari ochiladi. Qidiruv yozilsa —
+// barcha mahsulotlar bo'yicha qidiradi. Mahsulot tanlanganda miqdor (butun son)
+// + birlik so'raydigan dialog ochiladi va natija sifatida [TechItem] qaytaradi.
 class CompositionPickerPage extends StatefulWidget {
   const CompositionPickerPage({super.key});
 
@@ -32,27 +36,31 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _loadData();
     _searchController.addListener(_onSearchChanged);
   }
 
   // Mahsulotlar YAGONA provider (ProductProviderAdmin) dan olinadi.
   // Ro'yxat allaqachon yuklangan bo'lsa (home page'da) qaytadan GET qilinmaydi —
-  // faqat hech yuklanmagan bo'lsa bir marta yuklanadi.
-  Future<void> _loadProducts() async {
+  // faqat hech yuklanmagan bo'lsa bir marta yuklanadi. Kategoriyalar ham shunday.
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final provider = context.read<ProductProviderAdmin>();
-      if (provider.products.isEmpty) {
-        await provider.initializeProducts();
-      }
+      final productProvider = context.read<ProductProviderAdmin>();
+      final categoryProvider = context.read<CategoryProviderAdmin>();
+      await Future.wait([
+        if (productProvider.products.isEmpty)
+          productProvider.initializeProducts(),
+        if (categoryProvider.categories.isEmpty)
+          categoryProvider.getCategories(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _allProducts = provider.products;
-        _filtered = provider.products;
+        _allProducts = productProvider.products;
+        _filtered = productProvider.products;
         _isLoading = false;
       });
     } catch (e) {
@@ -77,15 +85,26 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
     });
   }
 
-  String _fullImageUrl(String? url) {
-    if (url == null || url.isEmpty) return '';
-    return url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
-  }
-
   Future<void> _onProductTap(ProductModelAdmin product) async {
     final result = await showDialog<TechItem>(
       context: context,
       builder: (_) => _AmountUnitDialog(product: product),
+    );
+    if (result != null && mounted) {
+      Navigator.pop(context, result);
+    }
+  }
+
+  // Kategoriya ichidagi mahsulotlar sahifasini ochadi; u yerda mahsulot
+  // tanlansa TechItem qaytadi va bu sahifa ham shu natija bilan yopiladi.
+  Future<void> _onCategoryTap(CategoryProductAdmin category) async {
+    final result = await Navigator.of(context).push<TechItem>(
+      MaterialPageRoute(
+        builder: (_) => _CategoryProductsPage(
+          categoryId: category.id,
+          categoryName: category.name,
+        ),
+      ),
     );
     if (result != null && mounted) {
       Navigator.pop(context, result);
@@ -98,7 +117,6 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
       appBar: AppBar(
         title: TextField(
           controller: _searchController,
-          autofocus: true,
           decoration: const InputDecoration(
             hintText: 'Поиск продукта...',
             border: InputBorder.none,
@@ -128,48 +146,86 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
             Text('Ошибка: $_error', textAlign: TextAlign.center),
             const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: _loadProducts,
+              onPressed: _loadData,
               child: const Text('Повторить'),
             ),
           ],
         ),
       );
     }
+
+    // Qidiruv bo'sh — home page'dagi kabi kategoriya ro'yxati.
+    if (_searchController.text.trim().isEmpty) {
+      return _buildCategoryList();
+    }
+
+    // Qidiruv yozilgan — barcha mahsulotlar bo'yicha natijalar.
     if (_filtered.isEmpty) {
       return const Center(child: Text('Продукты не найдены'));
     }
     return ListView.separated(
       itemCount: _filtered.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final product = _filtered[index];
-        final imageUrl = _fullImageUrl(product.imageUrl);
-        return ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: imageUrl.isEmpty
-                  ? Container(
-                      color: Colors.grey[200],
-                      child: Icon(Icons.image, color: Colors.grey[400]),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.grey[200]),
-                      errorWidget: (_, __, ___) => Container(
-                        color: Colors.grey[200],
-                        child: Icon(Icons.broken_image, color: Colors.grey[400]),
+      itemBuilder: (context, index) =>
+          _ProductPickTile(product: _filtered[index], onTap: _onProductTap),
+    );
+  }
+
+  Widget _buildCategoryList() {
+    return Consumer2<CategoryProviderAdmin, ProductProviderAdmin>(
+      builder: (context, categoryProvider, productProvider, _) {
+        final categories = categoryProvider.categories;
+        if (categories.isEmpty) {
+          return const Center(child: Text('Kategoriyalar topilmadi'));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            final productCount =
+                productProvider.getProductCountByCategory(category.id);
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: ClipOval(
+                child: category.imageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
+                        width: 55,
+                        height: 55,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.image_not_supported),
+                      )
+                    : Container(
+                        width: 55,
+                        height: 55,
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.image_not_supported),
                       ),
-                    ),
-            ),
-          ),
-          title: Text(product.name),
-          subtitle: product.type.isNotEmpty ? Text(product.type) : null,
-          trailing: const Icon(Icons.add_circle_outline),
-          onTap: () => _onProductTap(product),
+              ),
+              title: Text(
+                category.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              subtitle: Text(
+                '$productCount продукт',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              trailing: const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey,
+              ),
+              onTap: () => _onCategoryTap(category),
+            );
+          },
         );
       },
     );
@@ -179,6 +235,97 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+}
+
+// Bitta kategoriya mahsulotlari ro'yxati. Mahsulot tanlanganda miqdor+birlik
+// dialogi ochiladi va sahifa [TechItem] natija bilan yopiladi.
+class _CategoryProductsPage extends StatelessWidget {
+  final int categoryId;
+  final String categoryName;
+
+  const _CategoryProductsPage({
+    required this.categoryId,
+    required this.categoryName,
+  });
+
+  Future<void> _onProductTap(
+      BuildContext context, ProductModelAdmin product) async {
+    final result = await showDialog<TechItem>(
+      context: context,
+      builder: (_) => _AmountUnitDialog(product: product),
+    );
+    if (result != null && context.mounted) {
+      Navigator.pop(context, result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final products = context
+        .watch<ProductProviderAdmin>()
+        .products
+        .where((p) => p.categoryId == categoryId)
+        .toList();
+    return Scaffold(
+      appBar: AppBar(title: Text(categoryName)),
+      body: products.isEmpty
+          ? const Center(child: Text('Продукты не найдены'))
+          : ListView.separated(
+              itemCount: products.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) => _ProductPickTile(
+                product: products[index],
+                onTap: (p) => _onProductTap(context, p),
+              ),
+            ),
+    );
+  }
+}
+
+// Mahsulot qatori (rasm + nom + birlik + qo'shish belgisi) — qidiruv
+// natijalarida ham, kategoriya ichida ham bir xil ishlatiladi.
+class _ProductPickTile extends StatelessWidget {
+  final ProductModelAdmin product;
+  final ValueChanged<ProductModelAdmin> onTap;
+
+  const _ProductPickTile({required this.product, required this.onTap});
+
+  String _fullImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    return url.startsWith('http') ? url : '${AppUrls.baseUrl}$url';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _fullImageUrl(product.imageUrl);
+    return ListTile(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: imageUrl.isEmpty
+              ? Container(
+                  color: Colors.grey[200],
+                  child: Icon(Icons.image, color: Colors.grey[400]),
+                )
+              : CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: Colors.grey[200]),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Colors.grey[200],
+                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                  ),
+                ),
+        ),
+      ),
+      title: Text(product.name),
+      subtitle: product.type.isNotEmpty ? Text(product.type) : null,
+      trailing: const Icon(Icons.add_circle_outline),
+      onTap: () => onTap(product),
+    );
   }
 }
 
