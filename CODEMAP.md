@@ -25,7 +25,7 @@ qayerda va «falon vazifa uchun qayerga qarash» kerak.
 | `lib/yuk/` | `yuk_keltiruvchi`: sklad buyurtmalari, kunlik hisob daftari, magazin qarzlari, targovli pul | `YukHomeUi` (katta), `YukProfileUi`, `YukMagazinUi`/`YukMagazinDetailUi`, `YukHistoryUi`, `YukTransferHistoryUi`. Provider: `YukProvider` (markaziy), `MagazinProvider` |
 | `lib/production/` | ishlab chiqarish + sklad qoldig'i + tannarx + narx tarixi + inventarizatsiya (акт). `ombor`/`admin`/`bugalter`/`shef` uchun umumiy | `StockInventoryPage`, `InventoryHistoryPage`, vidjetlar (`stock_widgets`, `production_order_widgets`, `cost_sheet`, `price_history_sheet`). Provider: `StockProvider`, `Base/Ombor/Admin/BugalterProductionProvider` |
 | `lib/shef/` | `shef`: ishlab chiqarish buyurtmasi yaratish, bosqichlarni qabul/rad, полуфабрикат limiti | `ShefHomeUi`, `ShefCreateOrderUi`, `ShefOrderDetailUi`. Provider: `ShefProvider` |
-| `lib/bugalter/` | `bugalter` (hisobchi): narxlangan buyurtmalar, yuk keltiruvchiga pul berish | `BugalterHomeUi`, `BugalterProductionUi`. Provider: `BugalterProvider` |
+| `lib/bugalter/` | `bugalter` (hisobchi): narxlangan buyurtmalar, mahsulot soni/summasini tuzatish + tahrirlar tarixi, yuk keltiruvchiga pul berish | `BugalterHomeUi`, `BugalterProductionUi`, `BugalterEditsUi`, `EditHistoryTile` (`ui/widgets/edit_history.dart`). Provider: `BugalterProvider` |
 | `lib/core/` | umumiy yadro: DI, tarmoq, lokal saqlash, endpointlar, birlik konverti, media | `di.dart`, `urls.dart` (`AppUrls`), `dio_settings.dart`, `order_socket.dart`, `qty_units.dart`, `context_extension.dart`, `media/*` (kamera/video) |
 | (root) `lib/` | kirish + marshrutlash | `main.dart`, `splash_screen.dart` (rolga yo'naltirish), `login_page.dart`, `check_version.dart` |
 
@@ -112,6 +112,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **Filial limitlari** | `lib/admin/ui/filial_limits_ui.dart` + `admin/services/filial_limit_service.dart` (`GET/POST /api/filial-limits`) |
 | **POS (Konak) integratsiya** | `lib/admin/ui/pos_*_ui.dart` + `admin/services/pos_*_service.dart` + `admin/model/pos_*_model.dart` |
 | **Sklad qoldig'i / korreksiya / inventar** | `lib/production/` — `StockProvider`, `stock_service.dart`, `stock_widgets.dart`, `inventory_page.dart` |
+| **Bugalter: soni/summa tuzatish va tarixi** | `lib/bugalter/ui/bugalter_home_ui.dart` (`_EditItemQtyDialog`) + `bugalter/services/bugalter_service.dart` (`editItemQty`, `fetchEdits`) + `bugalter/ui/bugalter_edits_ui.dart` |
 | **Versiya tekshiruvi** | `lib/check_version.dart` (`VersionChecker`) |
 
 ---

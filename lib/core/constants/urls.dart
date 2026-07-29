@@ -46,11 +46,16 @@ abstract final class AppUrls {
   // Bugalter (hisobchi): barcha skladlarning narxlangan/qabul qilingan
   // buyurtmalari.
   static String bugalterOrders = '$baseUrl/api/bugalter/orders';
-  // Bugalter buyurtma ichidagi mahsulot miqdorini tuzatishi (eski APK'lardan
-  // qolgan gram xatolari uchun). PUT {taken, received?} — miqdorlar API
-  // birlikda (кг/л -> butun gr/ml).
+  // Bugalter buyurtma ichidagi mahsulot miqdori yoki SUMMASINI tuzatishi
+  // (eski APK'lardan qolgan gram xatolari va xato narxlar uchun).
+  // PUT {taken?, received?, count?, subtotal?} — kamida bittasi; miqdorlar
+  // API birlikda (кг/л -> butun gr/ml), subtotal — BUTUN so'm.
   static String bugalterOrderItemQty(int orderId, int productId) =>
       '$baseUrl/api/bugalter/orders/$orderId/items/$productId/qty';
+  // Shu tahrirlarning TARIXI: GET ?order_id=&product_id=&limit= — kim,
+  // qachon, qaysi maydonni, eski → yangi. Eng yangisi birinchi.
+  // Rollar: bugalter yoki admin. Javob — audit yozuvlari (AuditLogEntry).
+  static String bugalterEdits = '$baseUrl/api/bugalter/edits';
   // Bugalter Excel hisobot: GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (ikkalasi
   // majburiy, `to` kuni ham kiradi) -> .xlsx binar fayl (attachment).
   // Rollar: bugalter yoki admin. Xato JSON {success:false, message}.

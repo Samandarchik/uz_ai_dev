@@ -1,13 +1,17 @@
 // bugalter/ui/bugalter_home_ui.dart — Bugalter roli bosh ekrani: BugalterHomeUi (BugalterProvider).
 // Barcha skladlarning narxlangan/qabul buyurtmalari, "Hammasi" + har sklad tab, yuk keltiruvchi filtri.
+// Qator bosilganda miqdor/summa tahrir dialogi (tarixi bilan); AppBar'da to'liq tahrirlar tarixi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uz_ai_dev/admin/model/audit_log_model.dart';
 import 'package:uz_ai_dev/admin/ui/admin_production_stats_ui.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
 import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';
+import 'package:uz_ai_dev/bugalter/ui/bugalter_edits_ui.dart';
 import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
+import 'package:uz_ai_dev/bugalter/ui/widgets/edit_history.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
@@ -101,8 +105,9 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
     logoutAndClear(context);
   }
 
-  // Mahsulot qatori bosilganda: miqdorni (eski APK'lardan qolgan gram
-  // xatolarini) tuzatish dialogi.
+  // Mahsulot (yoki xarajat) qatori bosilganda: miqdor (eski APK'lardan
+  // qolgan gram xatolari) va SUMMANI tuzatish dialogi. Har bir o'zgarish
+  // serverda tahrirlar tarixiga yoziladi.
   void _openEditItemDialog(YukOrder order, YukOrderItem item) {
     showDialog(
       context: context,
@@ -217,6 +222,13 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
               tooltip: 'Ishlab chiqarish statistikasi',
               onPressed: () => context.push(const AdminProductionStatsUi()),
               icon: const Icon(Icons.query_stats),
+            ),
+            // Tahrirlar tarixi: kim, qachon, qaysi mahsulotning sonini yoki
+            // summasini o'zgartirgan (append-only, o'chirib bo'lmaydi).
+            IconButton(
+              tooltip: 'Tahrirlar tarixi',
+              onPressed: () => context.push(const BugalterEditsUi()),
+              icon: const Icon(Icons.history),
             ),
             IconButton(
               tooltip: _showImages
@@ -347,11 +359,15 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
   }
 }
 
-// Bugalter uchun mahsulot miqdorini tahrirlash dialogi.
-// "Soni" (taken) har doim tahrirlanadi; "Qabul qilingan (ombor)" maydoni
-// FAQAT haqiqiy kamomad yozilgan itemda (accepted && received > 0 &&
-// received != taken) ko'rsatiladi — aks holda faqat taken yuboriladi
-// (server received'ni o'zi sinxronlaydi).
+// Bugalter uchun mahsulot miqdori va SUMMASINI tahrirlash dialogi.
+// "Soni" (taken) va "Summa" (subtotal) tahrirlanadi; "Qabul qilingan (ombor)"
+// maydoni FAQAT haqiqiy kamomad yozilgan itemda (accepted && received > 0 &&
+// received != taken) ko'rsatiladi — aks holda received yuborilmaydi (server
+// uni o'zi sinxronlaydi). Rasxod (xarajat) qatorida faqat "Summa" bo'ladi.
+//
+// Serverga FAQAT O'ZGARGAN maydonlar yuboriladi — shunda tahrirlar tarixiga
+// (audit) o'zgarmagan maydon uchun soxta yozuv tushmaydi.
+// Dialog pastida shu mahsulotning oldingi tahrirlari ko'rsatiladi.
 class _EditItemQtyDialog extends StatefulWidget {
   final YukOrder order;
   final YukOrderItem item;
@@ -372,14 +388,24 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _takenController;
   late final TextEditingController _receivedController;
+  late final TextEditingController _subtotalController;
   bool _saving = false;
+
+  // Shu mahsulotning oldingi tahrirlari (GET /api/bugalter/edits).
+  final BugalterService _service = BugalterService();
+  List<AuditLogEntry>? _history;
+  String? _historyError;
 
   // кг/л — kasr kiritish mumkin (kg -> BUTUN gr yuboriladi); boshqa
   // birliklar faqat butun son.
   bool get _isDecimal => qtyUnitFactor(widget.item.type) > 1;
 
+  // Xarajat (rasxod) qatorida miqdor yo'q — faqat summasi tahrirlanadi.
+  bool get _isRasxod => widget.item.isRasxod;
+
   // Faqat haqiqiy kamomad yozilgan itemda received alohida tahrirlanadi.
   bool get _showReceived =>
+      !_isRasxod &&
       widget.item.accepted &&
       widget.item.received > 0 &&
       widget.item.received != widget.item.taken;
@@ -393,13 +419,36 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
     _receivedController = TextEditingController(
       text: formatQty(widget.item.received, widget.item.type),
     );
+    _subtotalController = TextEditingController(
+      text: widget.item.subtotal.round().toString(),
+    );
+    _loadHistory();
   }
 
   @override
   void dispose() {
     _takenController.dispose();
     _receivedController.dispose();
+    _subtotalController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final list = await _service.fetchEdits(
+        orderId: widget.order.id,
+        productId: widget.item.productId,
+        limit: 20,
+      );
+      if (!mounted) return;
+      setState(() => _history = list);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _historyError = e.toString().replaceFirst('Exception: ', '');
+        _history = const [];
+      });
+    }
   }
 
   // "1,5" -> 1.5. Parse bo'lmasa null.
@@ -415,6 +464,13 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
     return null;
   }
 
+  // Summa — BUTUN so'm, manfiy bo'lmagan (0 — "olinmagan" qator).
+  String? _validateMoney(String? text) {
+    final v = _parse(text);
+    if (v == null || v < 0) return 'Summani kiriting';
+    return null;
+  }
+
   // UI qiymatini API butun soniga o'girish (kg -> gr). Serverga hech qachon
   // kasr yuborilmaydi.
   num _toApi(String text) {
@@ -423,26 +479,49 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
     return api;
   }
 
+  // Kiritilgan summa (butun so'm).
+  int get _enteredSubtotal => (_parse(_subtotalController.text) ?? 0).round();
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final taken = _toApi(_takenController.text);
-    // received faqat alohida ko'rsatilgan (haqiqiy kamomad) holatda yuboriladi.
-    final received = _showReceived ? _toApi(_receivedController.text) : null;
 
-    setState(() => _saving = true);
+    // FAQAT o'zgargan maydonlar yuboriladi.
+    final taken = _isRasxod ? null : _toApi(_takenController.text);
+    final received = _showReceived ? _toApi(_receivedController.text) : null;
+    final subtotal = _enteredSubtotal;
+
+    final sendTaken = taken != null && taken != widget.item.taken ? taken : null;
+    final sendReceived =
+        received != null && received != widget.item.received ? received : null;
+    final sendSubtotal =
+        subtotal != widget.item.subtotal.round() ? subtotal : null;
+
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+
+    if (sendTaken == null && sendReceived == null && sendSubtotal == null) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('O\'zgarish yo\'q')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
     try {
       await widget.provider.editItemQty(
         orderId: widget.order.id,
         productId: widget.item.productId,
-        taken: taken,
-        received: received,
+        taken: sendTaken,
+        received: sendReceived,
+        subtotal: sendSubtotal,
       );
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Miqdor yangilandi'),
+        SnackBar(
+          content: Text(sendSubtotal != null && sendTaken == null
+              ? 'Summa yangilandi'
+              : 'Yangilandi'),
           backgroundColor: Colors.green,
         ),
       );
@@ -457,9 +536,10 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
     }
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
+  InputDecoration _decoration(String label, {String? suffix}) =>
+      InputDecoration(
         labelText: label,
-        suffixText: widget.item.type,
+        suffixText: suffix ?? widget.item.type,
         border: const OutlineInputBorder(),
       );
 
@@ -467,43 +547,145 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
       ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))]
       : [FilteringTextInputFormatter.digitsOnly];
 
+  // Kiritilayotgan summa va undan kelib chiqadigan dona narxi
+  // ("63 000 so'm · Donasi: 42 000 so'm/кг") — faqat ko'rsatish uchun.
+  Widget _moneyHint() {
+    final subtotal = _enteredSubtotal;
+    final takenUi = _isRasxod
+        ? 0.0
+        : qtyToUi(
+            _parse(_takenController.text) == null
+                ? widget.item.taken
+                : _toApi(_takenController.text),
+            widget.item.type,
+          );
+    final unit = takenUi > 0 && subtotal > 0
+        ? ' · Donasi: ${formatMoney(subtotal / takenUi)} so\'m'
+            '${(widget.item.type ?? '').isNotEmpty ? '/${widget.item.type}' : ''}'
+        : '';
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '${formatMoney(subtotal)} so\'m$unit',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ),
+    );
+  }
+
+  // Shu mahsulotning oldingi tahrirlari (bo'lsa).
+  Widget _historySection() {
+    final history = _history;
+    if (history == null) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 14),
+        child: SizedBox(
+          height: 16,
+          width: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (history.isEmpty) {
+      // Xato bo'lsa ham dialog ishlayveradi — faqat tarix ko'rinmaydi.
+      if (_historyError != null) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Tarix yuklanmadi: $_historyError',
+              style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 22),
+        Row(
+          children: [
+            Icon(Icons.history, size: 14, color: Colors.grey.shade600),
+            const SizedBox(width: 4),
+            Text(
+              'Tahrirlar tarixi (${history.length})',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        for (final e in history) EditHistoryTile(entry: e, compact: true),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final type = (widget.item.type ?? '').trim();
     return AlertDialog(
       backgroundColor: Colors.white,
       title: Text(
-        type.isNotEmpty ? '${widget.item.name} ($type)' : widget.item.name,
+        type.isNotEmpty && !_isRasxod
+            ? '${widget.item.name} ($type)'
+            : widget.item.name,
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _takenController,
-              autofocus: true,
-              enabled: !_saving,
-              keyboardType:
-                  TextInputType.numberWithOptions(decimal: _isDecimal),
-              inputFormatters: _formatters,
-              decoration: _decoration('Soni'),
-              validator: _validate,
-            ),
-            if (_showReceived) ...[
-              const SizedBox(height: 12),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!_isRasxod)
+                TextFormField(
+                  controller: _takenController,
+                  autofocus: true,
+                  enabled: !_saving,
+                  keyboardType:
+                      TextInputType.numberWithOptions(decimal: _isDecimal),
+                  inputFormatters: _formatters,
+                  decoration: _decoration('Soni'),
+                  validator: _validate,
+                  onChanged: (_) => setState(() {}),
+                ),
+              if (_showReceived) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _receivedController,
+                  enabled: !_saving,
+                  keyboardType:
+                      TextInputType.numberWithOptions(decimal: _isDecimal),
+                  inputFormatters: _formatters,
+                  decoration: _decoration('Qabul qilingan (ombor)'),
+                  validator: _validate,
+                ),
+              ],
+              if (!_isRasxod) const SizedBox(height: 12),
+              // Summa — butun so'm (tiyin yo'q), faqat raqam kiritiladi.
               TextFormField(
-                controller: _receivedController,
+                controller: _subtotalController,
+                autofocus: _isRasxod,
                 enabled: !_saving,
-                keyboardType:
-                    TextInputType.numberWithOptions(decimal: _isDecimal),
-                inputFormatters: _formatters,
-                decoration: _decoration('Qabul qilingan (ombor)'),
-                validator: _validate,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: _decoration('Summa', suffix: 'so\'m'),
+                validator: _validateMoney,
+                onChanged: (_) => setState(() {}),
               ),
+              _moneyHint(),
+              _historySection(),
             ],
-          ],
+          ),
         ),
       ),
       actions: [

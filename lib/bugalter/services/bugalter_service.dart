@@ -1,12 +1,15 @@
 // bugalter/services/bugalter_service.dart — Bugalter Dio servisi: BugalterService. Endpointlar
-// AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT) va payments (POST to'lov);
-// buyurtma JSON'i yuk keltiruvchiniki bilan bir xil, YukOrder modeli qayta ishlatiladi.
+// AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT miqdor/summa), bugalterEdits
+// (GET tahrirlar tarixi) va payments (POST to'lov); buyurtma JSON'i yuk keltiruvchiniki bilan
+// bir xil, YukOrder modeli qayta ishlatiladi.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+// Tahrirlar tarixi audit yozuvlari — model admin audit jurnali bilan UMUMIY.
+import 'package:uz_ai_dev/admin/model/audit_log_model.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
@@ -91,21 +94,26 @@ class BugalterService {
   }
 
   // PUT /api/bugalter/orders/{orderId}/items/{productId}/qty ->
-  // buyurtma ichidagi mahsulot miqdorini tuzatish (gram xatolari uchun).
-  // Body: { "taken": 1500 } yoki { "taken": 1500, "received": 1400 } —
-  // received faqat alohida tahrirlansa yuboriladi (yo'q bo'lsa server
-  // received == eski taken bo'lgan qabul qilingan itemda o'zi sinxronlaydi).
-  // Miqdorlar API birlikda (кг/л -> BUTUN gr/ml). Javob: to'liq yangilangan
-  // buyurtma ({ "success": true, "message": "...", "data": {order} }).
+  // buyurtma ichidagi mahsulot miqdorini (gram xatolari) va/yoki SUMMASINI
+  // tuzatish. Body: kamida bittasi — { "taken": 1500, "received": 1400,
+  // "subtotal": 63000 }. received faqat alohida tahrirlansa yuboriladi
+  // (yo'q bo'lsa server received == eski taken bo'lgan qabul qilingan itemda
+  // o'zi sinxronlaydi); subtotal — BUTUN so'm (rasxod qatorida FAQAT shu
+  // yuboriladi). Miqdorlar API birlikda (кг/л -> BUTUN gr/ml). Javob: to'liq
+  // yangilangan buyurtma ({ "success": true, "message": "...", "data": {order} }).
+  // Har bir o'zgargan maydon serverda audit jurnaliga yoziladi.
   Future<YukOrder> editItemQty({
     required int orderId,
     required int productId,
-    required num taken,
+    num? taken,
     num? received,
+    int? subtotal,
   }) async {
     try {
-      final data = <String, dynamic>{'taken': taken};
+      final data = <String, dynamic>{};
+      if (taken != null) data['taken'] = taken;
       if (received != null) data['received'] = received;
+      if (subtotal != null) data['subtotal'] = subtotal;
 
       final response = await dio.put(
         AppUrls.bugalterOrderItemQty(orderId, productId),
@@ -132,6 +140,39 @@ class BugalterService {
       throw Exception('Tarmoq xatosi: ${e.message}');
     } catch (e) {
       throw Exception('Miqdorni yangilashda kutilmagan xato: $e');
+    }
+  }
+
+  // GET /api/bugalter/edits[?order_id=&product_id=&limit=] -> tahrirlar
+  // tarixi (kim, qachon, qaysi maydon, eski → yangi), eng yangisi birinchi.
+  // orderId/productId berilmasa — barcha tahrirlar.
+  // Javob: { "success": true, "data": [ {audit yozuvi}, ... ] }.
+  Future<List<AuditLogEntry>> fetchEdits({
+    int? orderId,
+    int? productId,
+    int limit = 100,
+  }) async {
+    try {
+      final response = await dio.get(
+        AppUrls.bugalterEdits,
+        queryParameters: {
+          'limit': limit,
+          if (orderId != null) 'order_id': orderId,
+          if (productId != null) 'product_id': productId,
+        },
+      );
+      return AuditLogEntry.listFromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Tarixni yuklashda kutilmagan xato: $e');
     }
   }
 

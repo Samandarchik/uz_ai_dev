@@ -1,6 +1,6 @@
 // bugalter/provider/bugalter_provider.dart — Bugalter (hisobchi) provideri: BugalterProvider
-// (ChangeNotifier). Holat: orders (barcha sklad narxlangan buyurtmalari), yukUsers; editItemQty,
-// yuk keltiruvchiga to'lov (submitPayment) va forSklad filtri.
+// (ChangeNotifier). Holat: orders (barcha sklad narxlangan buyurtmalari), yukUsers; editItemQty
+// (miqdor + summa tuzatish), yuk keltiruvchiga to'lov (submitPayment) va forSklad filtri.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/clearable_provider.dart';
@@ -46,21 +46,24 @@ class BugalterProvider extends ChangeNotifier with ClearableProvider {
     await fetchOrders();
   }
 
-  // Buyurtma ichidagi mahsulot miqdorini tuzatish (gram xatolari uchun).
+  // Buyurtma ichidagi mahsulot miqdorini (gram xatolari) va/yoki SUMMASINI
+  // tuzatish. Kamida bittasi berilishi kerak; subtotal — BUTUN so'm.
   // Server to'liq yangilangan buyurtmani qaytaradi — ro'yxatdagi mos
   // buyurtma (order.id bo'yicha) almashtiriladi, Consumer'lar qayta quriladi.
   // Xato bo'lsa Exception qayta otiladi (UI snackbar ko'rsatadi).
   Future<void> editItemQty({
     required int orderId,
     required int productId,
-    required num taken,
+    num? taken,
     num? received,
+    int? subtotal,
   }) async {
     final updated = await _service.editItemQty(
       orderId: orderId,
       productId: productId,
       taken: taken,
       received: received,
+      subtotal: subtotal,
     );
     final index = orders.indexWhere((o) => o.id == orderId);
     if (index != -1) {

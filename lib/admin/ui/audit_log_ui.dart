@@ -34,6 +34,7 @@ const List<_EntityFilter> _kFilters = [
   _EntityFilter('Narx', 'product'),
   _EntityFilter('Sklad', 'stock'),
   _EntityFilter('Buyurtma', 'order'),
+  _EntityFilter('Tahrir', 'order_item'),
   _EntityFilter('Qarz', 'magazin_debt'),
   _EntityFilter('To\'lov', 'payment'),
   _EntityFilter('Limit', 'filial_limit'),
@@ -66,6 +67,8 @@ String _actionLabel(String action) {
       return 'POS spisaniya';
     case 'pos_inventarizatsiya':
       return 'POS inventarizatsiya';
+    case 'buyurtma_tahrir':
+      return 'Buyurtma tahrirlandi';
     default:
       return action;
   }
@@ -95,6 +98,8 @@ IconData _actionIcon(String action) {
       return Icons.delete_sweep_outlined;
     case 'pos_inventarizatsiya':
       return Icons.checklist;
+    case 'buyurtma_tahrir':
+      return Icons.edit;
     default:
       return Icons.history;
   }
@@ -342,11 +347,14 @@ class _AuditLogUiState extends State<AuditLogUi> {
                 ],
               ),
             ),
-            // 3-qator: obyekt nomi.
+            // 3-qator: obyekt nomi (buyurtma item tahririda — qaysi maydon
+            // o'zgargani ham: "Un · Summa").
             if (e.entityName.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                e.entityName,
+                e.fieldLabel.isEmpty
+                    ? e.entityName
+                    : '${e.entityName} · ${e.fieldLabel}',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
               ),
             ],

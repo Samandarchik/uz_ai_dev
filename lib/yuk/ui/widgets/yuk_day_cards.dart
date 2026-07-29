@@ -102,9 +102,9 @@ class YukDayCard extends StatelessWidget {
   // Sklad almashganda kichik sklad nomi yorlig'i chiqadi (bugalter "Hammasi"
   // tabi va yuk tarixi); aniq sklad tabida kerak emas.
   final bool showSkladLabels;
-  // Mahsulot qatori bosilganda tahrirlash uchun callback (bugalter miqdorni
-  // tuzatishi uchun). null (default) — qatorlar faqat o'qiladi; yuk tarixi
-  // ekrani shu holatda qoladi.
+  // Mahsulot yoki xarajat qatori bosilganda tahrirlash uchun callback
+  // (bugalter miqdor/summani tuzatishi uchun). null (default) — qatorlar
+  // faqat o'qiladi; yuk tarixi ekrani shu holatda qoladi.
   final void Function(YukOrder order, YukOrderItem item)? onEditItem;
   const YukDayCard({
     super.key,
@@ -138,8 +138,11 @@ class YukDayCard extends StatelessWidget {
     // yangisi yashil ko'rsatiladi.
     final reduced = (effectiveSum - totalSum).abs() > 0.0001;
     // Kunning barcha buyurtmalaridagi rasxod (xarajat) qatorlari — bitta blok.
-    final rasxodItems = [
-      for (final o in orders) ...o.items.where((i) => i.isRasxod),
+    // Har qator o'z buyurtmasi bilan yuradi (bugalter summasini tahrirlashi
+    // uchun order kerak).
+    final rasxodItems = <MapEntry<YukOrder, YukOrderItem>>[
+      for (final o in orders)
+        for (final i in o.items.where((i) => i.isRasxod)) MapEntry(o, i),
     ];
     final grandTotal = effectiveSum + expenses;
 
@@ -257,32 +260,7 @@ class YukDayCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            ...rasxodItems.map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${formatMoney(item.subtotal)} so\'m',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ...rasxodItems.map((e) => _rasxodRow(e.key, e.value)),
           ],
           const Divider(height: 18),
           // Kun yakuni: Mahsulot / Xarajat (bo'lsa) / Jami. Ombor kam qabul
@@ -449,9 +427,45 @@ class YukDayCard extends StatelessWidget {
     return out;
   }
 
+  // Bitta xarajat (rasxod) qatori: nomi + summasi. onEditItem berilgan bo'lsa
+  // bosiladigan bo'ladi — bugalter xarajat summasini tuzatadi (miqdori yo'q).
+  Widget _rasxodRow(YukOrder order, YukOrderItem item) {
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.name,
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
+            ),
+          ),
+          Text(
+            '${formatMoney(item.subtotal)} so\'m',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          if (onEditItem != null) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.edit, size: 12, color: Colors.grey.shade500),
+          ],
+        ],
+      ),
+    );
+    if (onEditItem == null) return row;
+    return InkWell(
+      onTap: () => onEditItem!(order, item),
+      borderRadius: BorderRadius.circular(6),
+      child: row,
+    );
+  }
+
   // Bitta mahsulot qatori: Mahsulot / Soni / Donasi / Turi / Summa.
-  // onEditItem berilgan bo'lsa qator bosiladigan bo'ladi (bugalter miqdorni
-  // tuzatadi) va "Soni" yonida kichik tahrir belgisi ko'rinadi.
+  // onEditItem berilgan bo'lsa qator bosiladigan bo'ladi (bugalter miqdor va
+  // summani tuzatadi) va "Soni" bilan "Summa" yonida tahrir belgisi ko'rinadi.
   Widget _productRow(YukOrder order, YukOrderItem item) {
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -532,15 +546,34 @@ class YukDayCard extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             flex: 3,
-            child: Text(
-              '${formatMoney(item.subtotal)} so\'m',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
+            child: onEditItem == null
+                ? Text(
+                    '${formatMoney(item.subtotal)} so\'m',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${formatMoney(item.subtotal)} so\'m',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.edit, size: 12, color: Colors.grey.shade500),
+                    ],
+                  ),
           ),
         ],
       ),
