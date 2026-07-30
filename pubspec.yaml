@@ -1,7 +1,7 @@
 name: uz_ai_dev
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.6.2+62
+version: 0.6.3+63
 
 environment:
   sdk: ^3.6.1
