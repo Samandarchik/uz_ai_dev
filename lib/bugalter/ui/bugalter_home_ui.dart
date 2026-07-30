@@ -1,6 +1,7 @@
 // bugalter/ui/bugalter_home_ui.dart — Bugalter roli bosh ekrani: BugalterHomeUi (BugalterProvider).
 // Barcha skladlarning narxlangan/qabul buyurtmalari, "Hammasi" + har sklad tab, yuk keltiruvchi filtri.
-// Qator bosilganda miqdor/summa tahrir dialogi (tarixi bilan); AppBar'da to'liq tahrirlar tarixi.
+// Qator bosilganda miqdor/summa tahrir dialogi (tarixi bilan), bosib turilganda o'chirish
+// tasdiq dialogi (soft-delete); AppBar'da to'liq tahrirlar tarixi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -117,6 +118,66 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
         provider: context.read<BugalterProvider>(),
       ),
     );
+  }
+
+  // Mahsulot (yoki xarajat) qatori BOSIB TURILGANDA: o'chirishni tasdiqlash
+  // dialogi. Tasdiqlansa server itemni soft-delete qiladi (deleted=true,
+  // miqdor/summa nolga qaytadi) va audit jurnaliga yozadi.
+  Future<void> _confirmDeleteItem(YukOrder order, YukOrderItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          item.name,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '«${item.name}» o\'chirilsinmi?\n'
+          'Miqdor va summa nolga qaytariladi.',
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(
+              'Bekor qilish',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('O\'chirish'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<BugalterProvider>().deleteItem(
+            orderId: order.id,
+            productId: item.productId,
+          );
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Mahsulot o\'chirildi'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String _tabName(int? id) =>
@@ -346,6 +407,9 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
                               // Bugalter mahsulot qatorini bosib miqdorni
                               // (gram xatolarini) tuzatadi.
                               onEditItem: _openEditItemDialog,
+                              // Bosib turilganda — o'chirish tasdig'i
+                              // (soft-delete: miqdor/summa nolga qaytadi).
+                              onDeleteItem: _confirmDeleteItem,
                             );
                           },
                         ),

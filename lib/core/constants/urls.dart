@@ -52,6 +52,10 @@ abstract final class AppUrls {
   // API birlikda (кг/л -> butun gr/ml), subtotal — BUTUN so'm.
   static String bugalterOrderItemQty(int orderId, int productId) =>
       '$baseUrl/api/bugalter/orders/$orderId/items/$productId/qty';
+  // DELETE — bugalter mahsulotni o'chiradi (soft-delete: deleted=true,
+  // miqdor/summa nolga qaytadi). Rollar: bugalter yoki admin.
+  static String bugalterOrderItem(int orderId, int productId) =>
+      '$baseUrl/api/bugalter/orders/$orderId/items/$productId';
   // Shu tahrirlarning TARIXI: GET ?order_id=&product_id=&limit= — kim,
   // qachon, qaysi maydonni, eski → yangi. Eng yangisi birinchi.
   // Rollar: bugalter yoki admin. Javob — audit yozuvlari (AuditLogEntry).

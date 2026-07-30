@@ -34,8 +34,8 @@ class AuditLogEntry {
   // Obyekt ICHIDAGI element id'si: entity "order_item" bo'lganda —
   // mahsulotning product_id'si (entityId esa buyurtma id'si). 0 — yo'q.
   final int subId;
-  // Qaysi maydon o'zgargan: taken | received | count | subtotal. Bo'sh —
-  // maydonga bog'liq bo'lmagan yozuv (eski yozuvlarda ham bo'sh).
+  // Qaysi maydon o'zgargan: taken | received | count | subtotal | deleted.
+  // Bo'sh — maydonga bog'liq bo'lmagan yozuv (eski yozuvlarda ham bo'sh).
   final String field;
 
   const AuditLogEntry({
@@ -67,6 +67,8 @@ class AuditLogEntry {
         return 'Buyurtma soni';
       case 'subtotal':
         return 'Summa';
+      case 'deleted':
+        return 'O\'chirildi';
       default:
         return '';
     }

@@ -1,7 +1,7 @@
 // bugalter/services/bugalter_service.dart — Bugalter Dio servisi: BugalterService. Endpointlar
-// AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT miqdor/summa), bugalterEdits
-// (GET tahrirlar tarixi) va payments (POST to'lov); buyurtma JSON'i yuk keltiruvchiniki bilan
-// bir xil, YukOrder modeli qayta ishlatiladi.
+// AppUrls.bugalterOrders, yukUsers, bugalterOrderItemQty (PUT miqdor/summa), bugalterOrderItem
+// (DELETE mahsulotni soft-delete), bugalterEdits (GET tahrirlar tarixi) va payments (POST to'lov);
+// buyurtma JSON'i yuk keltiruvchiniki bilan bir xil, YukOrder modeli qayta ishlatiladi.
 import 'dart:convert';
 import 'dart:io';
 
@@ -140,6 +140,44 @@ class BugalterService {
       throw Exception('Tarmoq xatosi: ${e.message}');
     } catch (e) {
       throw Exception('Miqdorni yangilashda kutilmagan xato: $e');
+    }
+  }
+
+  // DELETE /api/bugalter/orders/{orderId}/items/{productId} ->
+  // buyurtma ichidagi mahsulotni o'chirish (soft-delete: serverda item
+  // deleted=true bo'ladi, taken/subtotal/received nolga qaytariladi va
+  // buyurtma jami summalari qayta hisoblanadi). Body yo'q. Javob: to'liq
+  // yangilangan buyurtma ({ "success": true, "message": "...", "data": {order} }).
+  // O'chirish serverda audit jurnaliga (field: "deleted") yoziladi.
+  Future<YukOrder> deleteItem({
+    required int orderId,
+    required int productId,
+  }) async {
+    try {
+      final response = await dio.delete(
+        AppUrls.bugalterOrderItem(orderId, productId),
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return YukOrder.fromJson(
+              Map<String, dynamic>.from(body['data'] as Map));
+        }
+      }
+      throw Exception(
+          'Mahsulotni o\'chirib bo\'lmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final body = e.response!.data;
+        final msg = (body is Map && body['message'] != null)
+            ? body['message']
+            : 'Server xatosi: ${e.response!.statusCode}';
+        throw Exception(msg);
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
+    } catch (e) {
+      throw Exception('Mahsulotni o\'chirishda kutilmagan xato: $e');
     }
   }
 

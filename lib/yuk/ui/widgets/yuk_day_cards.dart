@@ -53,10 +53,11 @@ DateTime _orderDay(YukOrder o) {
   return DateTime(local.year, local.month, local.day);
 }
 
-// Buyurtmaning ko'rsatiladigan mahsulot qatorlari: rasxod emas va
-// "olinmagan"/bo'sh (taken == 0 && subtotal == 0) qatorlar tashlanadi.
+// Buyurtmaning ko'rsatiladigan mahsulot qatorlari: rasxod emas, o'chirilmagan
+// va "olinmagan"/bo'sh (taken == 0 && subtotal == 0) qatorlar tashlanadi.
 List<YukOrderItem> _visibleProducts(YukOrder o) => o.items
-    .where((i) => !i.isRasxod && !(i.taken == 0 && i.subtotal == 0))
+    .where(
+        (i) => !i.isRasxod && !i.deleted && !(i.taken == 0 && i.subtotal == 0))
     .toList();
 
 // Buyurtma kunlik kartaga biror narsa qo'shadimi: ko'rinadigan mahsulot
@@ -106,6 +107,10 @@ class YukDayCard extends StatelessWidget {
   // (bugalter miqdor/summani tuzatishi uchun). null (default) — qatorlar
   // faqat o'qiladi; yuk tarixi ekrani shu holatda qoladi.
   final void Function(YukOrder order, YukOrderItem item)? onEditItem;
+  // Qator BOSIB TURILGANDA (long-press) o'chirish uchun callback (bugalter
+  // mahsulot/xarajatni soft-delete qiladi). null (default) — long-press yo'q;
+  // yuk tarixi ekrani shu holatda qoladi.
+  final void Function(YukOrder order, YukOrderItem item)? onDeleteItem;
   const YukDayCard({
     super.key,
     required this.day,
@@ -113,6 +118,7 @@ class YukDayCard extends StatelessWidget {
     this.showImages = false,
     this.showSkladLabels = false,
     this.onEditItem,
+    this.onDeleteItem,
   });
 
   static const Color _accent = Color(0xFFC5A97B);
@@ -137,12 +143,13 @@ class YukDayCard extends StatelessWidget {
     // Kun darajasida kamaygan bo'lsa — eski summa ustidan chizilib,
     // yangisi yashil ko'rsatiladi.
     final reduced = (effectiveSum - totalSum).abs() > 0.0001;
-    // Kunning barcha buyurtmalaridagi rasxod (xarajat) qatorlari — bitta blok.
-    // Har qator o'z buyurtmasi bilan yuradi (bugalter summasini tahrirlashi
-    // uchun order kerak).
+    // Kunning barcha buyurtmalaridagi rasxod (xarajat) qatorlari — bitta blok
+    // (o'chirilganlari ko'rsatilmaydi). Har qator o'z buyurtmasi bilan yuradi
+    // (bugalter summasini tahrirlashi/o'chirishi uchun order kerak).
     final rasxodItems = <MapEntry<YukOrder, YukOrderItem>>[
       for (final o in orders)
-        for (final i in o.items.where((i) => i.isRasxod)) MapEntry(o, i),
+        for (final i in o.items.where((i) => i.isRasxod && !i.deleted))
+          MapEntry(o, i),
     ];
     final grandTotal = effectiveSum + expenses;
 
@@ -428,7 +435,8 @@ class YukDayCard extends StatelessWidget {
   }
 
   // Bitta xarajat (rasxod) qatori: nomi + summasi. onEditItem berilgan bo'lsa
-  // bosiladigan bo'ladi — bugalter xarajat summasini tuzatadi (miqdori yo'q).
+  // bosiladigan bo'ladi — bugalter xarajat summasini tuzatadi (miqdori yo'q);
+  // onDeleteItem berilgan bo'lsa bosib turilganda o'chirish so'raladi.
   Widget _rasxodRow(YukOrder order, YukOrderItem item) {
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -458,6 +466,8 @@ class YukDayCard extends StatelessWidget {
     if (onEditItem == null) return row;
     return InkWell(
       onTap: () => onEditItem!(order, item),
+      onLongPress:
+          onDeleteItem == null ? null : () => onDeleteItem!(order, item),
       borderRadius: BorderRadius.circular(6),
       child: row,
     );
@@ -465,7 +475,8 @@ class YukDayCard extends StatelessWidget {
 
   // Bitta mahsulot qatori: Mahsulot / Soni / Donasi / Turi / Summa.
   // onEditItem berilgan bo'lsa qator bosiladigan bo'ladi (bugalter miqdor va
-  // summani tuzatadi) va "Soni" bilan "Summa" yonida tahrir belgisi ko'rinadi.
+  // summani tuzatadi) va "Soni" bilan "Summa" yonida tahrir belgisi ko'rinadi;
+  // onDeleteItem berilgan bo'lsa bosib turilganda o'chirish so'raladi.
   Widget _productRow(YukOrder order, YukOrderItem item) {
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -581,6 +592,8 @@ class YukDayCard extends StatelessWidget {
     if (onEditItem == null) return row;
     return InkWell(
       onTap: () => onEditItem!(order, item),
+      onLongPress:
+          onDeleteItem == null ? null : () => onDeleteItem!(order, item),
       borderRadius: BorderRadius.circular(6),
       child: row,
     );
