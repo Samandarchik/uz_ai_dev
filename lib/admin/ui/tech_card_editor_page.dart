@@ -460,21 +460,21 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   String get _batchLabel =>
       _gramMode ? 'на ${c.totalPieces} гр' : 'на ${c.totalPieces} тортов';
 
-  // Гр rejimida partiya soni AVTO: bir marta tayyorlaganda masalliqlardan
-  // qancha chiqsa — o'sha (гр). List bo'linishi гр'da ma'nosiz (doim 1).
-  // Backend ham xuddi shunday yozadi (recomputeTechCardWeights), shuning uchun
-  // ekranda ko'ringan qiymat saqlangandan keyin ham o'zgarmaydi.
-  // build() boshida chaqiriladi — masalliq qo'shilishi/o'chishi bilan yangilanadi.
-  void _syncGramBatch() {
-    if (!_gramMode) return;
-    final w = techBatchWeightG(c.build(), _productById);
-    final qty = w > 0 ? w : 1;
-    if (c.batchQty != qty) c.batchQty = qty;
-    if (c.listQty != 1) c.listQty = 1;
+  // Гр rejimida partiya soni (chiqim) QO'LDA kiritiladi — masalliqlar
+  // og'irligiga tenglanmaydi: pishirishda yo'qotish bo'ladi (1000 гр
+  // masalliqdan 900 гр tayyor chiqishi mumkin). Kiritilgan son — bir marta
+  // tayyorlaganda chiqadigan гр; «1 гр tannarxi» ham shunga bo'linadi.
+  // List bo'linishi гр'da ma'nosiz — doim 1, ya'ni «Грамм» va «Общее
+  // количество» kataklari bir xil sonni ko'rsatadi (ikkalasi ham tahrirlanadi).
+  void _setGramBatchQty(int qty) {
+    setState(() {
+      c.batchQty = qty < 1 ? 1 : qty;
+      c.listQty = 1;
+    });
   }
 
   // Гр rejimiga o'tishdan oldingi шт partiya soni — orqaga qaytilsa tiklanadi
-  // (гр'da qiymat avto og'irlik bilan almashadi, ya'ni yo'qolib ketardi).
+  // (гр'da list soni 1 ga tushadi, ya'ni listQty yo'qolib ketardi).
   int? _pcsBatchQtyBackup;
   int? _pcsListQtyBackup;
 
@@ -482,12 +482,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() {
       if (_gramMode) {
         c.batchUnit = '';
-        c.batchQty = _pcsBatchQtyBackup ?? 1;
+        c.batchQty = _pcsBatchQtyBackup ?? c.batchQty;
         c.listQty = _pcsListQtyBackup ?? 1;
       } else {
         _pcsBatchQtyBackup = c.batchQty;
         _pcsListQtyBackup = c.listQty;
-        c.batchUnit = 'g'; // partiya soni build'da avto hisoblanadi
+        c.batchUnit = 'g';
+        c.listQty = 1; // гр'da list bo'linishi yo'q
       }
     });
   }
@@ -1277,8 +1278,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Гр rejimida partiya soni masalliqlar og'irligiga tenglanadi (avto).
-    _syncGramBatch();
     // Har rebuild'dan keyin fokussiz profit/dop.rasxod maydonlarini modelga
     // tenglaymiz (miqdor o'zgarsa summa/foiz jonli yangilanadi).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1458,23 +1457,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             // Штук — bitta listdan chiqadigan dona (batchQty). Birlik (шт↔гр)
             // almashtirish tugmasi BITTA — «Bo'limlar» qatoridagi «Общее
             // количество» yonida; bu katak faqat joriy birlikni ko'rsatadi.
-            // Гр rejimida qiymat AVTO (masalliqlar og'irligi) — tahrirlanmaydi.
+            // Гр rejimida bu — bir marta tayyorlashdagi CHIQIM (гр), qo'lda
+            // kiritiladi; list bo'linishi yo'q (listQty = 1).
             _flexCell(
-              _gramMode
-                  ? Padding(
-                      padding: _kCellPad,
-                      child: Text(
-                        '${c.batchQty} $_unitShort',
-                        style: _kCellStyle,
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : _InlineIntCell(
-                      value: c.batchQty,
-                      suffixText: _unitShort,
-                      onValue: (qty) =>
-                          setState(() => c.batchQty = qty < 1 ? 1 : qty),
-                    ),
+              _InlineIntCell(
+                value: c.batchQty,
+                suffixText: _unitShort,
+                onValue: (qty) => _gramMode
+                    ? _setGramBatchQty(qty)
+                    : setState(() => c.batchQty = qty < 1 ? 1 : qty),
+              ),
               flex: 2,
               leftBorder: true,
               padded: false,
@@ -1943,21 +1935,14 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               const SizedBox(width: 6),
               Container(
                 width: 80,
-                alignment: _gramMode ? Alignment.center : null,
                 decoration: BoxDecoration(
-                  color: _gramMode ? Colors.grey.shade100 : Colors.white,
+                  color: Colors.white,
                   border: Border.all(color: Colors.grey.shade400),
                 ),
-                // Гр rejimida AVTO (masalliqlar og'irligi) — tahrirlanmaydi.
-                child: _gramMode
-                    ? Padding(
-                        padding: _kCellPad,
-                        child: Text('${c.totalPieces}', style: _kCellStyle),
-                      )
-                    : _InlineIntCell(
-                        value: c.totalPieces,
-                        onValue: _setTotalPieces,
-                      ),
+                child: _InlineIntCell(
+                  value: c.totalPieces,
+                  onValue: _gramMode ? _setGramBatchQty : _setTotalPieces,
+                ),
               ),
               const SizedBox(width: 6),
               // Birlik yozuvi katakdan TASHQARIDA; полуфабрикатда bosilsa
