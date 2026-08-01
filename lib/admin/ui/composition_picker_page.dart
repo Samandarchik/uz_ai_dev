@@ -357,11 +357,18 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   bool get _isShtFamily =>
       normalizeProductType(widget.product.type) == 'шт';
 
+  // Полуфабрикат birligi TANLANMAYDI — o'z tex kartasi belgilaydi: batch_unit
+  // 'g' → гр, aks holda дона. Дона'dagi пф grammga o'tmaydi (birlik faqat пф
+  // tex kartasida шт↔гр bilan o'zgartiriladi). null — oddiy (xom) mahsulot.
+  String? get _pfFixedUnit => widget.product.isSemiFinished
+      ? (widget.product.techCard?.batchUnit == 'g' ? 'g' : 'pcs')
+      : null;
+
   @override
   void initState() {
     super.initState();
-    // Mahsulot turidan birlikni topishga harakat qilamiz.
-    _unit = normalizeTechUnit(widget.product.type);
+    // Mahsulot turidan birlikni topishga harakat qilamiz (пф — kartasidan).
+    _unit = _pfFixedUnit ?? normalizeTechUnit(widget.product.type);
     final saved = _effectiveW;
     if (saved > 0 && !widget.product.isSemiFinished) {
       _pieceWeightController.text = saved.toString();
@@ -480,7 +487,10 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   @override
   Widget build(BuildContext context) {
     final amount = int.tryParse(_amountController.text.trim()) ?? 0;
-    final showPieceWeight = _isShtFamily && _unit == 'g';
+    // «1 шт = X gr» faqat XOM шт mahsulotda (tuxum) kerak — гр rejimidagi
+    // пф o'zi grammda o'lchanadi (1 dona = 1 гр), eslatma ortiqcha.
+    final showPieceWeight =
+        _isShtFamily && _unit == 'g' && _pfFixedUnit != 'g';
     final w = _currentW;
     // Jonli «≈ N шт» hisobi (gramm kiritilayotganda).
     final pcsHint = (showPieceWeight && w > 0 && amount > 0)
@@ -518,21 +528,31 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
               ),
             ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _unit,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Ед. изм.',
-              border: OutlineInputBorder(),
+          // Пф birligi qat'iy (o'z tex kartasidan) — tanlash yo'q.
+          if (_pfFixedUnit != null)
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Ед. изм.',
+                border: OutlineInputBorder(),
+              ),
+              child: Text(techUnitLabel(_unit)),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: _unit,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Ед. изм.',
+                border: OutlineInputBorder(),
+              ),
+              items: kTechUnits
+                  .map((u) => DropdownMenuItem<String>(
+                        value: u,
+                        child: Text(techUnitLabel(u)),
+                      ))
+                  .toList(),
+              onChanged: _onUnitChanged,
             ),
-            items: kTechUnits
-                .map((u) => DropdownMenuItem<String>(
-                      value: u,
-                      child: Text(techUnitLabel(u)),
-                    ))
-                .toList(),
-            onChanged: _onUnitChanged,
-          ),
           if (pcsUnitHint != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),

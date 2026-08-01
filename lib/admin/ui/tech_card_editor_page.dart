@@ -241,6 +241,20 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   bool _isPfItem(TechItem item) =>
       _productById[item.productId]?.isSemiFinished == true;
 
+  // Полуфабрикат qatorining birligi O'Z tex kartasidan kelib chiqadi:
+  // batch_unit 'g' → гр ('g'), aks holda дона ('pcs'). Boshqa birlikka
+  // o'tkazish taqiqlanadi (дона'dagi пф grammga o'tmaydi). null — ruxsat.
+  String? _pfUnitBlockedMessage(TechItem item, String unit) {
+    final pf = _productById[item.productId];
+    if (pf == null || !pf.isSemiFinished) return null;
+    final own = pf.techCard?.batchUnit == 'g' ? 'g' : 'pcs';
+    if (unit == own) return null;
+    return own == 'g'
+        ? '«${pf.name}» гр\'da o\'lchanadi'
+        : '«${pf.name}» дона\'da o\'lchanadi — birligi o\'z tex kartasida '
+            'шт↔гр bilan o\'zgartiriladi';
+  }
+
   // Qator mahsuloti шт-oilasidan bo'lib, effektiv «1 dona og'irligi» (W)
   // noma'lum bo'lsa — 'g' birligiga O'TKAZISH taqiqlanadi (backend g -> dona
   // konvertini qila olmaydi). null — cheklov yo'q.
@@ -2262,6 +2276,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 ],
                 onSelected: (u) {
                   if (u == item.unit) return;
+                  // Полуфабрикат birligi O'Z tex kartasida belgilanadi: дона
+                  // (шт rejimi) yoki гр (batch_unit 'g'). Дона'dagi пф'ni
+                  // grammga o'tkazib bo'lmaydi va aksincha.
+                  final pfBlocked = _pfUnitBlockedMessage(item, u);
+                  if (pfBlocked != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(pfBlocked)));
+                    return;
+                  }
                   final blocked = _gramBlockedMessage(item);
                   if (u == 'g' && blocked != null) {
                     ScaffoldMessenger.of(context)
@@ -2673,9 +2696,11 @@ class _ShapeDialogState extends State<_ShapeDialog> {
   }
 }
 
-// ---- Полуфабрикат miqdor dialogi: «дона» / «грамм» ----
-// «дона» — eski oqim (unit 'pcs'). «грамм» — unit 'g', faqat pf 1 dona
-// og'irligi (W) ma'lum bo'lsa tanlanadi; jonli «≈ X dona» hisobi ko'rsatiladi.
+// ---- Полуфабрикат miqdor dialogi ----
+// Birlik TANLANMAYDI — пф'ning O'Z tex kartasi belgilaydi: batch_unit 'g'
+// bo'lsa гр (unit 'g'), aks holda дона (unit 'pcs'). Дона'dagi пф grammga
+// o'tmaydi (va aksincha) — birlik faqat пф tex kartasida шт↔гр bilan
+// o'zgartiriladi.
 
 class _PfAmountResult {
   final String unit; // 'pcs' | 'g'
@@ -2687,9 +2712,9 @@ class _PfAmountResult {
 class _PfAmountDialog extends StatefulWidget {
   final String title;
   final int batchQty; // joriy karta partiyasi JAMI donasi (label uchun)
-  final int pieceWeightG; // pf 1 dona og'irligi; 0 — грамм tanlab bo'lmaydi
-  // Pf partiyasi гр rejimidami (batch_unit 'g'): 1 dona = 1 гр, ya'ni ikkala
-  // birlik ayni bir narsa — shunda «грамм» boshlang'ich tanlov bo'ladi.
+  final int pieceWeightG; // pf 1 dona og'irligi (дона rejimida ma'lumot uchun)
+  // Пф partiyasi гр rejimidami (batch_unit 'g') — kiritish birligini shu
+  // belgilaydi: true → гр, false → дона.
   final bool gramBatch;
 
   const _PfAmountDialog({
@@ -2705,14 +2730,8 @@ class _PfAmountDialog extends StatefulWidget {
 
 class _PfAmountDialogState extends State<_PfAmountDialog> {
   final TextEditingController _ctrl = TextEditingController();
-  late String _unit;
 
-  @override
-  void initState() {
-    super.initState();
-    // Гр rejimidagi pf grammda kiritilishi tabiiy (1 dona = 1 гр).
-    _unit = (widget.gramBatch && widget.pieceWeightG > 0) ? 'g' : 'pcs';
-  }
+  String get _unit => widget.gramBatch ? 'g' : 'pcs';
 
   @override
   void dispose() {
@@ -2729,12 +2748,6 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
   @override
   Widget build(BuildContext context) {
     final w = widget.pieceWeightG;
-    final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
-    // Grammda kiritilayotganda jonli «≈ X dona» hisobi (гр rejimidagi pf'da
-    // gramm = dona, ya'ni ko'rsatishning hojati yo'q).
-    final pcsHint = (_unit == 'g' && !widget.gramBatch && w > 0 && amount > 0)
-        ? '≈ ${(amount / w).toStringAsFixed(1)} dona'
-        : null;
     final hintStyle = TextStyle(fontSize: 12.5, color: Colors.grey.shade700);
     return AlertDialog(
       title: Text(widget.title),
@@ -2742,46 +2755,12 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Гр rejimidagi pf O'ZI grammda o'lchanadi — birlik tanlash yo'q.
-          if (!widget.gramBatch) ...[
-            RadioGroup<String>(
-              groupValue: _unit,
-              onChanged: (v) {
-                if (v == null) return;
-                if (v == 'g' && w <= 0) return; // og'irlik yo'q — bloklangan
-                setState(() => _unit = v);
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const RadioListTile<String>(
-                    value: 'pcs',
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('дона'),
-                  ),
-                  RadioListTile<String>(
-                    value: 'g',
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    enabled: w > 0,
-                    title: const Text('грамм'),
-                    subtitle: w > 0
-                        ? null
-                        : const Text(
-                            'Пф tex kartasida og\'irlik yo\'q',
-                            style: TextStyle(fontSize: 11.5),
-                          ),
-                  ),
-                ],
-              ),
+          // Дона rejimida 1 dona og'irligi — faqat ma'lumot uchun.
+          if (!widget.gramBatch && w > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('1 dona ≈ $w г', style: hintStyle),
             ),
-            if (w > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('1 dona ≈ $w г', style: hintStyle),
-              ),
-          ],
           TextField(
             controller: _ctrl,
             autofocus: true,
@@ -2793,14 +2772,8 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
                   : 'Necha dona (${widget.batchQty} talik partiya uchun)',
               border: const OutlineInputBorder(),
             ),
-            onChanged: (_) => setState(() {}),
             onSubmitted: (_) => _submit(),
           ),
-          if (pcsHint != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(pcsHint, style: hintStyle),
-            ),
         ],
       ),
       actions: [
