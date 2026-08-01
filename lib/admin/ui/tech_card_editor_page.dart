@@ -279,13 +279,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   double? _rowUnitPrice(TechItem item) => techRowUnitPrice(item, _prices,
       products: _productById, wasteFactors: _wasteFactors);
 
-  double _baseCost(TechBase base) => techItemsCost(
-      base.ingredients, _prices, _wasteFactors,
-      products: _productById);
+  double _baseCost(TechBase base) =>
+      techItemsCost(base.ingredients, _prices, _wasteFactors,
+          products: _productById);
 
-  double get _consumablesCost => techItemsCost(
-      c.consumables, _prices, _wasteFactors,
-      products: _productById);
+  double get _consumablesCost =>
+      techItemsCost(c.consumables, _prices, _wasteFactors,
+          products: _productById);
 
   // Partiya masalliq tannarxi = barcha bazalar + расходник.
   double get _batchCost =>
@@ -743,8 +743,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       ),
     );
     if (picked == null || !mounted) return;
-    setState(() =>
-        c.bases[baseIndex] = c.bases[baseIndex].copyWith(stage: picked));
+    setState(
+        () => c.bases[baseIndex] = c.bases[baseIndex].copyWith(stage: picked));
   }
 
   // ---- Baza amallari ----
@@ -980,8 +980,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    setState(() => c.bases[index] =
-                        c.bases[index].copyWith(imageUrl: ''));
+                    setState(() =>
+                        c.bases[index] = c.bases[index].copyWith(imageUrl: ''));
                   },
                   child: const Text(
                     'O\'chirish',
@@ -1033,99 +1033,200 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // ProductProviderAdmin (yagona manba) dagi is_semi_finished mahsulotlardan
   // tanlanadi; qator dona (шт) birligida oddiy ingredient bo'lib saqlanadi.
 
-  // Полуфабрикат ICHIDAGI masalliqlarni pastki oynada ko'rsatadi (ПФ chipi
-  // bosilganda). Ichma-ich pf qatori ham bosiladi — o'sha oyna qayta ochiladi.
-  void _showPfContents(ProductModelAdmin pf) {
-    final tc = pf.techCard;
-    if (tc == null) return;
-    final pieceW = techPfPieceWeightG(pf.id, _productById);
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Text(
-                pf.name,
-                style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                tc.batchUnit == 'g'
-                    ? 'Partiya: ${techTotalPieces(tc)} гр'
-                    : 'Partiya: ${techTotalPieces(tc)} dona'
-                        '${pieceW > 0 ? ' • 1 dona ≈ $pieceW г' : ''}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final base in tc.bases) ...[
-                    if (tc.bases.length > 1)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                        child: Text(
-                          base.name,
-                          style: const TextStyle(
-                              fontSize: 12.5, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    for (final ing in base.ingredients)
-                      _pfContentsRow(ctx, ing),
-                  ],
-                  if (tc.consumables.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                      child: Text(
-                        'Расходник',
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700),
-                      ),
-                    ),
-                    for (final ing in tc.consumables) _pfContentsRow(ctx, ing),
-                  ],
-                ],
-              ),
-            ),
-          ],
+  // ---- Полуфабрикат tarkibini JOYIDA ochish ----
+  // ПФ chipi bosilsa пф ichidagi masalliqlar SHU qator ostida, oddiy
+  // ingredient qatorlari ko'rinishida ochiladi (alohida oyna YO'Q). Miqdorlar
+  // shu kartada ishlatilgan ulushga ko'paytirilgan holda ko'rsatiladi: пф
+  // partiyasi 20 dona bo'lib, bu kartaga 20 dona ketsa — пф retseptining
+  // to'liq miqdori; 10 dona ketsa — yarmi.
+  // Kalit: qator yo'li ('b0.2', ichma-ich 'b0.2>1.0') — o'sha qator ochiqmi.
+  final Set<String> _expandedPf = <String>{};
+
+  void _togglePfRow(String rowKey) {
+    setState(() {
+      if (!_expandedPf.remove(rowKey)) _expandedPf.add(rowKey);
+    });
+  }
+
+  // Пф qatorining ULUSHI: qatorda ko'rsatilgan miqdor пф partiyasining necha
+  // barobari. 'pcs' — amount / partiya donasi; 'g' — (amount / 1 dona vazni) /
+  // partiya donasi (гр rejimidagi пф'da 1 dona = 1 гр). null — hisoblab
+  // bo'lmadi (tex karta yo'q, birlik mos emas yoki og'irlik noma'lum).
+  double? _pfUsageFactor(TechItem item) {
+    final pf = _productById[item.productId];
+    final tc = pf?.techCard;
+    if (pf == null || tc == null) return null;
+    final total = techTotalPieces(tc);
+    if (total <= 0) return null;
+    double dona;
+    if (item.unit == 'pcs') {
+      dona = item.amount.toDouble();
+    } else if (item.unit == 'g') {
+      final w = techEffectivePieceWeightG(pf.id, _productById);
+      if (w <= 0) return null;
+      dona = item.amount / w;
+    } else {
+      return null;
+    }
+    return dona / total;
+  }
+
+  // Ko'paytirilgan miqdor matni: g/ml — кг/литр (3 xona), pcs/m — o'z birligi
+  // (kasr chiqsa 1 xona bilan).
+  String _scaledAmountText(String unit, double amount) {
+    if (unit == 'g' || unit == 'ml') return (amount / 1000).toStringAsFixed(3);
+    final rounded = amount.roundToDouble();
+    return (amount - rounded).abs() < 0.05
+        ? rounded.toStringAsFixed(0)
+        : amount.toStringAsFixed(1);
+  }
+
+  // Пф tarkibi qatorlari (baza sarlavhalari + masalliqlar + расходник).
+  // factor — tashqi ulush (ichma-ich пф'da ko'paytirilib boradi).
+  List<Widget> _pfChildRows({
+    required TechItem item,
+    required double factor,
+    required int depth,
+    required String parentKey,
+  }) {
+    final tc = _productById[item.productId]?.techCard;
+    if (tc == null) return const [];
+    final own = _pfUsageFactor(item);
+    if (own == null) {
+      return [_pfNoteRow('Miqdorni hisoblab bo\'lmadi', depth)];
+    }
+    final f = factor * own;
+    final rows = <Widget>[];
+    for (int bi = 0; bi < tc.bases.length; bi++) {
+      final base = tc.bases[bi];
+      if (tc.bases.length > 1) rows.add(_pfNoteRow(base.name, depth));
+      for (int ii = 0; ii < base.ingredients.length; ii++) {
+        rows.add(_pfChildRow(
+          ing: base.ingredients[ii],
+          factor: f,
+          depth: depth,
+          rowKey: '$parentKey>$bi.$ii',
+        ));
+      }
+    }
+    for (int ci = 0; ci < tc.consumables.length; ci++) {
+      if (ci == 0) rows.add(_pfNoteRow('Расходник', depth));
+      rows.add(_pfChildRow(
+        ing: tc.consumables[ci],
+        factor: f,
+        depth: depth,
+        rowKey: '$parentKey>c$ci',
+      ));
+    }
+    return rows;
+  }
+
+  // Ochilgan tarkibdagi guruh sarlavhasi (baza nomi / «Расходник»).
+  Widget _pfNoteRow(String text, int depth) => Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(12.0 + 14 * depth, 4, 8, 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          border: const Border(bottom: _kSide),
         ),
-      ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      );
+
+  // Пф tarkibidagi bitta masalliq qatori — tahrirlanmaydi, ustunlar asosiy
+  // jadval bilan bir xil (birlik | miqdor | Цена | Сумма).
+  Widget _pfChildRow({
+    required TechItem ing,
+    required double factor,
+    required int depth,
+    required String rowKey,
+  }) {
+    final nested = _isPfItem(ing) ? _productById[ing.productId] : null;
+    final canExpand = nested != null && depth + 1 < kTechPfMaxDepth;
+    final expanded = _expandedPf.contains(rowKey);
+    final price = _rowUnitPrice(ing);
+    final rowCost = _rowCost(ing);
+    final cost = rowCost == null ? null : rowCost * factor;
+    final subStyle = TextStyle(fontSize: 12, color: Colors.grey.shade800);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            border: const Border(bottom: _kSide),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12.0 + 14 * depth, 6, 8, 6),
+                    child: Row(
+                      children: [
+                        Icon(Icons.subdirectory_arrow_right,
+                            size: 12, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Flexible(child: Text(ing.name, style: subStyle)),
+                        if (canExpand)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _togglePfRow(rowKey),
+                            child: _pfChip(withIcon: true, expanded: expanded),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  width: _kUnitColW,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(border: Border(left: _kSide)),
+                  child: Text(_excelUnitLabel(ing.unit), style: subStyle),
+                ),
+                Container(
+                  width: _kAmountColW,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(border: Border(left: _kSide)),
+                  child: Text(
+                    _scaledAmountText(ing.unit, ing.amount * factor),
+                    style: subStyle,
+                  ),
+                ),
+                _moneyCell(
+                  price == null ? '—' : fmtCostMoney(price),
+                  width: _kPriceColW,
+                  grey: price == null,
+                ),
+                _moneyCell(
+                  cost == null ? '—' : fmtCostMoney(cost),
+                  width: _kSumColW,
+                  grey: cost == null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (canExpand && expanded)
+          ..._pfChildRows(
+            item: ing,
+            factor: factor,
+            depth: depth + 1,
+            parentKey: rowKey,
+          ),
+      ],
     );
   }
 
-  Widget _pfContentsRow(BuildContext ctx, TechItem ing) {
-    final nestedPf = _isPfItem(ing) ? _productById[ing.productId] : null;
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      title: Row(
-        children: [
-          Flexible(child: Text(ing.name, style: const TextStyle(fontSize: 13))),
-          if (nestedPf != null) _pfChip(withIcon: true),
-        ],
-      ),
-      trailing: Text(
-        '${_excelAmount(ing)} ${_excelUnitLabel(ing.unit)}',
-        style: const TextStyle(fontSize: 13),
-      ),
-      onTap: nestedPf != null ? () => _showPfContents(nestedPf) : null,
-    );
-  }
-
-  // «ПФ» chipi; withIcon=true bo'lsa ichida ro'yxat borligini bildiruvchi
-  // strelka qo'shiladi (bosish mumkinligiga ishora).
-  Widget _pfChip({bool withIcon = false}) {
+  // «ПФ» chipi; withIcon=true bo'lsa ochish/yopish strelkasi qo'shiladi.
+  Widget _pfChip({bool withIcon = false, bool expanded = false}) {
     return Container(
       margin: const EdgeInsets.only(left: 5),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -1146,7 +1247,11 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             ),
           ),
           if (withIcon)
-            Icon(Icons.expand_more, size: 12, color: Colors.purple.shade700),
+            Icon(
+              expanded ? Icons.expand_less : Icons.expand_more,
+              size: 12,
+              color: Colors.purple.shade700,
+            ),
         ],
       ),
     );
@@ -1611,9 +1716,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   bool get _schemeVisible =>
       !_gramMode &&
       _piecesPerList > 1 &&
-      ((c.shape == 'rect' &&
-              (c.widthCm ?? 0) > 0 &&
-              (c.lengthCm ?? 0) > 0) ||
+      ((c.shape == 'rect' && (c.widthCm ?? 0) > 0 && (c.lengthCm ?? 0) > 0) ||
           (c.shape == 'round' && (c.diameterCm ?? 0) > 0));
 
   Widget _cuttingScheme() {
@@ -2143,6 +2246,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           for (int j = 0; j < base.ingredients.length; j++)
             _itemRow(
               base.ingredients[j],
+              rowKey: 'b$index.$j',
               onChanged: (updated) => _updateIngredient(index, j, updated),
               onLongPress: () => _deleteIngredient(index, j),
             ),
@@ -2197,6 +2301,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           for (int i = 0; i < c.consumables.length; i++)
             _itemRow(
               c.consumables[i],
+              rowKey: 'c$i',
               onChanged: (updated) => _updateConsumable(i, updated),
               onLongPress: () => _deleteConsumable(i),
             ),
@@ -2225,115 +2330,137 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     TechItem item, {
     required ValueChanged<TechItem> onChanged,
     required VoidCallback onLongPress,
+    required String rowKey,
   }) {
     final price = _rowUnitPrice(item);
     final cost = _rowCost(item);
     final noPrice = cost == null;
     final stale = !noPrice && _isStalePrice(item);
     final isPf = _isPfItem(item);
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: _kSide),
-      ),
-      child: InkWell(
-        onLongPress: onLongPress,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: _kCellPad,
-                  child: Row(
-                    children: [
-                      Flexible(child: Text(item.name, style: _kCellStyle)),
-                      // Полуфабрикат belgisi — bosilsa ichidagi masalliqlar
-                      // ro'yxati ochiladi (strelka shunga ishora).
-                      if (isPf)
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            final pf = _productById[item.productId];
-                            if (pf != null) _showPfContents(pf);
-                          },
-                          child: _pfChip(withIcon: true),
+    // Ochish faqat tarkibi bor пф'da (bo'sh tex kartada ochadigan narsa yo'q).
+    final canExpand = isPf &&
+        (_productById[item.productId]?.techCard?.bases.isNotEmpty ?? false);
+    final expanded = canExpand && _expandedPf.contains(rowKey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: _kSide),
+          ),
+          child: InkWell(
+            onLongPress: onLongPress,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: _kCellPad,
+                      child: Row(
+                        children: [
+                          Flexible(child: Text(item.name, style: _kCellStyle)),
+                          // Полуфабрикат belgisi — bosilsa ichidagi masalliqlar
+                          // SHU qator ostida ochiladi/yopiladi.
+                          if (isPf)
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap:
+                                  canExpand ? () => _togglePfRow(rowKey) : null,
+                              child: _pfChip(
+                                withIcon: canExpand,
+                                expanded: expanded,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Birlik — bosilsa tanlash menyusi. 'g' ga o'tish шт mahsulotda
+                  // og'irlik yo'q bo'lsa bloklanadi (backend konvert qila olmaydi).
+                  PopupMenuButton<String>(
+                    tooltip: 'Birlikni almashtirish',
+                    itemBuilder: (_) => [
+                      for (final u in kTechUnits)
+                        PopupMenuItem(
+                          value: u,
+                          child: Text(_excelUnitLabel(u)),
                         ),
                     ],
-                  ),
-                ),
-              ),
-              // Birlik — bosilsa tanlash menyusi. 'g' ga o'tish шт mahsulotda
-              // og'irlik yo'q bo'lsa bloklanadi (backend konvert qila olmaydi).
-              PopupMenuButton<String>(
-                tooltip: 'Birlikni almashtirish',
-                itemBuilder: (_) => [
-                  for (final u in kTechUnits)
-                    PopupMenuItem(
-                      value: u,
-                      child: Text(_excelUnitLabel(u)),
+                    onSelected: (u) {
+                      if (u == item.unit) return;
+                      // Полуфабрикат birligi O'Z tex kartasida belgilanadi: дона
+                      // (шт rejimi) yoki гр (batch_unit 'g'). Дона'dagi пф'ni
+                      // grammga o'tkazib bo'lmaydi va aksincha.
+                      final pfBlocked = _pfUnitBlockedMessage(item, u);
+                      if (pfBlocked != null) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text(pfBlocked)));
+                        return;
+                      }
+                      final blocked = _gramBlockedMessage(item);
+                      if (u == 'g' && blocked != null) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text(blocked)));
+                        return;
+                      }
+                      onChanged(item.copyWith(unit: u));
+                    },
+                    child: Container(
+                      width: _kUnitColW,
+                      alignment: Alignment.center,
+                      decoration:
+                          const BoxDecoration(border: Border(left: _kSide)),
+                      child:
+                          Text(_excelUnitLabel(item.unit), style: _kCellStyle),
                     ),
+                  ),
+                  Container(
+                    width: _kAmountColW,
+                    alignment: Alignment.center,
+                    decoration:
+                        const BoxDecoration(border: Border(left: _kSide)),
+                    child: _InlineAmountCell(
+                      item: item,
+                      onAmount: (v) => onChanged(item.copyWith(amount: v)),
+                    ),
+                  ),
+                  // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
+                  // Eski narx (>30 kun) — sariq fon; bosilsa xarid tarixi.
+                  _moneyCell(
+                    noPrice ? '—' : fmtCostMoney(price!),
+                    width: _kPriceColW,
+                    grey: noPrice,
+                    bg: stale ? const Color(0xFFFFECB3) : null,
+                    onTap: item.productId != 0
+                        ? () => showPriceHistorySheet(
+                              context,
+                              productId: item.productId,
+                              productName: item.name,
+                            )
+                        : null,
+                  ),
+                  // Сумма: kiritilgan miqdorning tannarxi.
+                  _moneyCell(
+                    noPrice ? '—' : fmtCostMoney(cost),
+                    width: _kSumColW,
+                    grey: noPrice,
+                  ),
                 ],
-                onSelected: (u) {
-                  if (u == item.unit) return;
-                  // Полуфабрикат birligi O'Z tex kartasida belgilanadi: дона
-                  // (шт rejimi) yoki гр (batch_unit 'g'). Дона'dagi пф'ni
-                  // grammga o'tkazib bo'lmaydi va aksincha.
-                  final pfBlocked = _pfUnitBlockedMessage(item, u);
-                  if (pfBlocked != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(pfBlocked)));
-                    return;
-                  }
-                  final blocked = _gramBlockedMessage(item);
-                  if (u == 'g' && blocked != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(blocked)));
-                    return;
-                  }
-                  onChanged(item.copyWith(unit: u));
-                },
-                child: Container(
-                  width: _kUnitColW,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(border: Border(left: _kSide)),
-                  child: Text(_excelUnitLabel(item.unit), style: _kCellStyle),
-                ),
               ),
-              Container(
-                width: _kAmountColW,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(border: Border(left: _kSide)),
-                child: _InlineAmountCell(
-                  item: item,
-                  onAmount: (v) => onChanged(item.copyWith(amount: v)),
-                ),
-              ),
-              // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
-              // Eski narx (>30 kun) — sariq fon; bosilsa xarid tarixi.
-              _moneyCell(
-                noPrice ? '—' : fmtCostMoney(price!),
-                width: _kPriceColW,
-                grey: noPrice,
-                bg: stale ? const Color(0xFFFFECB3) : null,
-                onTap: item.productId != 0
-                    ? () => showPriceHistorySheet(
-                          context,
-                          productId: item.productId,
-                          productName: item.name,
-                        )
-                    : null,
-              ),
-              // Сумма: kiritilgan miqdorning tannarxi.
-              _moneyCell(
-                noPrice ? '—' : fmtCostMoney(cost),
-                width: _kSumColW,
-                grey: noPrice,
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        // Пф tarkibi — SHU qator ostida, ulushga ko'paytirilgan miqdorlar.
+        if (expanded)
+          ..._pfChildRows(
+            item: item,
+            factor: 1,
+            depth: 0,
+            parentKey: rowKey,
+          ),
+      ],
     );
   }
 

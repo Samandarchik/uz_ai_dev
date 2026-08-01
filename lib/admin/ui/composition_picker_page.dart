@@ -354,8 +354,7 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
   bool _saving = false;
 
   // Mahsulot шт-oilasidanmi (tuxum, pf...). Pf mahsulot type doim шт.
-  bool get _isShtFamily =>
-      normalizeProductType(widget.product.type) == 'шт';
+  bool get _isShtFamily => normalizeProductType(widget.product.type) == 'шт';
 
   // Полуфабрикат birligi TANLANMAYDI — o'z tex kartasi belgilaydi: batch_unit
   // 'g' → гр, aks holda дона. Дона'dagi пф grammga o'tmaydi (birlik faqat пф
@@ -489,8 +488,7 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
     final amount = int.tryParse(_amountController.text.trim()) ?? 0;
     // «1 шт = X gr» faqat XOM шт mahsulotda (tuxum) kerak — гр rejimidagi
     // пф o'zi grammda o'lchanadi (1 dona = 1 гр), eslatma ortiqcha.
-    final showPieceWeight =
-        _isShtFamily && _unit == 'g' && _pfFixedUnit != 'g';
+    final showPieceWeight = _isShtFamily && _unit == 'g' && _pfFixedUnit != 'g';
     final w = _currentW;
     // Jonli «≈ N шт» hisobi (gramm kiritilayotganda).
     final pcsHint = (showPieceWeight && w > 0 && amount > 0)
@@ -498,8 +496,9 @@ class _AmountUnitDialogState extends State<_AmountUnitDialog> {
         : null;
     // 'pcs' birlikda og'irlik ma'lum bo'lsa kichik eslatma.
     final savedW = _isShtFamily ? _effectiveW : 0;
-    final pcsUnitHint =
-        (_isShtFamily && _unit == 'pcs' && savedW > 0) ? '1 шт ≈ $savedW г' : null;
+    final pcsUnitHint = (_isShtFamily && _unit == 'pcs' && savedW > 0)
+        ? '1 шт ≈ $savedW г'
+        : null;
     return AlertDialog(
       title: Text(widget.product.name),
       content: Column(
