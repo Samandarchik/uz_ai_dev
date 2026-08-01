@@ -148,17 +148,37 @@ class OmborService {
   }
 
   // GET /api/orders -> ombor userning O'Z buyurtmalari ro'yxati.
+  //
   // days/all — tarix oynasi: aktiv buyurtmalar har doim keladi, yopiqlari
   // esa faqat oxirgi `days` kun ichida (null — server default 30 kun,
   // all=true -> to'liq tarix).
+  //
+  // activeOnly — faqat HALI QABUL QILINMAGAN buyurtmalar (?active=1).
+  // «Buyurtmalarim» ekrani aynan shularni ko'rsatadi; qabul qilinganlari
+  // tarix ekranida, u esa kun bo'yicha alohida so'raladi ([fetchOrdersByDate]).
+  // Shunday qilib bosh ekran 30 kunlik tarixni bekorga yuklab olmaydi.
+  //
+  // date — "YYYY-MM-DD": faqat shu kundagi buyurtmalar (?date=...).
+  // Vaqt oynasidan mustaqil, ya'ni istalgan eski kun ochiladi.
+  //
   // Javob: {"success": true, "message": "...", "data": [ {order}, ... ]}
-  Future<List<OmborOrder>> fetchMyOrders({int? days, bool all = false}) async {
+  Future<List<OmborOrder>> fetchMyOrders({
+    int? days,
+    bool all = false,
+    bool activeOnly = false,
+    String? date,
+  }) async {
     try {
       final query = <String, dynamic>{};
-      if (all) {
+      if (date != null) {
+        query['date'] = date;
+      } else if (all) {
         query['all'] = 1;
       } else if (days != null) {
         query['days'] = days;
+      }
+      if (activeOnly) {
+        query['active'] = 1;
       }
       final response = await dio.get(
         AppUrls.orders,

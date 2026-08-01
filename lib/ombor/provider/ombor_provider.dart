@@ -186,6 +186,12 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
   // Bir vaqtda ikkita so'rov ketmasligi uchun yengil guard: bosh ekran ham,
   // «Buyurtmalarim» tabи ham ochilishida chaqiradi — parallel javoblar bir
   // birini eskisi bilan almashtirib qo'ymasin.
+  // MUHIM: `active: true` — javobda faqat HALI QABUL QILINMAGAN buyurtmalar
+  // keladi. Ilgari 30 kunlik butun tarix (asosan qabul qilingan buyurtmalar,
+  // har biri o'nlab itemi bilan) yuklanardi va «Buyurtmalarim» ekrani
+  // ularning ~hammasini tashlab yuborardi — shuning uchun ekran uzoq
+  // ochilardi. Tarix endi kun bo'yicha alohida so'raladi
+  // ([fetchHistoryOrders]), shuning uchun bu ro'yxatga umuman kerak emas.
   Future<void> fetchMyOrders() async {
     if (isLoadingOrders) return;
     isLoadingOrders = true;
@@ -196,6 +202,7 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
       final orders = await _service.fetchMyOrders(
         days: ordersPeriod.days,
         all: ordersPeriod.isAll,
+        activeOnly: true,
       );
       orders.sort((a, b) => b.id.compareTo(a.id));
       myOrders = orders;
@@ -213,6 +220,60 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
     ordersPeriod = period;
     notifyListeners();
     await fetchMyOrders();
+  }
+
+  // ───────────────── Qabul qilinganlar tarixi (kun bo'yicha) ─────────────────
+  //
+  // Tarix ekrani BIR kunni ko'rsatadi, shuning uchun butun oyna emas, aynan
+  // o'sha kun so'raladi (GET /api/orders?date=YYYY-MM-DD). Ro'yxat myOrders'dan
+  // ALOHIDA turadi: bosh ekrandagi aktiv buyurtmalar keshi tarix bilan
+  // shishmaydi va tarixdan chiqilganda o'zi bo'shatiladi.
+  List<OmborOrder> historyOrders = [];
+  bool isLoadingHistory = false;
+  String? historyError;
+
+  // Hozir ko'rsatilayotgan kun ("YYYY-MM-DD") — socket hodisasi shu kunga
+  // tegishlimi yoki yo'qmi shundan aniqlanadi.
+  String? historyDateKey;
+
+  static String dateKeyOf(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> fetchHistoryOrders(DateTime day) async {
+    final key = dateKeyOf(day);
+    historyDateKey = key;
+    isLoadingHistory = true;
+    historyError = null;
+    notifyListeners();
+
+    try {
+      final orders = await _service.fetchMyOrders(date: key);
+      // Kun almashtirilib ulgurilgan bo'lsa eskirgan javobni yozmaymiz.
+      if (historyDateKey != key) return;
+      orders.sort((a, b) => b.id.compareTo(a.id));
+      historyOrders = orders;
+    } catch (e) {
+      if (historyDateKey != key) return;
+      historyError = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (historyDateKey == key) {
+        isLoadingHistory = false;
+      }
+      notifyListeners();
+    }
+  }
+
+  // Tarix ekranidan chiqilganda keshni bo'shatamiz — bu ro'yxat boshqa hech
+  // qayerda ishlatilmaydi, xotirada turishining ma'nosi yo'q.
+  void clearHistoryOrders() {
+    if (historyOrders.isEmpty && historyDateKey == null) return;
+    historyOrders = [];
+    historyDateKey = null;
+    historyError = null;
+    isLoadingHistory = false;
+    notifyListeners();
   }
 
   // Shu mahsulotga BUYURTMA BERILGAN, lekin HALI KELMAGAN miqdor.
@@ -324,10 +385,9 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
         imagePath,
         videoPath,
       );
-      final index = myOrders.indexWhere((o) => o.id == updated.id);
-      if (index >= 0) {
-        myOrders[index] = updated;
-      }
+      // Oxirgi item qabul qilinganda buyurtma "qabul_qilindi" bo'ladi va
+      // applyOrderUpdate uni aktivlar keshidan chiqarib tashlaydi.
+      applyOrderUpdate(updated);
     } finally {
       acceptingItemOrderId = null;
       acceptingItemProductId = null;
@@ -345,10 +405,10 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
     try {
       final updated = await _service.deleteOrderItem(orderId, productId);
-      final index = myOrders.indexWhere((o) => o.id == updated.id);
-      if (index >= 0) {
-        myOrders[index] = updated;
-      }
+      // Qolgan itemlar allaqachon qabul qilingan bo'lsa, o'chirish buyurtmani
+      // "qabul_qilindi" holatiga o'tkazishi mumkin — applyOrderUpdate uni
+      // aktivlar keshidan chiqaradi.
+      applyOrderUpdate(updated);
     } finally {
       deletingItemOrderId = null;
       deletingItemProductId = null;
@@ -385,19 +445,50 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
 
     if (event.action == 'deleted') {
       myOrders.removeWhere((o) => o.id == orderId);
+      historyOrders.removeWhere((o) => o.id == orderId);
       notifyListeners();
       return;
     }
 
-    final order = OmborOrder.fromJson(event.order);
-    final index = myOrders.indexWhere((o) => o.id == order.id);
-    if (index >= 0) {
-      myOrders[index] = order; // bor bo'lsa almashtir
+    applyOrderUpdate(OmborOrder.fromJson(event.order));
+  }
+
+  // Yangilangan buyurtmani ikkala keshga (aktivlar + ochiq turgan tarix kuni)
+  // qo'llaydi. Socket hodisasi ham, accept/delete javobi ham shu yerdan o'tadi.
+  //
+  // QABUL QILINGAN buyurtma myOrders'dan CHIQARIB TASHLANADI: u endi
+  // «Buyurtmalarim» ekranida ko'rinmaydi (ekran allaqachon uni filtrlab
+  // tashlardi), demak xotirada ushlab turishning ma'nosi yo'q. Shu bilan
+  // ekran ochiq turgan kun davomida kesh o'sib ketmaydi.
+  void applyOrderUpdate(OmborOrder order) {
+    if (order.isAccepted) {
+      myOrders.removeWhere((o) => o.id == order.id);
     } else {
-      myOrders.add(order); // yo'q bo'lsa qo'sh
+      final index = myOrders.indexWhere((o) => o.id == order.id);
+      if (index >= 0) {
+        myOrders[index] = order; // bor bo'lsa almashtir
+      } else {
+        myOrders.add(order); // yo'q bo'lsa qo'sh
+      }
+      // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblash.
+      myOrders.sort((a, b) => b.id.compareTo(a.id));
     }
-    // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblash.
-    myOrders.sort((a, b) => b.id.compareTo(a.id));
+
+    // Tarix ekrani ochiq va buyurtma o'sha kunga tegishli bo'lsa — u yerda ham
+    // yangilaymiz (qabul qilingani endi aynan shu ro'yxatda ko'rinishi kerak).
+    final key = historyDateKey;
+    if (key != null &&
+        order.created.length >= 10 &&
+        order.created.substring(0, 10) == key) {
+      final hIndex = historyOrders.indexWhere((o) => o.id == order.id);
+      if (hIndex >= 0) {
+        historyOrders[hIndex] = order;
+      } else {
+        historyOrders.add(order);
+        historyOrders.sort((a, b) => b.id.compareTo(a.id));
+      }
+    }
+
     notifyListeners();
   }
 
@@ -418,6 +509,10 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
     isLoadingOrders = false;
     ordersError = null;
     ordersPeriod = OrderPeriod.last30;
+    historyOrders = [];
+    isLoadingHistory = false;
+    historyError = null;
+    historyDateKey = null;
     acceptingItemOrderId = null;
     acceptingItemProductId = null;
     deletingItemOrderId = null;

@@ -72,16 +72,10 @@ class OmborOrdersHistoryUi extends StatelessWidget {
           'Qabul qilinganlar tarixi',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi) —
-          // eski kunlarni ko'rish uchun 90 kun yoki "Hammasi" tanlanadi.
-          Consumer<OmborProvider>(
-            builder: (context, provider, _) => OrderPeriodButton(
-              value: provider.ordersPeriod,
-              onChanged: (p) => provider.setOrdersPeriod(p),
-            ),
-          ),
-        ],
+        // Davr tanlagich (30/90 kun / hammasi) YO'Q: tarix endi tanlangan
+        // KUNNI serverdan aynan so'raydi (GET /api/orders?date=...), ya'ni
+        // istalgan eski kun oynadan qat'i nazar ochiladi va payload bitta
+        // kundan iborat bo'ladi. Kun tanlash — pastdagi sana navigatsiyasi.
       ),
       body: const OmborOrdersView(acceptedOnly: true),
     );
@@ -119,29 +113,60 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<OmborProvider>().fetchMyOrders();
+      if (!mounted) return;
+      final provider = context.read<OmborProvider>();
+      if (widget.acceptedOnly) {
+        // Tarix — faqat TANLANGAN KUN serverdan so'raladi (30/90 kunlik
+        // butun tarix emas).
+        provider.fetchHistoryOrders(_selectedDate);
+      } else {
+        provider.fetchMyOrders();
+      }
     });
   }
 
-  // "2026-07-12" — order.created bilan solishtirish uchun kalit.
-  String _dateKeyOf(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
-      '${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')}';
+  @override
+  void dispose() {
+    // Tarixdan chiqilganda keshni bo'shatamiz — u boshqa hech qayerda
+    // ishlatilmaydi. dispose() ichida context.read() xavfsiz emas, shuning
+    // uchun referens didChangeDependencies'da saqlanadi.
+    if (widget.acceptedOnly) _provider?.clearHistoryOrders();
+    super.dispose();
+  }
+
+  OmborProvider? _provider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider = context.read<OmborProvider>();
+  }
+
+  // Pull-to-refresh / «Qayta urinish» — ekranga mos manbani qayta so'raydi.
+  Future<void> _refresh() {
+    final provider = context.read<OmborProvider>();
+    return widget.acceptedOnly
+        ? provider.fetchHistoryOrders(_selectedDate)
+        : provider.fetchMyOrders();
+  }
+
+  // "2026-07-12" — sana navigatsiyasidagi "bugunmi?" tekshiruvi uchun kalit.
+  String _dateKeyOf(DateTime d) => OmborProvider.dateKeyOf(d);
 
   // "12.07.2026" — sana navigatsiyasidagi yozuv.
   String _dateLabelOf(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.'
       '${d.month.toString().padLeft(2, '0')}.${d.year}';
 
-  // Buyurtma kuni — created ning YYYY-MM-DD qismi.
-  String _orderDateKey(OmborOrder o) =>
-      o.created.length >= 10 ? o.created.substring(0, 10) : o.created;
-
   bool get _isToday => _dateKeyOf(_selectedDate) == _dateKeyOf(_todayDate());
 
-  void _setDate(DateTime d) =>
-      setState(() => _selectedDate = DateTime(d.year, d.month, d.day));
+  // Kun almashtirilganda o'sha kun serverdan so'raladi (client-side filtr
+  // emas — endi xotirada faqat bitta kun turadi).
+  void _setDate(DateTime d) {
+    final day = DateTime(d.year, d.month, d.day);
+    setState(() => _selectedDate = day);
+    context.read<OmborProvider>().fetchHistoryOrders(day);
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -199,11 +224,20 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   Widget build(BuildContext context) {
     return Consumer<OmborProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoadingOrders) {
+        // Tarix o'z ro'yxati/holatidan (kun bo'yicha so'ralgan), asosiy tab
+        // esa aktiv buyurtmalar keshidan oziqlanadi.
+        final loading = widget.acceptedOnly
+            ? provider.isLoadingHistory
+            : provider.isLoadingOrders;
+        final error = widget.acceptedOnly
+            ? provider.historyError
+            : provider.ordersError;
+
+        if (loading) {
           return const Center(child: CircularProgressIndicator.adaptive());
         }
 
-        if (provider.ordersError != null) {
+        if (error != null) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -214,13 +248,13 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
                       color: Colors.red, size: 48),
                   const SizedBox(height: 12),
                   Text(
-                    provider.ordersError!,
+                    error,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.black54),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => provider.fetchMyOrders(),
+                    onPressed: _refresh,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _accentColor,
                       foregroundColor: Colors.white,
@@ -233,20 +267,18 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           );
         }
 
-        // Asosiy tabда qabul qilinganlar ko'rinmaydi (ular tarixda),
-        // tarix ekranida esa faqat qabul qilinganlar chiqadi.
-        var orders = provider.myOrders
-            .where((o) => o.isAccepted == widget.acceptedOnly)
-            .toList();
-
-        // Asosiy "Buyurtmalarim" tabi — sana filtrsiz (hamma yuborilgan
-        // buyurtma). Tarix (qabul qilinganlar) — tanlangan kun bo'yicha
-        // filtr + yuqorida sana navigatsiyasi (bozor ekranidagi kabi).
+        // Asosiy tab: server allaqachon faqat qabul qilinmaganlarni yubordi
+        // (?active=1) — filtr shunchaki himoya qatlami.
         if (!widget.acceptedOnly) {
+          final orders =
+              provider.myOrders.where((o) => !o.isAccepted).toList();
           return _ordersList(context, provider, orders);
         }
-        final dayKey = _dateKeyOf(_selectedDate);
-        orders = orders.where((o) => _orderDateKey(o) == dayKey).toList();
+
+        // Tarix: server aynan shu kunni yubordi (?date=...), qabul
+        // qilinganlarini ajratib olamiz.
+        final orders =
+            provider.historyOrders.where((o) => o.isAccepted).toList();
         return Column(
           children: [
             const SizedBox(height: 4),
@@ -269,7 +301,7 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
     if (orders.isEmpty) {
       return RefreshIndicator(
         color: _accentColor,
-        onRefresh: () => provider.fetchMyOrders(),
+        onRefresh: _refresh,
         child: ListView(
           children: [
             SizedBox(
@@ -306,7 +338,7 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
 
     return RefreshIndicator(
       color: _accentColor,
-      onRefresh: () => provider.fetchMyOrders(),
+      onRefresh: _refresh,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: entries.length,
