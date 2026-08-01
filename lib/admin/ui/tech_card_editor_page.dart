@@ -449,8 +449,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   int get _piecesPerList => c.batchQty < 1 ? 1 : c.batchQty;
 
   // --- Partiya birligi (полуфабрикат uchun шт ↔ гр) ---
-  // 'g' rejimi FAQAT yozuv birligi: 1 шт = 1 гр kelishuvi, batchQty soni
-  // o'sha-o'sha butun son (sklad/tannarx/pf hisoblari шт'da qolaveradi).
+  // 'g' rejimi: partiya GRAMMDA o'lchanadi — 1 dona = 1 гр (sklad/tannarx/pf
+  // hisoblari шт'da qolaveradi, гр shu kelishuv orqali). Partiya soni qo'lda
+  // kiritilmaydi — _syncGramBatch() masalliqlardan avto hisoblaydi.
   bool get _gramMode => c.batchUnit == 'g';
   String get _unitShort => _gramMode ? 'гр' : 'шт'; // katak suffiksi
   String get _unitPlural => _gramMode ? 'гр' : 'штук'; // «за N штук/гр»
@@ -459,10 +460,42 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   String get _batchLabel =>
       _gramMode ? 'на ${c.totalPieces} гр' : 'на ${c.totalPieces} тортов';
 
+  // Гр rejimida partiya soni AVTO: bir marta tayyorlaganda masalliqlardan
+  // qancha chiqsa — o'sha (гр). List bo'linishi гр'da ma'nosiz (doim 1).
+  // Backend ham xuddi shunday yozadi (recomputeTechCardWeights), shuning uchun
+  // ekranda ko'ringan qiymat saqlangandan keyin ham o'zgarmaydi.
+  // build() boshida chaqiriladi — masalliq qo'shilishi/o'chishi bilan yangilanadi.
+  void _syncGramBatch() {
+    if (!_gramMode) return;
+    final w = techBatchWeightG(c.build(), _productById);
+    final qty = w > 0 ? w : 1;
+    if (c.batchQty != qty) c.batchQty = qty;
+    if (c.listQty != 1) c.listQty = 1;
+  }
+
+  // Гр rejimiga o'tishdan oldingi шт partiya soni — orqaga qaytilsa tiklanadi
+  // (гр'da qiymat avto og'irlik bilan almashadi, ya'ni yo'qolib ketardi).
+  int? _pcsBatchQtyBackup;
+  int? _pcsListQtyBackup;
+
+  void _toggleBatchUnit() {
+    setState(() {
+      if (_gramMode) {
+        c.batchUnit = '';
+        c.batchQty = _pcsBatchQtyBackup ?? 1;
+        c.listQty = _pcsListQtyBackup ?? 1;
+      } else {
+        _pcsBatchQtyBackup = c.batchQty;
+        _pcsListQtyBackup = c.listQty;
+        c.batchUnit = 'g'; // partiya soni build'da avto hisoblanadi
+      }
+    });
+  }
+
   // шт ↔ гр almashtirgich (faqat полуфабрикат tex kartasida ko'rinadi).
   Widget _unitToggle() {
     return InkWell(
-      onTap: () => setState(() => c.batchUnit = _gramMode ? '' : 'g'),
+      onTap: _toggleBatchUnit,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -971,6 +1004,16 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
+  // Pf tanlash ro'yxatidagi izoh: гр rejimidagi pf — bir partiyada necha гр
+  // chiqishi; шт rejimida — 1 dona og'irligi. null — ko'rsatiladigan narsa yo'q.
+  String? _pfSubtitle(ProductModelAdmin p) {
+    final tc = p.techCard;
+    if (tc == null) return null;
+    if (tc.batchUnit == 'g') return '1 partiya = ${tc.totalPieces} гр';
+    final w = techPfPieceWeightG(p.id, _productById);
+    return w > 0 ? '1 dona ≈ $w г' : null;
+  }
+
   // ---- Полуфабрикат qatori qo'shish ----
   // ProductProviderAdmin (yagona manba) dagi is_semi_finished mahsulotlardan
   // tanlanadi; qator dona (шт) birligida oddiy ingredient bo'lib saqlanadi.
@@ -1000,8 +1043,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'Partiya: ${techTotalPieces(tc)} dona'
-                '${pieceW > 0 ? ' • 1 dona ≈ $pieceW г' : ''}',
+                tc.batchUnit == 'g'
+                    ? 'Partiya: ${techTotalPieces(tc)} гр'
+                    : 'Partiya: ${techTotalPieces(tc)} dona'
+                        '${pieceW > 0 ? ' • 1 dona ≈ $pieceW г' : ''}',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ),
@@ -1130,14 +1175,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     ListTile(
                       leading: const Icon(Icons.cake_outlined),
                       title: Text(p.name),
-                      subtitle: p.techCard != null &&
-                              techPfPieceWeightG(p.id, _productById) > 0
-                          ? Text(
-                              '1 dona ≈ '
-                              '${techPfPieceWeightG(p.id, _productById)} г',
+                      subtitle: _pfSubtitle(p) == null
+                          ? null
+                          : Text(
+                              _pfSubtitle(p)!,
                               style: const TextStyle(fontSize: 12),
-                            )
-                          : null,
+                            ),
                       onTap: () => Navigator.pop(ctx, p),
                     ),
                 ],
@@ -1234,6 +1277,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Гр rejimida partiya soni masalliqlar og'irligiga tenglanadi (avto).
+    _syncGramBatch();
     // Har rebuild'dan keyin fokussiz profit/dop.rasxod maydonlarini modelga
     // tenglaymiz (miqdor o'zgarsa summa/foiz jonli yangilanadi).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1413,13 +1458,23 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             // Штук — bitta listdan chiqadigan dona (batchQty). Birlik (шт↔гр)
             // almashtirish tugmasi BITTA — «Bo'limlar» qatoridagi «Общее
             // количество» yonida; bu katak faqat joriy birlikni ko'rsatadi.
+            // Гр rejimida qiymat AVTO (masalliqlar og'irligi) — tahrirlanmaydi.
             _flexCell(
-              _InlineIntCell(
-                value: c.batchQty,
-                suffixText: _unitShort,
-                onValue: (qty) =>
-                    setState(() => c.batchQty = qty < 1 ? 1 : qty),
-              ),
+              _gramMode
+                  ? Padding(
+                      padding: _kCellPad,
+                      child: Text(
+                        '${c.batchQty} $_unitShort',
+                        style: _kCellStyle,
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : _InlineIntCell(
+                      value: c.batchQty,
+                      suffixText: _unitShort,
+                      onValue: (qty) =>
+                          setState(() => c.batchQty = qty < 1 ? 1 : qty),
+                    ),
               flex: 2,
               leftBorder: true,
               padded: false,
@@ -1430,24 +1485,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
-  // Гр rejimida retsept og'irligi «Общее количество» (гр) bilan mos kelmasa
-  // ogohlantirish matni. Kelishuv: 1 dona = 1 гр, ya'ni 20000 гр partiyaning
-  // masalliqlari ham 20000 гр bo'lishi kerak — aks holda «1 гр tannarxi»
-  // (partiya tannarxi / partiya soni) noto'g'ri chiqadi. null — muammo yo'q.
-  String? _gramBatchMismatch(TechCard card) {
-    if (!_gramMode) return null;
-    final recipe = techBatchWeightG(card, _productById);
-    final declared = c.totalPieces;
-    if (recipe <= 0 || declared <= 0) return null;
-    // 2% gacha farq (bug'lanish/yaxlitlash) ogohlantirilmaydi.
-    if ((recipe - declared).abs() * 100 <= declared * 2) return null;
-    return 'Masalliqlar og\'irligi ${_kgComma(recipe)} кг — «Общее количество» '
-        '$declared гр bilan mos emas (1 гр = 1 dona)';
-  }
-
   Widget _headerRightTable(TechCard card) {
     final missing = _missingPriceCount;
-    final gramWarn = _gramBatchMismatch(card);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1526,8 +1565,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         // Narxi yo'q masalliqlar ogohlantirishi (tannarx to'liq emas).
         if (_pricesLoaded && missing > 0)
           _warnLine('$missing ta masalliqda narx yo\'q'),
-        // Гр rejimi: partiya soni (гр) masalliqlar og'irligiga mos emas.
-        if (gramWarn != null) _warnLine(gramWarn),
       ],
     );
   }
@@ -1563,8 +1600,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // Shakl kiritilgan VA bitta list bir necha bo'lakka kesilsa sxema
   // ko'rinadi. Штук = 1 bo'lsa kesish yo'q — 3D chizma chiqmaydi,
-  // faqat mahsulot rasmi qoladi.
+  // faqat mahsulot rasmi qoladi. Гр rejimida «bo'lak» tushunchasi yo'q
+  // (partiya soni = og'irlik) — sxema chizilmaydi.
   bool get _schemeVisible =>
+      !_gramMode &&
       _piecesPerList > 1 &&
       ((c.shape == 'rect' &&
               (c.widthCm ?? 0) > 0 &&
@@ -1904,14 +1943,21 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               const SizedBox(width: 6),
               Container(
                 width: 80,
+                alignment: _gramMode ? Alignment.center : null,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: _gramMode ? Colors.grey.shade100 : Colors.white,
                   border: Border.all(color: Colors.grey.shade400),
                 ),
-                child: _InlineIntCell(
-                  value: c.totalPieces,
-                  onValue: _setTotalPieces,
-                ),
+                // Гр rejimida AVTO (masalliqlar og'irligi) — tahrirlanmaydi.
+                child: _gramMode
+                    ? Padding(
+                        padding: _kCellPad,
+                        child: Text('${c.totalPieces}', style: _kCellStyle),
+                      )
+                    : _InlineIntCell(
+                        value: c.totalPieces,
+                        onValue: _setTotalPieces,
+                      ),
               ),
               const SizedBox(width: 6),
               // Birlik yozuvi katakdan TASHQARIDA; полуфабрикатда bosilsa
@@ -2699,8 +2745,9 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
   Widget build(BuildContext context) {
     final w = widget.pieceWeightG;
     final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
-    // Grammda kiritilayotganda jonli «≈ X dona» hisobi.
-    final pcsHint = (_unit == 'g' && w > 0 && amount > 0)
+    // Grammda kiritilayotganda jonli «≈ X dona» hisobi (гр rejimidagi pf'da
+    // gramm = dona, ya'ni ko'rsatishning hojati yo'q).
+    final pcsHint = (_unit == 'g' && !widget.gramBatch && w > 0 && amount > 0)
         ? '≈ ${(amount / w).toStringAsFixed(1)} dona'
         : null;
     final hintStyle = TextStyle(fontSize: 12.5, color: Colors.grey.shade700);
@@ -2710,43 +2757,46 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          RadioGroup<String>(
-            groupValue: _unit,
-            onChanged: (v) {
-              if (v == null) return;
-              if (v == 'g' && w <= 0) return; // og'irlik yo'q — bloklangan
-              setState(() => _unit = v);
-            },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const RadioListTile<String>(
-                  value: 'pcs',
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('дона'),
-                ),
-                RadioListTile<String>(
-                  value: 'g',
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  enabled: w > 0,
-                  title: const Text('грамм'),
-                  subtitle: w > 0
-                      ? null
-                      : const Text(
-                          'Пф tex kartasida og\'irlik yo\'q',
-                          style: TextStyle(fontSize: 11.5),
-                        ),
-                ),
-              ],
+          // Гр rejimidagi pf O'ZI grammda o'lchanadi — birlik tanlash yo'q.
+          if (!widget.gramBatch) ...[
+            RadioGroup<String>(
+              groupValue: _unit,
+              onChanged: (v) {
+                if (v == null) return;
+                if (v == 'g' && w <= 0) return; // og'irlik yo'q — bloklangan
+                setState(() => _unit = v);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const RadioListTile<String>(
+                    value: 'pcs',
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('дона'),
+                  ),
+                  RadioListTile<String>(
+                    value: 'g',
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    enabled: w > 0,
+                    title: const Text('грамм'),
+                    subtitle: w > 0
+                        ? null
+                        : const Text(
+                            'Пф tex kartasida og\'irlik yo\'q',
+                            style: TextStyle(fontSize: 11.5),
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (w > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text('1 dona ≈ $w г', style: hintStyle),
-            ),
+            if (w > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('1 dona ≈ $w г', style: hintStyle),
+              ),
+          ],
           TextField(
             controller: _ctrl,
             autofocus: true,
@@ -2754,7 +2804,7 @@ class _PfAmountDialogState extends State<_PfAmountDialog> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
               labelText: _unit == 'g'
-                  ? 'Necha gramm (${widget.batchQty} talik partiya uchun)'
+                  ? 'Necha гр (${widget.batchQty} talik partiya uchun)'
                   : 'Necha dona (${widget.batchQty} talik partiya uchun)',
               border: const OutlineInputBorder(),
             ),
