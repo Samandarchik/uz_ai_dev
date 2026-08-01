@@ -209,9 +209,11 @@ double techIngredientPieceCost(
 // TechBase.computedWeightG da allaqachon hisoblangan (ikki marta emas).
 
 // Mahsulotning EFFEKTIV «1 dona og'irligi» (g) — backend bilan bir xil qoida:
-// tex kartasida og'irlik bo'lsa (piece_weight_g, bo'lmasa mahalliy hisob) —
-// o'sha (pf shu yerga kiradi); aks holda mahsulotdagi piece_weight_g
-// («1 шт = X gr», tuxum kabi xom шт mahsulot uchun admin kiritadi); yo'q — 0.
+// tex kartasi GRAMM rejimida bo'lsa (batch_unit 'g') — kelishuv bo'yicha
+// 1 шт = 1 гр (og'irlik retseptdan HISOBLANMAYDI); aks holda tex kartadagi
+// og'irlik (piece_weight_g, bo'lmasa mahalliy hisob) — o'sha (pf shu yerga
+// kiradi); aks holda mahsulotdagi piece_weight_g («1 шт = X gr», tuxum kabi
+// xom шт mahsulot uchun admin kiritadi); yo'q — 0.
 int techEffectivePieceWeightG(
   int productId,
   Map<int, ProductModelAdmin> products,
@@ -220,6 +222,10 @@ int techEffectivePieceWeightG(
   if (p == null) return 0;
   final card = p.techCard;
   if (card != null) {
+    // Гр rejimi: 1 dona = 1 гр. Retsept og'irligi partiya soniga bo'linsa
+    // (mas. 5707 гр / 20000 dona) butun songa yaxlitlanib 0 chiqardi —
+    // shuning uchun grammda kiritish bloklanib qolgan edi.
+    if (card.batchUnit == 'g') return 1;
     final w =
         card.pieceWeightG > 0 ? card.pieceWeightG : card.computedPieceWeightG;
     if (w > 0) return w;

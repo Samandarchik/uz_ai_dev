@@ -455,6 +455,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   String get _unitShort => _gramMode ? 'гр' : 'шт'; // katak suffiksi
   String get _unitPlural => _gramMode ? 'гр' : 'штук'; // «за N штук/гр»
   String get _unitOne => _gramMode ? '1 гр' : '1 штуку'; // «за 1 штуку/гр»
+  // Blok sarlavhasidagi partiya yorlig'i: «на 20 тортов» / «на 20000 гр».
+  String get _batchLabel =>
+      _gramMode ? 'на ${c.totalPieces} гр' : 'на ${c.totalPieces} тортов';
 
   // шт ↔ гр almashtirgich (faqat полуфабрикат tex kartasida ko'rinadi).
   Widget _unitToggle() {
@@ -1155,6 +1158,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         title: picked.name,
         batchQty: c.totalPieces,
         pieceWeightG: techPfPieceWeightG(picked.id, _productById),
+        gramBatch: picked.techCard?.batchUnit == 'g',
       ),
     );
     if (res == null || !mounted) return;
@@ -1426,8 +1430,24 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
+  // Гр rejimida retsept og'irligi «Общее количество» (гр) bilan mos kelmasa
+  // ogohlantirish matni. Kelishuv: 1 dona = 1 гр, ya'ni 20000 гр partiyaning
+  // masalliqlari ham 20000 гр bo'lishi kerak — aks holda «1 гр tannarxi»
+  // (partiya tannarxi / partiya soni) noto'g'ri chiqadi. null — muammo yo'q.
+  String? _gramBatchMismatch(TechCard card) {
+    if (!_gramMode) return null;
+    final recipe = techBatchWeightG(card, _productById);
+    final declared = c.totalPieces;
+    if (recipe <= 0 || declared <= 0) return null;
+    // 2% gacha farq (bug'lanish/yaxlitlash) ogohlantirilmaydi.
+    if ((recipe - declared).abs() * 100 <= declared * 2) return null;
+    return 'Masalliqlar og\'irligi ${_kgComma(recipe)} кг — «Общее количество» '
+        '$declared гр bilan mos emas (1 гр = 1 dona)';
+  }
+
   Widget _headerRightTable(TechCard card) {
     final missing = _missingPriceCount;
+    final gramWarn = _gramBatchMismatch(card);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1505,32 +1525,37 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         ),
         // Narxi yo'q masalliqlar ogohlantirishi (tannarx to'liq emas).
         if (_pricesLoaded && missing > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  size: 14,
-                  color: Colors.orange.shade800,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    '$missing ta masalliqda narx yo\'q',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange.shade800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _warnLine('$missing ta masalliqda narx yo\'q'),
+        // Гр rejimi: partiya soni (гр) masalliqlar og'irligiga mos emas.
+        if (gramWarn != null) _warnLine(gramWarn),
       ],
     );
   }
+
+  // Jadval ostidagi to'q sariq ogohlantirish qatori.
+  Widget _warnLine(String text) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              size: 14,
+              color: Colors.orange.shade800,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange.shade800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   // --- «Kesish sxemasi» — shakl + partiya (Штук) dan avto diagramma ---
   // Размер yoki Штук o'zgarsa setState orqali jonli qayta chiziladi.
@@ -1974,9 +1999,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                                 padding: _kCellPad,
                                 child: Text(
                                   c.stages.isEmpty
-                                      ? '${base.name} ( на ${c.totalPieces} тортов )'
+                                      ? '${base.name} ( $_batchLabel )'
                                       : '[${_stageOfBase(base)}] ${base.name} '
-                                          '( на ${c.totalPieces} тортов )',
+                                          '( $_batchLabel )',
                                   style: _kCellBold,
                                 ),
                               ),
@@ -2108,7 +2133,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     child: Padding(
                       padding: _kCellPad,
                       child: Text(
-                        'Расходник ( на ${c.totalPieces} тортов )',
+                        'Расходник ( $_batchLabel )',
                         style: _kCellBold,
                       ),
                     ),
@@ -2632,11 +2657,15 @@ class _PfAmountDialog extends StatefulWidget {
   final String title;
   final int batchQty; // joriy karta partiyasi JAMI donasi (label uchun)
   final int pieceWeightG; // pf 1 dona og'irligi; 0 — грамм tanlab bo'lmaydi
+  // Pf partiyasi гр rejimidami (batch_unit 'g'): 1 dona = 1 гр, ya'ni ikkala
+  // birlik ayni bir narsa — shunda «грамм» boshlang'ich tanlov bo'ladi.
+  final bool gramBatch;
 
   const _PfAmountDialog({
     required this.title,
     required this.batchQty,
     required this.pieceWeightG,
+    this.gramBatch = false,
   });
 
   @override
@@ -2645,7 +2674,14 @@ class _PfAmountDialog extends StatefulWidget {
 
 class _PfAmountDialogState extends State<_PfAmountDialog> {
   final TextEditingController _ctrl = TextEditingController();
-  String _unit = 'pcs';
+  late String _unit;
+
+  @override
+  void initState() {
+    super.initState();
+    // Гр rejimidagi pf grammda kiritilishi tabiiy (1 dona = 1 гр).
+    _unit = (widget.gramBatch && widget.pieceWeightG > 0) ? 'g' : 'pcs';
+  }
 
   @override
   void dispose() {

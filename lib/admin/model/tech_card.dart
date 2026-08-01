@@ -339,8 +339,11 @@ class TechCard {
       (batchQty < 1 ? 1 : batchQty) * (listQty < 1 ? 1 : listQty);
 
   // Mahalliy hisoblangan 1 dona og'irligi (partiya JAMI donasiga bo'linadi).
-  int get computedPieceWeightG =>
-      batchQty > 0 ? computedBatchWeightG ~/ totalPieces : 0;
+  // Гр rejimida (batchUnit 'g') kelishuv bo'yicha 1 dona = 1 гр — hisoblanmaydi
+  // (server ham shunday: recomputeTechCardWeights).
+  int get computedPieceWeightG => batchUnit == 'g'
+      ? 1
+      : (batchQty > 0 ? computedBatchWeightG ~/ totalPieces : 0);
 
   Map<String, dynamic> toJson() => {
         'batch_qty': batchQty,
