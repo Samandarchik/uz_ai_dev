@@ -2,24 +2,29 @@
 // enum (30/90 kun, hammasi) va AppBar'da ishlatiladigan OrderPeriodButton (PopupMenuButton).
 import 'package:flutter/material.dart';
 
-// Buyurtmalar tarixi oynasi. Server yopiq buyurtmalarni standart holatda
-// faqat oxirgi 30 kun uchun qaytaradi (aktiv buyurtmalar har doim keladi):
-//   last30 -> param yuborilmaydi (server default 30 kun)
+// Buyurtmalar tarixi oynasi. Server YOPIQ buyurtmalarni faqat shu oyna
+// ichida qaytaradi (aktiv buyurtmalar oynadan qat'i nazar har doim keladi):
+//   last3  -> ?days=3
+//   last30 -> ?days=30 (server defaulti ham shu)
 //   last90 -> ?days=90
 //   all    -> ?all=1 (to'liq tarix)
-// Tanlov saqlanmaydi — har ekran o'z holatida ushlaydi, ilova qayta
-// ochilganda default (30 kun) qaytadi.
+//
+// Har ekran O'Z defaultini tanlaydi (sotuvchi — last3, ombor/bugalter —
+// last30). Tanlov saqlanmaydi: ilova qayta ochilganda ekran defaultiga
+// qaytadi.
 enum OrderPeriod {
-  last30('Oxirgi 30 kun'),
-  last90('Oxirgi 90 kun'),
-  all('Hammasi');
+  last3('Oxirgi 3 kun', 3),
+  last30('Oxirgi 30 kun', 30),
+  last90('Oxirgi 90 kun', 90),
+  all('Hammasi', null);
 
-  const OrderPeriod(this.label);
+  const OrderPeriod(this.label, this.days);
+
   final String label;
 
-  // API'ga yuboriladigan days qiymati (null — param yuborilmaydi, server
-  // default 30 kun ishlaydi).
-  int? get days => this == OrderPeriod.last90 ? 90 : null;
+  // API'ga yuboriladigan ?days qiymati. `all` da null — o'rniga ?all=1
+  // yuboriladi (isAll).
+  final int? days;
 
   // API'ga ?all=1 yuboriladimi (to'liq tarix).
   bool get isAll => this == OrderPeriod.all;

@@ -28,8 +28,13 @@ class _OrdersPageState extends State<OrdersPage> {
   final int _limit = 30;
   bool _hasMore = true;
 
-  // Yopiq buyurtmalar tarixi oynasi (30/90 kun / hammasi). Saqlanmaydi.
-  OrderPeriod _period = OrderPeriod.last30;
+  // Buyurtmalar tarixi oynasi. Sotuvchiga DEFAULT — oxirgi 3 kun: kundalik
+  // ishda faqat shu kunlardagi buyurtmalar kerak, 30 kunlik tarix esa ekran
+  // ochilishini sekinlashtirardi (server bitta javobda hammasini yuboradi —
+  // page/limit parametrlari backendда yo'q, ular e'tiborsiz qoladi).
+  // Eski kunlar kerak bo'lsa AppBar'dagi davr tugmasidan 30/90 kun yoki
+  // «Hammasi» tanlanadi — ro'yxat o'sha zahoti qayta yuklanadi.
+  OrderPeriod _period = OrderPeriod.last3;
 
   final ScrollController _scrollController = ScrollController();
 
