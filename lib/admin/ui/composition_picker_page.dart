@@ -3,8 +3,8 @@
 // mahsulotlar; AppBar qidiruvi barcha mahsulotlar bo'yicha ishlaydi. Tanlangach
 // miqdor+birlik dialogi (_AmountUnitDialog) orqali natijani TechItem qilib qaytaradi.
 // шт mahsulot grammda kiritilsa «1 шт = X gr» so'raladi (piece_weight_g ga saqlanadi).
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
@@ -192,12 +192,12 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
               contentPadding: EdgeInsets.zero,
               leading: ClipOval(
                 child: category.imageUrl != null
-                    ? CachedNetworkImage(
+                    ? AppNetworkImage(
                         imageUrl: "${AppUrls.baseUrl}${category.imageUrl}",
                         width: 55,
                         height: 55,
                         fit: BoxFit.cover,
-                        errorWidget: (context, url, error) =>
+                        errorWidget: (context) =>
                             const Icon(Icons.image_not_supported),
                       )
                     : Container(
@@ -313,11 +313,11 @@ class _ProductPickTile extends StatelessWidget {
                   color: Colors.grey[200],
                   child: Icon(Icons.image, color: Colors.grey[400]),
                 )
-              : CachedNetworkImage(
+              : AppNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: Colors.grey[200]),
-                  errorWidget: (_, __, ___) => Container(
+                  placeholder: (_) => Container(color: Colors.grey[200]),
+                  errorWidget: (_) => Container(
                     color: Colors.grey[200],
                     child: Icon(Icons.broken_image, color: Colors.grey[400]),
                   ),

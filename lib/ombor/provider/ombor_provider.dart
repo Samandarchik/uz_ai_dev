@@ -230,17 +230,38 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
   //  - itemType == '' — faqat katalog mahsuloti ('rasxod'/'proche' emas).
   //
   // Qiymat gramm kontraktida (кг/л -> butun гр/мл) — ko'rsatishda formatQty.
+  // Berilgan, lekin hali kelmagan miqdor — O(1).
+  //
+  // Ilgari bu metod har chaqiruvda BARCHA buyurtmalar × ularning itemlari
+  // bo'ylab yurardi. Har mahsulot kartochkasi uni har build'da chaqiradi, ya'ni
+  // grid'dagi N ta kartochka × (buyurtmalar × itemlar) — bitta «+» bosilganda
+  // ham o'n minglab takrorlanish. Endi indeks bir marta yasalib keshlanadi.
+  //
+  // Kesh HAR notifyListeners'da bekor qilinadi, shuning uchun myOrders qanday
+  // o'zgarmasin (fetch, socket, accept, delete) eskirib qola olmaydi — UI
+  // faqat notifyListeners'dan keyin qayta chiziladi.
+  Map<int, double>? _orderedIndex;
+
+  @override
+  void notifyListeners() {
+    _orderedIndex = null;
+    super.notifyListeners();
+  }
+
   double orderedQty(int productId) {
-    var sum = 0.0;
-    for (final order in myOrders) {
-      for (final item in order.items) {
-        if (item.productId != productId) continue;
-        if (item.accepted || item.deleted) continue;
-        if (item.itemType.isNotEmpty) continue;
-        sum += item.count;
+    var idx = _orderedIndex;
+    if (idx == null) {
+      idx = <int, double>{};
+      for (final order in myOrders) {
+        for (final item in order.items) {
+          if (item.accepted || item.deleted) continue;
+          if (item.itemType.isNotEmpty) continue;
+          idx[item.productId] = (idx[item.productId] ?? 0) + item.count;
+        }
       }
+      _orderedIndex = idx;
     }
-    return sum;
+    return idx[productId] ?? 0;
   }
 
   // Savatdagi mahsulotlardan buyurtma yuborish.

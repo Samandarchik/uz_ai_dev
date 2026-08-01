@@ -1,7 +1,7 @@
 // user/ui/product_ui.dart — Seller: bitta kategoriya mahsulotlari grid ekrani: ProductsScreen
 // (ProductProvider). Bosish -> savatga qo'shadi, uzun bosish -> UserProductDetailUi.
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
@@ -66,12 +66,14 @@ class ProductsScreen extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius:
                               BorderRadius.vertical(top: Radius.circular(12)),
-                          child: CachedNetworkImage(
+                          // AppNetworkImage — kartochka kengligida dekod
+                          // qiladi (asl fayl 1024px, RAM ~3 MB bo'lardi).
+                          child: AppNetworkImage(
                             imageUrl:
                                 "${AppUrls.baseUrl}${product.imageUrl}",
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
+                            placeholder: (context) => Container(
                               color: Colors.grey.shade200,
                               child: Center(
                                 child: CircularProgressIndicator(
@@ -79,11 +81,6 @@ class ProductsScreen extends StatelessWidget {
                                   color: _buttonColor,
                                 ),
                               ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey.shade200,
-                              child: Icon(Icons.image_not_supported,
-                                  color: Colors.grey, size: 30),
                             ),
                           ),
                         ),

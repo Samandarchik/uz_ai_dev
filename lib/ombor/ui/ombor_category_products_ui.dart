@@ -1,11 +1,11 @@
 // ombor/ui/ombor_category_products_ui.dart — Ombor: bitta kategoriya bozor mahsulotlari grid ekrani:
 // OmborCategoryProductsUi (OmborProvider + StockProvider). ensureOmborStock() qoldiq keshini yuklaydi.
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 import 'package:uz_ai_dev/production/models/stock_model.dart';
@@ -60,11 +60,15 @@ class _OmborCategoryProductsUiState extends State<OmborCategoryProductsUi> {
         elevation: 0,
         title: Text(widget.categoryName),
       ),
-      body: Consumer<OmborProvider>(
-        builder: (context, provider, child) {
-          final products =
-              provider.productsByCategory[widget.categoryName] ?? [];
-
+      // Selector (Consumer emas): grid faqat MAHSULOTLAR ro'yxati
+      // o'zgarganda qayta quriladi. Consumer bo'lganida savatga har «+»
+      // bosilganda (addToCart -> notifyListeners) butun GridView, ya'ni
+      // ekrandagi hamma kartochka qaytadan quriladi — kartochkalarning o'zi
+      // esa savat holatini ichkarida allaqachon kuzatadi.
+      body: Selector<OmborProvider, List<OmborProduct>>(
+        selector: (_, provider) =>
+            provider.productsByCategory[widget.categoryName] ?? const [],
+        builder: (context, products, child) {
           if (products.isEmpty) {
             return const Center(child: Text('Mahsulotlar topilmadi'));
           }
@@ -359,6 +363,10 @@ class OmborProductCard extends StatelessWidget {
       ),
     );
 
+    // Dialog yopilgach controller'ni bo'shatamiz — aks holda har uzoq
+    // bosishda bittadan TextEditingController osilib qolardi.
+    controller.dispose();
+
     if (milli != null) {
       provider.setCountMilli(product.id, milli);
     }
@@ -369,15 +377,17 @@ class OmborProductCard extends StatelessWidget {
     if (product.imageUrl == null || product.imageUrl!.isEmpty) return;
     showDialog(
       context: context,
+      // To'liq ko'rinish ham ekran kengligida dekod qilinadi — telefon
+      // ekrani manba fayldan (1024px) tor bo'lsa ortiqcha piksel saqlanmaydi.
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        child: CachedNetworkImage(
+        child: AppNetworkImage(
           imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
           fit: BoxFit.contain,
-          placeholder: (context, url) => const Center(
+          placeholder: (context) => const Center(
             child: CircularProgressIndicator(color: _accentColor),
           ),
-          errorWidget: (context, url, error) => const Icon(
+          errorWidget: (context) => const Icon(
             Icons.error,
             size: 40,
             color: Colors.white,
@@ -396,11 +406,15 @@ class OmborProductCard extends StatelessWidget {
             color: Colors.grey, size: 40),
       );
     }
-    return CachedNetworkImage(
+    // AppNetworkImage kartochka kengligida dekod qiladi (memCacheWidth) —
+    // 1024px'lik asl fayl RAM'da ~3 MB emas, ~0.7 MB joy egallaydi. Katta
+    // kategoriyada grid'ni aylantirganda ImageCache to'lib ketmaydi, ya'ni
+    // qayta-qayta dekod (va undan kelib chiqadigan «qotish») bo'lmaydi.
+    return AppNetworkImage(
       imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
       width: double.infinity,
       fit: BoxFit.cover,
-      placeholder: (context, url) => Container(
+      placeholder: (context) => Container(
         color: Colors.grey.shade200,
         child: const Center(
           child: CircularProgressIndicator(
@@ -408,11 +422,6 @@ class OmborProductCard extends StatelessWidget {
             color: _accentColor,
           ),
         ),
-      ),
-      errorWidget: (context, url, error) => Container(
-        color: Colors.grey.shade200,
-        child: const Icon(Icons.image_not_supported,
-            color: Colors.grey, size: 30),
       ),
     );
   }
@@ -588,13 +597,17 @@ class OmborProductCard extends StatelessWidget {
 // uchun kartochkada qator umuman ko'rsatilmaydi.
 StockRow? omborStockRow(BuildContext context, int productId, {int? skladId}) {
   final stock = context.watch<StockProvider>();
+  // skladIds fetch'da bir marta o'rnatiladi — butun provider'ni watch qilish
+  // o'rniga faqat shu maydonni kuzatamiz (savatga «+» bosilganda kartochka
+  // bekorga qayta chizilmasin).
   final ids = skladId != null
       ? <int>[skladId]
-      : context.watch<OmborProvider>().skladIds;
+      : context.select<OmborProvider, List<int>>((p) => p.skladIds);
+  // rowFor — indeks bo'yicha O(1). Ilgari bu yer har kartochka uchun butun
+  // qoldiq ro'yxatini chiziqli kezardi.
   for (final id in ids) {
-    for (final r in stock.stockFor(id) ?? const <StockRow>[]) {
-      if (r.productId == productId) return r;
-    }
+    final row = stock.rowFor(id, productId);
+    if (row != null) return row;
   }
   return null;
 }

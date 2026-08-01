@@ -2,6 +2,7 @@
 // Miqdorni kg/l dialogda tahrirlash va savatni yuborish (submitOrder).
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
@@ -193,13 +194,12 @@ class CartPage extends StatelessWidget {
                             ),
                           );
                         },
-                        child: CachedNetworkImage(
+                        child: AppNetworkImage(
                           imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
                           width: 55,
                           height: 80,
                           fit: BoxFit.cover,
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.error),
+                          errorWidget: (context) => const Icon(Icons.error),
                         ),
                       ),
                     ),

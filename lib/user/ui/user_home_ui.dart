@@ -1,7 +1,7 @@
 // user/ui/user_home_ui.dart — Seller roli bosh ekrani: UserHomeUi (ProductProvider). Qidiruv,
 // kategoriyalar va kartochkalar; savat (CartPage) hamda buyurtmalar (OrdersPage) ga o'tish.
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -350,12 +350,12 @@ class _ProductCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            child: CachedNetworkImage(
+            child: AppNetworkImage(
               imageUrl: imageUrl,
               width: 180,
               height: 160,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
+              placeholder: (context) => Container(
                 height: 160,
                 color: Colors.grey.shade200,
                 child: Center(
@@ -364,7 +364,7 @@ class _ProductCard extends StatelessWidget {
                   color: buttonColor,
                 )),
               ),
-              errorWidget: (context, url, error) => Container(
+              errorWidget: (context) => Container(
                 height: 160,
                 color: Colors.grey.shade200,
                 child: Icon(Icons.image_not_supported,

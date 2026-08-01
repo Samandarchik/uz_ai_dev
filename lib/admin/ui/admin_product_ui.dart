@@ -3,8 +3,8 @@
 // single tap tahrir (EditProductPage), double tap tex karta editori, long press
 // o'chirish, «i» ikona — tex karta. Reorder rejimi va ПФ belgisi bor.
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/get_pdf_service.dart';
@@ -301,12 +301,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
                   key: ValueKey(product.id),
                   leading: ClipOval(
                     child: product.imageUrl != null
-                        ? CachedNetworkImage(
+                        ? AppNetworkImage(
                             imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
                             width: 55,
                             height: 55,
                             fit: BoxFit.cover,
-                            errorWidget: (context, url, error) =>
+                            errorWidget: (context) =>
                                 const Icon(Icons.image_not_supported),
                           )
                         : Container(
@@ -405,10 +405,10 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 context: context,
                 builder: (_) => Dialog(
                   backgroundColor: Colors.transparent,
-                  child: CachedNetworkImage(
+                  child: AppNetworkImage(
                     imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
                     fit: BoxFit.contain,
-                    errorWidget: (context, url, error) =>
+                    errorWidget: (context) =>
                         const Icon(Icons.error, size: 40, color: Colors.white),
                   ),
                 ),
@@ -416,12 +416,12 @@ class _AdminProductUiState extends State<AdminProductUi> {
             }
           },
           child: product.imageUrl != null
-              ? CachedNetworkImage(
+              ? AppNetworkImage(
                   imageUrl: "${AppUrls.baseUrl}${product.imageUrl}",
                   width: 55,
                   height: 55,
                   fit: BoxFit.cover,
-                  errorWidget: (context, url, error) =>
+                  errorWidget: (context) =>
                       const Icon(Icons.image_not_supported),
                 )
               : Container(

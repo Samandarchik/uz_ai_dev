@@ -3,8 +3,8 @@
 // jonli; ShefProvider ustida.
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -225,12 +225,11 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
                     child: Icon(Icons.cake_outlined,
                         color: Colors.grey.shade400),
                   )
-                : CachedNetworkImage(
+                : AppNetworkImage(
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        Container(color: Colors.grey.shade200),
-                    errorWidget: (_, __, ___) => Container(
+                    placeholder: (_) => Container(color: Colors.grey.shade200),
+                    errorWidget: (_) => Container(
                       color: Colors.grey.shade200,
                       child: Icon(Icons.broken_image,
                           color: Colors.grey.shade400),

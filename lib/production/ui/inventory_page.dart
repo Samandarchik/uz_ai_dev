@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -876,17 +877,17 @@ class _StockInventoryPageState extends State<StockInventoryPage> {
       onTap: () => _showImageDialog(row),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(3),
-        child: CachedNetworkImage(
+        child: AppNetworkImage(
           imageUrl: '${AppUrls.baseUrl}${row.imageUrl}',
           width: _kThumbSize,
           height: _kThumbSize,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
+          placeholder: (_) => Container(
             width: _kThumbSize,
             height: _kThumbSize,
             color: Colors.grey.shade200,
           ),
-          errorWidget: (_, __, ___) => _thumbPlaceholder(),
+          errorWidget: (_) => _thumbPlaceholder(),
         ),
       ),
     );

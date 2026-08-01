@@ -20,22 +20,43 @@ class StockProvider extends ChangeNotifier with ClearableProvider {
 
   bool _disposed = false;
 
+  // productId -> StockRow indeksi (sklad bo'yicha). Kartochkalar qoldiqni har
+  // build'da qidiradi; ro'yxat bo'ylab chiziqli qidiruv N ta kartochka ×
+  // M ta qoldiq qatori = N×M taqqoslash bo'lardi. Indeks kesh sifatida
+  // yasaladi va HAR notifyListeners'da bekor qilinadi — shuning uchun eskirib
+  // qola olmaydi (UI faqat notifyListeners'dan keyin qayta chiziladi).
+  Map<int, Map<int, StockRow>>? _rowIndex;
+
+  Map<int, Map<int, StockRow>> get _index {
+    var idx = _rowIndex;
+    if (idx != null) return idx;
+    idx = {};
+    _bySklad.forEach((skladId, rows) {
+      idx![skladId] = {for (final r in rows) r.productId: r};
+    });
+    _rowIndex = idx;
+    return idx;
+  }
+
+  @override
+  void notifyListeners() {
+    _rowIndex = null;
+    super.notifyListeners();
+  }
+
   // null — hali yuklanmagan; bo'sh ro'yxat — yuklangan lekin qoldiq yo'q.
   List<StockRow>? stockFor(int skladId) => _bySklad[skladId];
+
+  // Bitta mahsulotning qoldiq qatori — O(1). Yozuv topilmasa null.
+  StockRow? rowFor(int skladId, int productId) => _index[skladId]?[productId];
 
   bool isLoading(int skladId) => _loading.contains(skladId);
 
   String? errorFor(int skladId) => _errors[skladId];
 
   // Mahsulot qoldig'i: yozuv bo'lmasa null (0 dan farqli — «yozuv yo'q»).
-  double? qtyFor(int skladId, int productId) {
-    final rows = _bySklad[skladId];
-    if (rows == null) return null;
-    for (final r in rows) {
-      if (r.productId == productId) return r.qty;
-    }
-    return null;
-  }
+  double? qtyFor(int skladId, int productId) =>
+      rowFor(skladId, productId)?.qty;
 
   // Mahsulot birligi (type): avval sklad qoldiq qatorlaridan, bo'lmasa
   // katalogdan. Topilmasa null (formatlashda faktor 1 ishlaydi).
