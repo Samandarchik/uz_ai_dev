@@ -40,6 +40,18 @@ Eng ko'p kerak bo'ladiganlar:
   Kasr pul yuborilsa server so'rovni rad etishi mumkin (`int` maydon). Sabab: `../CLAUDE.md`
   → «NEVER STORE A FLOAT». Hisoblangan nisbat (1 гр narxi, marja %) ekranda float bo'lishi
   mumkin — u saqlanmaydi.
+- **⚠️ TARMOQ RASMI = `AppNetworkImage`** (`lib/core/widgets/app_network_image.dart`).
+  To'g'ridan-to'g'ri `CachedNetworkImage` / `Image.network` YOZMA. Sabab: backend rasmni
+  1024px'da saqlaydi; o'lchamsiz dekod qilinsa RAM'da ~3 MB bitmap qoladi — 55px avatar
+  uchun ham. Flutter ImageCache limiti 100 MB, ya'ni ~32 ta rasm keshni to'ldiradi va
+  ro'yxat scroll'ida har rasm qayta-qayta dekod bo'lib ekran qotadi. `AppNetworkImage`
+  `memCacheWidth` ni ekrandagi kenglikdan hisoblaydi.
+- **Har build'da chaqiriladigan provider metodi O(1) bo'lsin.** Kartochka `build()` ichidan
+  chaqirilgan metod ro'yxat bo'ylab chiziqli qidirsa, N ta kartochka × M ta yozuv bo'ladi.
+  Naqsh: indeks Map'ini kesh qilib, `notifyListeners()` override'ida bekor qilish
+  (`StockProvider.rowFor`, `OmborProvider.orderedQty` — namuna).
+- Butun sahifani `Consumer` ga o'rama: ro'yxat/grid `Selector` bilan faqat kerakli maydonni
+  kuzatsin, aks holda har `notifyListeners()` da ekrandagi hamma kartochka qayta quriladi.
 - Yangi feature uchun naqsh: `models/` → `services/` (Dio chaqiruv) → `provider/` (holat) → `ui/` (ekran).
 - Backend JSON `snake_case` ishlatadi; model `fromJson`/`toJson` da shuni hisobga ol.
 - API JSON shaklini `../CLAUDE.md` dagi kontrakt bo'yicha aniq moslab yoz.
