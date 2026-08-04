@@ -15,8 +15,52 @@
 // zichligiga (devicePixelRatio) ko'paytiradi va `memCacheWidth` sifatida
 // beradi. 165dp kartochka 3x ekranda 495px'da dekod bo'ladi — 1024px o'rniga,
 // ya'ni RAM ~4 barobar kam, sifat esa ko'z ilg'amas darajada bir xil.
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+/// `CircleAvatar.backgroundImage` kabi `ImageProvider` talab qiladigan joylar
+/// uchun — vidjet emas, PROVIDER qaytaradi, lekin dekod o'lchami baribir
+/// ekrandagi o'lchamga bog'lanadi.
+///
+/// NEGA: `CircleAvatar(backgroundImage: NetworkImage(url))` rasmni TO'LIQ
+/// (1024px, ~4 MB) dekod qiladi — 52px'lik avatar uchun ham. Magazinlar
+/// ro'yxatida 50 ta avatar = 200 MB → ilova o'ladi.
+///
+/// [displayWidth] — avatarning ekrandagi kengligi (dp): radius*2.
+ImageProvider appNetworkImageProvider(
+  BuildContext context,
+  String url, {
+  required double displayWidth,
+  int maxDecodeWidth = 1024,
+}) {
+  return ResizeImage.resizeIfNeeded(
+    _decodePx(context, displayWidth, maxDecodeWidth),
+    null,
+    CachedNetworkImageProvider(url),
+  );
+}
+
+/// Lokal fayl uchun ayni shu (kameradan olingan rasm 4000px bo'lishi mumkin —
+/// o'lchamsiz dekod qilinsa bitta rasm 48 MB RAM egallaydi).
+ImageProvider appFileImageProvider(
+  BuildContext context,
+  String path, {
+  required double displayWidth,
+  int maxDecodeWidth = 1024,
+}) {
+  return ResizeImage.resizeIfNeeded(
+    _decodePx(context, displayWidth, maxDecodeWidth),
+    null,
+    FileImage(File(path)),
+  );
+}
+
+int _decodePx(BuildContext context, double displayWidth, int maxDecodeWidth) =>
+    (displayWidth * MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(16, maxDecodeWidth);
 
 class AppNetworkImage extends StatelessWidget {
   const AppNetworkImage({

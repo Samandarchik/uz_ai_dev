@@ -1,12 +1,11 @@
 // yuk/ui/widgets/magazin_form_sheet.dart — magazin qo'shish/tahrirlash bottom sheet
 // (_MagazinFormSheet) + showMagazinFormSheet()/magazinFullImageUrl(). Rasmni
 // /api/yuk/upload'ga yuklab, MagazinProvider bilan saqlaydi.
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
 import 'package:uz_ai_dev/yuk/provider/magazin_provider.dart';
 
@@ -210,12 +209,21 @@ class _MagazinFormSheetState extends State<_MagazinFormSheet> {
                     CircleAvatar(
                       radius: 44,
                       backgroundColor: const Color(0xFFF0E8DC),
+                      // Preview 88px — kameradan olingan katta faylni ham,
+                      // serverdagi rasmni ham shu o'lchamda dekod qilamiz.
                       backgroundImage: _localImagePath != null
-                          ? FileImage(File(_localImagePath!))
+                          ? appFileImageProvider(
+                              context,
+                              _localImagePath!,
+                              displayWidth: 88,
+                            )
                           : (_serverImageUrl.isNotEmpty
-                              ? NetworkImage(
-                                  magazinFullImageUrl(_serverImageUrl))
-                              : null) as ImageProvider?,
+                              ? appNetworkImageProvider(
+                                  context,
+                                  magazinFullImageUrl(_serverImageUrl),
+                                  displayWidth: 88,
+                                )
+                              : null),
                       child: _localImagePath == null && _serverImageUrl.isEmpty
                           ? const Icon(Icons.storefront_outlined,
                               size: 36, color: _accent)

@@ -75,6 +75,8 @@ hisoblama — o'sha helperlarni chaqir.
 | **Birlik konverti** | `lib/core/utils/qty_units.dart` | `qtyFromUi`/`qtyFromUiSafe` (kg/l → BUTUN gr/ml), `qtyToUi`/`formatQty`/`formatQtyUnit` (gr/ml → kg/l). ⚠️ gram-yozish himoyasi bor |
 | **Rollar** | `lib/core/constants/roles.dart` | `AppRoles` — role string konstantalari |
 | **Media** | `lib/core/media/` | Ilova ICHIDA kamera/video: `InAppPhotoCamera`, `TelegramStyleVideoRecorder`, `VideoPreviewScreen` (`video_pervi`), `VideoProcessor`, `CircularNetworkVideoPlayer` |
+| **Tarmoq rasmi** | `lib/core/widgets/app_network_image.dart` | ⚠️ YAGONA yo'l: `AppNetworkImage` (vidjet, `maxDecodeWidth` bilan) yoki `appNetworkImageProvider`/`appFileImageProvider` (CircleAvatar kabi `ImageProvider` kerak bo'lganda). `Image.network`/`NetworkImage`/`CachedNetworkImage` TO'G'RIDAN-TO'G'RI ishlatilmaydi — o'lchamsiz dekod = rasmiga ~4 MB RAM = OOM |
+| **Rasm to'liq ekranda** | `lib/core/widgets/full_screen_image.dart` | `openFullScreenImage(context, url)` — ekran o'lchamida dekod qiladi, yopilganda rasmni keshdan chiqaradi (`evict`) |
 
 ---
 
@@ -88,7 +90,8 @@ hisoblama — o'sha helperlarni chaqir.
 | Foyda nazorati | `lib/admin/ui/profit_control_ui.dart` | tannarx vs sotuv narxi, marja (`tech_card_cost.dart` bilan) |
 | Foyda analitikasi | `lib/admin/ui/profit_analytics_ui.dart` (~1200 qator) | tortlar bo'yicha tushum/tannarx/foyda grafiklari (`GET /api/analytics/profit`) |
 | Shef buyurtma | `lib/shef/ui/shef_create_order_ui.dart`, `shef_order_detail_ui.dart` | полуфабрикат limiti (`pf-availability`), bosqich qabul/rad |
-| Ombor ishlab chiqarish | `lib/ombor/ui/ombor_production_ui.dart`, `ombor_orders_ui.dart` (~1400 qator) | ishlab chiqarish oqimi, buyurtma ro'yxati |
+| Ombor ishlab chiqarish | `lib/ombor/ui/ombor_production_ui.dart` | ishlab chiqarish oqimi |
+| Ombor buyurtmalari | `lib/ombor/ui/ombor_orders_ui.dart` (~1500 qator) | YASSI (flat) lazy ro'yxat: kartochka ko'rinishi saqlangan, lekin har qator alohida `ListView` elementi; qator holati (son+media) faqat tahrirlanadigan qatorda; rasm thumbnail o'lchamida. Fayl boshidagi izohni o'qi — bu qoidalar buzilsa ekran yana qotadi |
 | Inventarizatsiya | `lib/production/ui/inventory_page.dart`, `inventory_history_page.dart` | акт инвентаризации, real sanash to'ri |
 | Yuk bosh ekran | `lib/yuk/ui/yuk_home_ui.dart` (~2600 qator) | sklad buyurtmalari + targovli pul + kunlik hisob |
 | POS (Konak) | `lib/admin/ui/pos_*_ui.dart` (`pos_hub`, `pos_menu`, `pos_orders`, `pos_sales`, `pos_recons`) | Konak POS integratsiyasi (menyu, avto-buyurtma, sotuv, recon) |
@@ -109,6 +112,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **Rolga yo'naltirish** | `lib/splash_screen.dart` va `lib/login_page.dart` (`_navigateByRole`) |
 | **Admin mahsulot ro'yxati o'zgarishi** | `lib/admin/provider/admin_product_provider.dart` (`ProductProviderAdmin`) — xotirada create/update/delete, re-fetch YO'Q |
 | **Rasm/video yuklash** | `lib/admin/provider/upload_image_provider.dart`, `admin/services/tech_image_upload_service.dart`, `core/media/*` |
+| **Rasm KO'RSATISH (ro'yxat/avatar/to'liq ekran)** | `lib/core/widgets/app_network_image.dart` + `full_screen_image.dart` — 3-bo'limga qara. Ro'yxatdagi rasm har doim o'z katakchasi o'lchamida dekod qilinsin |
 | **Filial limitlari** | `lib/admin/ui/filial_limits_ui.dart` + `admin/services/filial_limit_service.dart` (`GET/POST /api/filial-limits`) |
 | **POS (Konak) integratsiya** | `lib/admin/ui/pos_*_ui.dart` + `admin/services/pos_*_service.dart` + `admin/model/pos_*_model.dart` |
 | **Sklad qoldig'i / korreksiya / inventar** | `lib/production/` — `StockProvider`, `stock_service.dart`, `stock_widgets.dart`, `inventory_page.dart` |

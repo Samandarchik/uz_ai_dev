@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
+import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
 import 'package:uz_ai_dev/yuk/provider/magazin_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/magazin_form_sheet.dart';
@@ -145,31 +147,9 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
   // Rasmni to'liq ekranda ko'rish (boshqa ekranlardagi biriktirma
   // dialogi bilan bir xil uslub: qora fon + InteractiveViewer).
   void _openImage(String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(8),
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              child: Center(
-                child: Image.network(magazinFullImageUrl(imageUrl)),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () =>
-                    Navigator.of(dialogContext, rootNavigator: true).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Umumiy to'liq ekran vidjeti: ekran o'lchamida dekod qiladi va
+    // yopilganda rasmni keshdan chiqaradi.
+    openFullScreenImage(context, magazinFullImageUrl(imageUrl));
   }
 
   @override
@@ -306,8 +286,13 @@ class _YukMagazinDetailUiState extends State<YukMagazinDetailUi> {
                 child: CircleAvatar(
                   radius: 34,
                   backgroundColor: const Color(0xFFF0E8DC),
+                  // Avatar 68px — rasm ham shu o'lchamda dekod qilinadi.
                   backgroundImage: m.imageUrl.isNotEmpty
-                      ? NetworkImage(magazinFullImageUrl(m.imageUrl))
+                      ? appNetworkImageProvider(
+                          context,
+                          magazinFullImageUrl(m.imageUrl),
+                          displayWidth: 68,
+                        )
                       : null,
                   child: m.imageUrl.isEmpty
                       ? const Icon(Icons.storefront_outlined,

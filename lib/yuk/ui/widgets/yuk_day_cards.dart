@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
+import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Narxlangan sklad buyurtmalarini KUNLIK kartalarda ko'rsatish uchun UMUMIY
@@ -615,31 +617,9 @@ class _AttachmentTile extends StatelessWidget {
       );
       return;
     }
-    showDialog(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(8),
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              child: Center(
-                child: Image.network(_attachmentUrl(entry)),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () =>
-                    Navigator.of(dialogContext, rootNavigator: true).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Umumiy to'liq ekran vidjeti: rasm ekran o'lchamida dekod qilinadi va
+    // yopilganda keshdan chiqariladi.
+    openFullScreenImage(context, _attachmentUrl(entry));
   }
 
   @override
@@ -663,10 +643,13 @@ class _AttachmentTile extends StatelessWidget {
                     ),
                   ),
                 )
-              : Image.network(
-                  _attachmentUrl(entry),
+              // ⚠️ Plitka 72px — rasm ham SHU o'lchamda dekod qilinadi.
+              // (Ilgari 1024px'da dekod bo'lib, har biriga ~4 MB RAM ketardi.)
+              : AppNetworkImage(
+                  imageUrl: _attachmentUrl(entry),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  maxDecodeWidth: 256,
+                  errorWidget: (_) => Container(
                     color: const Color(0xFFF5F1EA),
                     child: const Icon(Icons.broken_image, color: Colors.black26),
                   ),

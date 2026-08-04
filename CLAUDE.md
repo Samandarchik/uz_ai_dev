@@ -41,7 +41,13 @@ Eng ko'p kerak bo'ladiganlar:
   → «NEVER STORE A FLOAT». Hisoblangan nisbat (1 гр narxi, marja %) ekranda float bo'lishi
   mumkin — u saqlanmaydi.
 - **⚠️ TARMOQ RASMI = `AppNetworkImage`** (`lib/core/widgets/app_network_image.dart`).
-  To'g'ridan-to'g'ri `CachedNetworkImage` / `Image.network` YOZMA. Sabab: backend rasmni
+  To'g'ridan-to'g'ri `CachedNetworkImage` / `Image.network` / `NetworkImage` YOZMA.
+  `CircleAvatar.backgroundImage` kabi `ImageProvider` kerak bo'lsa —
+  `appNetworkImageProvider(context, url, displayWidth: ...)` (lokal fayl uchun
+  `appFileImageProvider`). Lokal `Image.file` ga `cacheWidth` ber. Rasmni to'liq
+  ekranda ko'rsatish — `openFullScreenImage(context, url)`
+  (`lib/core/widgets/full_screen_image.dart`), u yopilganda rasmni keshdan chiqaradi.
+  Sabab: backend rasmni
   1024px'da saqlaydi; o'lchamsiz dekod qilinsa RAM'da ~3 MB bitmap qoladi — 55px avatar
   uchun ham. Flutter ImageCache limiti 100 MB, ya'ni ~32 ta rasm keshni to'ldiradi va
   ro'yxat scroll'ida har rasm qayta-qayta dekod bo'lib ekran qotadi. `AppNetworkImage`

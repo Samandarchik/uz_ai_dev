@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,6 +18,8 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
+import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -604,41 +605,9 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-// Katalog rasmi TO'LIQ EKRANDA: qora fon, pinch-zoom mumkin, ekranga bir
-// marta bosilsa yopiladi.
-class _FullscreenPhoto extends StatelessWidget {
-  final String url;
-  const _FullscreenPhoto({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.pop(context),
-        child: SizedBox.expand(
-          child: InteractiveViewer(
-            child: Center(
-              child: CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.contain,
-                placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white70,
-                  ),
-                ),
-                errorWidget: (_, __, ___) =>
-                    const Icon(Icons.broken_image, color: Colors.white38),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Katalog rasmi TO'LIQ EKRANDA — endi umumiy `FullScreenImagePage`
+// (core/widgets/full_screen_image.dart): rasm ekran o'lchamida dekod qilinadi
+// va chiqishda keshdan chiqariladi.
 
 // Summalarni chiroyli ko'rsatish: 1000 -> "1 000".
 String _formatMoney(num v) {
@@ -1108,9 +1077,20 @@ class _YukSkladCardState extends State<YukSkladCard> {
               constraints: const BoxConstraints(maxHeight: 340),
               child: InteractiveViewer(
                 child: Center(
+                  // Ko'rish oynasi 340px balandlikda — rasm ham ekran
+                  // kengligidan kattaroq dekod qilinmaydi.
                   child: isRemote
-                      ? Image.network(_fullUrl(entry))
-                      : Image.file(File(entry)),
+                      ? AppNetworkImage(
+                          imageUrl: _fullUrl(entry),
+                          fit: BoxFit.contain,
+                        )
+                      : Image.file(
+                          File(entry),
+                          fit: BoxFit.contain,
+                          cacheWidth: (MediaQuery.sizeOf(context).width *
+                                  MediaQuery.devicePixelRatioOf(context))
+                              .round(),
+                        ),
                 ),
               ),
             ),
@@ -1146,21 +1126,20 @@ class _YukSkladCardState extends State<YukSkladCard> {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => _FullscreenPhoto(url: _fullUrl(rel)),
-          ),
-        ),
+        onTap: () => openFullScreenImage(context, _fullUrl(rel)),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Container(
             width: 96,
             height: 64,
             color: const Color(0xFFF5F1EA),
-            child: CachedNetworkImage(
+            // ⚠️ Rasm 96px'lik katakcha uchun SHU o'lchamda dekod qilinadi —
+            // ro'yxatda o'nlab mahsulot bo'lgani uchun bu hal qiluvchi.
+            child: AppNetworkImage(
               imageUrl: _fullUrl(rel),
               fit: BoxFit.cover,
-              placeholder: (_, __) => const Center(
+              maxDecodeWidth: 320,
+              placeholder: (_) => const Center(
                 child: SizedBox(
                   width: 18,
                   height: 18,
@@ -1170,7 +1149,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
                   ),
                 ),
               ),
-              errorWidget: (_, __, ___) =>
+              errorWidget: (_) =>
                   const Icon(Icons.broken_image, color: Colors.black26),
             ),
           ),
@@ -1193,16 +1172,28 @@ class _YukSkladCardState extends State<YukSkladCard> {
         ),
       );
     } else if (isRemote) {
-      content = Image.network(
-        _fullUrl(entry),
+      // Plitka 72px — rasm ham shu o'lchamda dekod qilinadi.
+      content = AppNetworkImage(
+        imageUrl: _fullUrl(entry),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        maxDecodeWidth: 256,
+        errorWidget: (_) => Container(
           color: const Color(0xFFF5F1EA),
           child: const Icon(Icons.broken_image, color: Colors.black26),
         ),
       );
     } else {
-      content = Image.file(File(entry), fit: BoxFit.cover);
+      // Kameradan olingan fayl 4000px bo'lishi mumkin — 72px plitka uchun
+      // o'lchamsiz dekod qilinsa bitta rasm ~48 MB RAM egallaydi.
+      content = Image.file(
+        File(entry),
+        fit: BoxFit.cover,
+        cacheWidth: (72 * MediaQuery.devicePixelRatioOf(context)).round(),
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFF5F1EA),
+          child: const Icon(Icons.broken_image, color: Colors.black26),
+        ),
+      );
     }
 
     return SizedBox(

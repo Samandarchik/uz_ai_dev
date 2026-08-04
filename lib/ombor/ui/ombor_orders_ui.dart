@@ -9,7 +9,8 @@
 //     bitta rasm RAM'da ~4 MB. Tarix ekranida 40–50 ta rasm = 150–200 MB → iOS
 //     ilovani o'ldiradi. Endi rasm katakcha o'lchamida (~160px, ~0.1 MB) dekod
 //     qilinadi (`AppNetworkImage` + `maxDecodeWidth`, lokal fayl uchun `cacheWidth`),
-//     ekrandan chiqilganda esa rasm keshi butunlay bo'shatiladi.
+//     to'liq ekran ko'rinishi esa umumiy `FullScreenImagePage` — u yopilganda
+//     katta bitmap keshdan chiqariladi.
 //
 //  2) RO'YXAT — har sklad kartochkasi o'z ichidagi HAMMA qatorni bir yo'la qurardi
 //     (ekranda ko'rinmaganini ham): 60 ta mahsulot = 60 ta TextField + 60 ta rasm
@@ -35,6 +36,7 @@ import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
+import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
@@ -178,12 +180,15 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       slot.dispose();
     }
     _slots.clear();
-    // Tarix ro'yxati boshqa hech qayerda ishlatilmaydi — xotirada qoldirmaymiz.
-    if (widget.acceptedOnly) _provider?.clearHistoryOrders();
-    if (_usedNetworkImage) {
-      // Dekod qilingan rasmlar RAM'da qoladi (Flutter ImageCache 100 MB gacha
-      // ushlaydi). Bu ekrandan chiqilganda ular kerak emas — darhol bo'shatamiz.
-      PaintingBinding.instance.imageCache.clear();
+    if (widget.acceptedOnly) {
+      // Tarix ro'yxati boshqa hech qayerda ishlatilmaydi — xotirada qoldirmaymiz.
+      _provider?.clearHistoryOrders();
+      // Tarixda o'nlab tarmoq rasmi ko'rsatiladi va ular ImageCache'da qolib
+      // ketadi. Tarix ALOHIDA sahifa (tabга emas, orqaga qaytiladi), shuning
+      // uchun chiqishda keshni bo'shatish xavfsiz. Aktiv tab'da bunday
+      // qilinmaydi: u yerda rasm kam, tab almashganda esa «Mahsulotlar»
+      // rasmlarini bekorga qayta dekod qilishga majbur qilardi.
+      if (_usedNetworkImage) PaintingBinding.instance.imageCache.clear();
     }
     super.dispose();
   }
@@ -1314,9 +1319,7 @@ class _ItemView extends StatelessWidget {
     if (item.imageUrl.isNotEmpty) {
       final url = '${AppUrls.baseUrl}${item.imageUrl}';
       return _MediaThumb(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => _FullImagePage(url: url)),
-        ),
+        onTap: () => openFullScreenImage(context, url),
         child: AppNetworkImage(
           imageUrl: url,
           maxDecodeWidth: _thumbMaxDecode,
@@ -1466,57 +1469,6 @@ class _MediaEmpty extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text('—', style: TextStyle(color: Colors.grey.shade500)),
-    );
-  }
-}
-
-// Saqlangan rasmni to'liq ekranda ko'rish.
-//
-// Bu yerda rasm katta (ekran kengligida) dekod qilinadi — orqaga qaytilganda
-// esa darhol keshdan chiqariladi, aks holda ketma-ket 10 ta rasm ochilsa
-// RAM'da 10 ta katta bitmap yig'ilib qolardi.
-class _FullImagePage extends StatefulWidget {
-  final String url;
-  const _FullImagePage({required this.url});
-
-  @override
-  State<_FullImagePage> createState() => _FullImagePageState();
-}
-
-class _FullImagePageState extends State<_FullImagePage> {
-  @override
-  void dispose() {
-    PaintingBinding.instance.imageCache.clear();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: AppNetworkImage(
-                  imageUrl: widget.url,
-                  fit: BoxFit.contain,
-                  maxDecodeWidth: 1024,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
 import 'package:uz_ai_dev/yuk/provider/magazin_provider.dart';
 import 'package:uz_ai_dev/yuk/ui/widgets/magazin_form_sheet.dart';
@@ -219,8 +220,16 @@ class _MagazinCard extends StatelessWidget {
               CircleAvatar(
                 radius: 26,
                 backgroundColor: const Color(0xFFF0E8DC),
+                // ⚠️ 52px avatar uchun ham NetworkImage rasmni TO'LIQ (1024px,
+                // ~4 MB) dekod qilardi — 50 magazinli ro'yxat ilovani
+                // o'ldirardi. appNetworkImageProvider avatar o'lchamida dekod
+                // qiladi.
                 backgroundImage: m.imageUrl.isNotEmpty
-                    ? NetworkImage(magazinFullImageUrl(m.imageUrl))
+                    ? appNetworkImageProvider(
+                        context,
+                        magazinFullImageUrl(m.imageUrl),
+                        displayWidth: 52,
+                      )
                     : null,
                 child: m.imageUrl.isEmpty
                     ? const Icon(Icons.storefront_outlined,
