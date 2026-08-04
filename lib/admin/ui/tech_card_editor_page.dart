@@ -22,6 +22,7 @@ import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_item_editor.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
@@ -373,8 +374,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   static String _fmtPercent(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 
+  // Pul maydonida raqamlar probel bilan guruhlangan (200 000) — parse
+  // qilishdan oldin probellar tashlanadi.
   double _parseProfit(String s) =>
-      double.tryParse(s.trim().replaceAll(',', '.')) ?? 0;
+      double.tryParse(s.replaceAll(' ', '').trim().replaceAll(',', '.')) ?? 0;
 
   // Foiz maydoniga yozildi — rejim 'percent', summa avto hisoblanadi.
   // Bo'sh/0 — foyda belgilanmagan.
@@ -443,8 +446,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
     if (!_profitSumFocus.hasFocus) {
       final sum = _profitPerPiece;
-      final t =
-          (c.profitMode.isEmpty || sum == null) ? '' : sum.round().toString();
+      final t = (c.profitMode.isEmpty || sum == null)
+          ? ''
+          : formatMoneyInput(sum);
       if (_profitSumCtrl.text != t) _profitSumCtrl.text = t;
     }
   }
@@ -457,8 +461,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
     if (!_overheadSumFocus.hasFocus) {
       final sum = _overheadSum;
-      final t =
-          (c.overheadMode.isEmpty || sum == null) ? '' : sum.round().toString();
+      final t = (c.overheadMode.isEmpty || sum == null)
+          ? ''
+          : formatMoneyInput(sum);
       if (_overheadSumCtrl.text != t) _overheadSumCtrl.text = t;
     }
   }
@@ -467,15 +472,14 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // «Almashtirish» bosilganda maydonda ham yangi narx ko'rinishi shart.
   void _syncSalePriceController() {
     if (_salePriceFocus.hasFocus) return;
-    final t = c.salePrice > 0 ? c.salePrice.toString() : '';
+    final t = c.salePrice > 0 ? formatMoneyInput(c.salePrice) : '';
     if (_salePriceCtrl.text != t) _salePriceCtrl.text = t;
   }
 
   // Sotish narxi qo'lda yozildi — pul BUTUN so'm (kasr yo'q), bo'sh = 0
   // (belgilanmagan). ✓ (Сохранить) bosilganda saqlanadi.
   void _onSalePriceChanged(String text) {
-    final v = int.tryParse(text.trim()) ?? 0;
-    setState(() => c.salePrice = v < 0 ? 0 : v);
+    setState(() => c.salePrice = parseMoney(text));
   }
 
   // ---- Размер (shakl) tahriri ----
@@ -2041,10 +2045,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         focusNode: focusNode,
         keyboardType: TextInputType.numberWithOptions(decimal: decimal),
         inputFormatters: [
+          // decimal — FOIZ maydoni (12.5% bo'lishi mumkin), guruhlanmaydi;
+          // aks holda PUL — yozayotganda har 3 xonadan probel (200 000).
           if (decimal)
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
           else
-            FilteringTextInputFormatter.digitsOnly,
+            ThousandsSeparatorInputFormatter(),
         ],
         textAlign: TextAlign.right,
         style: _kCellBold,

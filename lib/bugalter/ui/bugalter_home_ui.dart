@@ -15,6 +15,7 @@ import 'package:uz_ai_dev/bugalter/ui/bugalter_production_ui.dart';
 import 'package:uz_ai_dev/bugalter/ui/widgets/edit_history.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
@@ -484,7 +485,7 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
       text: formatQty(widget.item.received, widget.item.type),
     );
     _subtotalController = TextEditingController(
-      text: widget.item.subtotal.round().toString(),
+      text: formatMoneyInput(widget.item.subtotal),
     );
     _loadHistory();
   }
@@ -516,8 +517,10 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
   }
 
   // "1,5" -> 1.5. Parse bo'lmasa null.
+  // Pul maydoni raqamlarni probel bilan guruhlaydi (200 000) — probellar
+  // parse'dan oldin tashlanadi (miqdor maydonlariga ta'siri yo'q).
   double? _parse(String? text) {
-    final t = (text ?? '').trim().replaceAll(',', '.');
+    final t = (text ?? '').replaceAll(' ', '').trim().replaceAll(',', '.');
     if (t.isEmpty) return null;
     return double.tryParse(t);
   }
@@ -735,13 +738,14 @@ class _EditItemQtyDialogState extends State<_EditItemQtyDialog> {
                 ),
               ],
               if (!_isRasxod) const SizedBox(height: 12),
-              // Summa — butun so'm (tiyin yo'q), faqat raqam kiritiladi.
+              // Summa — butun so'm (tiyin yo'q); yozayotganda har 3 xonadan
+              // probel bilan guruhlanadi: 200 000.
               TextFormField(
                 controller: _subtotalController,
                 autofocus: _isRasxod,
                 enabled: !_saving,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: _decoration('Summa', suffix: 'so\'m'),
                 validator: _validateMoney,
                 onChanged: (_) => setState(() {}),

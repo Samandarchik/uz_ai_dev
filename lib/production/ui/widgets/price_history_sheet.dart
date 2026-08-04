@@ -4,13 +4,13 @@
 // ProductProviderAdmin orqali), ostida xaridlar tarixi (GET
 // /api/prices/history). Tex karta muharriridagi «Цена» katagidan ochiladi.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart'
     show normalizeProductType;
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/price_history_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
@@ -102,7 +102,8 @@ class _PriceHistorySheetState extends State<_PriceHistorySheet> {
     final p = context.read<ProductProviderAdmin>().productById(widget.productId);
     if (p == null) return;
     _product = p;
-    _manualCtrl.text = p.manualPrice > 0 ? p.manualPrice.toString() : '';
+    _manualCtrl.text =
+        p.manualPrice > 0 ? formatMoneyInput(p.manualPrice) : '';
   }
 
   @override
@@ -127,7 +128,7 @@ class _PriceHistorySheetState extends State<_PriceHistorySheet> {
   // `true` qaytarib yopiladi — chaqiruvchi narxlarni qayta yuklaydi.
   Future<void> _saveManualPrice() async {
     if (_saving) return;
-    final price = int.tryParse(_manualCtrl.text.trim()) ?? 0;
+    final price = parseMoney(_manualCtrl.text);
     final messenger = ScaffoldMessenger.of(context);
     final provider = context.read<ProductProviderAdmin>();
 
@@ -312,8 +313,9 @@ class _PriceHistorySheetState extends State<_PriceHistorySheet> {
                 child: TextField(
                   controller: _manualCtrl,
                   keyboardType: TextInputType.number,
-                  // Pul — BUTUN so'm (tiyin yo'q), kasr kiritilmaydi.
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  // Pul — BUTUN so'm (tiyin yo'q); yozayotganda har 3
+                  // xonadan probel: 200 000.
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,

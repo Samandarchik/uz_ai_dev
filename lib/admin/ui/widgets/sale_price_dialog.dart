@@ -4,10 +4,10 @@
 // snackbar). «Foyda nazorati», «Foyda analitikasi» va «POS menyu»
 // ekranlaridagi «narx belgilanmagan» mahsulotlar shu orqali narxlanadi.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart'
     show fmtCostMoney;
 
@@ -98,7 +98,7 @@ class _SalePriceDialog extends StatefulWidget {
 
 class _SalePriceDialogState extends State<_SalePriceDialog> {
   late final TextEditingController _ctrl = TextEditingController(
-    text: widget.initial > 0 ? widget.initial.toString() : '',
+    text: widget.initial > 0 ? formatMoneyInput(widget.initial) : '',
   );
 
   @override
@@ -107,8 +107,7 @@ class _SalePriceDialogState extends State<_SalePriceDialog> {
     super.dispose();
   }
 
-  void _submit() =>
-      Navigator.pop(context, int.tryParse(_ctrl.text.trim()) ?? 0);
+  void _submit() => Navigator.pop(context, parseMoney(_ctrl.text));
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +117,8 @@ class _SalePriceDialogState extends State<_SalePriceDialog> {
         controller: _ctrl,
         autofocus: true,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        // Yozayotganda har 3 xonadan probel: 200 000.
+        inputFormatters: [ThousandsSeparatorInputFormatter()],
         decoration: const InputDecoration(
           labelText: 'Sotish narxi (1 dona)',
           suffixText: ' сум',

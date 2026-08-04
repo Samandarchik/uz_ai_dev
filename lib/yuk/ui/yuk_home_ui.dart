@@ -17,6 +17,7 @@ import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
@@ -37,36 +38,6 @@ const Map<int, String> kSkladNames = {
   3: 'Fresco Sklat',
   4: 'Personal Sklad',
 };
-
-// Raqam maydonida ming ajratuvchi sifatida har 3 xonadan keyin oddiy probel
-// qo'yadigan formatter: 3000 -> "3 000", 1500000 -> "1 500 000".
-// Faqat butun son (raqamlar). Kursor doim oxirida turadi.
-class ThousandsSeparatorInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    // Faqat raqamlarni qoldiramiz (probel va boshqa belgilarni olib tashlaymiz).
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) {
-      return const TextEditingValue(text: '');
-    }
-
-    // O'ngdan 3 xonadan guruhlab oddiy probel qo'shamiz.
-    final buf = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(' ');
-      buf.write(digits[i]);
-    }
-    final formatted = buf.toString();
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
 
 // kg bilan o'lchanadigan mahsulotlar uchun: raqamlar va bitta o'nlik
 // ajratuvchi (nuqta yoki vergul) ga ruxsat. Masalan "8.500", "8,5".

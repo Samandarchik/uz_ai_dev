@@ -2,9 +2,9 @@
 // (+ qarz/to'lov formasi _DebtFormSheet). Jami qarz, qarz yozuvlari, "Qarz qo'shish"/"To'lov"
 // FAB; MagazinProvider bilan ishlaydi.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/yuk/models/magazin_model.dart';
@@ -505,7 +505,8 @@ class _DebtFormSheetState extends State<_DebtFormSheet> {
               controller: _amountCtrl,
               autofocus: true,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              // Yozayotganda har 3 xonadan probel: 200 000.
+              inputFormatters: [ThousandsSeparatorInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Summa',
                 suffixText: 'so\'m',
