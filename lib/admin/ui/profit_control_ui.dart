@@ -1,6 +1,7 @@
 // admin/ui/profit_control_ui.dart — foyda/marja nazorati ekrani (faqat admin):
 // ProfitControlUi (StatefulWidget) — тех картаси bor mahsulotlar marjasini
-// jadvalda; hisob mijoz tomonida (tech_card_cost.dart), tavsiya narxni saqlaydi.
+// jadvalda; hisob mijoz tomonida (tech_card_cost.dart), tavsiya narxni
+// saqlaydi. «Narx» katagi BOSILADI — sotish narxi qo'lda kiritiladi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,9 @@ import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 // Eng yomon marja tepada. Chegaradan (default 20%) past qatorlar qizil.
 // Tavsiya narxi saqlanganidan farq qilsa «→ X» tugmasi chiqadi — bosish
 // admin tasdig'i: tex kartadagi sale_price yangilanib saqlanadi.
+// «Narx» katagi bosilsa — narxni QO'LDA kiritish dialogi (tavsiya
+// hisoblanmagan, ya'ni «Narx belgilanmagan» qatorlar uchun ham ishlaydi).
+// Qator TANASI bosilsa avvalgidek tex karta sahifasi ochiladi.
 // Hisob-kitob TO'LIQ mijoz tomonida — tech_card_cost.dart helperlari bilan.
 
 const String _kThresholdKey = 'profit_control_threshold';
@@ -114,12 +118,35 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
   // almashtirib saqlaymiz (provider ro'yxatni lokal yangilaydi).
   Future<void> _applySuggested(_RowData row) async {
     final suggested = row.suggested;
-    if (suggested == null || _savingIds.contains(row.product.id)) return;
+    if (suggested == null) return;
+    await _saveSalePrice(row, suggested);
+  }
+
+  // «Narx» katagi bosildi — sotish narxini QO'LDA kiritish dialogi.
+  // Tavsiya hisoblanmagan («Narx belgilanmagan») mahsulotlar uchun ham
+  // ishlaydi — narxni belgilashning yagona yo'li shu.
+  Future<void> _editSalePrice(_RowData row) async {
+    if (_savingIds.contains(row.product.id)) return;
+    final price = await showDialog<int>(
+      context: context,
+      builder: (_) => _SalePriceDialog(
+        title: row.product.name,
+        initial: row.card.salePrice,
+      ),
+    );
+    if (price == null || !mounted || price == row.card.salePrice) return;
+    await _saveSalePrice(row, price);
+  }
+
+  // Tex kartadagi sale_price ni saqlash (tavsiya bilan ham, qo'lda
+  // kiritilgan narx bilan ham bitta yo'l). Pul — BUTUN so'm.
+  Future<void> _saveSalePrice(_RowData row, int price) async {
+    if (_savingIds.contains(row.product.id)) return;
     setState(() => _savingIds.add(row.product.id));
 
     final provider = context.read<ProductProviderAdmin>();
     final updated = row.product.copyWith(
-      techCard: row.card.copyWith(salePrice: suggested),
+      techCard: row.card.copyWith(salePrice: price),
     );
     final ok = await provider.updateProduct(updated);
 
@@ -129,7 +156,7 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
       SnackBar(
         content: Text(
           ok
-              ? '${row.product.name}: narx ${fmtCostMoney(suggested)} qilib saqlandi'
+              ? '${row.product.name}: narx ${fmtCostMoney(price)} qilib saqlandi'
               : provider.error ?? 'Saqlashda xatolik',
         ),
         backgroundColor: ok ? null : Colors.red,
@@ -369,13 +396,9 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
                   width: 78,
                   color: textColor,
                 ),
-                _moneyCell(
-                  row.card.salePrice > 0
-                      ? fmtCostMoney(row.card.salePrice)
-                      : '—',
-                  width: 78,
-                  color: textColor,
-                ),
+                // «Narx» katagi BOSILADI — narxni qo'lda kiritish dialogi.
+                _priceCell(row, grey: grey, textColor: textColor,
+                    saving: saving),
                 SizedBox(
                   width: 56,
                   child: Text(
@@ -441,6 +464,59 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
     );
   }
 
+  // Tahrirlanadigan «Narx» katagi: joriy sale_price + kichik qalam ikonkasi
+  // va punktir ostki chiziq (bosilishi mumkinligi ko'rinib tursin).
+  // Saqlanayotganda joyida spinner.
+  Widget _priceCell(
+    _RowData row, {
+    required bool grey,
+    required Color textColor,
+    required bool saving,
+  }) {
+    final price = row.card.salePrice;
+    // «Narx belgilanmagan» bo'limida ikonka ko'zga tashlanadigan bo'lsin.
+    final iconColor = grey ? Colors.blue.shade400 : Colors.grey.shade400;
+    return InkWell(
+      onTap: () => _editSalePrice(row),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 78,
+        padding: const EdgeInsets.only(bottom: 1),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: iconColor.withValues(alpha: 0.6)),
+          ),
+        ),
+        child: saving
+            ? const Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        price > 0 ? fmtCostMoney(price) : '—',
+                        style: TextStyle(fontSize: 12.5, color: textColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(Icons.edit, size: 11, color: iconColor),
+                ],
+              ),
+      ),
+    );
+  }
+
   Widget _moneyCell(String text, {required double width, Color? color}) {
     return SizedBox(
       width: width,
@@ -453,6 +529,60 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
           style: TextStyle(fontSize: 12.5, color: color ?? Colors.black87),
         ),
       ),
+    );
+  }
+}
+
+// Sotish narxini qo'lda kiritish dialogi. Pul — BUTUN so'm (kasr yo'q).
+// Natija: yangi narx (int) yoki null (bekor qilindi). 0 — narx belgilanmagan.
+class _SalePriceDialog extends StatefulWidget {
+  final String title;
+  final int initial;
+
+  const _SalePriceDialog({required this.title, required this.initial});
+
+  @override
+  State<_SalePriceDialog> createState() => _SalePriceDialogState();
+}
+
+class _SalePriceDialogState extends State<_SalePriceDialog> {
+  late final TextEditingController _ctrl = TextEditingController(
+    text: widget.initial > 0 ? widget.initial.toString() : '',
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() =>
+      Navigator.pop(context, int.tryParse(_ctrl.text.trim()) ?? 0);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title, style: const TextStyle(fontSize: 16)),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(
+          labelText: 'Sotish narxi (1 dona)',
+          suffixText: ' сум',
+          hintText: '—',
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Bekor'),
+        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Saqlash')),
+      ],
     );
   }
 }

@@ -1,8 +1,9 @@
 // Oxirgi xarid narxlari — GET /api/prices/latest javobi.
 // unit_price ENG KICHIK birlik narxi: кг/л mahsulotlar uchun 1 gr/ml,
-// шт uchun 1 dona, м uchun 1 metr (so'm). Hech qachon narxlanmagan
-// mahsulotlar ro'yxatda BO'LMAYDI. Tex karta muharriridagi jonli tannarx
-// kataklari shu modeldan foydalanadi.
+// шт uchun 1 dona, м uchun 1 metr (so'm). source — narx qayerdan kelgani:
+// "purchase" (sklad xaridi) yoki "manual" (admin qo'lda kiritgan). Na xaridi,
+// na qo'lda narxi bor mahsulotlar ro'yxatda BO'LMAYDI. Tex karta
+// muharriridagi jonli tannarx kataklari shu modeldan foydalanadi.
 
 int _asInt(dynamic v) {
   if (v is num) return v.toInt();
@@ -19,18 +20,28 @@ class LatestPrice {
   final int productId;
   final double unitPrice; // eng kichik birlik narxi (so'm)
   final DateTime? lastPriced; // oxirgi narxlangan vaqt
+  // "purchase" — sklad xaridi (USTUN manba), "manual" — admin qo'lda kiritgan
+  // narx (faqat xarid tarixi bo'lmaganda ishlatiladi). Eski backend bu
+  // maydonni yubormaydi — o'shanda "purchase" deb qabul qilinadi.
+  final String source;
 
   const LatestPrice({
     required this.productId,
     required this.unitPrice,
     this.lastPriced,
+    this.source = 'purchase',
   });
 
+  // Narx admin tomonidan QO'LDA kiritilganmi (xarid tarixidan emas).
+  bool get isManual => source == 'manual';
+
   factory LatestPrice.fromJson(Map<String, dynamic> json) {
+    final src = json['source']?.toString().trim() ?? '';
     return LatestPrice(
       productId: _asInt(json['product_id']),
       unitPrice: _asDouble(json['unit_price']),
       lastPriced: DateTime.tryParse(json['last_priced']?.toString() ?? ''),
+      source: src.isEmpty ? 'purchase' : src,
     );
   }
 

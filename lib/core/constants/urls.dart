@@ -13,6 +13,12 @@ abstract final class AppUrls {
   static const String productAll = '$baseUrl/api/products/all';
   static const String product1 = '$baseUrl/api/products1';
   static const String product = '$baseUrl/api/products';
+  // Masalliqning QO'LDA kiritilgan xarid narxi (hech qachon sotib olinmagan
+  // mahsulot uchun): PUT {"manual_price": 8000} — BUTUN so'm, mahsulotning
+  // TO'LIQ birligi uchun (кг → 1 kg narxi, шт → 1 dona narxi). 0 —
+  // o'chirish. Faqat admin.
+  static String productManualPrice(int id) =>
+      '$baseUrl/api/products/$id/manual-price';
 
   // Ombor (bozor mahsulotlari)
   static String omborProducts = '$baseUrl/api/ombor/products';

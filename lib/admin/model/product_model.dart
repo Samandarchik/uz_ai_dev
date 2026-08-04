@@ -2,7 +2,9 @@
 // fromJson/toJson, techCard (iyerarxik тех карта), composition (eski tekis
 // tarkib), type, is_semi_finished (полуфабрикат), piece_weight_g (1 шт = X gr),
 // waste_base/waste_amount (tozalash yo'qotishi -> wasteFactor),
-// mone_app/bozor/source/sklads (ombor → yuk keltiruvchi oqimi).
+// manual_price/manual_price_at (hech sotib olinmagan masalliqning QO'LDA
+// kiritilgan xarid narxi), mone_app/bozor/source/sklads (ombor → yuk
+// keltiruvchi oqimi).
 import 'package:uz_ai_dev/admin/model/composition_item.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 
@@ -57,6 +59,16 @@ class ProductModelAdmin {
   // kartasidan olinadi (tech_card_cost.dart -> techEffectivePieceWeightG).
   final int pieceWeightG;
 
+  // QO'LDA kiritilgan xarid narxi — BUTUN so'm, mahsulotning TO'LIQ birligi
+  // uchun (кг → 1 kg narxi, шт → 1 dona narxi). 0 — kiritilmagan.
+  // Hech qachon sotib olinmagan masalliqning tannarxdagi bo'shlig'ini
+  // to'ldiradi; XARID tarixi bo'lsa xarid narxi USTUN (backend qoidasi).
+  // 1 гр/мл narxi bu qiymatdan HISOBLANADI (nisbat — saqlanmaydi).
+  final int manualPrice;
+
+  // Qo'lda narx oxirgi marta qachon kiritilgan (null — kiritilmagan).
+  final DateTime? manualPriceAt;
+
   ProductModelAdmin({
     required this.id,
     required this.name,
@@ -82,6 +94,8 @@ class ProductModelAdmin {
     this.wasteAmount = 0,
     this.isSemiFinished = false,
     this.pieceWeightG = 0,
+    this.manualPrice = 0,
+    this.manualPriceAt,
   });
 
   // Tozalash yo'qotishi koeffitsiyenti: xarid narxi shu koeffitsiyentga
@@ -125,6 +139,9 @@ class ProductModelAdmin {
       wasteAmount: (json['waste_amount'] as num?)?.toInt() ?? 0,
       isSemiFinished: json['is_semi_finished'] ?? false,
       pieceWeightG: (json['piece_weight_g'] as num?)?.toInt() ?? 0,
+      manualPrice: (json['manual_price'] as num?)?.toInt() ?? 0,
+      manualPriceAt:
+          DateTime.tryParse(json['manual_price_at']?.toString() ?? ''),
     );
   }
 
@@ -153,6 +170,7 @@ class ProductModelAdmin {
       'waste_amount': wasteAmount,
       'is_semi_finished': isSemiFinished,
       'piece_weight_g': pieceWeightG,
+      'manual_price': manualPrice,
     };
   }
 
@@ -180,6 +198,8 @@ class ProductModelAdmin {
       'waste_amount': wasteAmount,
       'is_semi_finished': isSemiFinished,
       'piece_weight_g': pieceWeightG,
+      // Yangi mahsulotda qo'lda narx darhol belgilanishi mumkin (ixtiyoriy).
+      'manual_price': manualPrice,
     };
   }
 
@@ -209,6 +229,11 @@ class ProductModelAdmin {
       // Backend "maydon yo'q = tegilmasin" deb qaraydi — set/clear qilish
       // uchun DOIM yuboriladi (0 = o'chirish).
       'piece_weight_g': pieceWeightG,
+      // manual_price ATAYLAB YUBORILMAYDI: uning o'z endpointi bor
+      // (PUT /api/products/{id}/manual-price). Backend bu maydonni pointer
+      // qilib o'qiydi — yo'q bo'lsa qiymat ham, manual_price_at sanasi ham
+      // o'zgarmaydi. Yuborsak har tex karta saqlashda sana bugunga surilib,
+      // «eski narx» (30 kun) ogohlantirishi hech qachon chiqmay qolardi.
     };
   }
 
@@ -237,6 +262,8 @@ class ProductModelAdmin {
     int? wasteAmount,
     bool? isSemiFinished,
     int? pieceWeightG,
+    int? manualPrice,
+    DateTime? manualPriceAt,
   }) {
     return ProductModelAdmin(
       id: id ?? this.id,
@@ -264,6 +291,10 @@ class ProductModelAdmin {
       wasteAmount: wasteAmount ?? this.wasteAmount,
       isSemiFinished: isSemiFinished ?? this.isSemiFinished,
       pieceWeightG: pieceWeightG ?? this.pieceWeightG,
+      manualPrice: manualPrice ?? this.manualPrice,
+      // manualPrice 0 ga tushsa (o'chirish) sana ham ma'nosini yo'qotadi.
+      manualPriceAt:
+          (manualPrice == 0) ? null : (manualPriceAt ?? this.manualPriceAt),
     );
   }
 }

@@ -1,6 +1,9 @@
 // admin/ui/tech_card_editor_page.dart — тех карта / полуфабрикат muharriri
 // (eng og'ir admin ekrani): TechCardEditorPage — Excel «тех карта» varag'iga
 // 1:1 o'xshash baza bloklari + Расходник tahriri, saqlaganda mahsulot update.
+// Narxlar SHU YERDA qo'lda kiritiladi: «Цена продажи» qatori tahrirlanadi
+// (marja + partiya jami ko'rsatiladi), «Цена» katagi esa masalliqning qo'lda
+// xarid narxi sheet'ini ochadi.
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -136,6 +139,11 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   final FocusNode _overheadPctFocus = FocusNode();
   final FocusNode _overheadSumFocus = FocusNode();
 
+  // «Цена продажи» qatoridagi inline maydon — sotish narxi QO'LDA yoziladi
+  // (avval faqat «Almashtirish» tugmasi orqali o'zgarardi).
+  final TextEditingController _salePriceCtrl = TextEditingController();
+  final FocusNode _salePriceFocus = FocusNode();
+
   TechCardController get c => _controller;
 
   @override
@@ -170,6 +178,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     _overheadSumCtrl.dispose();
     _overheadPctFocus.dispose();
     _overheadSumFocus.dispose();
+    _salePriceCtrl.dispose();
+    _salePriceFocus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -451,6 +461,21 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           (c.overheadMode.isEmpty || sum == null) ? '' : sum.round().toString();
       if (_overheadSumCtrl.text != t) _overheadSumCtrl.text = t;
     }
+  }
+
+  // Sotish narxi maydonini modeldan to'ldiradi (fokusda BO'LMAGANDA):
+  // «Almashtirish» bosilganda maydonda ham yangi narx ko'rinishi shart.
+  void _syncSalePriceController() {
+    if (_salePriceFocus.hasFocus) return;
+    final t = c.salePrice > 0 ? c.salePrice.toString() : '';
+    if (_salePriceCtrl.text != t) _salePriceCtrl.text = t;
+  }
+
+  // Sotish narxi qo'lda yozildi — pul BUTUN so'm (kasr yo'q), bo'sh = 0
+  // (belgilanmagan). ✓ (Сохранить) bosilganda saqlanadi.
+  void _onSalePriceChanged(String text) {
+    final v = int.tryParse(text.trim()) ?? 0;
+    setState(() => c.salePrice = v < 0 ? 0 : v);
   }
 
   // ---- Размер (shakl) tahriri ----
@@ -1200,10 +1225,17 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     style: subStyle,
                   ),
                 ),
+                // Ichki пф masallig'ining «Цена»si ham bosiladi — narxi yo'q
+                // masalliqni shu yerdan qo'lda narxlash mumkin.
                 _moneyCell(
                   price == null ? '—' : fmtCostMoney(price),
                   width: _kPriceColW,
                   grey: price == null,
+                  bg: _isManualPrice(ing) ? const Color(0xFFD6E9FB) : null,
+                  tooltip:
+                      _isManualPrice(ing) ? 'Qo\'lda kiritilgan narx' : null,
+                  onTap:
+                      ing.productId != 0 ? () => _openPriceSheet(ing) : null,
                 ),
                 _moneyCell(
                   cost == null ? '—' : fmtCostMoney(cost),
@@ -1403,6 +1435,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       if (mounted) {
         _syncProfitControllers();
         _syncOverheadControllers();
+        _syncSalePriceController();
       }
     });
     return Scaffold(
@@ -1902,24 +1935,55 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
-  // «Цена продажи» qatori: SAQLANGAN salePrice ko'rsatiladi (0 — «—»).
-  // Tavsiya (suggested) saqlanganidan farq qilsa, yonida to'q sariq
+  // «Цена продажи» qatori: sotish narxi QO'LDA yoziladi (inline maydon,
+  // BUTUN so'm; bo'sh = belgilanmagan). ✓ bosilganda saqlanadi.
+  // Ostida — «tuliq uzi nechpuligi»: marja (C ga nisbatan) va partiya jami
+  // («20 штук — 5 000 000 сум»).
+  // Tavsiya (suggested) saqlanganidan farq qilsa, ostida to'q sariq
   // «Yangi: X» + «Almashtirish» chiqadi — bosilsa controller.salePrice
-  // yangilanadi (✓ saqlashda backend'ga ketadi). Bu admin tasdiq oqimi.
+  // (va maydon ham) yangilanadi. Bu admin tasdiq oqimi.
   Widget _salePriceRow() {
     final stored = c.salePrice;
     final suggested = _suggestedSalePrice;
     final showHint = suggested != null && suggested != stored;
+    // Marja faqat tannarx ma'lum bo'lganda chiqadi.
+    final margin = (stored > 0 && _pricesLoaded)
+        ? techMarginPercent(stored, _fullPieceCost)
+        : null;
+    final info = [
+      if (margin != null) 'Marja: ${_fmtPercent(margin)}%',
+      if (stored > 0)
+        '${c.totalPieces} $_unitPlural — '
+            '${fmtCostMoney(stored * c.totalPieces)} сум',
+    ].join('  •  ');
     return Padding(
       padding: _kCellPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Цена продажи за $_unitOne - '
-            '${stored > 0 ? fmtCostMoney(stored) : '—'} сум',
-            style: _kCellBold,
+          Row(
+            children: [
+              Expanded(
+                child: Text('Цена продажи за $_unitOne', style: _kCellBold),
+              ),
+              _profitField(
+                controller: _salePriceCtrl,
+                focusNode: _salePriceFocus,
+                width: 96,
+                decimal: false,
+                onChanged: _onSalePriceChanged,
+              ),
+              const Text(' сум', style: _kCellBold),
+            ],
           ),
+          if (info.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                info,
+                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+              ),
+            ),
           if (showHint)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -2322,6 +2386,29 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     return DateTime.now().difference(lastPriced).inDays > _kStalePriceDays;
   }
 
+  // Qatorning «Цена»si admin QO'LDA kiritgan narxdanmi (xarid emas).
+  // Полуфабрикат qatori narxni o'z tex kartasidan oladi — unga tegishli emas.
+  bool _isManualPrice(TechItem item) =>
+      !_isPfItem(item) && (_prices[item.productId]?.isManual ?? false);
+
+  // «Цена» katagi bosildi — xarid narxi sheet'i (tepasida qo'lda narx
+  // tahriri). Qo'lda narx saqlansa sheet `true` qaytaradi: mahsulot
+  // keshlarini bekor qilib narxlarni qayta yuklaymiz, shunda «Цена»,
+  // «Сумма» va «Себестоимость» kataklari darhol jonli yangilanadi.
+  Future<void> _openPriceSheet(TechItem item) async {
+    final changed = await showPriceHistorySheet(
+      context,
+      productId: item.productId,
+      productName: item.name,
+    );
+    if (!mounted || changed != true) return;
+    setState(() {
+      _productByIdCache = null;
+      _wasteFactorsCache = null;
+    });
+    await _loadPrices();
+  }
+
   // Bir blokdagi ingredient qatori: nom | birlik | miqdor | Цена | Сумма.
   // Tahrir JOYIDA: miqdor katagi — inline TextField (g/ml da kg/litr sifatida
   // yoziladi), birlik katagi — bosilganda menyu. Long-press (nom katagida)
@@ -2335,7 +2422,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     final price = _rowUnitPrice(item);
     final cost = _rowCost(item);
     final noPrice = cost == null;
-    final stale = !noPrice && _isStalePrice(item);
+    final manual = !noPrice && _isManualPrice(item);
+    final stale = !noPrice && !manual && _isStalePrice(item);
     final isPf = _isPfItem(item);
     // Ochish faqat tarkibi bor пф'da (bo'sh tex kartada ochadigan narsa yo'q).
     final canExpand = isPf &&
@@ -2427,18 +2515,19 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     ),
                   ),
                   // Цена: g/ml uchun 1 kg/l narxi, pcs/m uchun 1 birlik narxi.
-                  // Eski narx (>30 kun) — sariq fon; bosilsa xarid tarixi.
+                  // Qo'lda kiritilgan narx — och ko'k fon; eski narx
+                  // (>30 kun) — sariq fon. Bosilsa narx sheet'i ochiladi
+                  // (qo'lda narx tahriri + xarid tarixi).
                   _moneyCell(
                     noPrice ? '—' : fmtCostMoney(price!),
                     width: _kPriceColW,
                     grey: noPrice,
-                    bg: stale ? const Color(0xFFFFECB3) : null,
+                    bg: manual
+                        ? const Color(0xFFD6E9FB)
+                        : (stale ? const Color(0xFFFFECB3) : null),
+                    tooltip: manual ? 'Qo\'lda kiritilgan narx' : null,
                     onTap: item.productId != 0
-                        ? () => showPriceHistorySheet(
-                              context,
-                              productId: item.productId,
-                              productName: item.name,
-                            )
+                        ? () => _openPriceSheet(item)
                         : null,
                   ),
                   // Сумма: kiritilgan miqdorning tannarxi.
@@ -2466,14 +2555,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
 
   // Pul katagi (Excel to'ri uslubida): o'ngga tekislangan, uzun sonlar
   // FittedBox bilan kichrayadi. grey=true — narx yo'q («—», kulrang).
-  // bg — katak foni (eski narx ogohlantirishi); onTap — katakning o'z tap
-  // maydoni (narx tarixi).
+  // bg — katak foni (qo'lda narx / eski narx belgisi); tooltip — fon nimani
+  // anglatishi; onTap — katakning o'z tap maydoni (narx sheet'i).
   Widget _moneyCell(
     String text, {
     required double width,
     bool bold = false,
     bool grey = false,
     Color? bg,
+    String? tooltip,
     VoidCallback? onTap,
   }) {
     final cell = Container(
@@ -2496,8 +2586,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         ),
       ),
     );
-    if (onTap == null) return cell;
-    return InkWell(onTap: onTap, child: cell);
+    final tapped = onTap == null ? cell : InkWell(onTap: onTap, child: cell);
+    if (tooltip == null) return tapped;
+    return Tooltip(message: tooltip, child: tapped);
   }
 
   // Blok oxiridagi nozik «+ ...» qatori.

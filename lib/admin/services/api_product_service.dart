@@ -1,7 +1,9 @@
 // admin/services/api_product_service.dart — mahsulot CRUD servisi
 // (ApiProductService): AppUrls.productAll (getAllProducts), AppUrls.product ga
-// post/put/delete (createProduct/updateProduct/deleteProduct) va
-// AppUrls.productReorder ga PUT (reorderProducts). ProductModelAdmin bilan.
+// post/put/delete (createProduct/updateProduct/deleteProduct),
+// AppUrls.productReorder ga PUT (reorderProducts) va
+// AppUrls.productManualPrice ga PUT (setManualPrice — qo'lda xarid narxi).
+// ProductModelAdmin bilan.
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
@@ -121,6 +123,34 @@ class ApiProductService {
     } catch (e) {
       debugPrint('Ошибка deleteProduct: $e');
       throw Exception('Mahsulot o\'chirishda kutilmagan Ошибка: $e');
+    }
+  }
+
+  // PUT /api/products/{id}/manual-price — masalliqning QO'LDA kiritilgan
+  // xarid narxi (BUTUN so'm, mahsulotning TO'LIQ birligi uchun; 0 —
+  // o'chirish). Javob data: {product_id, manual_price, manual_price_at}.
+  Future<Map<String, dynamic>> setManualPrice(int productId, int price) async {
+    try {
+      final response = await dio.put(
+        AppUrls.productManualPrice(productId),
+        data: {'manual_price': price},
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['data'] is Map) {
+          return Map<String, dynamic>.from(body['data']);
+        }
+        return {'product_id': productId, 'manual_price': price};
+      }
+      throw Exception('Server xatosi: ${response.statusCode}');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        if (e.response!.statusCode == 404) {
+          throw Exception('Mahsulot topilmadi');
+        }
+        throw Exception('Narx saqlanmadi: ${parseDioError(e)}');
+      }
+      throw Exception('Tarmoq xatosi: ${e.message}');
     }
   }
 

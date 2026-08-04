@@ -1,8 +1,9 @@
 // admin/provider/admin_product_provider.dart — mahsulotlarning YAGONA manbai
 // (ProductProviderAdmin, ChangeNotifier): barcha mahsulotlarni bir marta
 // yuklaydi (initializeProducts), kategoriya bo'yicha filtrlaydi
-// (filterByCategory) va create/update/delete/reorderProducts'ni xotirada
-// yangilaydi — to'liq re-fetch YO'Q. ApiProductService bilan ishlaydi.
+// (filterByCategory) va create/update/delete/reorderProducts/setManualPrice
+// (qo'lda xarid narxi) ni xotirada yangilaydi — to'liq re-fetch YO'Q.
+// ApiProductService bilan ishlaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/services/api_product_service.dart';
@@ -119,6 +120,44 @@ class ProductProviderAdmin extends ChangeNotifier with ClearableProvider {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Bitta mahsulot (id bo'yicha). Topilmasa null. Ro'yxat bo'ylab chiziqli
+  // qidiradi — build() ICHIDA emas, bir martalik chaqiruvlarda ishlating.
+  ProductModelAdmin? productById(int id) {
+    for (final p in _allProducts) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  // Masalliqning QO'LDA kiritilgan xarid narxi (PUT
+  // /api/products/{id}/manual-price). price — BUTUN so'm, mahsulotning
+  // TO'LIQ birligi uchun (кг → 1 kg narxi); 0 — qo'lda narxni O'CHIRISH.
+  // Muvaffaqiyatda mahsulot XOTIRADA yangilanadi (to'liq re-fetch YO'Q).
+  Future<bool> setManualPrice(int productId, int price) async {
+    _error = null;
+    try {
+      final data = await _service.setManualPrice(productId, price);
+      final saved = (data['manual_price'] as num?)?.toInt() ?? price;
+      final at = DateTime.tryParse(data['manual_price_at']?.toString() ?? '');
+
+      void patch(List<ProductModelAdmin> list) {
+        final i = list.indexWhere((p) => p.id == productId);
+        if (i != -1) {
+          list[i] = list[i].copyWith(manualPrice: saved, manualPriceAt: at);
+        }
+      }
+
+      patch(_allProducts);
+      patch(_filteredProducts);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
