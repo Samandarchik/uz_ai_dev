@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:uz_ai_dev/admin/model/profit_analytics_model.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/sale_price_dialog.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 
@@ -757,7 +758,7 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
         if (unpriced.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
-            'Narx belgilanmagan',
+            'Narx belgilanmagan (bosib narx qo\'ying)',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -765,9 +766,31 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
             ),
           ),
           const Divider(height: 10),
-          for (final c in unpriced)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+          for (final c in unpriced) _unpricedRow(c),
+        ],
+      ],
+    );
+  }
+
+  // Narxi belgilanmagan tort qatori — bosilsa narx kiritish dialogi
+  // (sale_price saqlangach analitika qayta yuklanadi, chunki foyda/marja
+  // butun ekran bo'ylab shu narxdan hisoblanadi).
+  Widget _unpricedRow(ProfitCake c) {
+    return InkWell(
+      onTap: () async {
+        final saved = await editProductSalePrice(
+          context,
+          productId: c.productId,
+          productName: c.name,
+        );
+        if (saved != null && mounted) _load();
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
               child: Text(
                 c.name,
                 maxLines: 1,
@@ -775,8 +798,11 @@ class _ProfitAnalyticsUiState extends State<ProfitAnalyticsUi> {
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
             ),
-        ],
-      ],
+            const SizedBox(width: 6),
+            Icon(Icons.edit, size: 12, color: Colors.blue.shade400),
+          ],
+        ),
+      ),
     );
   }
 

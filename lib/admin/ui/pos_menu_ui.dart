@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/admin/model/pos_menu_model.dart';
 import 'package:uz_ai_dev/admin/services/pos_menu_service.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/sale_price_dialog.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart'
     show fmtCostMoney;
@@ -433,7 +434,7 @@ class _PosMenuUiState extends State<PosMenuUi> {
               ),
             ),
             const SizedBox(width: 8),
-            _priceText(product),
+            _priceText(product, editable: true),
             IconButton(
               icon: const Icon(Icons.remove_circle_outline,
                   color: Colors.red, size: 22),
@@ -456,8 +457,13 @@ class _PosMenuUiState extends State<PosMenuUi> {
     );
   }
 
-  Widget _priceText(PosMenuProduct product) {
-    return product.salePrice > 0
+  // editable=true (asosiy menyu ro'yxati) — narx BOSILADI, sotish narxini
+  // shu yerdan qo'lda qo'yish mumkin (POS shu narxni ko'radi); saqlangach
+  // menyu qayta yuklanadi. «Qo'shish» oynasida esa qator butunligicha
+  // mahsulotni menyuga qo'shadi — u yerda narx faqat ko'rsatiladi.
+  Widget _priceText(PosMenuProduct product, {bool editable = false}) {
+    final hasPrice = product.salePrice > 0;
+    final label = hasPrice
         ? Text(
             '${fmtCostMoney(product.salePrice)} so\'m',
             style: const TextStyle(
@@ -474,6 +480,38 @@ class _PosMenuUiState extends State<PosMenuUi> {
               color: Colors.grey.shade500,
             ),
           );
+    if (!editable) return label;
+    return InkWell(
+      onTap: _saving ? null : () => _editPrice(product),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            label,
+            const SizedBox(width: 3),
+            Icon(
+              Icons.edit,
+              size: 12,
+              color: hasPrice ? Colors.grey.shade400 : Colors.blue.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Sotish narxini qo'lda kiritish (yagona manba: sale_price_dialog.dart).
+  // Narx tex kartada saqlanadi — POS menyu esa o'z servisidan o'qiydi,
+  // shuning uchun saqlangach ro'yxatni qayta yuklaymiz.
+  Future<void> _editPrice(PosMenuProduct product) async {
+    final saved = await editProductSalePrice(
+      context,
+      productId: product.id,
+      productName: product.name,
+    );
+    if (saved != null && mounted) await _load();
   }
 
   // 48x48 dumaloq burchakli rasm; URL bo'sh/xato bo'lsa ikonka.

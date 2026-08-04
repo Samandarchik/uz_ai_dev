@@ -11,6 +11,7 @@ import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/ui/profit_analytics_ui.dart';
 import 'package:uz_ai_dev/admin/ui/tech_card_editor_page.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/sale_price_dialog.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
@@ -127,12 +128,10 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
   // ishlaydi — narxni belgilashning yagona yo'li shu.
   Future<void> _editSalePrice(_RowData row) async {
     if (_savingIds.contains(row.product.id)) return;
-    final price = await showDialog<int>(
-      context: context,
-      builder: (_) => _SalePriceDialog(
-        title: row.product.name,
-        initial: row.card.salePrice,
-      ),
+    final price = await showSalePriceDialog(
+      context,
+      title: row.product.name,
+      initial: row.card.salePrice,
     );
     if (price == null || !mounted || price == row.card.salePrice) return;
     await _saveSalePrice(row, price);
@@ -529,60 +528,6 @@ class _ProfitControlUiState extends State<ProfitControlUi> {
           style: TextStyle(fontSize: 12.5, color: color ?? Colors.black87),
         ),
       ),
-    );
-  }
-}
-
-// Sotish narxini qo'lda kiritish dialogi. Pul — BUTUN so'm (kasr yo'q).
-// Natija: yangi narx (int) yoki null (bekor qilindi). 0 — narx belgilanmagan.
-class _SalePriceDialog extends StatefulWidget {
-  final String title;
-  final int initial;
-
-  const _SalePriceDialog({required this.title, required this.initial});
-
-  @override
-  State<_SalePriceDialog> createState() => _SalePriceDialogState();
-}
-
-class _SalePriceDialogState extends State<_SalePriceDialog> {
-  late final TextEditingController _ctrl = TextEditingController(
-    text: widget.initial > 0 ? widget.initial.toString() : '',
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() =>
-      Navigator.pop(context, int.tryParse(_ctrl.text.trim()) ?? 0);
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title, style: const TextStyle(fontSize: 16)),
-      content: TextField(
-        controller: _ctrl,
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: const InputDecoration(
-          labelText: 'Sotish narxi (1 dona)',
-          suffixText: ' сум',
-          hintText: '—',
-          border: OutlineInputBorder(),
-        ),
-        onSubmitted: (_) => _submit(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Bekor'),
-        ),
-        ElevatedButton(onPressed: _submit, child: const Text('Saqlash')),
-      ],
     );
   }
 }
