@@ -1,7 +1,6 @@
 // login_page.dart — kirish ekrani (LoginPage): v1 parol-bilan login
 // (ApiService.loginV1), token/role/is_admin'ni SharedPreferences'ga saqlaydi va
-// _navigateByRole orqali rolga mos Home'ga o'tadi. Debug'da "Try using" test tugmasi.
-import 'package:flutter/foundation.dart';
+// _navigateByRole orqali rolga mos Home'ga o'tadi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,9 +17,7 @@ import 'dart:convert';
 import 'user/services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
-  final bool isRelease;
-
-  const LoginPage({super.key, this.isRelease = true});
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -76,44 +73,6 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setString("role", user["role"] ?? AppRoles.seller);
       await prefs.setString('user', jsonEncode(user));
-
-      if (!mounted) return;
-      _navigateByRole(user);
-    } else {
-      _showErrorDialog(result['message'] ?? 'Login xatosi');
-    }
-  }
-
-  Future<void> _createAccount() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result = await ApiService.login("770451117", "112233");
-
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result['success'] == true) {
-      TextInput.finishAutofillContext();
-
-      // Server javobida data/token/user bo'lmasa — throw emas, xato dialogi.
-      final data = result['data'];
-      final token = data is Map ? data['token'] : null;
-      final rawUser = data is Map ? data['user'] : null;
-      if (token is! String || rawUser is! Map) {
-        _showErrorDialog(result['message'] ?? 'Login xatosi');
-        return;
-      }
-      final user = Map<String, dynamic>.from(rawUser);
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', token);
-      await prefs.setString('user', jsonEncode(user));
-      await prefs.setBool("is_admin", user["is_admin"] ?? false);
-      await prefs.setString("role", user["role"] ?? AppRoles.seller);
 
       if (!mounted) return;
       _navigateByRole(user);
@@ -290,53 +249,6 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                           ),
                         ),
-                        // 🔹 "Try using" buttoni — FAQAT debug buildda va
-                        // isRelease false bo'lsa. Release ilovada versiya
-                        // mos kelmay qolgan har bir foydalanuvchiga test
-                        // akkauntga bir bosishda kirish tugmasi ko'rinib
-                        // qolmasligi kerak (xavfsizlik).
-                        if (!widget.isRelease && kDebugMode) ...[
-                          SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 55,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _createAccount,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 5,
-                              ),
-                              child: _isLoading
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                        SizedBox(width: 10),
-                                        Text('Loading...'),
-                                      ],
-                                    )
-                                  : Text(
-                                      'Try using',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
                         SizedBox(height: 20),
                         Text(version ?? ""),
                       ],

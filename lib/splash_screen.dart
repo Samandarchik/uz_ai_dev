@@ -39,24 +39,19 @@ class _SplashScreenState extends State<SplashScreen> {
       if (await WindowsUpdateService.checkForUpdate()) return;
       if (!mounted) return;
 
-      // 🔹 Bitta request bilan ham version check ham isRelease ni olamiz
       final result = await VersionChecker.checkVersionAndRelease(context);
       bool needsUpdate = result['needsUpdate'] ?? false;
-      bool versionsMatch = result['versionsMatch'] ?? true;
 
       debugPrint('needsUpdate: $needsUpdate');
-      debugPrint('versionsMatch: $versionsMatch');
 
       // Agar update kerak bo'lmasa, tokenni tekshiramiz
-      // versionsMatch = true → isRelease = true (Try login ko'rinmaydi)
-      // versionsMatch = false → isRelease = false (Try login ko'rinadi)
       if (!needsUpdate) {
-        _checkToken(versionsMatch);
+        _checkToken();
       }
     });
   }
 
-  Future<void> _checkToken(bool isRelease) async {
+  Future<void> _checkToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = await tokenStorage.getToken();
     String role = prefs.getString('role') ?? AppRoles.seller;
@@ -67,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (token.isEmpty) {
-      context.pushReplacement(LoginPage(isRelease: isRelease));
+      context.pushReplacement(const LoginPage());
       return;
     }
 
@@ -86,14 +81,14 @@ class _SplashScreenState extends State<SplashScreen> {
       // Bu rollar hozircha qo'llab-quvvatlanmaydi
       await prefs.remove('token');
       if (!mounted) return;
-      _showUnsupportedRoleDialog(isRelease);
+      _showUnsupportedRoleDialog();
     } else {
       // seller yoki default
       context.pushReplacement(const UserHomeUi());
     }
   }
 
-  void _showUnsupportedRoleDialog(bool isRelease) {
+  void _showUnsupportedRoleDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -110,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              context.pushReplacement(LoginPage(isRelease: isRelease));
+              context.pushReplacement(const LoginPage());
             },
             child: const Text('OK'),
           ),
