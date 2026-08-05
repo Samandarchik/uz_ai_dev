@@ -143,6 +143,10 @@ abstract final class AppUrls {
   static String wsOrders = '${baseUrl.replaceFirst('http', 'ws')}/api/ws';
   //filials
   static const String filials = '$baseUrl/api/filials';
+
+  // Printerlar registri (admin): {name, api_url, printer_no}. Chek yuborishda
+  // backend kategoriya printerini shu registrdan topadi.
+  static const String printers = '$baseUrl/api/printers';
   // Filial limitlari: GET ?filial_id=N — filialning mahsulot limitlari;
   // POST {filial_id, product_id, limit_qty} — upsert (limit_qty: 0 —
   // o'chirish). limit_qty birlik kontrakti: кг/л -> BUTUN gr/ml. Faqat admin.
