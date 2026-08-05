@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
+import 'package:uz_ai_dev/core/widgets/qty_claim_label.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 
 // Narxlangan sklad buyurtmalarini KUNLIK kartalarda ko'rsatish uchun UMUMIY
@@ -471,6 +472,26 @@ class YukDayCard extends StatelessWidget {
     );
   }
 
+  // «Soni» katagi: ombor kelgan sonni boshqacha tasdiqlagan bo'lsa
+  // «2 → 1.8» (yuk kiritgan → keldi), aks holda oddiy son.
+  // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
+  Widget _qtyLabel(YukOrderItem item, {TextAlign textAlign = TextAlign.start}) {
+    if (hasQtyClaimDiff(item.claimed, item.taken)) {
+      return qtyClaimLabel(
+        claimed: item.claimed,
+        actual: item.taken,
+        type: item.type,
+        fontSize: 13,
+        textAlign: textAlign,
+      );
+    }
+    return Text(
+      formatQty(item.taken, item.type),
+      textAlign: textAlign,
+      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+    );
+  }
+
   // Bitta mahsulot qatori: Mahsulot / Soni / Donasi / Turi / Summa.
   // onEditItem berilgan bo'lsa qator bosiladigan bo'ladi (bugalter miqdor va
   // summani tuzatadi) va "Soni" bilan "Summa" yonida tahrir belgisi ko'rinadi;
@@ -494,27 +515,11 @@ class YukDayCard extends StatelessWidget {
           Expanded(
             flex: 2,
             child: onEditItem == null
-                ? Text(
-                    // taken API birlikda (кг/л -> gramm) — UI'da kg ko'rinadi.
-                    formatQty(item.taken, item.type),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
-                  )
+                ? _qtyLabel(item, textAlign: TextAlign.center)
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Flexible(
-                        child: Text(
-                          formatQty(item.taken, item.type),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ),
+                      Flexible(child: _qtyLabel(item)),
                       const SizedBox(width: 2),
                       Icon(
                         Icons.edit,

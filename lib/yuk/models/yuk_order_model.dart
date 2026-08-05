@@ -15,6 +15,11 @@ class YukOrderItem {
   // Narxlangan buyurtmada: olingan miqdor va shu item jami summasi.
   final double taken;
   final double subtotal;
+  // Yuk keltiruvchi O'ZI kiritgan (olib keldim degan) son. Ombor kelgan sonni
+  // tasdiqlagach taken received'ga tenglashadi (summa ham proporsional
+  // kamayadi), claimed esa o'zgarmaydi — «2 kiritilgan → 1.8 keldi» shundan
+  // ko'rsatiladi. 0 — yuk son kiritmagan (yoki eski yozuv).
+  final double claimed;
   // Omborchi qabul qilganda kiritgan haqiqatda kelgan miqdor (taken'dan kam
   // bo'lsa kamomad). Qabul qilinmaguncha 0.
   final double received;
@@ -42,6 +47,7 @@ class YukOrderItem {
     this.type,
     this.taken = 0,
     this.subtotal = 0,
+    this.claimed = 0,
     this.received = 0,
     this.accepted = false,
     this.itemType = '',
@@ -67,6 +73,7 @@ class YukOrderItem {
       type: json['type'],
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
+      claimed: (json['claimed'] ?? 0).toDouble(),
       received: (json['received'] ?? 0).toDouble(),
       accepted: json['accepted'] == true,
       itemType: json['item_type']?.toString() ?? '',
@@ -84,6 +91,7 @@ class YukOrderItem {
         'type': type,
         'taken': taken,
         'subtotal': subtotal,
+        'claimed': claimed,
         'received': received,
         'accepted': accepted,
         'item_type': itemType,

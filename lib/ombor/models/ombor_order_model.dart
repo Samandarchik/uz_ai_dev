@@ -87,6 +87,10 @@ class OmborOrderItem {
   final String type;
   final double taken;
   final double subtotal;
+  // Yuk keltiruvchi O'ZI kiritgan son. Ombor kelgan sonni tasdiqlagach
+  // taken received'ga tenglashadi, claimed esa o'zgarmaydi —
+  // «2 kiritilgan → 1.8 keldi» shundan ko'rsatiladi. 0 — kiritilmagan.
+  final double claimed;
   // Omborchi kiritgan haqiqatda kelgan miqdor (taken'dan kam bo'lsa kamomad).
   final double received;
   // Omborchi qabul qilganda yuborgan rasm/video (relativ /static/...).
@@ -109,6 +113,7 @@ class OmborOrderItem {
     required this.type,
     required this.taken,
     required this.subtotal,
+    this.claimed = 0,
     this.received = 0,
     this.imageUrl = '',
     this.videoUrl = '',
@@ -128,6 +133,7 @@ class OmborOrderItem {
       type: json['type']?.toString() ?? '',
       taken: _toDouble(json['taken']),
       subtotal: _toDouble(json['subtotal']),
+      claimed: _toDouble(json['claimed']),
       received: _toDouble(json['received']),
       imageUrl: json['image_url']?.toString() ?? '',
       videoUrl: json['video_url']?.toString() ?? '',

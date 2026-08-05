@@ -21,6 +21,7 @@ import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
+import 'package:uz_ai_dev/core/widgets/qty_claim_label.dart';
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -1958,6 +1959,18 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       ],
                     ],
                   ),
+                  // Ombor kelgan sonni boshqacha tasdiqlagan bo'lsa:
+                  // «2 → 1.8» (kiritilgan → keldi). Summa ham shu songa
+                  // proporsional kamaygan.
+                  if (hasQtyClaimDiff(item.claimed, takenVal)) ...[
+                    const SizedBox(height: 2),
+                    qtyClaimLabel(
+                      claimed: item.claimed,
+                      actual: takenVal,
+                      type: item.type,
+                      withUnit: true,
+                    ),
+                  ],
                   if (unitPrice != null) ...[
                     const SizedBox(height: 2),
                     Text(

@@ -38,6 +38,7 @@ import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
+import 'package:uz_ai_dev/core/widgets/qty_claim_label.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/provider/ombor_provider.dart';
 
@@ -1398,7 +1399,21 @@ class _ItemView extends StatelessWidget {
       return Column(
         children: [
           _receivedView(),
-          _shortageText(item.received),
+          // Qabul qilingan qatorda yuk keltiruvchi kiritgan son bilan
+          // haqiqatda kelgan son farqi: «2 → 1.8». Yuk son kiritmagan
+          // bo'lsa (claimed 0) eski kamomad yozuvi qoladi.
+          if (hasQtyClaimDiff(item.claimed, item.received))
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: qtyClaimLabel(
+                claimed: item.claimed,
+                actual: item.received,
+                type: item.type,
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            _shortageText(item.received),
         ],
       );
     }

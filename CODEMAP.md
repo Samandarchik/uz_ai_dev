@@ -77,6 +77,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **Media** | `lib/core/media/` | Ilova ICHIDA kamera/video: `InAppPhotoCamera`, `TelegramStyleVideoRecorder`, `VideoPreviewScreen` (`video_pervi`), `VideoProcessor`, `CircularNetworkVideoPlayer` |
 | **Tarmoq rasmi** | `lib/core/widgets/app_network_image.dart` | ⚠️ YAGONA yo'l: `AppNetworkImage` (vidjet, `maxDecodeWidth` bilan) yoki `appNetworkImageProvider`/`appFileImageProvider` (CircleAvatar kabi `ImageProvider` kerak bo'lganda). `Image.network`/`NetworkImage`/`CachedNetworkImage` TO'G'RIDAN-TO'G'RI ishlatilmaydi — o'lchamsiz dekod = rasmiga ~4 MB RAM = OOM |
 | **Rasm to'liq ekranda** | `lib/core/widgets/full_screen_image.dart` | `openFullScreenImage(context, url)` — ekran o'lchamida dekod qiladi, yopilganda rasmni keshdan chiqaradi (`evict`) |
+| **«2 → 1.8» yorlig'i** | `lib/core/widgets/qty_claim_label.dart` | `qtyClaimLabel`/`hasQtyClaimDiff` — yuk kiritgan son (`item.claimed`) ombor tasdiqlagan sondan farq qilganda. YAGONA manba: yuk, ombor va bugalter ekranlari shuni ishlatadi |
 
 ---
 
