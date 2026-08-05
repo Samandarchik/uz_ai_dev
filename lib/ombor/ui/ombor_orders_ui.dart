@@ -1131,20 +1131,26 @@ class _ItemView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // «Rasm/Video» katakchasi FAQAT tahrirlanadigan qatorda (kamera tugmasi).
-    // Qabul qilingan qatorda media ustuni umuman yo'q — uning eni nom ustuniga
+    // Tahrirlanadigan qatorda o'ng tomon media holatiga qarab o'zgaradi,
+    // shuning uchun faqat shu qator media o'zgarganda qayta quriladi.
+    if (editable) {
+      final media = slot?.media;
+      if (media == null) return _editableRow(context, const _LocalMedia());
+      return ValueListenableBuilder<_LocalMedia>(
+        valueListenable: media,
+        builder: (context, value, _) => _editableRow(context, value),
+      );
+    }
+
+    // Qabul qilingan qator: media ustuni umuman yo'q — uning eni nom ustuniga
     // qo'shiladi, rasm esa qatorning istalgan joyiga bosilganda ochiladi.
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Expanded(flex: editable ? 5 : 7, child: _nameCell()),
+          Expanded(flex: 7, child: _nameCell()),
           const SizedBox(width: 6),
           Expanded(flex: 3, child: _qtyCell()),
-          if (editable) ...[
-            const SizedBox(width: 6),
-            Expanded(flex: 2, child: _mediaCell(context)),
-          ],
           const SizedBox(width: 6),
           Expanded(flex: 2, child: _acceptCell()),
         ],
@@ -1155,6 +1161,30 @@ class _ItemView extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => _openSentMedia(context),
       child: row,
+    );
+  }
+
+  // Hali qabul qilinmagan qator. Rasm/video olinmaguncha qabul tugmasi yo'q
+  // (u baribir ishlamaydi — media majburiy), va o'rnida BO'SH JOY ham
+  // qolmaydi: kamera katakchasi «Qabul» ustunini ham egallab turadi.
+  Widget _editableRow(BuildContext context, _LocalMedia media) {
+    final hasMedia =
+        !media.isEmpty || item.imageUrl.isNotEmpty || item.videoUrl.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: _nameCell()),
+          const SizedBox(width: 6),
+          Expanded(flex: 3, child: _qtyCell()),
+          const SizedBox(width: 6),
+          Expanded(flex: hasMedia ? 2 : 4, child: _mediaCell(context, media)),
+          if (hasMedia) ...[
+            const SizedBox(width: 6),
+            Expanded(flex: 2, child: _acceptCell()),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1348,30 +1378,23 @@ class _ItemView extends StatelessWidget {
   // ⚠️ RASM O'LCHAMI: kameradan olingan fayl 1080p+. O'lchamsiz dekod qilinsa
   // bitta rasm RAM'da ~4 MB egallaydi, shuning uchun katakcha o'lchamida
   // dekod qilinadi (Image.file + cacheWidth).
-  Widget _mediaCell(BuildContext context) {
-    if (slot == null) return const SizedBox.shrink();
-    return ValueListenableBuilder<_LocalMedia>(
-      valueListenable: slot!.media,
-      builder: (context, media, _) {
-        if (media.imagePath != null) {
-          return _MediaThumb(
-            onTap: onTapMedia,
-            child: Image.file(
-              File(media.imagePath!),
-              fit: BoxFit.cover,
-              cacheWidth: _thumbDecodePx(context),
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.broken_image, size: 18, color: Colors.grey),
-            ),
-          );
-        }
-        if (media.videoPath != null) {
-          return _MediaBox(
-              icon: Icons.videocam, filled: true, onTap: onTapMedia);
-        }
-        return _MediaBox(icon: Icons.photo_camera_outlined, onTap: onTapMedia);
-      },
-    );
+  Widget _mediaCell(BuildContext context, _LocalMedia media) {
+    if (media.imagePath != null) {
+      return _MediaThumb(
+        onTap: onTapMedia,
+        child: Image.file(
+          File(media.imagePath!),
+          fit: BoxFit.cover,
+          cacheWidth: _thumbDecodePx(context),
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, size: 18, color: Colors.grey),
+        ),
+      );
+    }
+    if (media.videoPath != null) {
+      return _MediaBox(icon: Icons.videocam, filled: true, onTap: onTapMedia);
+    }
+    return _MediaBox(icon: Icons.photo_camera_outlined, onTap: onTapMedia);
   }
 
   // Qabul katakchasi: tahrirlanadigan qatorda yashil tugma (yuborishda
@@ -1408,27 +1431,8 @@ class _ItemView extends StatelessWidget {
         child: const Icon(Icons.check_circle, size: 22, color: _green),
       );
     }
-    // Rasm/video majburiy (qarang: _acceptItem). Shuning uchun media
-    // olinmaguncha qabul tugmasi UMUMAN chiqmaydi — bosib, keyin
-    // «Avval rasm yoki video oling» ogohlantirishini olishning ma'nosi yo'q.
-    // Ustun eni saqlanadi, aks holda rasm olinganda qator sakrab ketadi.
-    if (slot != null) {
-      return ValueListenableBuilder<_LocalMedia>(
-        valueListenable: slot!.media,
-        builder: (context, media, child) {
-          final hasMedia = !media.isEmpty ||
-              item.imageUrl.isNotEmpty ||
-              item.videoUrl.isNotEmpty;
-          if (!hasMedia) return const SizedBox(height: _cellH);
-          return child!;
-        },
-        child: _acceptButton(),
-      );
-    }
-    return _acceptButton();
-  }
-
-  Widget _acceptButton() {
+    // Media olinmagan qatorda bu katakcha umuman chizilmaydi — qarang:
+    // _editableRow (rasm/video majburiy, qarang _acceptItem).
     return Material(
       color: isAccepting ? Colors.grey.shade300 : _green,
       borderRadius: BorderRadius.circular(8),
