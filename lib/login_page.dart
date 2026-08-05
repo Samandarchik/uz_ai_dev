@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
 import 'package:uz_ai_dev/bugalter/ui/bugalter_home_ui.dart';
 import 'package:uz_ai_dev/core/constants/roles.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/ombor/ui/ombor_home_ui.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart';
@@ -73,6 +74,10 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setBool("is_admin", user["is_admin"] ?? false);
       await prefs.setString("role", user["role"] ?? AppRoles.seller);
       await prefs.setString('user', jsonEncode(user));
+
+      // Sklad nomlarini serverdan olib qo'yamiz (tab/dropdown shulardan
+      // quriladi). Xato bo'lsa keshdagi/default nomlar qoladi.
+      await SkladRegistry.refreshSilently();
 
       if (!mounted) return;
       _navigateByRole(user);

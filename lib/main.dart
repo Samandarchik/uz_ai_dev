@@ -9,6 +9,7 @@ import 'package:uz_ai_dev/admin/provider/admin_filial_provider.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/bugalter/provider/bugalter_provider.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/services/windows_update_service.dart';
 import 'package:uz_ai_dev/core/utils/app_navigator.dart';
@@ -23,6 +24,10 @@ import 'package:uz_ai_dev/user/provider/provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupInit();
+
+  // Sklad nomlari (tab/dropdown/kartalar) — avval keshdan, keyin splash'da
+  // serverdan yangilanadi (core/data/sklad_registry.dart).
+  await SkladRegistry.load();
 
   // Windows'da ochiq turgan ilova yangi release'ni o'tkazib yubormasligi
   // uchun davriy (30 daqiqada) avto-yangilanish tekshiruvi.

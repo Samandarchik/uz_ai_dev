@@ -3,9 +3,9 @@
 // sanash paytidagi snapshot; StockService.fetchInventories/fetchInventory.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/production/models/inventory_act_model.dart';
-import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/services/stock_service.dart';
 import 'package:uz_ai_dev/production/ui/widgets/cost_sheet.dart';
 
@@ -353,9 +353,10 @@ class _InventoryActDetailPageState extends State<_InventoryActDetailPage> {
     }
   }
 
-  String _skladName(InventoryAct act) => act.skladName.isNotEmpty
-      ? act.skladName
-      : productionSkladName(act.skladId);
+  // Joriy nom ustun (sklad qayta nomlangan bo'lishi mumkin), dalolatnomadagi
+  // eski snapshot esa o'chirilgan sklad uchun zaxira.
+  String _skladName(InventoryAct act) =>
+      SkladRegistry.display(act.skladId, act.skladName);
 
   @override
   Widget build(BuildContext context) {

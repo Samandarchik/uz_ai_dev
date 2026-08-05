@@ -25,19 +25,15 @@ import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/yuk/services/yuk_service.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_history_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_magazin_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_profile_ui.dart';
 import 'package:uz_ai_dev/yuk/ui/yuk_transfer_history_ui.dart';
 
-// Sklad nomlari (loyihaning boshqa joylarida ham shu hardcode map ishlatiladi).
-const Map<int, String> kSkladNames = {
-  1: 'Marxabo Sklat',
-  2: 'Sardor Sklat',
-  3: 'Fresco Sklat',
-  4: 'Personal Sklad',
-};
+// Sklad nomlari — YAGONA manba SkladRegistry (superadmin serverda tahrirlaydi).
+Map<int, String> get kSkladNames => SkladRegistry.names;
 
 // kg bilan o'lchanadigan mahsulotlar uchun: raqamlar va bitta o'nlik
 // ajratuvchi (nuqta yoki vergul) ga ruxsat. Masalan "8.500", "8,5".

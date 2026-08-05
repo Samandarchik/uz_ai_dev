@@ -38,8 +38,9 @@ class _BugalterHomeUiState extends State<BugalterHomeUi> {
   static const Color _bgColor = Color(0xFFFAF6F1);
   static const Color _accentColor = Color(0xFFC5A97B);
 
-  // Tablar: null -> "Hammasi", keyin skladlar.
-  static final List<int?> _tabs = [null, ...kYukSkladNames.keys];
+  // Tablar: null -> "Hammasi", keyin skladlar (SkladRegistry ro'yxati —
+  // superadmin sklad qo'shsa/o'chirsa keyingi ochilishda o'zgaradi).
+  List<int?> get _tabs => [null, ...kYukSkladNames.keys];
 
   // AppBar'dagi tugma bilan yoqiladi: buyurtmaga biriktirilgan
   // rasm/videolarni kartada ko'rsatish.

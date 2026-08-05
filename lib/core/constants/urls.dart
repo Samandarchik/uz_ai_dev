@@ -144,6 +144,10 @@ abstract final class AppUrls {
   //filials
   static const String filials = '$baseUrl/api/filials';
 
+  // Skladlar (omborxonalar): GET — hamma rol o'qiydi (nom/tab/dropdown shu
+  // ro'yxatdan); POST {name}, PUT /{id} {name}, DELETE /{id} — faqat superadmin.
+  static const String sklads = '$baseUrl/api/sklads';
+
   // Printerlar registri (admin): {name, api_url, printer_no}. Chek yuborishda
   // backend kategoriya printerini shu registrdan topadi.
   static const String printers = '$baseUrl/api/printers';

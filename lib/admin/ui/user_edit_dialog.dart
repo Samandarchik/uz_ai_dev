@@ -18,6 +18,7 @@ import 'package:uz_ai_dev/admin/model/user_model.dart';
 import 'package:uz_ai_dev/admin/services/user_management_service.dart';
 import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 
 class UserEditDialog extends StatefulWidget {
   final User? user;
@@ -44,13 +45,9 @@ class _UserEditDialogState extends State<UserEditDialog> {
   String _selectedRole = AppRoles.seller;
   late List<String> _roleOptions;
 
-  // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar (hozircha hardcode).
-  static const Map<int, String> _skladOptions = {
-    1: 'Marxabo Sklat',
-    2: 'Sardor Sklat',
-    3: 'Fresco Sklat',
-    4: 'Personal Sklad',
-  };
+  // Ombor roli uchun filiallar o'rniga ko'rsatiladigan skladlar — SkladRegistry
+  // (superadmin serverda tahrirlaydi).
+  Map<int, String> get _skladOptions => SkladRegistry.names;
   // Yuk keltiruvchi roli uchun mahsulot manbalari (kategoriya o'rniga).
   static const Map<String, String> _sourceOptions = {
     'samarqand': 'Samarqand',

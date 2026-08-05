@@ -6,8 +6,9 @@ import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/production/ui/inventory_page.dart';
 import 'package:uz_ai_dev/production/ui/widgets/stock_widgets.dart';
 
-// Admin: sklad qoldiqlari — har sklad uchun tab (loyihadagi boshqa
-// ekranlardagi kabi 1..4 hardcode), korreksiya kiritish va harakatlar tarixi.
+// Admin: sklad qoldiqlari — har sklad uchun tab (ro'yxat SkladRegistry'dan,
+// superadmin uni «Skladlar» ekranida tahrirlaydi), korreksiya kiritish va
+// harakatlar tarixi.
 class AdminStockUi extends StatelessWidget {
   const AdminStockUi({super.key});
 

@@ -4,9 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
-import 'package:uz_ai_dev/production/models/stock_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/ui/shef_home_ui.dart' show productionStatusChip;
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 
 // Ishlab chiqarish buyurtmalari uchun UMUMIY vidjetlar — ombor, admin va
 // bugalter sahifalari shularni qayta ishlatadi (shef ekranlari o'z
@@ -83,10 +83,7 @@ class ProductionOrderCard extends StatelessWidget {
         .join(', ');
 
     final infoParts = <String>[
-      if (showSklad)
-        order.skladName.isNotEmpty
-            ? order.skladName
-            : productionSkladName(order.skladId),
+      if (showSklad) SkladRegistry.display(order.skladId, order.skladName),
       if (showShef && order.shefName.isNotEmpty) 'Shef: ${order.shefName}',
     ];
 
@@ -263,9 +260,9 @@ class ProductionOrderDetailBody extends StatelessWidget {
 
   // Sarlavha ma'lumotlari: sana, sklad, shef.
   Widget _headerCard() {
-    final skladName = order.skladName.isNotEmpty
-        ? order.skladName
-        : productionSkladName(order.skladId);
+    // Joriy nom ustun (sklad qayta nomlangan bo'lishi mumkin), buyurtmadagi
+    // eski snapshot esa o'chirilgan sklad uchun zaxira.
+    final skladName = SkladRegistry.display(order.skladId, order.skladName);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),

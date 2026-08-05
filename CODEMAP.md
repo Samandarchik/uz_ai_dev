@@ -118,6 +118,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **Filial limitlari** | `lib/admin/ui/filial_limits_ui.dart` + `admin/services/filial_limit_service.dart` (`GET/POST /api/filial-limits`) |
 | **POS (Konak) integratsiya** | `lib/admin/ui/pos_*_ui.dart` + `admin/services/pos_*_service.dart` + `admin/model/pos_*_model.dart` |
 | **Sklad qoldig'i / korreksiya / inventar** | `lib/production/` — `StockProvider`, `stock_service.dart`, `stock_widgets.dart`, `inventory_page.dart` |
+| **Sklad NOMLARI (tab/dropdown) va ro'yxati** | `lib/core/data/sklad_registry.dart` (`SkladRegistry`) — **YAGONA manba**, hardcode map YOZMA. Boshqaruv ekrani (faqat superadmin qo'sha/tahrirlay/o'chira oladi): `admin/ui/sklads_ui.dart` + `admin/services/api_sklad_service.dart` (`/api/sklads`) |
 | **Bugalter: soni/summa tuzatish va tarixi** | `lib/bugalter/ui/bugalter_home_ui.dart` (`_EditItemQtyDialog`) + `bugalter/services/bugalter_service.dart` (`editItemQty`, `fetchEdits`) + `bugalter/ui/bugalter_edits_ui.dart` |
 | **Versiya tekshiruvi** | `lib/check_version.dart` (`VersionChecker`) |
 

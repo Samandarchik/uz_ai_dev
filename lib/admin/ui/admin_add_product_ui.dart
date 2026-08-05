@@ -15,6 +15,7 @@ import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/tech_card_section.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -66,12 +67,8 @@ class _AddProductPageState extends State<AddProductPage> {
     'zagranitsa': 'Zagranitsa',
   };
 
-  static const Map<int, String> _skladOptions = {
-    1: 'Marxabo Sklat',
-    2: 'Sardor Sklat',
-    3: 'Fresco Sklat',
-    4: 'Personal Sklad',
-  };
+  // Skladlar — SkladRegistry (superadmin serverda tahrirlaydi).
+  Map<int, String> get _skladOptions => SkladRegistry.names;
 
   @override
   void initState() {

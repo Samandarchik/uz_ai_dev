@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
@@ -17,14 +18,9 @@ import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 //     ro'yxat — sklad yorliqlari kun kartasi ichida).
 // Farqlar parametrlar bilan boshqariladi (showImages, showSkladLabels).
 
-// Sklad nomlari (yuk_home_ui dagi kSkladNames bilan bir xil hardcode) —
+// Sklad nomlari — YAGONA manba SkladRegistry (superadmin serverda tahrirlaydi);
 // buyurtmada sklad_name bo'sh kelsa fallback sifatida ishlatiladi.
-const Map<int, String> kYukSkladNames = {
-  1: 'Marxabo Sklat',
-  2: 'Sardor Sklat',
-  3: 'Fresco Sklat',
-  4: 'Personal Sklad',
-};
+Map<int, String> get kYukSkladNames => SkladRegistry.names;
 
 // Summalarni chiroyli ko'rsatish: 1000 -> "1 000" (yuk_home_ui bilan bir xil).
 String formatMoney(num v) {
@@ -373,9 +369,9 @@ class YukDayCard extends StatelessWidget {
     String? lastSklad;
     for (final order in orders) {
       final products = _visibleProducts(order);
-      final skladName = order.skladName.isNotEmpty
-          ? order.skladName
-          : (kYukSkladNames[order.skladId] ?? 'Sklad ${order.skladId}');
+      // Joriy nom ustun (sklad qayta nomlangan bo'lishi mumkin), buyurtmadagi
+      // eski snapshot esa o'chirilgan sklad uchun zaxira.
+      final skladName = SkladRegistry.display(order.skladId, order.skladName);
       // Sklad yorlig'i faqat yoqilganda va sklad almashganda.
       if (showSkladLabels && skladName != lastSklad) {
         out.add(

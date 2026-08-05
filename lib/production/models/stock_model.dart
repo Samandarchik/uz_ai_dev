@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 
 int _asInt(dynamic v) {
   if (v is num) return v.toInt();
@@ -16,17 +17,11 @@ double _asDouble(dynamic v) {
   return double.tryParse(v?.toString() ?? '') ?? 0;
 }
 
-// Sklad nomlari — loyihaning boshqa joylaridagi (yuk_home_ui, bugalter_home_ui)
-// hardcode map bilan bir xil.
-const Map<int, String> kProductionSkladNames = {
-  1: 'Marxabo Sklat',
-  2: 'Sardor Sklat',
-  3: 'Fresco Sklat',
-  4: 'Personal Sklad',
-};
+// Sklad nomlari — YAGONA manba SkladRegistry (superadmin serverda tahrirlaydi).
+// Bu yerdagilar faqat eski chaqiruv nomlarini saqlab turadi.
+Map<int, String> get kProductionSkladNames => SkladRegistry.names;
 
-String productionSkladName(int id) =>
-    kProductionSkladNames[id] ?? 'Sklad $id';
+String productionSkladName(int id) => SkladRegistry.nameOf(id);
 
 // SharedPreferences'dagi 'user' JSON ichidan foydalanuvchiga biriktirilgan
 // skladlar ro'yxatini o'qish (yuk_home_ui dagi naqsh bilan bir xil).

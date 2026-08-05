@@ -1,7 +1,7 @@
 // admin/ui/admin_home_ui.dart — admin bosh ekrani: kategoriyalar ro'yxati
 // (AdminHomeUi): CategoryProviderAdmin + ProductProviderAdmin; AppBar'da qidiruv
 // (_AdminProductSearchDelegate), narx badge (→ProfitControlUi), reorder rejimi va
-// menyu (kategoriya/analitika/sklad/audit/POS/filial/pf), logout.
+// menyu (kategoriya/analitika/sklad qoldiqlari/audit/POS/filial/skladlar/pf), logout.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +18,7 @@ import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/printers_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
+import 'package:uz_ai_dev/admin/ui/sklads_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
@@ -180,6 +181,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'sklads',
+                child: ListTile(
+                  leading: Icon(Icons.warehouse_outlined),
+                  title: Text('Skladlar'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'convert_pf',
                 child: ListTile(
                   leading: Icon(Icons.published_with_changes),
@@ -210,6 +219,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'printers':
                   context.push(const PrintersUi());
+                  break;
+                case 'sklads':
+                  context.push(const SkladsUi());
                   break;
                 case 'convert_pf':
                   context.push(const ConvertPfUi());

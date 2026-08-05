@@ -1,6 +1,8 @@
 // splash_screen.dart — ochilish ekrani (SplashScreen): versiyani tekshiradi
 // (VersionChecker) va saqlangan token+role bo'yicha mos Home ekranga yo'naltiradi
 // (admin/ombor/yuk/bugalter/shef/seller); token yo'q bo'lsa LoginPage'ga o'tadi.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uz_ai_dev/admin/ui/admin_home_ui.dart';
@@ -12,6 +14,7 @@ import 'package:uz_ai_dev/user/ui/user_home_ui.dart';
 import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/data/local/token_storage.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/services/windows_update_service.dart';
 import 'package:uz_ai_dev/check_version.dart';
@@ -65,6 +68,10 @@ class _SplashScreenState extends State<SplashScreen> {
       context.pushReplacement(const LoginPage());
       return;
     }
+
+    // Sklad nomlarini serverdan yangilaymiz (superadmin tahrirlagan bo'lishi
+    // mumkin). Kutmaymiz — xato bo'lsa keshdagi nomlar qoladi.
+    unawaited(SkladRegistry.refreshSilently());
 
     // Role bo'yicha yo'naltirish
     if (isAdmin == true || role == AppRoles.superAdmin) {
