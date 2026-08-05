@@ -205,7 +205,10 @@ class CategoryListTile extends StatelessWidget {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
-        'Принтер: ${category.printerId}',
+        // Guruh raqami + tanlangan printer (bo'lmasa "стандарт")
+        'Группа: ${category.printerId}'
+        '${(category.printerAgent ?? '').isEmpty ? '' : ' • ${category.printerAgent}'}'
+        '${(category.printerName ?? '').isEmpty ? '' : ': ${category.printerName}'}',
         style: TextStyle(color: Colors.grey[600]),
       ),
       trailing: Wrap(

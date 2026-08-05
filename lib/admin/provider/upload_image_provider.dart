@@ -147,6 +147,8 @@ class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider 
         id: category.id,
         name: category.name,
         printerId: category.printerId,
+        printerAgent: category.printerAgent,
+        printerName: category.printerName,
         imageUrl: imageUrl ?? category.imageUrl,
       );
 
@@ -175,6 +177,9 @@ class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider 
     CategoryProductAdmin category, {
     String? newName,
     int? newPrint,
+    // null = tegilmaydi, '' = tozalash (Standart printerga qaytarish)
+    String? newPrinterAgent,
+    String? newPrinterName,
     String? newImageUrl,
     File? imageFile,
   }) async {
@@ -203,6 +208,8 @@ class CategoryProviderAdminUpload extends ChangeNotifier with ClearableProvider 
         id: category.id,
         name: newName ?? category.name,
         printerId: newPrint ?? category.printerId,
+        printerAgent: newPrinterAgent ?? category.printerAgent,
+        printerName: newPrinterName ?? category.printerName,
         imageUrl: uploadedImageUrl ?? newImageUrl ?? category.imageUrl,
       );
 

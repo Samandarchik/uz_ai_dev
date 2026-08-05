@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
 import 'package:uz_ai_dev/admin/provider/upload_image_provider.dart';
+import 'package:uz_ai_dev/admin/services/print_agent_service.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 
 class CategoryDialog extends StatefulWidget {
@@ -28,7 +29,18 @@ class _CategoryDialogState extends State<CategoryDialog> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
+  // Printer tanlash: agentlar ro'yxati serverdan (real Windows printer nomlari).
+  // Tanlov "agent\u0000printer" kalit ko'rinishida; null = Standart.
+  List<PrintAgentInfo>? _agents;
+  bool _agentsLoading = true;
+  String? _printerKey;
+
   bool get isEditing => widget.category != null;
+
+  static String? _keyOf(String? agent, String? printer) {
+    if (agent == null || agent.isEmpty) return null;
+    return '$agent\u0000${printer ?? ''}';
+  }
 
   @override
   void initState() {
@@ -37,6 +49,68 @@ class _CategoryDialogState extends State<CategoryDialog> {
     _printController = TextEditingController(
       text: widget.category?.printerId.toString() ?? '1',
     );
+    _printerKey =
+        _keyOf(widget.category?.printerAgent, widget.category?.printerName);
+    _loadAgents();
+  }
+
+  Future<void> _loadAgents() async {
+    try {
+      final agents = await PrintAgentService().getPrintAgents();
+      if (mounted) {
+        setState(() {
+          _agents = agents;
+          _agentsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _agentsLoading = false);
+    }
+  }
+
+  // Dropdown bandlari: har agent uchun "(standart printer)" + real printerlari.
+  // Saqlangan tanlov ro'yxatda bo'lmasa ham ko'rsatiladi (agent oflayn bo'lsa).
+  List<DropdownMenuItem<String?>> _printerItems() {
+    final items = <DropdownMenuItem<String?>>[
+      const DropdownMenuItem(value: null, child: Text('Стандарт')),
+    ];
+    final seen = <String>{};
+    for (final agent in _agents ?? <PrintAgentInfo>[]) {
+      final suffix = agent.connected ? '' : ' (offline)';
+      final defKey = _keyOf(agent.name, '')!;
+      seen.add(defKey);
+      items.add(DropdownMenuItem(
+        value: defKey,
+        child: Text('${agent.name}: standart printer$suffix',
+            overflow: TextOverflow.ellipsis),
+      ));
+      for (final printer in agent.printers) {
+        final key = _keyOf(agent.name, printer)!;
+        if (!seen.add(key)) continue;
+        items.add(DropdownMenuItem(
+          value: key,
+          child: Text('${agent.name}: $printer$suffix',
+              overflow: TextOverflow.ellipsis),
+        ));
+      }
+    }
+    if (_printerKey != null && !seen.contains(_printerKey)) {
+      final (agent, printer) = _splitKey(_printerKey!);
+      items.add(DropdownMenuItem(
+        value: _printerKey,
+        child: Text(
+            '$agent: ${printer.isEmpty ? 'standart printer' : printer} (?)',
+            overflow: TextOverflow.ellipsis),
+      ));
+    }
+    return items;
+  }
+
+  // Kalit "agent\u0000printer" — NUL ajratgich nomlarda uchramaydi.
+  static (String, String) _splitKey(String key) {
+    final idx = key.indexOf('\u0000');
+    if (idx < 0) return (key, '');
+    return (key.substring(0, idx), key.substring(idx + 1));
   }
 
   @override
@@ -70,11 +144,16 @@ class _CategoryDialogState extends State<CategoryDialog> {
     final provider = context.read<CategoryProviderAdminUpload>();
     bool success;
 
+    final (agent, printer) =
+        _printerKey == null ? ('', '') : _splitKey(_printerKey!);
+
     if (isEditing) {
       success = await provider.updateCategory(
         widget.category!,
         newName: _nameController.text.trim(),
         newPrint: int.parse(_printController.text),
+        newPrinterAgent: agent,
+        newPrinterName: printer,
         imageFile: _selectedImage,
       );
     } else {
@@ -83,6 +162,8 @@ class _CategoryDialogState extends State<CategoryDialog> {
           id: 0,
           name: _nameController.text.trim(),
           printerId: int.parse(_printController.text),
+          printerAgent: agent,
+          printerName: printer,
           imageUrl: null,
         ),
         imageFile: _selectedImage,
@@ -188,12 +269,39 @@ class _CategoryDialogState extends State<CategoryDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Printer: ulangan agentlardagi real printer nomlaridan tanlanadi.
+                // "Стандарт" — backend o'zi hal qiladi (default agent + default
+                // printer). Ro'yxat kelmasa saqlangan qiymat bilan ko'rinadi.
+                DropdownButtonFormField<String?>(
+                  initialValue: _printerKey,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Принтер',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.print),
+                    suffixIcon: _agentsLoading
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : null,
+                  ),
+                  items: _printerItems(),
+                  onChanged: (value) => setState(() => _printerKey = value),
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _printController,
                   decoration: const InputDecoration(
-                    labelText: 'Распечатать значение',
+                    labelText: 'Группа чека (номер)',
+                    helperText:
+                        'Одинаковый номер — один чек, разные — отдельные чеки',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.print),
+                    prefixIcon: Icon(Icons.receipt_long),
                   ),
                   keyboardType: TextInputType.numberWithOptions(),
                   validator: (value) {

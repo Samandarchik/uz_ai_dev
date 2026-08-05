@@ -15,7 +15,6 @@ import 'package:uz_ai_dev/admin/ui/analytics_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
 import 'package:uz_ai_dev/admin/ui/convert_pf_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
-import 'package:uz_ai_dev/admin/ui/printers_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/sklads_ui.dart';
@@ -173,14 +172,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
-                value: 'printers',
-                child: ListTile(
-                  leading: Icon(Icons.print_outlined),
-                  title: Text('Printerlar'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
                 value: 'sklads',
                 child: ListTile(
                   leading: Icon(Icons.warehouse_outlined),
@@ -216,9 +207,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'filials':
                   context.push(const FilialsUi());
-                  break;
-                case 'printers':
-                  context.push(const PrintersUi());
                   break;
                 case 'sklads':
                   context.push(const SkladsUi());

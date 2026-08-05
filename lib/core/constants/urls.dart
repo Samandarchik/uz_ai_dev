@@ -148,9 +148,9 @@ abstract final class AppUrls {
   // ro'yxatdan); POST {name}, PUT /{id} {name}, DELETE /{id} — faqat superadmin.
   static const String sklads = '$baseUrl/api/sklads';
 
-  // Printerlar registri (admin): {name, api_url, printer_no}. Chek yuborishda
-  // backend kategoriya printerini shu registrdan topadi.
-  static const String printers = '$baseUrl/api/printers';
+  // Print agentlar (admin): ulangan Windows agentlar va ulardagi real printer
+  // nomlari — kategoriya oynasidagi printer dropdown shu ro'yxatdan quriladi.
+  static const String printAgents = '$baseUrl/api/print-agents';
   // Filial limitlari: GET ?filial_id=N — filialning mahsulot limitlari;
   // POST {filial_id, product_id, limit_qty} — upsert (limit_qty: 0 —
   // o'chirish). limit_qty birlik kontrakti: кг/л -> BUTUN gr/ml. Faqat admin.
