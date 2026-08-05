@@ -1,7 +1,7 @@
 # Flutter ilova (`uz_ai_dev`) — Claude yo'riqnomasi
 
 Bu **Flutter Claude** ning ish maydoni. Sen FAQAT shu papkani (`uz_ai_dev/`) o'zgartirasan.
-Backend (`mone_backend_user_admin/`) ga TEGMA — u boshqa Claude'ning ishi.
+Backend (`mone_app_backend/`) ga TEGMA — u boshqa Claude'ning ishi.
 
 > To'liq loyiha konteksti va ikkita Claude bilan parallel ishlash qoidasi yuqoridagi
 > `../CLAUDE.md` (mone_app/CLAUDE.md) faylida.
