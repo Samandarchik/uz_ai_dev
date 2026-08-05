@@ -140,6 +140,10 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   Set<String> _liveKeys = const <String>{};
   bool _pruneScheduled = false;
 
+  // «Faqat yangi» filtri O'CHIRILGAN skladlar (ya'ni hamma qator ko'rinadi).
+  // Standart holat — filtr YONIQ, shuning uchun to'plam bo'sh boshlanadi.
+  final Set<String> _showAllSkladlar = <String>{};
+
   // Shu ekranda tarmoq rasmi ko'rsatildimi. Faqat shunda chiqishda rasm keshi
   // bo'shatiladi — rasm ko'rsatilmagan bo'lsa boshqa ekranlarning rasmiga
   // bekorga tegmaymiz.
@@ -372,34 +376,52 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       ];
       if (ordersWithItems.isEmpty) continue;
 
+      // «Faqat yangi» filtri (standart YONIQ): qabul qilinganlar yashiriladi,
+      // faqat hali rasmga olib yuborilmagan qatorlar qoladi. Tarix ekranida
+      // filtr yo'q — u yerda hamma qator qabul qilingan.
+      final showAll =
+          widget.acceptedOnly || _showAllSkladlar.contains(entry.key);
+
       // Kartochka qatorlari avval yig'iladi: sarlavhaga «Rasm/Video» ustuni
       // kerakmi — faqat tahrirlanadigan qator bo'lsa kerak (kamera tugmasi).
       final cardRows = <_Row>[];
       var hasEditable = false;
       var first = true;
       for (final order in ordersWithItems) {
-        // Bitta kartadagi ikki buyurtma orasida vaqt bilan ajratuvchi.
-        if (!first) cardRows.add(_TimeRow(order.id, _orderTime(order.created)));
-        first = false;
+        final orderRows = <_ItemRow>[];
         for (final item in order.items) {
           if (item.isRasxod) continue;
           final row = _ItemRow.of(order, item);
-          cardRows.add(row);
           if (row.editable) {
             hasEditable = true;
             liveKeys.add(row.slotKey);
+          } else {
+            if (item.imageUrl.isNotEmpty) usedNetworkImage = true;
+            if (!showAll) continue; // filtr yoniq — qabul qilingani ko'rinmaydi
           }
-          if (!row.editable && item.imageUrl.isNotEmpty) {
-            usedNetworkImage = true;
-          }
+          orderRows.add(row);
         }
+        if (orderRows.isEmpty) continue;
+        // Bitta kartadagi ikki buyurtma orasida vaqt bilan ajratuvchi.
+        if (!first) cardRows.add(_TimeRow(order.id, _orderTime(order.created)));
+        first = false;
+        cardRows.addAll(orderRows);
       }
-      rows.add(_HeaderRow(entry.key, showMedia: hasEditable));
-      rows.addAll(cardRows);
-      rows.add(_FooterRow(
+      rows.add(_HeaderRow(
         entry.key,
-        allAccepted: ordersWithItems.every((o) => o.isAccepted),
+        showMedia: hasEditable,
+        showAll: showAll,
+        showToggle: !widget.acceptedOnly,
       ));
+      final allAccepted = ordersWithItems.every((o) => o.isAccepted);
+      if (cardRows.isNotEmpty) {
+        rows.addAll(cardRows);
+      } else if (!allAccepted) {
+        // Hammasi qabul qilingan bo'lsa, pastdagi «Qabul qilindi» belgisi
+        // o'zi yetarli — ikki marta yozilmasin.
+        rows.add(_EmptyRow(entry.key));
+      }
+      rows.add(_FooterRow(entry.key, allAccepted: allAccepted));
     }
 
     if (usedNetworkImage) _usedNetworkImage = true;
@@ -460,6 +482,24 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           child: _GroupHeader(
             skladName: row.skladName,
             showMedia: row.showMedia,
+            showAll: row.showAll,
+            showToggle: row.showToggle,
+            onToggle: () => setState(() {
+              if (!_showAllSkladlar.remove(row.skladName)) {
+                _showAllSkladlar.add(row.skladName);
+              }
+            }),
+          ),
+        );
+      case _EmptyRow():
+        return _CardShell(
+          key: ValueKey(row.key),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              'Yangi mahsulot yo\'q — hammasi qabul qilingan',
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
           ),
         );
       case _TimeRow():
@@ -755,10 +795,28 @@ class _HeaderRow extends _Row {
   final String skladName;
   // «Rasm/Video» ustuni faqat tahrirlanadigan (kamera kerak) qator bo'lsa.
   final bool showMedia;
-  const _HeaderRow(this.skladName, {required this.showMedia});
+  // Filtr o'chirilgan (hamma qator ko'rinadi) / yoniq (faqat yangilari).
+  final bool showAll;
+  // Tarix ekranida filtr tugmasi ko'rsatilmaydi.
+  final bool showToggle;
+  const _HeaderRow(
+    this.skladName, {
+    required this.showMedia,
+    required this.showAll,
+    required this.showToggle,
+  });
 
   @override
   String get key => 'h:$skladName';
+}
+
+// Filtr yoniq, lekin kartochkada yangi qator qolmagan holat.
+class _EmptyRow extends _Row {
+  final String skladName;
+  const _EmptyRow(this.skladName);
+
+  @override
+  String get key => 'e:$skladName';
 }
 
 // Bitta kartadagi ikki buyurtma orasidagi vaqt ajratuvchisi.
@@ -908,7 +966,16 @@ class _CardShell extends StatelessWidget {
 class _GroupHeader extends StatelessWidget {
   final String skladName;
   final bool showMedia;
-  const _GroupHeader({required this.skladName, required this.showMedia});
+  final bool showAll;
+  final bool showToggle;
+  final VoidCallback onToggle;
+  const _GroupHeader({
+    required this.skladName,
+    required this.showMedia,
+    required this.showAll,
+    required this.showToggle,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -934,6 +1001,10 @@ class _GroupHeader extends StatelessWidget {
                 ),
               ),
             ),
+            if (showToggle) ...[
+              const SizedBox(width: 8),
+              _FilterToggle(showAll: showAll, onTap: onToggle),
+            ],
           ],
         ),
         const Divider(height: 20),
@@ -1452,6 +1523,60 @@ class _ItemView extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.check, size: 22, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Sklad nomi yonidagi filtr tugmasi. YONIQ (standart) — faqat hali qabul
+// qilinmagan (rasmga olib yuborilmagan) qatorlar; O'CHIQ — hamma qator.
+class _FilterToggle extends StatelessWidget {
+  final bool showAll;
+  final VoidCallback onTap;
+  const _FilterToggle({required this.showAll, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = showAll ? Colors.grey.shade600 : _accent;
+    return Tooltip(
+      message: showAll
+          ? 'Faqat yangilarini ko\'rsatish'
+          : 'Hammasini ko\'rsatish',
+      child: Material(
+        color: showAll ? Colors.transparent : _accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: showAll ? Colors.grey.shade400 : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  showAll ? Icons.filter_alt_off_outlined : Icons.filter_alt,
+                  size: 15,
+                  color: color,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  showAll ? 'Hammasi' : 'Yangi',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
