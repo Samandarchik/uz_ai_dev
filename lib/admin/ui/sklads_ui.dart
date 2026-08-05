@@ -1,6 +1,7 @@
 // admin/ui/sklads_ui.dart — skladlar (omborxonalar) boshqaruvi ekrani
-// (SkladsUi): ApiSkladService; ro'yxatni hamma admin ko'radi, qo'shish/tahrir/
-// o'chirish faqat superadmin (rol SharedPreferences 'role' dan). FAB «+»
+// (SkladsUi): ApiSkladService; ro'yxatni hamma ko'radi, qo'shish/tahrir/
+// o'chirish ADMIN uchun (SharedPreferences 'is_admin'; backend ham
+// requireAdmin — alohida superadmin foydalanuvchi amalda yo'q). FAB «+»
 // qo'shadi, qatorga tap — nomni tahrirlash, long-press — o'chirish.
 // Har muvaffaqiyatli amaldan keyin SkladRegistry yangilanadi, ya'ni butun
 // ilovadagi sklad nomlari (tab, dropdown, kartalar) darhol yangi nomni oladi.
@@ -27,7 +28,9 @@ class _SkladsUiState extends State<SkladsUi> {
   List<Sklad> _sklads = [];
   bool _loading = true;
   String? _error;
-  bool _isSuperAdmin = false;
+  // Tahrir tugmalari ko'rinadimi — admin (is_admin) bo'lsa. Backend ham
+  // requireAdmin bilan himoyalangan.
+  bool _canEdit = false;
 
   @override
   void initState() {
@@ -37,9 +40,11 @@ class _SkladsUiState extends State<SkladsUi> {
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
+    final isAdmin = prefs.getBool('is_admin') ?? false;
     final role = prefs.getString('role');
     if (mounted) {
-      setState(() => _isSuperAdmin = role == AppRoles.superAdmin);
+      setState(() => _canEdit =
+          isAdmin || role == AppRoles.admin || role == AppRoles.superAdmin);
     }
     await _load();
   }
@@ -77,7 +82,7 @@ class _SkladsUiState extends State<SkladsUi> {
     );
   }
 
-  // ───────────────────────── Dialoglar (superadmin) ─────────────────────────
+  // ─────────────────────────── Dialoglar (admin) ───────────────────────────
 
   // Qo'shish (sklad == null) yoki nomni tahrirlash dialogi.
   Future<void> _showSkladDialog({Sklad? sklad}) async {
@@ -189,7 +194,7 @@ class _SkladsUiState extends State<SkladsUi> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
-      floatingActionButton: _isSuperAdmin
+      floatingActionButton: _canEdit
           ? FloatingActionButton(
               backgroundColor: _kAccent,
               foregroundColor: Colors.white,
@@ -228,11 +233,11 @@ class _SkladsUiState extends State<SkladsUi> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _isSuperAdmin
+              _canEdit
                   ? 'Tap — nomni tahrirlash, uzoq bosish — o\'chirish. '
                       'Foydalanuvchi/mahsulot biriktirilgan yoki qoldig\'i bor '
                       'sklad o\'chmaydi'
-                  : 'Skladlarni faqat superadmin tahrirlaydi',
+                  : 'Skladlarni faqat admin tahrirlaydi',
               style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
             ),
           ),
@@ -332,11 +337,11 @@ class _SkladsUiState extends State<SkladsUi> {
           'ID: ${sklad.id}',
           style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
         ),
-        trailing: _isSuperAdmin
+        trailing: _canEdit
             ? Icon(Icons.edit_outlined, size: 18, color: Colors.grey.shade500)
             : null,
-        onTap: _isSuperAdmin ? () => _showSkladDialog(sklad: sklad) : null,
-        onLongPress: _isSuperAdmin ? () => _confirmDelete(sklad) : null,
+        onTap: _canEdit ? () => _showSkladDialog(sklad: sklad) : null,
+        onLongPress: _canEdit ? () => _confirmDelete(sklad) : null,
       ),
     );
   }
