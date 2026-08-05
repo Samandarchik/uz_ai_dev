@@ -7,10 +7,11 @@
 //
 //  1) RASM — 48px'lik katakcha uchun serverdagi 1024px rasm TO'LIQ dekod qilinardi:
 //     bitta rasm RAM'da ~4 MB. Tarix ekranida 40–50 ta rasm = 150–200 MB → iOS
-//     ilovani o'ldiradi. Endi rasm katakcha o'lchamida (~160px, ~0.1 MB) dekod
-//     qilinadi (`AppNetworkImage` + `maxDecodeWidth`, lokal fayl uchun `cacheWidth`),
-//     to'liq ekran ko'rinishi esa umumiy `FullScreenImagePage` — u yopilganda
-//     katta bitmap keshdan chiqariladi.
+//     ilovani o'ldiradi. Endi YUBORILGAN rasm ro'yxatda umuman chizilmaydi —
+//     katakchada faqat «rasm bor» belgisi turadi, bosilganda `FullScreenImagePage`
+//     da yuklanadi va u yopilganda katta bitmap keshdan chiqariladi. Lokal
+//     (hozirgina olingan) rasm esa katakcha o'lchamida dekod qilinadi
+//     (`Image.file` + `cacheWidth`).
 //
 //  2) RO'YXAT — har sklad kartochkasi o'z ichidagi HAMMA qatorni bir yo'la qurardi
 //     (ekranda ko'rinmaganini ham): 60 ta mahsulot = 60 ta TextField + 60 ta rasm
@@ -35,7 +36,6 @@ import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
-import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
@@ -48,10 +48,6 @@ const Color _green = Color(0xFF2E7D32);
 
 // Rasm/Video katakchasi va tugmalar balandligi.
 const double _cellH = 48;
-
-// Tarmoq rasmi shu kenglikdan katta dekod qilinmaydi (fizik piksel).
-// Katakcha ~55dp, 3x ekranda ~165px — 1024px o'rniga ~40 barobar kam RAM.
-const int _thumbMaxDecode = 192;
 
 // Lokal (kameradan olingan) rasm uchun dekod kengligi — fayl 1080p+ bo'lsa ham
 // katakcha uchun shuncha yetadi.
@@ -1284,11 +1280,12 @@ class _ItemView extends StatelessWidget {
 
   // Rasm/Video katakchasi.
   //
-  // ⚠️ RASM O'LCHAMI — shu ekranning eng muhim joyi. Katakcha ~55dp, lekin
-  // fayl 1024px (server) yoki 1080p+ (kamera). O'lchamsiz dekod qilinsa bitta
-  // rasm RAM'da ~4 MB egallaydi va ro'yxatdagi o'nlab rasm ilovani o'ldiradi.
-  // Shuning uchun: tarmoq rasmi — AppNetworkImage (memCacheWidth ≤ 192px),
-  // lokal fayl — Image.file(cacheWidth: ...).
+  // ⚠️ RASM O'LCHAMI — shu ekranning eng muhim joyi. Fayl 1024px (server) yoki
+  // 1080p+ (kamera). O'lchamsiz dekod qilinsa bitta rasm RAM'da ~4 MB egallaydi
+  // va ro'yxatdagi o'nlab rasm ilovani o'ldiradi. Shuning uchun: yuborilgan
+  // (tarmoq) rasm umuman ro'yxatda chizilmaydi — faqat bosiladigan belgi,
+  // to'liq ekran esa keshni yopilganda tozalaydi; lokal (hozir olingan) fayl —
+  // Image.file(cacheWidth: ...).
   Widget _mediaCell(BuildContext context) {
     if (editable && slot != null) {
       return ValueListenableBuilder<_LocalMedia>(
@@ -1316,14 +1313,15 @@ class _ItemView extends StatelessWidget {
       );
     }
 
+    // Yuborilgan rasm ro'yxatda KO'RSATILMAYDI — faqat «rasm bor» belgisi
+    // turadi. Ko'rish kerak bo'lsa ustiga bosiladi, o'shanda to'liq ekranda
+    // yuklanadi (ro'yxat scroll'ida trafik ham, RAM ham sarflanmaydi).
     if (item.imageUrl.isNotEmpty) {
       final url = '${AppUrls.baseUrl}${item.imageUrl}';
-      return _MediaThumb(
+      return _MediaBox(
+        icon: Icons.image_outlined,
+        filled: true,
         onTap: () => openFullScreenImage(context, url),
-        child: AppNetworkImage(
-          imageUrl: url,
-          maxDecodeWidth: _thumbMaxDecode,
-        ),
       );
     }
 
