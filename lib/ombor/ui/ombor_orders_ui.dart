@@ -1408,6 +1408,27 @@ class _ItemView extends StatelessWidget {
         child: const Icon(Icons.check_circle, size: 22, color: _green),
       );
     }
+    // Rasm/video majburiy (qarang: _acceptItem). Shuning uchun media
+    // olinmaguncha qabul tugmasi UMUMAN chiqmaydi — bosib, keyin
+    // «Avval rasm yoki video oling» ogohlantirishini olishning ma'nosi yo'q.
+    // Ustun eni saqlanadi, aks holda rasm olinganda qator sakrab ketadi.
+    if (slot != null) {
+      return ValueListenableBuilder<_LocalMedia>(
+        valueListenable: slot!.media,
+        builder: (context, media, child) {
+          final hasMedia = !media.isEmpty ||
+              item.imageUrl.isNotEmpty ||
+              item.videoUrl.isNotEmpty;
+          if (!hasMedia) return const SizedBox(height: _cellH);
+          return child!;
+        },
+        child: _acceptButton(),
+      );
+    }
+    return _acceptButton();
+  }
+
+  Widget _acceptButton() {
     return Material(
       color: isAccepting ? Colors.grey.shade300 : _green,
       borderRadius: BorderRadius.circular(8),
