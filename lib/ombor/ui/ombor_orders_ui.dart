@@ -372,22 +372,30 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       ];
       if (ordersWithItems.isEmpty) continue;
 
-      rows.add(_HeaderRow(entry.key));
+      // Kartochka qatorlari avval yig'iladi: sarlavhaga «Rasm/Video» ustuni
+      // kerakmi — faqat tahrirlanadigan qator bo'lsa kerak (kamera tugmasi).
+      final cardRows = <_Row>[];
+      var hasEditable = false;
       var first = true;
       for (final order in ordersWithItems) {
         // Bitta kartadagi ikki buyurtma orasida vaqt bilan ajratuvchi.
-        if (!first) rows.add(_TimeRow(order.id, _orderTime(order.created)));
+        if (!first) cardRows.add(_TimeRow(order.id, _orderTime(order.created)));
         first = false;
         for (final item in order.items) {
           if (item.isRasxod) continue;
           final row = _ItemRow.of(order, item);
-          rows.add(row);
-          if (row.editable) liveKeys.add(row.slotKey);
+          cardRows.add(row);
+          if (row.editable) {
+            hasEditable = true;
+            liveKeys.add(row.slotKey);
+          }
           if (!row.editable && item.imageUrl.isNotEmpty) {
             usedNetworkImage = true;
           }
         }
       }
+      rows.add(_HeaderRow(entry.key, showMedia: hasEditable));
+      rows.addAll(cardRows);
       rows.add(_FooterRow(
         entry.key,
         allAccepted: ordersWithItems.every((o) => o.isAccepted),
@@ -449,7 +457,10 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
         return _CardShell(
           key: ValueKey(row.key),
           top: true,
-          child: _GroupHeader(skladName: row.skladName),
+          child: _GroupHeader(
+            skladName: row.skladName,
+            showMedia: row.showMedia,
+          ),
         );
       case _TimeRow():
         return _CardShell(
@@ -742,7 +753,9 @@ sealed class _Row {
 // Kartochka boshi: sklad nomi + jadval sarlavhasi.
 class _HeaderRow extends _Row {
   final String skladName;
-  const _HeaderRow(this.skladName);
+  // «Rasm/Video» ustuni faqat tahrirlanadigan (kamera kerak) qator bo'lsa.
+  final bool showMedia;
+  const _HeaderRow(this.skladName, {required this.showMedia});
 
   @override
   String get key => 'h:$skladName';
@@ -894,7 +907,8 @@ class _CardShell extends StatelessWidget {
 // Kartochka sarlavhasi: sklad nomi + jadval sarlavhasi (order_id ko'rsatilmaydi).
 class _GroupHeader extends StatelessWidget {
   final String skladName;
-  const _GroupHeader({required this.skladName});
+  final bool showMedia;
+  const _GroupHeader({required this.skladName, required this.showMedia});
 
   @override
   Widget build(BuildContext context) {
@@ -923,25 +937,31 @@ class _GroupHeader extends StatelessWidget {
           ],
         ),
         const Divider(height: 20),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 6),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
-              Expanded(flex: 5, child: Text('Mahsulot', style: style)),
-              SizedBox(width: 6),
+              // Media ustuni yo'q bo'lsa, uning eni nom ustuniga qo'shiladi —
+              // shunda «Kelgan soni» va «Qabul» ustunlari joyida qoladi.
               Expanded(
+                  flex: showMedia ? 5 : 7,
+                  child: const Text('Mahsulot', style: style)),
+              const SizedBox(width: 6),
+              const Expanded(
                 flex: 3,
                 child: Text('Kelgan soni',
                     textAlign: TextAlign.center, style: style),
               ),
-              SizedBox(width: 6),
-              Expanded(
-                flex: 2,
-                child: Text('Rasm/Video',
-                    textAlign: TextAlign.center, style: style),
-              ),
-              SizedBox(width: 6),
-              Expanded(
+              if (showMedia) ...[
+                const SizedBox(width: 6),
+                const Expanded(
+                  flex: 2,
+                  child: Text('Rasm/Video',
+                      textAlign: TextAlign.center, style: style),
+                ),
+              ],
+              const SizedBox(width: 6),
+              const Expanded(
                 flex: 2,
                 child:
                     Text('Qabul', textAlign: TextAlign.center, style: style),
@@ -1105,20 +1125,51 @@ class _ItemView extends StatelessWidget {
     required this.onDelete,
   });
 
+  // Qabul qilingan qatorda yuborilgan media bormi (rasm yoki video).
+  bool get _hasSentMedia =>
+      !editable && (item.imageUrl.isNotEmpty || item.videoUrl.isNotEmpty);
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // «Rasm/Video» katakchasi FAQAT tahrirlanadigan qatorda (kamera tugmasi).
+    // Qabul qilingan qatorda media ustuni umuman yo'q — uning eni nom ustuniga
+    // qo'shiladi, rasm esa qatorning istalgan joyiga bosilganda ochiladi.
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Expanded(flex: 5, child: _nameCell()),
+          Expanded(flex: editable ? 5 : 7, child: _nameCell()),
           const SizedBox(width: 6),
           Expanded(flex: 3, child: _qtyCell()),
-          const SizedBox(width: 6),
-          Expanded(flex: 2, child: _mediaCell(context)),
+          if (editable) ...[
+            const SizedBox(width: 6),
+            Expanded(flex: 2, child: _mediaCell(context)),
+          ],
           const SizedBox(width: 6),
           Expanded(flex: 2, child: _acceptCell()),
         ],
+      ),
+    );
+    if (!_hasSentMedia) return row;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openSentMedia(context),
+      child: row,
+    );
+  }
+
+  // Yuborilgan rasm/videoni ochish (ro'yxatda ko'rsatilmaydi — faqat shu yerda
+  // yuklanadi; to'liq ekran yopilganda katta bitmap keshdan chiqariladi).
+  void _openSentMedia(BuildContext context) {
+    if (item.imageUrl.isNotEmpty) {
+      openFullScreenImage(context, '${AppUrls.baseUrl}${item.imageUrl}');
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CircularNetworkVideoPlayer(
+          url: '${AppUrls.baseUrl}${item.videoUrl}',
+        ),
       ),
     );
   }
@@ -1166,6 +1217,18 @@ class _ItemView extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: diff > 0 ? _green : _red,
                       ),
+                    ),
+                  ],
+                  // Media bor ekanining yagona belgisi — ustun emas, matn
+                  // yonidagi kichkina ikonka. Qatorga bosilsa ochiladi.
+                  if (_hasSentMedia) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      item.imageUrl.isNotEmpty
+                          ? Icons.image_outlined
+                          : Icons.videocam_outlined,
+                      size: 14,
+                      color: Colors.grey.shade500,
                     ),
                   ],
                 ],
@@ -1278,68 +1341,37 @@ class _ItemView extends StatelessWidget {
     );
   }
 
-  // Rasm/Video katakchasi.
+  // Rasm/Video katakchasi — FAQAT tahrirlanadigan qatorda (kamera tugmasi).
+  // Qabul qilingan qatorda bu ustun umuman chizilmaydi: yuborilgan rasm
+  // ro'yxatda ko'rsatilmaydi, qatorga bosilganda to'liq ekranda ochiladi.
   //
-  // ⚠️ RASM O'LCHAMI — shu ekranning eng muhim joyi. Fayl 1024px (server) yoki
-  // 1080p+ (kamera). O'lchamsiz dekod qilinsa bitta rasm RAM'da ~4 MB egallaydi
-  // va ro'yxatdagi o'nlab rasm ilovani o'ldiradi. Shuning uchun: yuborilgan
-  // (tarmoq) rasm umuman ro'yxatda chizilmaydi — faqat bosiladigan belgi,
-  // to'liq ekran esa keshni yopilganda tozalaydi; lokal (hozir olingan) fayl —
-  // Image.file(cacheWidth: ...).
+  // ⚠️ RASM O'LCHAMI: kameradan olingan fayl 1080p+. O'lchamsiz dekod qilinsa
+  // bitta rasm RAM'da ~4 MB egallaydi, shuning uchun katakcha o'lchamida
+  // dekod qilinadi (Image.file + cacheWidth).
   Widget _mediaCell(BuildContext context) {
-    if (editable && slot != null) {
-      return ValueListenableBuilder<_LocalMedia>(
-        valueListenable: slot!.media,
-        builder: (context, media, _) {
-          if (media.imagePath != null) {
-            return _MediaThumb(
-              onTap: onTapMedia,
-              child: Image.file(
-                File(media.imagePath!),
-                fit: BoxFit.cover,
-                cacheWidth: _thumbDecodePx(context),
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.broken_image, size: 18, color: Colors.grey),
-              ),
-            );
-          }
-          if (media.videoPath != null) {
-            return _MediaBox(
-                icon: Icons.videocam, filled: true, onTap: onTapMedia);
-          }
-          return _MediaBox(
-              icon: Icons.photo_camera_outlined, onTap: onTapMedia);
-        },
-      );
-    }
-
-    // Yuborilgan rasm ro'yxatda KO'RSATILMAYDI — faqat «rasm bor» belgisi
-    // turadi. Ko'rish kerak bo'lsa ustiga bosiladi, o'shanda to'liq ekranda
-    // yuklanadi (ro'yxat scroll'ida trafik ham, RAM ham sarflanmaydi).
-    if (item.imageUrl.isNotEmpty) {
-      final url = '${AppUrls.baseUrl}${item.imageUrl}';
-      return _MediaBox(
-        icon: Icons.image_outlined,
-        filled: true,
-        onTap: () => openFullScreenImage(context, url),
-      );
-    }
-
-    if (item.videoUrl.isNotEmpty) {
-      return _MediaBox(
-        icon: Icons.play_circle_fill,
-        filled: true,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CircularNetworkVideoPlayer(
-              url: '${AppUrls.baseUrl}${item.videoUrl}',
+    if (slot == null) return const SizedBox.shrink();
+    return ValueListenableBuilder<_LocalMedia>(
+      valueListenable: slot!.media,
+      builder: (context, media, _) {
+        if (media.imagePath != null) {
+          return _MediaThumb(
+            onTap: onTapMedia,
+            child: Image.file(
+              File(media.imagePath!),
+              fit: BoxFit.cover,
+              cacheWidth: _thumbDecodePx(context),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.broken_image, size: 18, color: Colors.grey),
             ),
-          ),
-        ),
-      );
-    }
-
-    return const _MediaEmpty();
+          );
+        }
+        if (media.videoPath != null) {
+          return _MediaBox(
+              icon: Icons.videocam, filled: true, onTap: onTapMedia);
+        }
+        return _MediaBox(icon: Icons.photo_camera_outlined, onTap: onTapMedia);
+      },
+    );
   }
 
   // Qabul katakchasi: tahrirlanadigan qatorda yashil tugma (yuborishda
@@ -1448,25 +1480,6 @@ class _MediaThumb extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(height: _cellH, width: double.infinity, child: child),
       ),
-    );
-  }
-}
-
-// Media yo'q (qabul qilingan, lekin bu mahsulotga yuborilmagan).
-class _MediaEmpty extends StatelessWidget {
-  const _MediaEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: _cellH,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F1EA),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Text('—', style: TextStyle(color: Colors.grey.shade500)),
     );
   }
 }
