@@ -138,6 +138,9 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   // buyurtma yopilishi bilan post-frame'da dispose qilinadi (pastdagi _prune).
   final Map<String, _RowSlot> _slots = {};
   Set<String> _liveKeys = const <String>{};
+  // Yuk keltiruvchi kiritgan sonlar (slotKey -> UI matni), kadr chizilgandan
+  // keyin maydonlarga qo'yiladi.
+  Map<String, String> _pendingSeeds = const <String, String>{};
   bool _pruneScheduled = false;
 
   // «Faqat yangi» filtri O'CHIRILGAN skladlar (ya'ni hamma qator ko'rinadi).
@@ -198,11 +201,14 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   _RowSlot _slotFor(String key, String initialText) =>
       _slots.putIfAbsent(key, () => _RowSlot(initialText));
 
-  // Ro'yxatdan chiqib ketgan qatorlarning controllerlarini bo'shatish.
-  // Build ichida dispose qilib bo'lmaydi (widget hali daraxtda bo'lishi mumkin),
-  // shuning uchun kadr chizilgandan keyin tozalanadi.
-  void _schedulePrune(Set<String> liveKeys) {
+  // Ro'yxatdan chiqib ketgan qatorlarning controllerlarini bo'shatish +
+  // yuk keltiruvchi kiritgan sonni maydonga tushirish.
+  // Build ichida dispose ham, controller.text ham o'zgartirib bo'lmaydi
+  // (widget hali daraxtda / listener setState chaqiradi), shuning uchun
+  // ikkalasi ham kadr chizilgandan keyin bajariladi.
+  void _schedulePrune(Set<String> liveKeys, Map<String, String> seeds) {
     _liveKeys = liveKeys;
+    _pendingSeeds = seeds;
     if (_pruneScheduled) return;
     _pruneScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -212,6 +218,19 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       for (final k in stale) {
         _slots.remove(k)?.dispose();
       }
+      _applySeeds();
+    });
+  }
+
+  // Yuk keltiruvchi kiritgan son (item.taken) «Kelgan soni» maydoniga
+  // tushadi — LEKIN omborchi o'zi yozib qo'ygan qiymat ustidan YOZILMAYDI
+  // (matn oxirgi qo'yilgan seed'dan farq qilsa — qo'lda tahrirlangan).
+  void _applySeeds() {
+    _pendingSeeds.forEach((key, seed) {
+      final slot = _slots[key];
+      if (slot == null || slot.seeded == seed || slot.focus.hasFocus) return;
+      if (slot.received.text == slot.seeded) slot.received.text = seed;
+      slot.seeded = seed;
     });
   }
 
@@ -366,6 +385,9 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
 
     final rows = <_Row>[];
     final liveKeys = <String>{};
+    // Yuk keltiruvchi kiritgan son (socket orqali jonli keladi) — maydonga
+    // kadr chizilgandan keyin qo'yiladi (_applySeeds).
+    final seeds = <String, String>{};
     var usedNetworkImage = false;
 
     for (final entry in groups.entries) {
@@ -395,6 +417,7 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           if (row.editable) {
             hasEditable = true;
             liveKeys.add(row.slotKey);
+            seeds[row.slotKey] = row.initialQty;
           } else {
             if (item.imageUrl.isNotEmpty) usedNetworkImage = true;
             if (!showAll) continue; // filtr yoniq — qabul qilingani ko'rinmaydi
@@ -425,7 +448,7 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
     }
 
     if (usedNetworkImage) _usedNetworkImage = true;
-    _schedulePrune(liveKeys);
+    _schedulePrune(liveKeys, seeds);
     return rows;
   }
 
@@ -893,23 +916,32 @@ class _ItemRow extends _Row {
   @override
   String get key => 'i:$slotKey';
 
-  // "Kelgan soni" maydonining boshlang'ich qiymati: narxlangan buyurtmada
-  // yuk keltiruvchi aytgan miqdor (taken), narxlanmaganda BO'SH.
+  // "Kelgan soni" maydonining boshlang'ich qiymati: yuk keltiruvchi aytgan
+  // miqdor (taken) — u qoralamada, ya'ni yuborishdan OLDIN ham keladi
+  // (draft socket hodisasi). Yuk hali son kiritmagan bo'lsa maydon BO'SH.
   String get initialQty =>
-      order.isPriced ? formatQty(item.taken, item.type) : '';
+      item.taken > 0 ? formatQty(item.taken, item.type) : '';
 }
 
 // Tahrirlanadigan qator holati: kiritilgan son + olingan lokal media.
 class _RowSlot {
   _RowSlot(String initialText)
-      : received = TextEditingController(text: initialText);
+      : received = TextEditingController(text: initialText),
+        seeded = initialText;
 
   final TextEditingController received;
+  // Oxirgi marta serverdan (yuk keltiruvchi kiritgan son) qo'yilgan matn.
+  // Maydondagi matn shundan farq qilsa — omborchi qo'lda yozgan, yangi
+  // seed uni bosib qo'ymaydi.
+  String seeded;
+  // Maydon fokusda bo'lsa (omborchi hozir yozyapti) seed qo'yilmaydi.
+  final FocusNode focus = FocusNode();
   final ValueNotifier<_LocalMedia> media =
       ValueNotifier<_LocalMedia>(const _LocalMedia());
 
   void dispose() {
     received.dispose();
+    focus.dispose();
     media.dispose();
   }
 }
@@ -1374,6 +1406,7 @@ class _ItemView extends StatelessWidget {
       children: [
         TextField(
           controller: slot!.received,
+          focusNode: slot!.focus,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, color: Colors.black87),

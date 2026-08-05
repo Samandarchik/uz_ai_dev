@@ -70,6 +70,10 @@ class _YukHomeUiState extends State<YukHomeUi> {
   List<int> _sklads = [];
   bool _loadingSklads = true;
 
+  // AppBar sarlavhasi — kirgan foydalanuvchining ismi (SharedPreferences'dagi
+  // 'name', bo'lmasa 'user' JSON ichidagi name). Bo'sh bo'lsa rol nomi qoladi.
+  String _userName = '';
+
   // AppBar'dagi tugma bilan boshqariladi: bosilsa mahsulot katalog rasmlari
   // ro'yxatda ko'rinadi, yana bosilsa yashiriladi.
   bool _showImages = false;
@@ -109,11 +113,13 @@ class _YukHomeUiState extends State<YukHomeUi> {
     super.dispose();
   }
 
-  // SharedPreferences'dagi 'user' JSON ichidan `sklads` ro'yxatini o'qish.
+  // SharedPreferences'dagi 'user' JSON ichidan `sklads` ro'yxatini va
+  // foydalanuvchi ismini (AppBar sarlavhasi uchun) o'qish.
   Future<void> _loadSklads() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user');
     final sklads = <int>[];
+    var name = (prefs.getString('name') ?? '').trim();
     if (userStr != null && userStr.isNotEmpty) {
       try {
         final user = jsonDecode(userStr);
@@ -129,6 +135,10 @@ class _YukHomeUiState extends State<YukHomeUi> {
             }
           }
         }
+        // 'name' kaliti bo'sh bo'lsa (eski login) user JSON'dan olamiz.
+        if (name.isEmpty && user is Map) {
+          name = (user['name'] ?? '').toString().trim();
+        }
       } catch (_) {
         // noto'g'ri JSON bo'lsa bo'sh ro'yxat bilan davom etamiz
       }
@@ -136,6 +146,7 @@ class _YukHomeUiState extends State<YukHomeUi> {
     if (!mounted) return;
     setState(() {
       _sklads = sklads;
+      _userName = name;
       _loadingSklads = false;
     });
   }
@@ -270,9 +281,10 @@ class _YukHomeUiState extends State<YukHomeUi> {
     return AppBar(
       backgroundColor: _bgColor,
       elevation: 0,
-      title: const Text(
-        'Yuk keltiruvchi',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      // Sarlavha — foydalanuvchining o'z ismi (ism topilmasa rol nomi).
+      title: Text(
+        _userName.isNotEmpty ? _userName : 'Yuk keltiruvchi',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
       actions: [
         // Mahsulot katalog rasmlarini ko'rsatish/yashirish (toggle).
@@ -621,12 +633,14 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Controllerlar buyurtma+mahsulot juftligi bo'yicha ('<orderId>_<productId>')
   // — bir xil mahsulot ikki buyurtmada kelsa qatorlar aralashmaydi.
-  // Soni ustuni QULF (omborchi buyurtma qilgan son ko'rsatiladi) — controller
-  // faqat ko'rsatish uchun; fokus kerak emas. Yuk faqat summani tahrirlaydi.
+  // Yuk keltiruvchi Soni ustunini ham, Jami summani ham o'zi kiritadi. Soni
+  // maydoni faqat ombor itemni QABUL QILGANDA qulflanadi (o'shanda omborchi
+  // kiritgan haqiqiy kelgan son yakuniy hisoblanadi).
   final Map<String, TextEditingController> _takenControllers = {};
   final Map<String, TextEditingController> _subtotalControllers = {};
-  // Summa maydoni fokusda turganda socketdan kelgan qiymat uni bosib
-  // qo'ymasligi uchun summaga FocusNode kerak.
+  // Maydon fokusda turganda socketdan kelgan qiymat uni bosib qo'ymasligi
+  // uchun ikkala ustunga ham FocusNode kerak.
+  final Map<String, FocusNode> _takenFocusNodes = {};
   final Map<String, FocusNode> _subtotalFocusNodes = {};
 
   // Boshlang'ich qiymatlari tayyorlangan buyurtmalar (socket orqali yangi
@@ -652,24 +666,65 @@ class _YukSkladCardState extends State<YukSkladCard> {
   static bool _isDoneOrder(YukOrder o) =>
       o.status == 'narxlandi' || o.status == 'qabul_qilindi';
 
-  // Pul hisobiga asos bo'ladigan son: ombor itemni qabul qilgan bo'lsa —
-  // omborchi kiritgan haqiqiy kelgan son (received), aks holda buyurtma
-  // qilingan son (count). Maydon baribir QULF, yuk uni tahrirlay olmaydi.
-  static double _qtyBasis(YukOrderItem item) =>
-      (item.accepted && item.received > 0)
-          ? item.received
-          : item.count.toDouble();
+  // Pul hisobiga asos bo'ladigan son (ustuvorlik tartibi):
+  //  1) ombor itemni qabul qilgan — omborchi kiritgan haqiqiy kelgan son
+  //     (received): u YAKUNIY, yuk uni o'zgartira olmaydi;
+  //  2) yuk keltiruvchi o'zi kiritgan son (taken — qoralamada saqlangan);
+  //  3) hech biri yo'q — buyurtma qilingan son (count).
+  static double _qtyBasis(YukOrderItem item) {
+    if (item.accepted && item.received > 0) return item.received;
+    if (item.taken > 0) return item.taken;
+    return item.count.toDouble();
+  }
+
+  // Ombor itemni qabul qilib kelgan sonini tasdiqlaganmi — shunda Soni
+  // maydoni QULF (omborchi kiritgan son yakuniy).
+  static bool _qtyLocked(YukOrderItem item) =>
+      item.accepted && item.received > 0;
+
+  // Qoralamada (draft) saqlanadigan son: ombor tasdiqlagan bo'lsa received,
+  // aks holda yuk keltiruvchi kiritgani. 0 = hali kiritilmagan — buyurtma
+  // soni (count) bu yerda O'RNIGA QO'YILMAYDI, aks holda omborchi maydonida
+  // yuk kiritmagan son "kiritilgandek" ko'rinib qolardi.
+  static double _draftTaken(YukOrderItem item) =>
+      _qtyLocked(item) ? item.received : item.taken;
+
+  // Birlik narx asosi — YUK KELTIRUVCHI kiritgan son: lokal qoralama →
+  // serverdagi taken → buyurtma soni (count). Server taken'i qoralama bilan
+  // birga yangilanadi, shuning uchun ombor sonini qo'llash IDEMPOTENT:
+  // bir marta kamaytirilgan summa ikkinchi marta kamaymaydi.
+  static double _priceBasis(YukOrderItem item, ItemPrice? priced) {
+    if (priced != null && priced.taken > 0) return priced.taken;
+    if (item.taken > 0) return item.taken;
+    return item.count.toDouble();
+  }
+
+  // Summani ombor tasdiqlagan songa moslash — birlik narx O'ZGARMAYDI:
+  // 2 кг / 100 000 so'm dan 1.8 кг kelsa 90 000 bo'ladi (butun so'm).
+  static double _scaleSubtotal(double subtotal, double basis, double received) {
+    if (basis <= 0 ||
+        subtotal <= 0 ||
+        received <= 0 ||
+        (basis - received).abs() <= 0.0001) {
+      return subtotal;
+    }
+    return (subtotal / basis * received).roundToDouble();
+  }
 
   // Soni maydonida KO'RSATILADIGAN matn: ombor qabul qilib kelgan sonini
-  // kiritgan bo'lsa — o'sha son; yopilgan buyurtmada — hisob asosi (taken);
-  // aks holda BO'SH. Buyurtma qilingan son maydonga YOZILMAYDI (u nom
-  // ostidagi "1 кг" yorlig'ida turibdi) — ombor "kelgan" deb yozmaguncha
-  // son tasdiqlanmagan.
+  // kiritgan bo'lsa — o'sha son; yopilgan buyurtmada yoki yuk o'zi son
+  // kiritgan bo'lsa — o'sha son; aks holda BO'SH. Buyurtma qilingan son
+  // maydonga YOZILMAYDI (u nom ostidagi "1 кг" yorlig'ida turibdi).
   String _qtyText(YukOrder order, YukOrderItem item) {
-    if (item.accepted && item.received > 0) {
-      return _fmtQty(item.received, item.type);
-    }
+    if (_qtyLocked(item)) return _fmtQty(item.received, item.type);
     if (_isDoneOrder(order)) return _fmtQty(item.taken, item.type);
+    // Lokal qoralama (offline'da ham) serverdagi qiymatdan ustun.
+    final priced =
+        context.read<YukProvider>().getItemPrice(order.id, item.productId);
+    if (priced != null && priced.taken > 0) {
+      return _fmtQty(priced.taken, item.type);
+    }
+    if (item.taken > 0) return _fmtQty(item.taken, item.type);
     return '';
   }
 
@@ -761,16 +816,28 @@ class _YukSkladCardState extends State<YukSkladCard> {
       // faqat qizil chizilgan (read-only) ko'rinishda chiqadi.
       if (item.deleted) continue;
       final k = _key(order.id, item.productId);
-      // Soni maydoni QULF — ombor qabul qilgan bo'lsa omborchi kiritgan
-      // haqiqiy son ko'rinadi, aks holda bo'sh. Pul hisobi asosi (taken0)
-      // esa count/received. Yuk faqat summani kiritadi. Summa: shu sessiyada
-      // kiritilgan qiymat, bo'lmasa backenddan kelgan qiymat.
+      // Soni: ombor qabul qilgan bo'lsa omborchi kiritgan haqiqiy son (qulf),
+      // aks holda yuk keltiruvchining o'zi kiritgani (lokal qoralama yoki
+      // serverdagi taken). Summa: shu sessiyada kiritilgan qiymat, bo'lmasa
+      // backenddan kelgan qiymat.
       final existing = provider.getItemPrice(order.id, item.productId);
-      final taken0 = _qtyBasis(item);
-      final subtotal0 = existing?.subtotal ?? item.subtotal;
+      final taken0 = _qtyLocked(item)
+          ? item.received
+          : ((existing != null && existing.taken > 0)
+              ? existing.taken
+              : _draftTaken(item));
+      final rawSubtotal = existing?.subtotal ?? item.subtotal;
+      // Ilova yopiq turganda ombor kelgan sonni tasdiqlagan bo'lishi mumkin —
+      // summa o'sha songa moslanadi (didUpdateWidget bu qatorni ko'rmaydi,
+      // chunki u faqat O'ZGARISHDA ishlaydi).
+      final subtotal0 = (!done && _qtyLocked(item))
+          ? _scaleSubtotal(
+              rawSubtotal, _priceBasis(item, existing), item.received)
+          : rawSubtotal;
       _takenControllers[k] =
           TextEditingController(text: _qtyText(order, item));
       _subtotalControllers[k] = TextEditingController(text: _fmt(subtotal0));
+      _takenFocusNodes[k] = FocusNode();
       _subtotalFocusNodes[k] = FocusNode();
       // Summasi bor katalog itemini lokal narxga tiklaymiz: qaytarib olingan
       // buyurtma qiymatlari qayta yuborilishi VA eski qoralamalardagi taken
@@ -781,7 +848,14 @@ class _YukSkladCardState extends State<YukSkladCard> {
           provider.canSeedOrder(order) &&
           item.itemType.isEmpty &&
           subtotal0 > 0) {
-        provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
+        if (subtotal0 != rawSubtotal) {
+          // Summa ombor soniga moslab kamaydi — bu YANGI qiymat, serverdagi
+          // qoralamaga ham yozilishi kerak (seed emas, saqlash).
+          provider.setItemPriceSilently(
+              order.id, item.productId, taken0, subtotal0);
+        } else {
+          provider.seedItemPrice(order.id, item.productId, taken0, subtotal0);
+        }
       }
     }
     // Qaytarib olingan buyurtmaning serverda qolgan biriktirma va
@@ -822,33 +896,32 @@ class _YukSkladCardState extends State<YukSkladCard> {
           if (ctrl.text != t) ctrl.text = t;
           continue;
         }
-        // Ombor itemni qabul qildi (socket) — omborchi kiritgan haqiqiy son
-        // qulf maydonga tushadi (masalan 10 → 11.5), farq badge va birlik
-        // narx shu songa o'tadi. Lokal narx yozuvi bo'lsa basis ham
-        // yangilanadi (backend baribir accepted itemning taken'iga tegmaydi).
-        if (!done &&
-            !item.deleted &&
-            item.accepted &&
-            !(old?.accepted ?? false)) {
-          final v = _qtyBasis(item);
-          final ctrl = _takenCtrlFor(o, item);
-          final t = _fmtQty(v, item.type);
-          if (ctrl.text != t) ctrl.text = t;
-          final priced = provider.getItemPrice(o.id, item.productId);
-          if (priced != null && provider.canSeedOrder(o)) {
-            provider.seedItemPrice(o.id, item.productId, v, priced.subtotal);
-          }
+        // Ombor itemni qabul qildi yoki kelgan sonini QAYTA tahrirladi
+        // (socket) — omborchi kiritgan haqiqiy son qulf maydonga tushadi
+        // (masalan 2 → 1.8) va summa shu songa PROPORSIONAL kamayadi:
+        // yuk kiritgan 2 кг / 100 000 so'm dan 1.8 кг kelgan bo'lsa summa
+        // 90 000 bo'ladi (0.2 ning puli ayriladi).
+        final receivedChanged = item.accepted &&
+            (!(old?.accepted ?? false) || old!.received != item.received);
+        if (!done && !item.deleted && receivedChanged) {
+          _applyReceived(provider, o, item);
         }
-        // ─── REAL-TIME sinxronlash (faqat SUMMA; soni maydoni QULF) ───
+        // ─── REAL-TIME sinxronlash (boshqa qurilma/yuk user yozgani) ───
         // Buyurtma yopiq/qabul qilingan, item o'chirilgan ('item_deleted'
         // socket hodisasi — qator chizilgan ko'rinishga o'tadi, sync shart
-        // emas), endi paydo bo'lgan yoki summa o'zgarmagan bo'lsa tegmaymiz.
+        // emas) yoki endi paydo bo'lgan bo'lsa tegmaymiz.
         if (done || item.accepted || item.deleted || old == null) continue;
-        if (old.subtotal == item.subtotal) continue;
+        if (old.subtotal == item.subtotal && old.taken == item.taken) continue;
         // O'zimning hali serverga yetib bormagan (debounce kutayotgan)
         // qoralamam bor — socketdagi eski qiymat uni bosib qo'ymasin.
         if (provider.draftSaveScheduled(o.id)) continue;
+        final qtyFocused = _takenFocusNodes[k]?.hasFocus ?? false;
         final sumFocused = _subtotalFocusNodes[k]?.hasFocus ?? false;
+        if (!qtyFocused && old.taken != item.taken) {
+          final ctrl = _takenCtrlFor(o, item);
+          final t = item.taken > 0 ? _fmtQty(item.taken, item.type) : '';
+          if (ctrl.text != t) ctrl.text = t;
+        }
         if (!sumFocused) {
           final ctrl = _subtotalCtrlFor(o, item);
           if (_parse(ctrl.text) != item.subtotal) {
@@ -857,14 +930,41 @@ class _YukSkladCardState extends State<YukSkladCard> {
         }
         // O'z buyurtmamda (masalan ikkinchi qurilmam yozgan) lokal narxni
         // ham sinxronlaymiz — flush baribir no-op (server bilan teng).
-        // Basis sifatida taken=count yuboriladi.
-        if (provider.canSeedOrder(o) && !sumFocused) {
+        if (provider.canSeedOrder(o) && !qtyFocused && !sumFocused) {
           provider.seedItemPrice(
-              o.id, item.productId, item.count.toDouble(), item.subtotal);
+              o.id, item.productId, _draftTaken(item), item.subtotal);
         }
       }
     }
     _maybeStartUndoTicker();
+  }
+
+  // Ombor tasdiqlagan kelgan son (received) qatorga qo'llanadi:
+  //  • Soni maydoni o'sha songa o'tadi va endi QULF (omborchining soni yakuniy);
+  //  • yuk kiritgan summa shu songa PROPORSIONAL qayta hisoblanadi — birlik
+  //    narx o'zgarmaydi: 2 кг / 100 000 so'm dan 1.8 кг kelsa 90 000 bo'ladi
+  //    (yetmagan 0.2 ning puli summadan ayriladi).
+  // notifyListeners CHAQIRILMAYDI (setItemPriceSilently) — bu metod build
+  // fazasida (didUpdateWidget) ishlaydi; maydonlar qo'lda yangilanadi.
+  void _applyReceived(YukProvider provider, YukOrder order, YukOrderItem item) {
+    final v = _qtyBasis(item);
+    final qtyCtrl = _takenCtrlFor(order, item);
+    final qtyText = _fmtQty(v, item.type);
+    if (qtyCtrl.text != qtyText) qtyCtrl.text = qtyText;
+
+    if (!provider.canSeedOrder(order)) return;
+    final priced = provider.getItemPrice(order.id, item.productId);
+    // Summa hali kiritilmagan yoki ataylab 0 yozilgan ("olinmagan") —
+    // qayta hisoblaydigan narsa yo'q.
+    if (priced == null || priced.zero) return;
+    final subtotal =
+        _scaleSubtotal(priced.subtotal, _priceBasis(item, priced), v);
+    if (subtotal != priced.subtotal) {
+      final sumCtrl = _subtotalCtrlFor(order, item);
+      final sumText = _fmt(subtotal);
+      if (sumCtrl.text != sumText) sumCtrl.text = sumText;
+    }
+    provider.setItemPriceSilently(order.id, item.productId, v, subtotal);
   }
 
   // Achot endigina yopilgan bo'lsa "Qaytarib olish" sanog'ini har soniyada
@@ -897,6 +997,9 @@ class _YukSkladCardState extends State<YukSkladCard> {
     for (final c in _subtotalControllers.values) {
       c.dispose();
     }
+    for (final f in _takenFocusNodes.values) {
+      f.dispose();
+    }
     for (final f in _subtotalFocusNodes.values) {
       f.dispose();
     }
@@ -905,8 +1008,6 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Controllerlarni kerak bo'lganda yaratish (masalan buyurtma yuborilgach
   // serverdan yangi proche/rasxod itemlar kelsa) — null crash bo'lmasin.
-  // Soni maydoni QULF — qabul qilingan bo'lsa omborchi kiritgan haqiqiy son,
-  // aks holda bo'sh ko'rinadi.
   TextEditingController _takenCtrlFor(YukOrder order, YukOrderItem item) =>
       _takenControllers.putIfAbsent(
         _key(order.id, item.productId),
@@ -919,6 +1020,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
         () => TextEditingController(text: _fmt(item.subtotal)),
       );
 
+  FocusNode _takenFocusFor(YukOrder order, YukOrderItem item) =>
+      _takenFocusNodes.putIfAbsent(
+          _key(order.id, item.productId), () => FocusNode());
+
   FocusNode _subtotalFocusFor(YukOrder order, YukOrderItem item) =>
       _subtotalFocusNodes.putIfAbsent(
           _key(order.id, item.productId), () => FocusNode());
@@ -928,15 +1033,32 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final k = _key(order.id, item.productId);
     final subtotalText = _subtotalControllers[k]?.text ?? '';
     final subtotal = _parse(subtotalText);
-    // Soni maydoni QULF — basis: buyurtma qilingan son (count), ombor qabul
-    // qilgan bo'lsa omborchi kiritgan haqiqiy son (received). "Ataylab 0":
-    // yuk summa maydoniga QO'LDA 0 yozsa item "olinmagan" bo'lib yuboriladi
-    // (taken=0, subtotal=0 → backend "zeroed" deb yopadi). Bo'sh summa esa
-    // yuborilmaydi (pending qoladi).
+    // "Ataylab 0": yuk summa maydoniga QO'LDA 0 yozsa item "olinmagan" bo'lib
+    // yuboriladi (taken=0, subtotal=0 → backend "zeroed" deb yopadi). Bo'sh
+    // summa esa yuborilmaydi (pending qoladi).
     final zero = subtotalText.trim().isNotEmpty && subtotal == 0;
-    final taken = zero ? 0.0 : _qtyBasis(item);
-    provider.setItemPrice(order.id, item.productId, taken, subtotal,
-        zero: zero);
+    provider.setItemPrice(
+      order.id,
+      item.productId,
+      zero ? 0.0 : _takenFromField(order, item),
+      subtotal,
+      zero: zero,
+    );
+  }
+
+  // Soni maydonidan hisob asosi (API birlikda — кг/л uchun butun гр/мл):
+  //  • ombor qabul qilgan bo'lsa maydon qulf, omborchining soni yakuniy;
+  //  • yuk son kiritgan bo'lsa — o'sha son (qtyFromUiSafe: 1000+ yozilsa
+  //    gramm deb olinadi, gramm-yozish himoyasi);
+  //  • maydon BO'SH bo'lsa — 0. Bu "yuk hali son kiritmagan" degani: omborchi
+  //    maydonida ham bo'sh ko'rinadi, buyurtma soni (count) esa faqat
+  //    YUBORISHDA qo'yiladi (YukProvider._wireTaken).
+  double _takenFromField(YukOrder order, YukOrderItem item) {
+    if (_qtyLocked(item)) return item.received;
+    final raw =
+        _parse(_takenControllers[_key(order.id, item.productId)]?.text ?? '');
+    if (raw <= 0) return 0;
+    return qtyFromUiSafe(raw, item.type).toDouble();
   }
 
   // ─────────────────── Biriktirmalar (rasm/video) ───────────────────
@@ -1762,9 +1884,16 @@ class _YukSkladCardState extends State<YukSkladCard> {
     if (item.deleted) return _deletedItemRow(item);
     final done = _isDoneOrder(order);
     final priced = provider.getItemPrice(order.id, item.productId);
-    // Birlik narx/farq hisobi maydon matniga emas (u qabulgacha bo'sh),
-    // hisob asosiga tayanadi: qabulda received, aks holda count/taken.
-    final takenVal = done ? (priced?.taken ?? item.taken) : _qtyBasis(item);
+    // Birlik narx/farq hisobi maydon matniga emas, hisob asosiga tayanadi:
+    // qabulda omborchining received'i, aks holda yuk kiritgan son (lokal
+    // qoralama — yozayotganda jonli), u ham bo'lmasa buyurtma soni.
+    final takenVal = done
+        ? (priced?.taken ?? item.taken)
+        : (_qtyLocked(item)
+            ? item.received
+            : ((priced != null && priced.taken > 0)
+                ? priced.taken
+                : _qtyBasis(item)));
     final subtotalVal = priced?.subtotal ?? item.subtotal;
     // Birlik narx UI birlikda (so'm/kg): API'dagi gramm avval kg'ga o'giriladi.
     final unitPrice = (takenVal > 0 && subtotalVal > 0)
@@ -1863,13 +1992,14 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       ),
               child: _inlineField(
                 controller: _takenCtrlFor(order, item),
+                focusNode: _takenFocusFor(order, item),
                 hint: '0',
                 decimal: _isKg(item.type),
-                // Soni maydoni QULF — omborchi buyurtma qilgan son ko'rinadi,
-                // yuk faqat summani kiritadi (soni omborchi qabulda
-                // belgilaydi).
-                enabled: false,
-                onChanged: (_) {},
+                // Yuk keltiruvchi olib kelgan sonini O'ZI kiritadi. Ombor
+                // itemni qabul qilgach (kelgan sonini tasdiqlagach) maydon
+                // QULFLANADI — omborchining soni yakuniy.
+                enabled: !done && !_qtyLocked(item),
+                onChanged: (_) => _onItemChanged(order, item),
               ),
             ),
           ),

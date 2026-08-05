@@ -382,6 +382,42 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
     _scheduleDraftSave(orderId);
   }
 
+  // setItemPrice bilan bir xil (lokal saqlash + backendga qoralama), FARQI:
+  // notifyListeners CHAQIRILMAYDI. Ombor kelgan sonni tasdiqlaganda UI
+  // qatorni build fazasida (didUpdateWidget) qayta hisoblaydi — o'sha yerda
+  // notify qilinsa "setState during build" xatosi chiqadi; maydonlar esa
+  // controller orqali to'g'ridan-to'g'ri yangilanadi.
+  void setItemPriceSilently(
+    int orderId,
+    int productId,
+    double taken,
+    double subtotal,
+  ) {
+    if (_isDeletedItem(orderId, productId)) return;
+    final map = _prices.putIfAbsent(orderId, () => {});
+    final old = map[productId];
+    if (old != null && old.taken == taken && old.subtotal == subtotal) return;
+    map[productId] =
+        (taken: taken, subtotal: subtotal, zero: old?.zero ?? false);
+    _persistDrafts();
+    _scheduleDraftSave(orderId);
+  }
+
+  // Yuborishda ishlatiladigan son: yuk keltiruvchi Soni maydonini bo'sh
+  // qoldirgan bo'lsa (taken 0) buyurtma qilingan son (count) qo'yiladi —
+  // backend faqat taken>0 VA subtotal>0 bo'lgan itemni yopadi. Qoralamada
+  // esa 0 saqlanadi (omborchi maydonida bo'sh ko'rinishi uchun).
+  double _wireTaken(int orderId, int productId, ItemPrice p) {
+    if (p.zero || p.taken > 0) return p.taken;
+    for (final o in orders) {
+      if (o.id != orderId) continue;
+      for (final i in o.items) {
+        if (i.productId == productId) return i.count.toDouble();
+      }
+    }
+    return 0;
+  }
+
   // ──────────── Qo'shilgan yozuvlar (proche mahsulot / rasxod) ────────────
 
   // Buyurtmaning qo'shilgan yozuvlari (ko'rsatish tartibida).
@@ -765,17 +801,23 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
     // filtrlashi kerak, bu — himoya).
     if (filled.isEmpty && added.isEmpty) return;
 
-    // Kutib turgan qoralama saqlash bo'lsa bekor qilamiz — endi yakuniy narx
-    // yuborilmoqda. (Qolgan chala yozuvlar keyingi o'zgarishda yoki
-    // flushDrafts'da qayta saqlanadi.)
-    _draftTimers.remove(orderId)?.cancel();
+    // Kutib turgan qoralama bo'lsa AVVAL uni saqlaymiz, keyin bekor qilamiz.
+    // Sabab: ombor qabul qilgan itemning soni (taken) backendda QULF — u
+    // faqat qoralama orqali yangilanadi. Qoralama yetib bormasa server eski
+    // sonni saqlab qoladi va received_total noto'g'ri (ikki marta kamaygan)
+    // hisoblanadi.
+    final pendingDraft = _draftTimers.remove(orderId);
+    final hadPendingDraft = pendingDraft?.isActive ?? false;
+    pendingDraft?.cancel();
+    if (hadPendingDraft) await _saveDraft(orderId);
 
     final items = filled.entries
         .map((e) => <String, dynamic>{
               'product_id': e.key,
               // taken API birlikda (кг/л -> butun gramm) — butun qiymat
-              // kasrsiz yuboriladi (1500, 1500.0 emas).
-              'taken': _asWire(e.value.taken),
+              // kasrsiz yuboriladi (1500, 1500.0 emas). Soni kiritilmagan
+              // bo'lsa buyurtma soni qo'yiladi (_wireTaken).
+              'taken': _asWire(_wireTaken(orderId, e.key, e.value)),
               'subtotal': _asWire(e.value.subtotal),
             })
         .toList();
