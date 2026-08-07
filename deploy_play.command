@@ -7,10 +7,9 @@
 #                                          internal testga + production'ga (Google ko'rigiga) ketadi
 #   ./deploy_play.command --internal       faqat testerlarga (production'ga tegilmaydi)
 #   ./deploy_play.command --promote        build QILMAYDI: Play'dagi oxirgi build'ni production'ga chiqaradi
-#   ./deploy_play.command --minor          o'rta raqam  (0.6.8+68 -> 0.7.0+69)
-#   ./deploy_play.command --major          bosh raqam   (0.6.8+68 -> 1.0.0+69)
-#   ./deploy_play.command --build          faqat build raqami (versiya o'zgarmaydi)
-#   ./deploy_play.command --version 1.3.0  versiyani qo'lda belgilash (build +1 bo'ladi)
+#   ./deploy_play.command --minor          keyingi o'nlik (0.6.5+65 -> 0.7.0+70)
+#   ./deploy_play.command --major          keyingi yuzlik (0.6.5+65 -> 1.0.0+100)
+#   ./deploy_play.command --version 1.3.0  versiyani qo'lda belgilash (kod 130 bo'ladi)
 #   ./deploy_play.command --no-bump        hech nimaga tegmaydi (aynan shu build'ni qayta yuklash)
 #   ./deploy_play.command --track a,b      track ro'yxati (internal|alpha|beta|production), vergul bilan
 #   ./deploy_play.command --rollout 0.2    production'ga bosqichma-bosqich (20% foydalanuvchi)
@@ -30,9 +29,14 @@
 #   keyin "Copy link" — testerlar shu link orqali bir marta qo'shiladi (opt-in).
 # Shundan keyin har bir yuklash avtomat o'sha odamlarga boradi.
 #
-# Versiya (0.6.8) = Play'da ko'rinadigan raqam, build (+68) = versionCode. Play bir xil
-# versionCode'ni ikkinchi marta qabul qilmaydi va u doim o'sishi shart — shuning uchun
-# skript Play'dagi eng katta versionCode'ni tekshirib, kerak bo'lsa undan yuqori qilib oladi.
+# VERSIYA QOIDASI: versiya raqami = versionCode raqamlari, ikkalasi doim bir xil boradi:
+#   0.6.8+68  ->  0.6.9+69  ->  0.7.0+70  ->  0.7.1+71  ...  0.9.9+99  ->  1.0.0+100
+# Ya'ni versiya versionCode'dan hisoblanadi (69 -> 0.6.9), qo'lda yozilmaydi. Shuning
+# uchun 0.6.10 kabi (kodga tushmaydigan) raqam hech qachon chiqmaydi.
+#
+# Play bir xil versionCode'ni ikkinchi marta qabul qilmaydi va u doim o'sishi shart —
+# skript Play'dagi eng katta versionCode'ni tekshirib, kerak bo'lsa undan yuqori qilib oladi
+# (qadam turi saqlanadi: --minor keyingi o'nlikka, --major keyingi yuzlikka).
 #
 # Konfiguratsiya: ~/.mone_play.env (bo'lmasa ~/.sadinov_play.env ishlatiladi):
 #   PLAY_SA_JSON=$HOME/.playconsole/mone-service-account.json
@@ -220,16 +224,23 @@ CURRENT="$(version_line)"
 SEMVER="${CURRENT%%+*}"
 BUILD_NUM="${CURRENT##*+}"
 
-bump_semver() {
+# Versiya raqami HAR DOIM versionCode'ning raqamlaridan tuziladi:
+#   69 -> 0.6.9    70 -> 0.7.0    100 -> 1.0.0    1000 -> 10.0.0
+# Ya'ni ikkalasi doim bir xil bo'lib boradi va 0.6.10 kabi holat umuman chiqmaydi.
+version_from_code() {
+    echo "$(($1 / 100)).$(($1 / 10 % 10)).$(($1 % 10))"
+}
+
+# Aksincha: 0.7.0 -> 70. Oxirgi ikki bo'lak bitta raqamdan oshmasligi kerak.
+code_from_version() {
     local major minor patch
     IFS=. read -r major minor patch <<< "$1"
     major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
-    case "$2" in
-        major) major=$((major + 1)); minor=0; patch=0 ;;
-        minor) minor=$((minor + 1)); patch=0 ;;
-        patch) patch=$((patch + 1)) ;;
-    esac
-    echo "${major}.${minor}.${patch}"
+    if [ "$minor" -gt 9 ] || [ "$patch" -gt 9 ]; then
+        echo "Versiya raqamlari versionCode bilan bog'liq: o'rta va oxirgi bo'lak 0-9 bo'lishi kerak ($1)." >&2
+        return 1
+    fi
+    echo $((major * 100 + minor * 10 + patch))
 }
 
 echo "Play'dagi mavjud versionCode tekshirilmoqda..."
@@ -295,16 +306,24 @@ case "$PLAY_MAX" in
     *) echo "  Play'dagi eng katta versionCode: $PLAY_MAX" ;;
 esac
 
-[ -n "$NEW_VERSION" ] && SEMVER="$NEW_VERSION"
-
-case "$BUMP" in
-    major|minor|patch)
-        [ -n "$NEW_VERSION" ] || SEMVER="$(bump_semver "$SEMVER" "$BUMP")"
-        BUILD_NUM=$((BUILD_NUM + 1))
-        ;;
-    build) BUILD_NUM=$((BUILD_NUM + 1)) ;;
-    none)  ;;
-esac
+# Yangi versionCode: qadam turiga qarab. Versiya raqami keyin shundan chiqariladi,
+# shuning uchun ikkalasi hech qachon ajralib ketmaydi (0.6.9+69 -> 0.7.0+70 -> 0.7.1+71).
+if [ -n "$NEW_VERSION" ]; then
+    BUILD_NUM="$(code_from_version "$NEW_VERSION")" || exit 1
+    # Qo'lda berilgan versiya jimgina o'zgartirilmasin — pastda qolsa aytamiz
+    if [ "$PROMOTE" -eq 0 ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ]; then
+        echo "Versiya $NEW_VERSION -> versionCode $BUILD_NUM, lekin Play'da allaqachon $PLAY_MAX bor." >&2
+        echo "Kattaroq versiya bering (masalan $(version_from_code $((PLAY_MAX + 1))))." >&2
+        exit 1
+    fi
+else
+    case "$BUMP" in
+        patch|build) BUILD_NUM=$((BUILD_NUM + 1)) ;;
+        minor)       BUILD_NUM=$(( (BUILD_NUM / 10 + 1) * 10 )) ;;
+        major)       BUILD_NUM=$(( (BUILD_NUM / 100 + 1) * 100 )) ;;
+        none)        ;;
+    esac
+fi
 
 AAB=""
 MAPPING=""
@@ -316,16 +335,25 @@ if [ "$PROMOTE" -eq 1 ]; then
         exit 1
     fi
     BUILD_NUM="$PLAY_MAX"
+    SEMVER="$(version_from_code "$BUILD_NUM")"
     TARGET="${SEMVER}+${BUILD_NUM}"
     echo "Promote rejimi: build qilinmaydi, Play'dagi versionCode $BUILD_NUM ishlatiladi."
 else
     # Play'da bor bo'lgan versionCode qayta qabul qilinmaydi — undan yuqoriga ko'taramiz
+    # (qadam turi saqlanadi: --minor keyingi o'nlikka, --major keyingi yuzlikka)
     if [ "$BUMP" != "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ]; then
-        BUILD_NUM=$((PLAY_MAX + 1))
+        case "$BUMP" in
+            minor) BUILD_NUM=$(( (PLAY_MAX / 10 + 1) * 10 )) ;;
+            major) BUILD_NUM=$(( (PLAY_MAX / 100 + 1) * 100 )) ;;
+            *)     BUILD_NUM=$((PLAY_MAX + 1)) ;;
+        esac
         echo "  Build raqami Play'ga moslab ko'tarildi: $BUILD_NUM"
     elif [ "$BUMP" = "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ] && [ "$VALIDATE" -eq 0 ]; then
         echo "  [OGOHLANTIRISH] versionCode $BUILD_NUM Play'da allaqachon bor — yuklash rad etiladi." >&2
     fi
+
+    # Versiya raqami — doim versionCode'dan (--no-bump da ham moslab qo'yamiz)
+    SEMVER="$(version_from_code "$BUILD_NUM")"
 
     TARGET="${SEMVER}+${BUILD_NUM}"
     if [ "$TARGET" != "$CURRENT" ]; then
