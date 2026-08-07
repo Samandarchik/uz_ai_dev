@@ -1,22 +1,29 @@
 #!/usr/bin/env bash
 #
-# Mone — Android build va Google Play'ga avtomatik yuklash (test uchun).
+# Mone — Android build va Google Play'ga avtomatik yuklash.
 # Finder'da ikki marta bosib ham, terminaldan ham ishlatsa bo'ladi.
 #
-#   ./deploy_play.command                  versiya + build raqamini oshiradi va internal testga yuboradi
+#   ./deploy_play.command                  HAMMASI: versiya oshadi, build bo'ladi,
+#                                          internal testga + production'ga (Google ko'rigiga) ketadi
+#   ./deploy_play.command --internal       faqat testerlarga (production'ga tegilmaydi)
+#   ./deploy_play.command --promote        build QILMAYDI: Play'dagi oxirgi build'ni production'ga chiqaradi
 #   ./deploy_play.command --minor          o'rta raqam  (0.6.8+68 -> 0.7.0+69)
 #   ./deploy_play.command --major          bosh raqam   (0.6.8+68 -> 1.0.0+69)
 #   ./deploy_play.command --build          faqat build raqami (versiya o'zgarmaydi)
 #   ./deploy_play.command --version 1.3.0  versiyani qo'lda belgilash (build +1 bo'ladi)
 #   ./deploy_play.command --no-bump        hech nimaga tegmaydi (aynan shu build'ni qayta yuklash)
-#   ./deploy_play.command --track beta     boshqa track (internal|alpha|beta|production)
-#   ./deploy_play.command --notes "matn"   testerlarga ko'rinadigan izoh
+#   ./deploy_play.command --track a,b      track ro'yxati (internal|alpha|beta|production), vergul bilan
+#   ./deploy_play.command --rollout 0.2    production'ga bosqichma-bosqich (20% foydalanuvchi)
+#   ./deploy_play.command --notes "matn"   relizga izoh (testerlar/foydalanuvchilar ko'radi)
+#   ./deploy_play.command --yes            production ogohlantirishini kutmaydi (5 s pauza yo'q)
 #   ./deploy_play.command --validate       yuklamaydi, faqat Play tekshiruvidan o'tkazadi
 #   ./deploy_play.command --clean          flutter keshini tozalab build qiladi
 #
-# Nima bo'ladi: AAB build qilinadi -> Play'ga yuklanadi -> `internal` (Internal testing)
-# trackda status `completed` bilan e'lon qilinadi -> commit. Ya'ni testerlar ro'yxatidagi
-# odamlarga Play Store'da yangilanish O'ZI chiqadi, qo'lda hech narsa bosish shart emas.
+# Nima bo'ladi (parametrsiz): AAB build qilinadi -> Play'ga BIR MARTA yuklanadi -> bitta
+# edit ichida `internal` va `production` tracklarga qo'yiladi -> commit.
+#   internal   -> testerlarga darhol, Play Store'da yangilanish O'ZI chiqadi
+#   production -> Google ko'rigiga (review) tushadi, o'tgach hamma foydalanuvchiga chiqadi
+# Production hamma foydalanuvchiga tegishi uchun skript 5 soniya kutadi (Ctrl+C = bekor).
 #
 # Testerlar ro'yxati BIR MARTA Play Console'da sozlanadi:
 #   Play Console -> Testing -> Internal testing -> Testers -> email ro'yxati (yoki Google guruh),
@@ -64,8 +71,11 @@ command -v flutter >/dev/null 2>&1 || { echo "flutter topilmadi (PATH)." >&2; ex
 BUMP=patch          # patch | minor | major | build | none
 VALIDATE=0
 CLEAN=0
+PROMOTE=0
+ASSUME_YES=0
 NEW_VERSION=""
-TRACK="internal"
+TRACKS=""           # bo'sh = quyidagi standart qo'llanadi
+ROLLOUT=""
 NOTES="${PLAY_NOTES:-}"
 
 while [ $# -gt 0 ]; do
@@ -75,10 +85,14 @@ while [ $# -gt 0 ]; do
         --patch)              BUMP=patch ;;
         --minor)              BUMP=minor ;;
         --major)              BUMP=major ;;
+        --internal|--test)    TRACKS="internal" ;;
+        --promote)  PROMOTE=1 ;;
         --validate) VALIDATE=1 ;;
         --clean)    CLEAN=1 ;;
+        --yes|-y)   ASSUME_YES=1 ;;
         --version)  NEW_VERSION="${2:-}"; shift ;;
-        --track)    TRACK="${2:-}"; shift ;;
+        --track)    TRACKS="${2:-}"; shift ;;
+        --rollout)  ROLLOUT="${2:-}"; shift ;;
         --notes)    NOTES="${2:-}"; shift ;;
         -h|--help)  awk 'NR>2 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
         *)          echo "Noma'lum parametr: $1"; exit 1 ;;
@@ -86,10 +100,36 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-case "$TRACK" in
-    internal|alpha|beta|production) ;;
-    *) echo "Noto'g'ri track: $TRACK (internal|alpha|beta|production)" >&2; exit 1 ;;
-esac
+# Standart: hammasi birdan. --promote da faqat production (build allaqachon Play'da).
+if [ -z "$TRACKS" ]; then
+    if [ "$PROMOTE" -eq 1 ]; then
+        TRACKS="production"
+    else
+        TRACKS="internal,production"
+    fi
+fi
+
+# Vergulli ro'yxatni tekshirish
+OLD_IFS="$IFS"; IFS=','
+for t in $TRACKS; do
+    case "$t" in
+        internal|alpha|beta|production) ;;
+        *) IFS="$OLD_IFS"; echo "Noto'g'ri track: $t (internal|alpha|beta|production)" >&2; exit 1 ;;
+    esac
+done
+IFS="$OLD_IFS"
+
+if [ -n "$ROLLOUT" ]; then
+    case "$ROLLOUT" in
+        0.*|1|1.0) ;;
+        *) echo "Noto'g'ri --rollout: $ROLLOUT (0.01 dan 1 gacha)" >&2; exit 1 ;;
+    esac
+fi
+
+# --promote build qilmaydi va versiyaga tegmaydi
+if [ "$PROMOTE" -eq 1 ]; then
+    BUMP=none
+fi
 
 # --- 1. Konfiguratsiya ---
 
@@ -237,49 +277,74 @@ case "$BUMP" in
     none)  ;;
 esac
 
-# Play'da bor bo'lgan versionCode qayta qabul qilinmaydi — undan yuqoriga ko'taramiz
-if [ "$BUMP" != "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ]; then
-    BUILD_NUM=$((PLAY_MAX + 1))
-    echo "  Build raqami Play'ga moslab ko'tarildi: $BUILD_NUM"
-elif [ "$BUMP" = "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ] && [ "$VALIDATE" -eq 0 ]; then
-    echo "  [OGOHLANTIRISH] versionCode $BUILD_NUM Play'da allaqachon bor — yuklash rad etiladi." >&2
-fi
+AAB=""
+MAPPING=""
 
-TARGET="${SEMVER}+${BUILD_NUM}"
-if [ "$TARGET" != "$CURRENT" ]; then
-    # macOS sed — .bak faylsiz o'zgartirish
-    sed -i '' "s/^version: .*/version: ${TARGET}/" pubspec.yaml
-    echo "Versiya: $CURRENT -> $TARGET"
+if [ "$PROMOTE" -eq 1 ]; then
+    # Build qilinmaydi: Play'dagi eng oxirgi build shunchaki boshqa trackka qo'yiladi
+    if [ "$PLAY_MAX" -le 0 ]; then
+        echo "Play'da chiqariladigan build topilmadi." >&2
+        exit 1
+    fi
+    BUILD_NUM="$PLAY_MAX"
+    TARGET="${SEMVER}+${BUILD_NUM}"
+    echo "Promote rejimi: build qilinmaydi, Play'dagi versionCode $BUILD_NUM ishlatiladi."
 else
-    echo "Versiya: $TARGET (o'zgarmadi)"
+    # Play'da bor bo'lgan versionCode qayta qabul qilinmaydi — undan yuqoriga ko'taramiz
+    if [ "$BUMP" != "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ]; then
+        BUILD_NUM=$((PLAY_MAX + 1))
+        echo "  Build raqami Play'ga moslab ko'tarildi: $BUILD_NUM"
+    elif [ "$BUMP" = "none" ] && [ "$BUILD_NUM" -le "$PLAY_MAX" ] && [ "$VALIDATE" -eq 0 ]; then
+        echo "  [OGOHLANTIRISH] versionCode $BUILD_NUM Play'da allaqachon bor — yuklash rad etiladi." >&2
+    fi
+
+    TARGET="${SEMVER}+${BUILD_NUM}"
+    if [ "$TARGET" != "$CURRENT" ]; then
+        # macOS sed — .bak faylsiz o'zgartirish
+        sed -i '' "s/^version: .*/version: ${TARGET}/" pubspec.yaml
+        echo "Versiya: $CURRENT -> $TARGET"
+    else
+        echo "Versiya: $TARGET (o'zgarmadi)"
+    fi
+
+    # --- 3. Build ---
+
+    if [ "$CLEAN" -eq 1 ]; then
+        echo "Kesh tozalanmoqda..."
+        flutter clean >/dev/null
+    fi
+
+    echo "AAB build qilinmoqda..."
+    flutter build appbundle --release
+
+    AAB="build/app/outputs/bundle/release/app-release.aab"
+    [ -f "$AAB" ] || { echo "AAB fayl topilmadi — build muvaffaqiyatsiz." >&2; exit 1; }
+    echo "AAB tayyor: $AAB ($(du -h "$AAB" | cut -f1))"
+
+    MAPPING="build/app/outputs/mapping/release/mapping.txt"
 fi
-
-# --- 3. Build ---
-
-if [ "$CLEAN" -eq 1 ]; then
-    echo "Kesh tozalanmoqda..."
-    flutter clean >/dev/null
-fi
-
-echo "AAB build qilinmoqda..."
-flutter build appbundle --release
-
-AAB="build/app/outputs/bundle/release/app-release.aab"
-[ -f "$AAB" ] || { echo "AAB fayl topilmadi — build muvaffaqiyatsiz." >&2; exit 1; }
-echo "AAB tayyor: $AAB ($(du -h "$AAB" | cut -f1))"
-
-MAPPING="build/app/outputs/mapping/release/mapping.txt"
 
 # --- 4. Google Play ---
+
+# Production hamma foydalanuvchiga tegadi — bekor qilishga imkon beramiz.
+# (Ctrl+C bosilmasa o'zi davom etadi, ya'ni avtomatikaga xalal bermaydi.)
+if [ "$VALIDATE" -eq 0 ] && [ "$ASSUME_YES" -eq 0 ] && echo ",$TRACKS," | grep -q ',production,'; then
+    echo
+    echo "  !!! PRODUCTION: bu build Google ko'rigiga tushadi va o'tgach HAMMA"
+    echo "      foydalanuvchiga chiqadi. Bekor qilish uchun Ctrl+C — 5 soniya..."
+    sleep 5
+    echo
+fi
 
 if [ "$VALIDATE" -eq 1 ]; then
     echo "Google Play tekshiruvidan o'tkazilmoqda (validate)..."
 else
-    echo "Google Play'ga yuborilmoqda ($TRACK track)..."
+    echo "Google Play'ga yuborilmoqda (tracklar: $TRACKS)..."
 fi
 
 SA_JSON="$PLAY_SA_JSON" PKG="$PKG" AAB="$AAB" MAPPING="$MAPPING" \
-TRACK="$TRACK" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
+TRACKS="$TRACKS" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
+PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" \
 python3 - <<'PY'
 import os, sys
 
@@ -292,10 +357,12 @@ sa_json  = os.environ["SA_JSON"]
 pkg      = os.environ["PKG"]
 aab      = os.environ["AAB"]
 mapping  = os.environ["MAPPING"]
-track    = os.environ["TRACK"]
+tracks   = [t for t in os.environ["TRACKS"].split(",") if t]
 validate = os.environ["VALIDATE"] == "1"
+promote  = os.environ["PROMOTE"] == "1"
 name     = os.environ["RELEASE_NAME"]
 notes    = os.environ.get("NOTES", "").strip()
+rollout  = os.environ.get("ROLLOUT", "").strip()
 
 creds = service_account.Credentials.from_service_account_file(
     sa_json, scopes=["https://www.googleapis.com/auth/androidpublisher"])
@@ -311,21 +378,25 @@ except HttpError as e:
         sys.exit(1)
     raise
 
-print("AAB yuklanmoqda...")
-media = MediaFileUpload(aab, mimetype="application/octet-stream",
-                        chunksize=8 * 1024 * 1024, resumable=True)
-bundle = svc.edits().bundles().upload(
-    packageName=pkg, editId=edit_id, media_body=media).execute(num_retries=5)
-version_code = bundle["versionCode"]
-print(f"Yuklandi: versionCode {version_code}")
+if promote:
+    version_code = int(os.environ["VERSION_CODE"])
+    print(f"Play'dagi tayyor build ishlatilyapti: versionCode {version_code}")
+else:
+    print("AAB yuklanmoqda...")
+    media = MediaFileUpload(aab, mimetype="application/octet-stream",
+                            chunksize=8 * 1024 * 1024, resumable=True)
+    bundle = svc.edits().bundles().upload(
+        packageName=pkg, editId=edit_id, media_body=media).execute(num_retries=5)
+    version_code = bundle["versionCode"]
+    print(f"Yuklandi: versionCode {version_code}")
 
-if os.path.isfile(mapping):
-    print("ProGuard mapping yuklanmoqda...")
-    svc.edits().deobfuscationfiles().upload(
-        packageName=pkg, editId=edit_id, apkVersionCode=version_code,
-        deobfuscationFileType="proguard",
-        media_body=MediaFileUpload(mapping, mimetype="application/octet-stream"),
-    ).execute(num_retries=5)
+    if os.path.isfile(mapping):
+        print("ProGuard mapping yuklanmoqda...")
+        svc.edits().deobfuscationfiles().upload(
+            packageName=pkg, editId=edit_id, apkVersionCode=version_code,
+            deobfuscationFileType="proguard",
+            media_body=MediaFileUpload(mapping, mimetype="application/octet-stream"),
+        ).execute(num_retries=5)
 
 release = {
     "name": name,
@@ -344,9 +415,16 @@ if notes:
     chosen = [l for l in ("uz", "ru-RU", "en-US") if l in langs] or langs[:1] or ["en-US"]
     release["releaseNotes"] = [{"language": l, "text": notes} for l in chosen]
 
-svc.edits().tracks().update(
-    packageName=pkg, editId=edit_id, track=track, body={"releases": [release]},
-).execute()
+for track in tracks:
+    rel = dict(release)
+    # Bosqichma-bosqich chiqarish faqat production uchun ma'noli
+    if rollout and track == "production":
+        rel["status"] = "inProgress"
+        rel["userFraction"] = float(rollout)
+    svc.edits().tracks().update(
+        packageName=pkg, editId=edit_id, track=track, body={"releases": [rel]},
+    ).execute()
+    print(f"  track '{track}' tayyorlandi")
 
 if validate:
     svc.edits().validate(packageName=pkg, editId=edit_id).execute()
@@ -354,9 +432,15 @@ if validate:
     sys.exit(0)
 
 svc.edits().commit(packageName=pkg, editId=edit_id).execute()
-print(f"Tayyor — build {name} '{track}' trackda e'lon qilindi.")
+print(f"Tayyor — build {name} quyidagi tracklarda: {', '.join(tracks)}")
 
-if track == "internal":
-    print("Testerlarga bir necha daqiqada Play Store'da yangilanish chiqadi.")
-    print("Testerlar ro'yxati: Play Console -> Testing -> Internal testing -> Testers.")
+if "internal" in tracks:
+    print("  internal: testerlarga bir necha daqiqada Play Store'da yangilanish chiqadi.")
+    print("            (ro'yxat: Play Console -> Testing -> Internal testing -> Testers)")
+if "production" in tracks:
+    if rollout:
+        print(f"  production: Google ko'rigiga yuborildi, foydalanuvchilarning {float(rollout)*100:.0f}% iga chiqadi.")
+    else:
+        print("  production: Google ko'rigiga (review) yuborildi — odatda bir necha soatdan")
+        print("              bir necha kungacha, o'tgach hamma foydalanuvchiga chiqadi.")
 PY
