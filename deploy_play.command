@@ -191,10 +191,15 @@ except HttpError as e:
 
 codes = [0]
 try:
-    codes += [b["versionCode"] for b in
-              svc.edits().bundles().list(packageName=pkg, editId=edit_id).get("bundle", [])]
-    codes += [a["versionCode"] for a in
-              svc.edits().apks().list(packageName=pkg, editId=edit_id).get("apks", [])]
+    # Tracklardagi relizlar — eng ishonchli manba (bundles.list ba'zan bo'sh qaytaradi)
+    for t in svc.edits().tracks().list(
+            packageName=pkg, editId=edit_id).execute().get("tracks", []):
+        for r in t.get("releases", []):
+            codes += [int(c) for c in r.get("versionCodes", []) or []]
+    codes += [b["versionCode"] for b in svc.edits().bundles().list(
+        packageName=pkg, editId=edit_id).execute().get("bundle", [])]
+    codes += [a["versionCode"] for a in svc.edits().apks().list(
+        packageName=pkg, editId=edit_id).execute().get("apks", [])]
 finally:
     try:
         svc.edits().delete(packageName=pkg, editId=edit_id).execute()
@@ -333,7 +338,7 @@ if notes:
     # shuning uchun mavjud tillar ro'yxatidan mos kelganini olamiz.
     try:
         langs = [l["language"] for l in svc.edits().listings().list(
-            packageName=pkg, editId=edit_id).get("listings", [])]
+            packageName=pkg, editId=edit_id).execute().get("listings", [])]
     except HttpError:
         langs = []
     chosen = [l for l in ("uz", "ru-RU", "en-US") if l in langs] or langs[:1] or ["en-US"]
