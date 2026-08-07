@@ -2,6 +2,8 @@
 // GET /api/yuk/ledger dan keladi:
 // { "date":"2026-07-05", "opening":180000, "prixod":500000,
 //   "rasxod":320000, "yuborilgan":250000, "closing":430000 }
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
+
 class YukLedgerDay {
   final String date; // "YYYY-MM-DD" ko'rinishida
   final num opening; // ertalabgi ostatok
@@ -166,13 +168,18 @@ class LedgerDayDetail {
     required this.orders,
   });
 
-  // Yuborilgan buyurtmalar — yig'indisi yuborilgan'ga teng.
-  List<LedgerDayOrder> get doneOrders =>
-      [for (final o in orders) if (o.isDone) o];
+  // Yuborilgan buyurtmalar — yig'indisi yuborilgan'ga teng. Tartib boshqa
+  // ekranlardagi bilan bir xil (created ASC, keyin id):
+  // core/utils/order_sequence.dart.
+  List<LedgerDayOrder> get doneOrders => _seq(
+      [for (final o in orders) if (o.isDone) o]);
 
   // Hali yuborilmagan qoralamalar — kun jamiga KIRMAYDI.
-  List<LedgerDayOrder> get draftOrders =>
-      [for (final o in orders) if (!o.isDone) o];
+  List<LedgerDayOrder> get draftOrders => _seq(
+      [for (final o in orders) if (!o.isDone) o]);
+
+  static List<LedgerDayOrder> _seq(List<LedgerDayOrder> list) =>
+      sortedOrderSeq(list, createdOf: (o) => o.created, idOf: (o) => o.id);
 
   factory LedgerDayDetail.fromJson(Map<String, dynamic> json) {
     final rawOrders = json['orders'];

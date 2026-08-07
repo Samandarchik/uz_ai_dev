@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/bugalter/models/yuk_user_model.dart';
 import 'package:uz_ai_dev/core/clearable_provider.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/bugalter/services/bugalter_service.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
@@ -154,16 +155,15 @@ class BugalterProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
   }
 
-  // Berilgan sklad buyurtmalari (null -> hammasi), yangisi tepada.
+  // Berilgan sklad buyurtmalari (null -> hammasi). Tartib — ombor va yuk
+  // ekranlaridagi bilan BIR XIL yagona ketma-ketlik (created ASC, keyin id;
+  // core/utils/order_sequence.dart). Kunlik kartalarda yangi KUN baribir
+  // tepada qoladi (groupYukOrdersByDay), tartib kun ICHIDA qo'llanadi.
   List<YukOrder> forSklad(int? skladId) {
-    final list = skladId == null
-        ? List.of(orders)
-        : orders.where((o) => o.skladId == skladId).toList();
-    list.sort((a, b) {
-      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
-      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
-      return db.compareTo(da);
-    });
-    return list;
+    return sortedOrderSeq(
+      skladId == null ? orders : orders.where((o) => o.skladId == skladId),
+      createdOf: (o) => o.created,
+      idOf: (o) => o.id,
+    );
   }
 }

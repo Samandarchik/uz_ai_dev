@@ -35,6 +35,7 @@ import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/media/network_video_player.dart';
 import 'package:uz_ai_dev/core/media/telegram_style_video_recorder.dart';
 import 'package:uz_ai_dev/core/media/video_processor.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
@@ -412,8 +413,14 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       var first = true;
       for (final order in ordersWithItems) {
         final orderRows = <_ItemRow>[];
-        for (final item in order.items) {
-          if (item.isRasxod) continue;
+        // Qatorlar tartibi yuk keltiruvchi ekranidagi bilan BIR XIL: avval
+        // katalog itemlari, keyin qo'shilgan «proche» yozuvlari
+        // (core/utils/order_sequence.dart).
+        final seqItems = orderItemSeq(
+          order.items.where((it) => !it.isRasxod),
+          isProche: (it) => it.isProche,
+        );
+        for (final item in seqItems) {
           final row = _ItemRow.of(order, item);
           if (row.editable) {
             hasEditable = true;

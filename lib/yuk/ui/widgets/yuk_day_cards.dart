@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/data/sklad_registry.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
@@ -54,10 +55,13 @@ DateTime _orderDay(YukOrder o) {
 
 // Buyurtmaning ko'rsatiladigan mahsulot qatorlari: rasxod emas, o'chirilmagan
 // va "olinmagan"/bo'sh (taken == 0 && subtotal == 0) qatorlar tashlanadi.
-List<YukOrderItem> _visibleProducts(YukOrder o) => o.items
-    .where(
-        (i) => !i.isRasxod && !i.deleted && !(i.taken == 0 && i.subtotal == 0))
-    .toList();
+// Tartib omborchi va yuk bosh ekranidagi bilan BIR XIL: avval katalog
+// itemlari, keyin «proche» (core/utils/order_sequence.dart).
+List<YukOrderItem> _visibleProducts(YukOrder o) => orderItemSeq(
+      o.items.where((i) =>
+          !i.isRasxod && !i.deleted && !(i.taken == 0 && i.subtotal == 0)),
+      isProche: (i) => i.isProche,
+    );
 
 // Buyurtma kunlik kartaga biror narsa qo'shadimi: ko'rinadigan mahsulot
 // qatori, rasxod yoki nol bo'lmagan summa bo'lsa — ha. Hammasi bo'sh

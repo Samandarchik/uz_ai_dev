@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_order_model.dart';
 import 'package:uz_ai_dev/ombor/models/ombor_product_model.dart';
@@ -162,6 +163,12 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
   }
 
   // ─────────────────────── Mening buyurtmalarim ───────────────────────
+  // Buyurtmalar YAGONA qoida bo'yicha tartiblanadi (created ASC, keyin id) —
+  // yuk keltiruvchi va bugalter ekranlaridagi bilan bir xil ketma-ketlik.
+  // Sabab va qoida: core/utils/order_sequence.dart.
+  static void _sortOrders(List<OmborOrder> list) =>
+      sortOrderSeq(list, createdOf: (o) => o.created, idOf: (o) => o.id);
+
   List<OmborOrder> myOrders = [];
   bool isLoadingOrders = false;
   String? ordersError;
@@ -181,7 +188,9 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
   int? deletingItemProductId;
 
   // GET /api/orders -> ombor userning o'z buyurtmalari.
-  // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblanadi.
+  // Ro'yxat yaratilgan vaqti bo'yicha o'sish tartibida ([_sortOrders]) —
+  // omborchi savatga qo'shgan ketma-ketlik saqlanadi va yuk keltiruvchi
+  // ekrani bilan bir xil bo'ladi.
   //
   // Bir vaqtda ikkita so'rov ketmasligi uchun yengil guard: bosh ekran ham,
   // «Buyurtmalarim» tabи ham ochilishida chaqiradi — parallel javoblar bir
@@ -204,7 +213,7 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
         all: ordersPeriod.isAll,
         activeOnly: true,
       );
-      orders.sort((a, b) => b.id.compareTo(a.id));
+      _sortOrders(orders);
       myOrders = orders;
     } catch (e) {
       ordersError = e.toString().replaceFirst('Exception: ', '');
@@ -252,7 +261,7 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
       final orders = await _service.fetchMyOrders(date: key);
       // Kun almashtirilib ulgurilgan bo'lsa eskirgan javobni yozmaymiz.
       if (historyDateKey != key) return;
-      orders.sort((a, b) => b.id.compareTo(a.id));
+      _sortOrders(orders);
       historyOrders = orders;
     } catch (e) {
       if (historyDateKey != key) return;
@@ -470,8 +479,8 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
       } else {
         myOrders.add(order); // yo'q bo'lsa qo'sh
       }
-      // Eng yangisi yuqorida bo'lishi uchun id bo'yicha kamayuvchi tartiblash.
-      myOrders.sort((a, b) => b.id.compareTo(a.id));
+      // Yagona ketma-ketlik (created ASC, keyin id) qayta tiklanadi.
+      _sortOrders(myOrders);
     }
 
     // Tarix ekrani ochiq va buyurtma o'sha kunga tegishli bo'lsa — u yerda ham
@@ -485,7 +494,7 @@ class OmborProvider extends ChangeNotifier with ClearableProvider {
         historyOrders[hIndex] = order;
       } else {
         historyOrders.add(order);
-        historyOrders.sort((a, b) => b.id.compareTo(a.id));
+        _sortOrders(historyOrders);
       }
     }
 

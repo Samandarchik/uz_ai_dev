@@ -10,6 +10,7 @@ import 'package:uz_ai_dev/core/clearable_provider.dart';
 import 'package:uz_ai_dev/core/data/local/base_storage.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
@@ -195,44 +196,35 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
   static bool _isDone(YukOrder o) =>
       o.status == 'narxlandi' || o.status == 'qabul_qilindi';
 
+  // Buyurtmalar YAGONA qoida bo'yicha tartiblanadi (created ASC, keyin id) —
+  // omborchi va bugalter ekranlaridagi bilan bir xil ketma-ketlik.
+  // Sabab va qoida: core/utils/order_sequence.dart.
+  static List<YukOrder> _seq(Iterable<YukOrder> list) =>
+      sortedOrderSeq(list, createdOf: (o) => o.created, idOf: (o) => o.id);
+
   // Asosiy sahifa: berilgan skladning FAQAT hali yuborilmagan buyurtmalari.
   // Endigina yuborilgani "qaytarib olish" oynasi (30 s) tugaguncha ko'rinib
   // turadi — undo tugmasi qo'l ostida bo'lishi uchun; keyin tarixga o'tadi.
   List<YukOrder> pendingForSklad(int skladId) {
-    return orders
-        .where((o) =>
-            o.skladId == skladId &&
-            (!_isDone(o) || undoRemaining(o.id) > Duration.zero))
-        .toList();
+    return _seq(orders.where((o) =>
+        o.skladId == skladId &&
+        (!_isDone(o) || undoRemaining(o.id) > Duration.zero)));
   }
 
   // Tarix ekrani (kunlik kartalar): faqat O'ZIM narxlagan yuborilgan
   // buyurtmalar — priced_by mening ID'im yoki 0 (egasi yozilmagan eski
-  // yozuvlar). Barcha skladlar birga, yangisi tepada; kunlik guruhlash
-  // UI'da (groupYukOrdersByDay) qilinadi.
+  // yozuvlar). Barcha skladlar birga; kunlik guruhlash UI'da
+  // (groupYukOrdersByDay) qilinadi — u yerda yangi KUN tepada, kun ICHIDA
+  // esa shu yerdagi yagona ketma-ketlik saqlanadi.
   List<YukOrder> get myHistoryOrders {
-    final list = historyOrders
-        .where((o) =>
-            _isDone(o) && (o.pricedBy == 0 || o.pricedBy == myUserId))
-        .toList();
-    list.sort((a, b) {
-      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
-      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
-      return db.compareTo(da);
-    });
-    return list;
+    return _seq(historyOrders
+        .where((o) => _isDone(o) && (o.pricedBy == 0 || o.pricedBy == myUserId)));
   }
 
-  // Tarix ekrani: berilgan skladning yuborilgan buyurtmalari, yangisi tepada.
+  // Tarix ekrani: berilgan skladning yuborilgan buyurtmalari.
   List<YukOrder> doneForSklad(int skladId) {
-    final list =
-        historyOrders.where((o) => o.skladId == skladId && _isDone(o)).toList();
-    list.sort((a, b) {
-      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
-      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
-      return db.compareTo(da);
-    });
-    return list;
+    return _seq(
+        historyOrders.where((o) => o.skladId == skladId && _isDone(o)));
   }
 
   Future<void> fetchOrders() async {
@@ -921,15 +913,8 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
   // O'rtada xato chiqsa to'xtaydi (yuborilganlari yuborilgan bo'lib qoladi,
   // qolganini qayta "Yuborish" bilan davom ettirsa bo'ladi).
   Future<bool> submitAllForSklad(int skladId) async {
-    final targets = orders
-        .where((o) =>
-            o.skladId == skladId && !_isDone(o) && _hasSubmittable(o.id))
-        .toList()
-      ..sort((a, b) {
-        final da = DateTime.tryParse(a.created) ?? DateTime(2000);
-        final db = DateTime.tryParse(b.created) ?? DateTime(2000);
-        return da.compareTo(db);
-      });
+    final targets = _seq(orders.where(
+        (o) => o.skladId == skladId && !_isDone(o) && _hasSubmittable(o.id)));
     if (targets.isEmpty) {
       errorMessage = 'Yuboriladigan narx kiritilmagan';
       notifyListeners();

@@ -18,6 +18,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/utils/money_input.dart';
+import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
@@ -729,16 +730,13 @@ class _YukSkladCardState extends State<YukSkladCard> {
     return '';
   }
 
-  // Buyurtmalar sana bo'yicha o'sish tartibida (birinchi kelgani tepada).
-  List<YukOrder> get _sorted {
-    final list = List<YukOrder>.of(widget.orders);
-    list.sort((a, b) {
-      final da = DateTime.tryParse(a.created) ?? DateTime(2000);
-      final db = DateTime.tryParse(b.created) ?? DateTime(2000);
-      return da.compareTo(db);
-    });
-    return list;
-  }
+  // Buyurtmalar yagona ketma-ketlikda (created ASC, teng bo'lsa id) — omborchi
+  // va bugalter ekranlaridagi bilan bir xil: core/utils/order_sequence.dart.
+  List<YukOrder> get _sorted => sortedOrderSeq(
+        widget.orders,
+        createdOf: (o) => o.created,
+        idOf: (o) => o.id,
+      );
 
   // Yangi qo'shimcha yozuv (proche/rasxod) va rasm/video biriktiriladigan
   // buyurtma — eng birinchi yuborilmagan buyurtma (kun davomida barqaror).
@@ -2235,11 +2233,12 @@ class _YukSkladCardState extends State<YukSkladCard> {
               // Har buyurtma itemlari alohida qator bo'lib ketma-ket chiqadi.
               for (final order in orders) ...[
                 if (showBatchLabels) _batchLabel(order),
-                ...order.items
-                    .where((i) => _isDoneOrder(order)
-                        ? !i.isRasxod
-                        : i.itemType.isEmpty)
-                    .map((item) => _itemRow(provider, order, item)),
+                ...orderItemSeq(
+                  order.items.where((i) => _isDoneOrder(order)
+                      ? !i.isRasxod
+                      : i.itemType.isEmpty),
+                  isProche: (i) => i.isProche,
+                ).map((item) => _itemRow(provider, order, item)),
                 // Begona (boshqa yuk user boshlagan) ochiq buyurtmaning
                 // serverdagi proche itemlari — read-only, real-time.
                 if (!_isDoneOrder(order) && !provider.canSeedOrder(order))
