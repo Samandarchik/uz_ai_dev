@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Ilova faqat standart HTTPS ishlatadi (o'z shifrlash algoritmi yo'q) — shu javob
+	     bo'lmasa har build TestFlight'da "Missing Compliance" bo'lib tarqatilmay turadi. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>myapp</string>

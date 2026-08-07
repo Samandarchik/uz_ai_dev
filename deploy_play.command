@@ -6,6 +6,7 @@
 #   ./deploy_play.command                  HAMMASI: versiya oshadi, build bo'ladi,
 #                                          internal testga + production'ga (Google ko'rigiga) ketadi
 #   ./deploy_play.command --internal       faqat testerlarga (production'ga tegilmaydi)
+#   ./deploy_play.command --bump           versiyani majburan oshiradi (odatda o'zi hal qiladi)
 #   ./deploy_play.command --promote        build QILMAYDI: Play'dagi oxirgi build'ni production'ga chiqaradi
 #   ./deploy_play.command --minor          keyingi o'nlik (0.6.5+65 -> 0.7.0+70)
 #   ./deploy_play.command --major          keyingi yuzlik (0.6.5+65 -> 1.0.0+100)
@@ -33,6 +34,10 @@
 #   0.6.8+68  ->  0.6.9+69  ->  0.7.0+70  ->  0.7.1+71  ...  0.9.9+99  ->  1.0.0+100
 # Ya'ni versiya versionCode'dan hisoblanadi (69 -> 0.6.9), qo'lda yozilmaydi. Shuning
 # uchun 0.6.10 kabi (kodga tushmaydigan) raqam hech qachon chiqmaydi.
+#
+# Standart holatda pubspec'dagi raqam Play'da hali yo'q bo'lsa — AYNAN o'sha ishlatiladi
+# (oshirilmaydi). Shu sababli iOS (deploy_ios.command) bilan ketma-ket ishga tushirilsa,
+# ikkala do'konda ham bir xil versiya chiqadi. Majburan oshirish: --bump.
 #
 # Play bir xil versionCode'ni ikkinchi marta qabul qilmaydi va u doim o'sishi shart —
 # skript Play'dagi eng katta versionCode'ni tekshirib, kerak bo'lsa undan yuqori qilib oladi
@@ -83,7 +88,7 @@ if ! command -v flutter >/dev/null 2>&1; then
 fi
 command -v flutter >/dev/null 2>&1 || { echo "flutter topilmadi (PATH)." >&2; exit 1; }
 
-BUMP=patch          # patch | minor | major | build | none
+BUMP=auto           # auto | force | minor | major | none
 VALIDATE=0
 CLEAN=0
 PROMOTE=0
@@ -96,8 +101,7 @@ NOTES="${PLAY_NOTES:-}"
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-bump)            BUMP=none ;;
-        --build|--build-only) BUMP=build ;;
-        --patch)              BUMP=patch ;;
+        --bump|--patch|--build|--build-only) BUMP=force ;;
         --minor)              BUMP=minor ;;
         --major)              BUMP=major ;;
         --internal|--test)    TRACKS="internal" ;;
@@ -318,10 +322,13 @@ if [ -n "$NEW_VERSION" ]; then
     fi
 else
     case "$BUMP" in
-        patch|build) BUILD_NUM=$((BUILD_NUM + 1)) ;;
-        minor)       BUILD_NUM=$(( (BUILD_NUM / 10 + 1) * 10 )) ;;
-        major)       BUILD_NUM=$(( (BUILD_NUM / 100 + 1) * 100 )) ;;
-        none)        ;;
+        # auto: pubspec'dagi raqam Play'da hali yo'q bo'lsa AYNAN o'shani ishlatamiz —
+        # shunda iOS (deploy_ios.command) bilan bir xil versiya chiqadi
+        auto)  [ "$BUILD_NUM" -le "$PLAY_MAX" ] && BUILD_NUM=$((PLAY_MAX + 1)) ;;
+        force) BUILD_NUM=$(( (BUILD_NUM > PLAY_MAX ? BUILD_NUM : PLAY_MAX) + 1 )) ;;
+        minor) BUILD_NUM=$(( ((BUILD_NUM > PLAY_MAX ? BUILD_NUM : PLAY_MAX) / 10 + 1) * 10 )) ;;
+        major) BUILD_NUM=$(( ((BUILD_NUM > PLAY_MAX ? BUILD_NUM : PLAY_MAX) / 100 + 1) * 100 )) ;;
+        none)  ;;
     esac
 fi
 
