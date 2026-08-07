@@ -61,10 +61,21 @@ cleanup_and_pause() {
 PRECHECK_PY=""
 trap cleanup_and_pause EXIT
 
-# Finder'dan ochilganda PATH'da flutter bo'lmasligi mumkin — zsh login PATH'idan topamiz
+# Finder'dan ikki marta bosib ochilganda PATH faqat /usr/bin:/bin:/usr/sbin:/sbin bo'ladi —
+# flutter u yerda yo'q. Avval odatdagi joylardan, keyin foydalanuvchi zsh sozlamasidan qidiramiz.
+# MUHIM: `zsh -lc` .zshrc ni O'QIMAYDI (u faqat interaktiv shellda o'qiladi), shuning uchun
+# `-i` kerak — PATH aynan ~/.zshrc da qo'shilgan.
 if ! command -v flutter >/dev/null 2>&1; then
-    FLUTTER_BIN="$(/bin/zsh -lc 'command -v flutter' 2>/dev/null || true)"
-    [ -n "$FLUTTER_BIN" ] && PATH="$(dirname "$FLUTTER_BIN"):$PATH"
+    for d in "$HOME/developer/flutter/bin" "$HOME/development/flutter/bin" \
+             "$HOME/flutter/bin" /opt/homebrew/bin /usr/local/bin; do
+        [ -x "$d/flutter" ] && PATH="$d:$PATH" && break
+    done
+fi
+if ! command -v flutter >/dev/null 2>&1; then
+    FLUTTER_BIN="$(/bin/zsh -ilc 'command -v flutter' 2>/dev/null | tail -1 || true)"
+    if [ -n "$FLUTTER_BIN" ] && [ -x "$FLUTTER_BIN" ]; then
+        PATH="$(dirname "$FLUTTER_BIN"):$PATH"
+    fi
 fi
 command -v flutter >/dev/null 2>&1 || { echo "flutter topilmadi (PATH)." >&2; exit 1; }
 
@@ -171,11 +182,29 @@ if [ ! -f "$PLAY_SA_JSON" ]; then
     exit 1
 fi
 
-python3 -c "import googleapiclient, google.oauth2" 2>/dev/null || {
-    echo "Python kutubxonalari yetishmayapti. O'rnating:" >&2
+# Kerakli kutubxonalari BOR python3 ni topamiz. Finder'dan ochilganda `python3` = Apple'niki
+# (/usr/bin/python3) bo'lib qoladi, unda google kutubxonalari yo'q — homebrew'nikini qidiramiz.
+PY_BIN=""
+for cand in "${PLAY_PYTHON:-}" python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    [ -n "$cand" ] || continue
+    if command -v "$cand" >/dev/null 2>&1 &&
+       "$cand" -c "import googleapiclient, google.oauth2" >/dev/null 2>&1; then
+        PY_BIN="$cand"
+        break
+    fi
+done
+if [ -z "$PY_BIN" ]; then
+    cand="$(/bin/zsh -ilc 'command -v python3' 2>/dev/null | tail -1 || true)"
+    if [ -n "$cand" ] && "$cand" -c "import googleapiclient, google.oauth2" >/dev/null 2>&1; then
+        PY_BIN="$cand"
+    fi
+fi
+if [ -z "$PY_BIN" ]; then
+    echo "Google Play kutubxonalari bor python3 topilmadi. O'rnating:" >&2
     echo "    python3 -m pip install google-api-python-client google-auth" >&2
+    echo "(yoki PLAY_PYTHON=/to'liq/yo'l/python3 ni ~/.mone_play.env ichida ko'rsating)" >&2
     exit 1
-}
+fi
 
 PKG="$(sed -n 's/.*applicationId *= *"\(.*\)".*/\1/p' android/app/build.gradle 2>/dev/null | head -1)"
 [ -n "$PKG" ] || { echo "applicationId topilmadi (android/app/build.gradle)." >&2; exit 1; }
@@ -250,7 +279,7 @@ print(max(codes))
 PY
 
 set +e
-PLAY_MAX="$(SA_JSON="$PLAY_SA_JSON" PKG="$PKG" python3 "$PRECHECK_PY")"
+PLAY_MAX="$(SA_JSON="$PLAY_SA_JSON" PKG="$PKG" "$PY_BIN" "$PRECHECK_PY")"
 PRECHECK_RC=$?
 set -e
 
@@ -345,7 +374,7 @@ fi
 SA_JSON="$PLAY_SA_JSON" PKG="$PKG" AAB="$AAB" MAPPING="$MAPPING" \
 TRACKS="$TRACKS" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
 PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" \
-python3 - <<'PY'
+"$PY_BIN" - <<'PY'
 import os, sys
 
 from google.oauth2 import service_account
