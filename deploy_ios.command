@@ -78,7 +78,9 @@ VALIDATE=0
 CLEAN=0
 NO_WAIT=0
 NEW_VERSION=""
-GROUPS=""
+TF_GROUPS=""   # DIQQAT: `GROUPS` nomini ishlatib bo'lmaydi — u bash'ning
+               # maxsus o'zgaruvchisi (foydalanuvchi guruh ID lari), unga yozib
+               # bo'lmaydi va "$GROUPS" -> 20 (staff) bo'lib ketadi
 NOTES="${ASC_NOTES:-}"
 WAIT_MIN="${ASC_WAIT_MIN:-30}"
 
@@ -92,7 +94,7 @@ while [ $# -gt 0 ]; do
         --validate) VALIDATE=1 ;;
         --clean)    CLEAN=1 ;;
         --version)  NEW_VERSION="${2:-}"; shift ;;
-        --groups)   GROUPS="${2:-}"; shift ;;
+        --groups)   TF_GROUPS="${2:-}"; shift ;;
         --notes)    NOTES="${2:-}"; shift ;;
         -h|--help)  awk 'NR>2 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
         *)          echo "Noma'lum parametr: $1"; exit 1 ;;
@@ -170,7 +172,7 @@ echo "Ilova: $BUNDLE_ID"
 # Eslatma: bash 3.2 `$( ... <<HEREDOC ... )` ichidagi apostroflarni noto'g'ri o'qiydi,
 # shuning uchun python alohida vaqtinchalik faylga yoziladi (trap uni o'chiradi).
 
-ASC_PY="$(mktemp -t mone_asc).py"
+ASC_PY="$(mktemp -t mone_asc)"
 cat > "$ASC_PY" <<'PY'
 """App Store Connect API yordamchisi: build raqamini bilish va TestFlight'ga tarqatish."""
 import base64, json, os, sys, time, urllib.error, urllib.request
@@ -291,9 +293,12 @@ def set_notes(build, notes):
                 "attributes": {"whatsNew": notes},
             }})
     else:
+        # Til ilovaning asosiy tili bo'lsin (bu ilovada en-GB), aks holda API rad etadi
+        app = api(f"/v1/apps/{app_id_cached}").get("data", {})
+        locale = app.get("attributes", {}).get("primaryLocale") or "en-US"
         api("/v1/betaBuildLocalizations", "POST", {"data": {
             "type": "betaBuildLocalizations",
-            "attributes": {"locale": "en-US", "whatsNew": notes},
+            "attributes": {"locale": locale, "whatsNew": notes},
             "relationships": {"build": {"data": {"type": "builds", "id": build["id"]}}},
         }})
     print("  'What to Test' izohi yozildi", flush=True)
@@ -504,7 +509,7 @@ if [ "$NO_WAIT" -eq 1 ]; then
     exit 0
 fi
 
-asc distribute "$SEMVER" "$BUILD_NUM" "$NOTES" "$WAIT_MIN" "$GROUPS"
+asc distribute "$SEMVER" "$BUILD_NUM" "$NOTES" "$WAIT_MIN" "$TF_GROUPS"
 
 echo
 echo "Tayyor — $TARGET TestFlight'da testerlarga tarqatildi."
