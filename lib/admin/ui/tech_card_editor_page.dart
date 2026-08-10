@@ -1032,9 +1032,15 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // ---- Ingredient amallari (mavjud dialog/sahifalar qayta ishlatiladi) ----
 
   Future<void> _addIngredient(int baseIndex) async {
+    // Полуфабрикат ham shu tanlagichdan qo'shiladi — tanlangan mahsulot
+    // bazada is_semi_finished bo'lsa, qator avto пф deb ko'rsatiladi.
+    // O'zini o'ziga qo'shib bo'lmaydi (excludeProductId).
     final item = await Navigator.push<TechItem>(
       context,
-      MaterialPageRoute(builder: (_) => const CompositionPickerPage()),
+      MaterialPageRoute(
+        builder: (_) =>
+            CompositionPickerPage(excludeProductId: widget.product.id),
+      ),
     );
     if (item == null || !mounted) return;
     setState(() {
@@ -1047,20 +1053,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           base.copyWith(ingredients: [...base.ingredients, item]);
     });
   }
-
-  // Pf tanlash ro'yxatidagi izoh: гр rejimidagi pf — bir partiyada necha гр
-  // chiqishi; шт rejimida — 1 dona og'irligi. null — ko'rsatiladigan narsa yo'q.
-  String? _pfSubtitle(ProductModelAdmin p) {
-    final tc = p.techCard;
-    if (tc == null) return null;
-    if (tc.batchUnit == 'g') return '1 partiya = ${tc.totalPieces} гр';
-    final w = techPfPieceWeightG(p.id, _productById);
-    return w > 0 ? '1 dona ≈ $w г' : null;
-  }
-
-  // ---- Полуфабрикат qatori qo'shish ----
-  // ProductProviderAdmin (yagona manba) dagi is_semi_finished mahsulotlardan
-  // tanlanadi; qator dona (шт) birligida oddiy ingredient bo'lib saqlanadi.
 
   // ---- Полуфабрикат tarkibini JOYIDA ochish ----
   // ПФ chipi bosilsa пф ichidagi masalliqlar SHU qator ostida, oddiy
@@ -1293,90 +1285,6 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
-  Future<void> _addPfIngredient(int baseIndex) async {
-    final pfProducts = context
-        .read<ProductProviderAdmin>()
-        .products
-        .where((p) => p.isSemiFinished && p.id != widget.product.id)
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-    if (pfProducts.isEmpty) {
-      _snack(
-        'Полуфабрикат mahsulot yo\'q. Avval mahsulot tahririda '
-        '«Полуфабрикат» belgisini yoqing.',
-        error: true,
-      );
-      return;
-    }
-
-    final picked = await showModalBottomSheet<ProductModelAdmin>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 14, 16, 6),
-              child: Text(
-                'Полуфабрикат tanlash',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final p in pfProducts)
-                    ListTile(
-                      leading: const Icon(Icons.cake_outlined),
-                      title: Text(p.name),
-                      subtitle: _pfSubtitle(p) == null
-                          ? null
-                          : Text(
-                              _pfSubtitle(p)!,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                      onTap: () => Navigator.pop(ctx, p),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (picked == null || !mounted) return;
-
-    // Miqdor dialogi: «дона» (eski oqim) yoki «грамм» (faqat pf tex kartasida
-    // 1 dona og'irligi ma'lum bo'lsa — backend g -> dona konvertini W bilan
-    // qiladi). Grammda unit 'g' bo'lib saqlanadi.
-    final res = await showDialog<_PfAmountResult>(
-      context: context,
-      builder: (_) => _PfAmountDialog(
-        title: picked.name,
-        batchQty: c.totalPieces,
-        pieceWeightG: techPfPieceWeightG(picked.id, _productById),
-        gramBatch: picked.techCard?.batchUnit == 'g',
-      ),
-    );
-    if (res == null || !mounted) return;
-    if (res.amount <= 0) return;
-
-    setState(() {
-      final base = c.bases[baseIndex];
-      c.bases[baseIndex] = base.copyWith(ingredients: [
-        ...base.ingredients,
-        TechItem(
-          productId: picked.id,
-          name: picked.name,
-          unit: res.unit,
-          amount: res.amount,
-        ),
-      ]);
-    });
-  }
-
   // Qator joyida tahrirlandi (inline miqdor maydoni yoki birlik menyusi).
   void _updateIngredient(int baseIndex, int itemIndex, TechItem updated) {
     setState(() {
@@ -1405,7 +1313,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   Future<void> _addConsumable() async {
     final item = await Navigator.push<TechItem>(
       context,
-      MaterialPageRoute(builder: (_) => const CompositionPickerPage()),
+      MaterialPageRoute(
+        builder: (_) =>
+            CompositionPickerPage(excludeProductId: widget.product.id),
+      ),
     );
     if (item == null || !mounted) return;
     setState(() {
@@ -2335,9 +2246,10 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               onLongPress: () => _deleteIngredient(index, j),
             ),
 
-          // «+ Ингредиент» va «+ Полуфабрикат» qatorlari
+          // «+ Ингредиент» qatori — полуфабрикат ham SHU yerdan tanlanadi:
+          // tanlangan mahsulot bazada is_semi_finished bo'lsa, qator avto
+          // пф deb ko'rsatiladi (alohida «+ Полуфабрикат» tugmasi yo'q).
           _addRow('+ Ингредиент', () => _addIngredient(index)),
-          _addRow('+ Полуфабрикат', () => _addPfIngredient(index)),
         ],
       ),
     );
@@ -2928,100 +2840,6 @@ class _ShapeDialogState extends State<_ShapeDialog> {
         ElevatedButton(
           onPressed: _submit,
           child: const Text('OK'),
-        ),
-      ],
-    );
-  }
-}
-
-// ---- Полуфабрикат miqdor dialogi ----
-// Birlik TANLANMAYDI — пф'ning O'Z tex kartasi belgilaydi: batch_unit 'g'
-// bo'lsa гр (unit 'g'), aks holda дона (unit 'pcs'). Дона'dagi пф grammga
-// o'tmaydi (va aksincha) — birlik faqat пф tex kartasida шт↔гр bilan
-// o'zgartiriladi.
-
-class _PfAmountResult {
-  final String unit; // 'pcs' | 'g'
-  final int amount; // butun son (dona yoki gramm)
-
-  const _PfAmountResult({required this.unit, required this.amount});
-}
-
-class _PfAmountDialog extends StatefulWidget {
-  final String title;
-  final int batchQty; // joriy karta partiyasi JAMI donasi (label uchun)
-  final int pieceWeightG; // pf 1 dona og'irligi (дона rejimida ma'lumot uchun)
-  // Пф partiyasi гр rejimidami (batch_unit 'g') — kiritish birligini shu
-  // belgilaydi: true → гр, false → дона.
-  final bool gramBatch;
-
-  const _PfAmountDialog({
-    required this.title,
-    required this.batchQty,
-    required this.pieceWeightG,
-    this.gramBatch = false,
-  });
-
-  @override
-  State<_PfAmountDialog> createState() => _PfAmountDialogState();
-}
-
-class _PfAmountDialogState extends State<_PfAmountDialog> {
-  final TextEditingController _ctrl = TextEditingController();
-
-  String get _unit => widget.gramBatch ? 'g' : 'pcs';
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
-    if (amount <= 0) return;
-    Navigator.pop(context, _PfAmountResult(unit: _unit, amount: amount));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final w = widget.pieceWeightG;
-    final hintStyle = TextStyle(fontSize: 12.5, color: Colors.grey.shade700);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Дона rejimida 1 dona og'irligi — faqat ma'lumot uchun.
-          if (!widget.gramBatch && w > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text('1 dona ≈ $w г', style: hintStyle),
-            ),
-          TextField(
-            controller: _ctrl,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              labelText: _unit == 'g'
-                  ? 'Necha гр (${widget.batchQty} talik partiya uchun)'
-                  : 'Necha dona (${widget.batchQty} talik partiya uchun)',
-              border: const OutlineInputBorder(),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Отмена'),
-        ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Добавить'),
         ),
       ],
     );

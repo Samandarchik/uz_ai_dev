@@ -21,8 +21,15 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 // kategoriya bosilsa shu kategoriya mahsulotlari ochiladi. Qidiruv yozilsa —
 // barcha mahsulotlar bo'yicha qidiradi. Mahsulot tanlanganda miqdor (butun son)
 // + birlik so'raydigan dialog ochiladi va natija sifatida [TechItem] qaytaradi.
+// Полуфабрикат ham SHU yerdan tanlanadi (ro'yxatda «ПФ» belgisi bilan) —
+// alohida pf tanlagich yo'q; tex karta muharriri qatorni bazadagi
+// is_semi_finished orqali avto пф deb ko'rsatadi.
 class CompositionPickerPage extends StatefulWidget {
-  const CompositionPickerPage({super.key});
+  // Ro'yxatdan chiqariladigan mahsulot (tahrirlanayotgan kartaning o'zi) —
+  // mahsulot o'z tarkibiga o'zini qo'sha olmasin.
+  final int? excludeProductId;
+
+  const CompositionPickerPage({super.key, this.excludeProductId});
 
   @override
   State<CompositionPickerPage> createState() => _CompositionPickerPageState();
@@ -61,9 +68,12 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
           categoryProvider.getCategories(),
       ]);
       if (!mounted) return;
+      final products = productProvider.products
+          .where((p) => p.id != widget.excludeProductId)
+          .toList();
       setState(() {
-        _allProducts = productProvider.products;
-        _filtered = productProvider.products;
+        _allProducts = products;
+        _filtered = products;
         _isLoading = false;
       });
     } catch (e) {
@@ -106,6 +116,7 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
         builder: (_) => _CategoryProductsPage(
           categoryId: category.id,
           categoryName: category.name,
+          excludeProductId: widget.excludeProductId,
         ),
       ),
     );
@@ -246,10 +257,12 @@ class _CompositionPickerPageState extends State<CompositionPickerPage> {
 class _CategoryProductsPage extends StatelessWidget {
   final int categoryId;
   final String categoryName;
+  final int? excludeProductId;
 
   const _CategoryProductsPage({
     required this.categoryId,
     required this.categoryName,
+    this.excludeProductId,
   });
 
   Future<void> _onProductTap(
@@ -268,7 +281,7 @@ class _CategoryProductsPage extends StatelessWidget {
     final products = context
         .watch<ProductProviderAdmin>()
         .products
-        .where((p) => p.categoryId == categoryId)
+        .where((p) => p.categoryId == categoryId && p.id != excludeProductId)
         .toList();
     return Scaffold(
       appBar: AppBar(title: Text(categoryName)),
@@ -324,7 +337,33 @@ class _ProductPickTile extends StatelessWidget {
                 ),
         ),
       ),
-      title: Text(product.name),
+      // Полуфабрикат — nom yonida «ПФ» belgisi (tex kartadagi chip uslubi):
+      // tanlansa muharrir uni bazadan avto пф deb taniydi.
+      title: product.isSemiFinished
+          ? Row(
+              children: [
+                Flexible(child: Text(product.name)),
+                Container(
+                  margin: const EdgeInsets.only(left: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    border: Border.all(color: Colors.purple.shade300),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'ПФ',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Text(product.name),
       subtitle: product.type.isNotEmpty ? Text(product.type) : null,
       trailing: const Icon(Icons.add_circle_outline),
       onTap: () => onTap(product),
