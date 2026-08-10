@@ -1566,6 +1566,20 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     setState(() => c.listQty = lists < 1 ? 1 : lists);
   }
 
+  // Штук (bitta list donasi) o'zgarganda «Общее количество» AVTO O'ZGARMAYDI:
+  // eski jami saqlanadi — listQty = eski jami ÷ yangi Штук (yaxlitlab, min 1).
+  // Jami doim batchQty × listQty bo'lgani uchun teng bo'linmasa eng yaqin
+  // karraliga yaxlitlanadi (masalan, jami 10, Штук 3 → 9).
+  void _setBatchQtyKeepTotal(int qty) {
+    if (qty < 1) return;
+    final total = c.totalPieces;
+    setState(() {
+      c.batchQty = qty;
+      final lists = (total / qty).round();
+      c.listQty = lists < 1 ? 1 : lists;
+    });
+  }
+
   Widget _headerLeftTable() {
     return Container(
       decoration: const BoxDecoration(
@@ -1621,7 +1635,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                 suffixText: _unitShort,
                 onValue: (qty) => _gramMode
                     ? _setGramBatchQty(qty)
-                    : setState(() => c.batchQty = qty < 1 ? 1 : qty),
+                    : _setBatchQtyKeepTotal(qty),
               ),
               flex: 2,
               leftBorder: true,
