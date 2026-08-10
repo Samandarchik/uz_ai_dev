@@ -86,6 +86,38 @@ class StockService {
     }
   }
 
+  // POST /api/stock/write-off — spisaniya (brak): musbat qty skladdan
+  // chiqim bo'lib yoziladi, sabab majburiy. POS spisaniyasi bilan bitta
+  // audit hisobotida ko'rinadi.
+  Future<String> writeOff({
+    required int skladId,
+    required int productId,
+    required double qty,
+    required String reason,
+  }) async {
+    try {
+      final response = await dio.post(
+        AppUrls.stockWriteOff,
+        data: {
+          'sklad_id': skladId,
+          'product_id': productId,
+          'qty': _asWire(qty),
+          'reason': reason,
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = response.data;
+        if (body is Map && body['message'] != null) {
+          return body['message'].toString();
+        }
+        return 'Spisaniya qayd etildi';
+      }
+      throw Exception('Spisaniya saqlanmadi: ${response.statusCode}');
+    } on DioException catch (e) {
+      _throwDio(e, 'spisaniya saqlanmadi');
+    }
+  }
+
   // POST /api/stock/min — mahsulot uchun minimal qoldiq chegarasi.
   Future<String> setMin({
     required int skladId,

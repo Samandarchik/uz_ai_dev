@@ -68,16 +68,24 @@ class _StockSkladViewState extends State<StockSkladView>
       skladId: widget.skladId,
     );
     if (result == null || !mounted) return;
-    final err = await provider.adjust(
-      skladId: widget.skladId,
-      productId: result.productId,
-      qty: result.qty,
-      comment: result.comment,
-    );
+    final err = result.isWriteOff
+        ? await provider.writeOff(
+            skladId: widget.skladId,
+            productId: result.productId,
+            qty: result.qty,
+            reason: result.comment,
+          )
+        : await provider.adjust(
+            skladId: widget.skladId,
+            productId: result.productId,
+            qty: result.qty,
+            comment: result.comment,
+          );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(err ?? 'Korreksiya saqlandi'),
+        content: Text(err ??
+            (result.isWriteOff ? 'Spisaniya qayd etildi' : 'Korreksiya saqlandi')),
         backgroundColor: err == null ? Colors.green : Colors.red,
       ),
     );
@@ -688,15 +696,19 @@ class _MoveRow extends StatelessWidget {
 // ─────────────────────── Korreksiya dialogi ───────────────────────
 
 // Dialog natijasi: tanlangan mahsulot, ishorali miqdor va izoh.
+// isWriteOff=true — SPISANIYA (brak): /api/stock/write-off ga ketadi
+// (qty musbat, comment = sabab, majburiy).
 class StockAdjustResult {
   final int productId;
-  final double qty; // + kirim, − chiqim
+  final double qty; // + kirim, − chiqim (spisaniyada musbat)
   final String comment;
+  final bool isWriteOff;
 
   const StockAdjustResult({
     required this.productId,
     required this.qty,
     required this.comment,
+    this.isWriteOff = false,
   });
 }
 
@@ -728,7 +740,8 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
   final TextEditingController _commentController = TextEditingController();
 
   CatalogProduct? _selected;
-  bool _isMinus = false; // false: + kirim, true: − chiqim
+  // 0: + kirim, 1: − chiqim, 2: spisaniya (brak)
+  int _mode = 0;
   String? _error;
 
   @override
@@ -781,14 +794,19 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
       setState(() => _error = 'Miqdorni to\'g\'ri kiriting (0 dan katta)');
       return;
     }
+    if (_mode == 2 && _commentController.text.trim().isEmpty) {
+      setState(() => _error = 'Spisaniya uchun sababi majburiy');
+      return;
+    }
     // UI (kg/l) -> API (butun gramm/ml); boshqa birliklar o'zgarishsiz.
     final apiQty = qtyFromUiSafe(qty, _selected!.type).toDouble();
     Navigator.pop(
       context,
       StockAdjustResult(
         productId: _selected!.id,
-        qty: _isMinus ? -apiQty : apiQty,
+        qty: _mode == 1 ? -apiQty : apiQty,
         comment: _commentController.text.trim(),
+        isWriteOff: _mode == 2,
       ),
     );
   }
@@ -835,24 +853,33 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            // Yo'nalish: + kirim / − chiqim.
+            // Rejim: + kirim / − chiqim / spisaniya (brak).
             Row(
               children: [
                 Expanded(
                   child: ChoiceChip(
                     label: const Center(child: Text('Kirim (+)')),
-                    selected: !_isMinus,
+                    selected: _mode == 0,
                     selectedColor: Colors.green.shade100,
-                    onSelected: (_) => setState(() => _isMinus = false),
+                    onSelected: (_) => setState(() => _mode = 0),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: ChoiceChip(
                     label: const Center(child: Text('Chiqim (−)')),
-                    selected: _isMinus,
+                    selected: _mode == 1,
                     selectedColor: Colors.red.shade100,
-                    onSelected: (_) => setState(() => _isMinus = true),
+                    onSelected: (_) => setState(() => _mode = 1),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Center(child: Text('Brak 🗑')),
+                    selected: _mode == 2,
+                    selectedColor: Colors.orange.shade100,
+                    onSelected: (_) => setState(() => _mode = 2),
                   ),
                 ),
               ],
@@ -880,9 +907,9 @@ class _StockAdjustDialogState extends State<_StockAdjustDialog> {
             TextField(
               controller: _commentController,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Izoh (ixtiyoriy)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _mode == 2 ? 'Sababi (majburiy)' : 'Izoh (ixtiyoriy)',
+                border: const OutlineInputBorder(),
               ),
             ),
           ],

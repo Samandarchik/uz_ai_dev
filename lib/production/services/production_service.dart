@@ -8,6 +8,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/models/price_history_model.dart';
 import 'package:uz_ai_dev/production/models/production_cost_model.dart';
+import 'package:uz_ai_dev/production/models/production_plan_model.dart';
 import 'package:uz_ai_dev/production/models/production_stats_model.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 
@@ -133,6 +134,25 @@ class ProductionService {
       throw Exception('Tannarx yuklanmadi: ${response.statusCode}');
     } on DioException catch (e) {
       _throwDio(e, 'tannarx yuklanmadi');
+    }
+  }
+
+  // GET /api/production/requirements — kunlik ishlab chiqarish rejasi (MRP):
+  // filial buyurtmalaridan tort → П/Ф → xomashyo ehtiyoji va defitsit.
+  // admin/superadmin/shef/bugalter.
+  Future<ProductionPlan> fetchRequirements({String? date, int? skladId}) async {
+    try {
+      final response = await dio.get(
+        AppUrls.productionRequirements,
+        queryParameters: {
+          if (date != null) 'date': date,
+          if (skladId != null) 'sklad_id': skladId,
+        },
+      );
+      return ProductionPlan.fromJson(
+          Map<String, dynamic>.from(response.data['data']));
+    } on DioException catch (e) {
+      _throwDio(e, 'reja yuklanmadi');
     }
   }
 

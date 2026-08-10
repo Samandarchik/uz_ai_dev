@@ -79,6 +79,8 @@ String _actionLabel(String action) {
       return 'Tex karta o\'zgartirildi';
     case 'tex_karta_rollback':
       return 'Tex karta qaytarildi';
+    case 'spisaniya':
+      return 'Spisaniya (brak)';
     default:
       return action;
   }
@@ -120,6 +122,8 @@ IconData _actionIcon(String action) {
       return Icons.receipt_long;
     case 'tex_karta_rollback':
       return Icons.undo;
+    case 'spisaniya':
+      return Icons.delete_sweep_outlined;
     default:
       return Icons.history;
   }

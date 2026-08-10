@@ -19,12 +19,14 @@ import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/sklads_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/dashboard_card.dart';
 import 'package:uz_ai_dev/admin/ui/user_management_screen.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/production/models/latest_price_model.dart';
 import 'package:uz_ai_dev/production/services/production_service.dart';
+import 'package:uz_ai_dev/production/ui/production_plan_page.dart';
 
 class AdminHomeUi extends StatefulWidget {
   const AdminHomeUi({super.key});
@@ -148,6 +150,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'production_plan',
+                child: ListTile(
+                  leading: Icon(Icons.event_note),
+                  title: Text('Ishlab chiqarish rejasi'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'audit_log',
                 child: ListTile(
                   leading: Icon(Icons.history),
@@ -198,6 +208,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'stock':
                   context.push(const AdminStockUi());
+                  break;
+                case 'production_plan':
+                  context.push(const ProductionPlanPage());
                   break;
                 case 'audit_log':
                   context.push(const AuditLogUi());
@@ -307,9 +320,11 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
             onRefresh: () => _loadInitialData(forceRefresh: true),
             child: ListView.builder(
               padding: const EdgeInsets.all(8),
-              itemCount: categoryProvider.categories.length,
+              // index 0 — boshqaruv paneli (DashboardCard), qolgani kategoriyalar.
+              itemCount: categoryProvider.categories.length + 1,
               itemBuilder: (context, index) {
-                final category = categoryProvider.categories[index];
+                if (index == 0) return const DashboardCard();
+                final category = categoryProvider.categories[index - 1];
 
                 final productCount =
                     productProvider.getProductCountByCategory(category.id);

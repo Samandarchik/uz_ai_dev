@@ -82,6 +82,14 @@ abstract final class AppUrls {
   // Ishlab chiqarish (производство) — shef roli.
   // Tex kartasi bor mahsulotlar ro'yxati (buyurtma yaratish uchun).
   static String productionProducts = '$baseUrl/api/production/products';
+
+  // Admin boshqaruv paneli: bugungi buyurtmalar, ishlab chiqarish holati,
+  // kam qolgan xomashyo jamlanmasi.
+  static String dashboard = '$baseUrl/api/dashboard';
+
+  // Kunlik ishlab chiqarish rejasi (MRP): ?date=YYYY-MM-DD&sklad_id=N —
+  // filial buyurtmalaridan tort → П/Ф → xomashyo ehtiyoji va defitsit.
+  static String productionRequirements = '$baseUrl/api/production/requirements';
   // Ishlab chiqarish buyurtmalari. Ost-yo'llar:
   //   /{id}                                   — bitta buyurtma
   //   /{id}/items/{pi}/stages/{si}/accept     — shef masalliqni qabul qildi
@@ -105,6 +113,9 @@ abstract final class AppUrls {
   static String stockAdjust = '$baseUrl/api/stock/adjust';
   // GET ?sklad_id=N[&product_id=M][&limit=K] — harakatlar tarixi (desc).
   static String stockMoves = '$baseUrl/api/stock/moves';
+  // POST {sklad_id, product_id, qty(+), reason} — SPISANIYA (brak/yo'qotish):
+  // skladdan chiqim + audit ("spisaniya" — POS spisaniyasi bilan bitta hisobot).
+  static String stockWriteOff = '$baseUrl/api/stock/write-off';
   // POST {sklad_id, product_id, min_qty} — minimal qoldiq chegarasi.
   static String stockMin = '$baseUrl/api/stock/min';
   // POST {sklad_id, items:[{product_id, actual_qty}]} — inventarizatsiya

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
+import 'package:uz_ai_dev/production/ui/production_plan_page.dart';
 import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/shef/ui/shef_create_order_ui.dart';
 import 'package:uz_ai_dev/shef/ui/shef_order_detail_ui.dart';
@@ -77,6 +78,15 @@ class _ShefHomeUiState extends State<ShefHomeUi> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Kunlik ishlab chiqarish rejasi (MRP) — nima pishirish kerak.
+          IconButton(
+            tooltip: 'Ishlab chiqarish rejasi',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductionPlanPage()),
+            ),
+            icon: const Icon(Icons.event_note),
+          ),
           IconButton(
             onPressed: _logout,
             icon: const Icon(Icons.logout),

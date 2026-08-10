@@ -100,6 +100,32 @@ class StockProvider extends ChangeNotifier with ClearableProvider {
 
   // Korreksiya (+/- qty). Muvaffaqiyatda skladni jim yangilaydi va null
   // qaytaradi; xatoda xabar matni qaytadi (UI snackbar ko'rsatadi).
+  /// Spisaniya (brak) — muvaffaqiyatda null, aks holda xato matni.
+  Future<String?> writeOff({
+    required int skladId,
+    required int productId,
+    required double qty,
+    required String reason,
+  }) async {
+    isSubmitting = true;
+    notifyListeners();
+    try {
+      await _service.writeOff(
+        skladId: skladId,
+        productId: productId,
+        qty: qty,
+        reason: reason,
+      );
+      await refreshSilently(skladId);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<String?> adjust({
     required int skladId,
     required int productId,
