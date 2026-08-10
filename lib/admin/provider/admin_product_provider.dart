@@ -164,6 +164,16 @@ class ProductProviderAdmin extends ChangeNotifier with ClearableProvider {
   }
 
   // Delete product
+  /// Serverda ALLAQACHON yangilangan mahsulotni lokal ro'yxatlarga qo'yadi
+  /// (masalan tex karta rollback javobidan) — qayta fetch qilinmaydi.
+  void applyServerProduct(ProductModelAdmin updated) {
+    final index = _allProducts.indexWhere((p) => p.id == updated.id);
+    if (index != -1) _allProducts[index] = updated;
+    final filteredIndex = _filteredProducts.indexWhere((p) => p.id == updated.id);
+    if (filteredIndex != -1) _filteredProducts[filteredIndex] = updated;
+    notifyListeners();
+  }
+
   Future<bool> deleteProduct(ProductModelAdmin product) async {
     _isLoading = true;
     _error = null;

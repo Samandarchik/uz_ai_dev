@@ -7,6 +7,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
+import 'package:uz_ai_dev/admin/model/tech_card_version.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/error_handler.dart';
@@ -153,6 +154,34 @@ class ApiProductService {
         throw Exception('Narx saqlanmadi: ${parseDioError(e)}');
       }
       throw Exception('Tarmoq xatosi: ${e.message}');
+    }
+  }
+
+  // Retsept (tex karta) tarixi — meta ro'yxat, eng yangisi birinchi.
+  Future<List<TechCardVersionMeta>> fetchTechCardVersions(int productId) async {
+    try {
+      final response = await dio.get(AppUrls.techCardVersions(productId));
+      final data = response.data['data'];
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => TechCardVersionMeta.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception('Tarix yuklanmadi: ${parseDioError(e)}');
+    }
+  }
+
+  // Tex kartani tanlangan versiyaga qaytarish. Javob — yangilangan mahsulot.
+  Future<ProductModelAdmin> rollbackTechCard(int productId, int versionId) async {
+    try {
+      final response = await dio.post(
+        AppUrls.techCardRollback(productId),
+        data: {'version_id': versionId},
+      );
+      return ProductModelAdmin.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw Exception('Qaytarib bo\'lmadi: ${parseDioError(e)}');
     }
   }
 

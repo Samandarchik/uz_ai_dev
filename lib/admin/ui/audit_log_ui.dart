@@ -69,6 +69,16 @@ String _actionLabel(String action) {
       return 'POS inventarizatsiya';
     case 'buyurtma_tahrir':
       return 'Buyurtma tahrirlandi';
+    case 'mahsulot_yaratish':
+      return 'Mahsulot yaratildi';
+    case 'mahsulot_tahrir':
+      return 'Mahsulot tahrirlandi';
+    case 'mahsulot_ochirish':
+      return 'Mahsulot o\'chirildi';
+    case 'tex_karta_tahrir':
+      return 'Tex karta o\'zgartirildi';
+    case 'tex_karta_rollback':
+      return 'Tex karta qaytarildi';
     default:
       return action;
   }
@@ -100,6 +110,16 @@ IconData _actionIcon(String action) {
       return Icons.checklist;
     case 'buyurtma_tahrir':
       return Icons.edit;
+    case 'mahsulot_yaratish':
+      return Icons.add_box_outlined;
+    case 'mahsulot_tahrir':
+      return Icons.edit_note;
+    case 'mahsulot_ochirish':
+      return Icons.delete_outline;
+    case 'tex_karta_tahrir':
+      return Icons.receipt_long;
+    case 'tex_karta_rollback':
+      return Icons.undo;
     default:
       return Icons.history;
   }

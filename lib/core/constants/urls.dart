@@ -20,6 +20,14 @@ abstract final class AppUrls {
   static String productManualPrice(int id) =>
       '$baseUrl/api/products/$id/manual-price';
 
+  // Retsept (tex karta) tarixi: GET — versiyalar ro'yxati (meta, kartasiz),
+  // POST rollback {"version_id": N} — kartani tanlangan nusxaga qaytaradi.
+  // Faqat admin.
+  static String techCardVersions(int id) =>
+      '$baseUrl/api/products/$id/tech-card/versions';
+  static String techCardRollback(int id) =>
+      '$baseUrl/api/products/$id/tech-card/rollback';
+
   // Ombor (bozor mahsulotlari)
   static String omborProducts = '$baseUrl/api/ombor/products';
 

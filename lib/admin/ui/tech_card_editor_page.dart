@@ -14,7 +14,9 @@ import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/product_model.dart';
 import 'package:uz_ai_dev/admin/model/tech_card.dart';
 import 'package:uz_ai_dev/admin/model/tech_card_cost.dart';
+import 'package:uz_ai_dev/admin/model/tech_card_version.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
+import 'package:uz_ai_dev/admin/services/api_product_service.dart';
 import 'package:uz_ai_dev/admin/services/tech_image_upload_service.dart';
 import 'package:uz_ai_dev/admin/ui/composition_picker_page.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/cutting_scheme.dart';
@@ -115,7 +117,9 @@ class TechCardEditorPage extends StatefulWidget {
 }
 
 class _TechCardEditorPageState extends State<TechCardEditorPage> {
-  late final TechCardController _controller;
+  // final EMAS — retsept tarixidan rollback qilinganda qaytarilgan karta
+  // bilan qayta quriladi (_confirmRollback).
+  late TechCardController _controller;
   final ImagePicker _picker = ImagePicker();
   final TechImageUploadService _uploader = TechImageUploadService();
 
@@ -210,6 +214,112 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // ---- Retsept tarixi (versiyalar) + rollback ----
+
+  void _showHistorySheet() {
+    final service = ApiProductService();
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (_, scroll) => FutureBuilder<List<TechCardVersionMeta>>(
+          future: service.fetchTechCardVersions(widget.product.id),
+          builder: (ctx, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Center(
+                  child: Text('${snap.error}'.replaceFirst('Exception: ', '')));
+            }
+            final list = snap.data ?? [];
+            if (list.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Tarix hali bo\'sh — karta birinchi marta '
+                    'o\'zgartirilganda eski nusxasi shu yerda paydo bo\'ladi.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+            return ListView.separated(
+              controller: scroll,
+              itemCount: list.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (ctx, i) {
+                final v = list[i];
+                return ListTile(
+                  leading: Icon(v.action == 'rollback'
+                      ? Icons.undo
+                      : v.action == 'ochirish'
+                          ? Icons.delete_outline
+                          : Icons.edit_note),
+                  title: Text('${_fmtDt(v.savedAt)} — ${v.userName}'),
+                  subtitle: Text(v.summary.isEmpty ? '—' : v.summary),
+                  trailing: TextButton(
+                    onPressed: () => _confirmRollback(sheetCtx, v),
+                    child: const Text('Qaytarish'),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _fmtDt(DateTime? d) {
+    if (d == null) return '-';
+    final l = d.toLocal();
+    String p2(int n) => n.toString().padLeft(2, '0');
+    return '${p2(l.day)}.${p2(l.month)}.${l.year} ${p2(l.hour)}:${p2(l.minute)}';
+  }
+
+  Future<void> _confirmRollback(
+      BuildContext sheetCtx, TechCardVersionMeta v) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Retseptni qaytarish'),
+        content: Text('Karta ${_fmtDt(v.savedAt)} holatiga qaytariladi.\n\n'
+            'Joriy holat ham tarixga yoziladi — kerak bo\'lsa keyin '
+            'qayta tiklash mumkin.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Bekor')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Qaytarish')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final updated =
+          await ApiProductService().rollbackTechCard(widget.product.id, v.id);
+      if (!mounted) return;
+      context.read<ProductProviderAdmin>().applyServerProduct(updated);
+      // Muharrir qaytarilgan karta bilan qayta quriladi.
+      setState(() {
+        _controller.dispose();
+        _controller = TechCardController(updated.techCard);
+      });
+      if (sheetCtx.mounted) Navigator.pop(sheetCtx); // tarix sheet'ini yopish
+      _snack('✓ Retsept qaytarildi');
+    } catch (e) {
+      if (mounted) _snack('$e'.replaceFirst('Exception: ', ''), error: true);
     }
   }
 
@@ -1358,6 +1468,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       appBar: AppBar(
         title: Text(widget.product.name),
         actions: [
+          // Retsept tarixi — kim, qachon, nimani o'zgartirgan + rollback.
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Retsept tarixi',
+            onPressed: _showHistorySheet,
+          ),
           // Tannarx (1 dona / 1 partiya) — GET /api/production/cost.
           IconButton(
             icon: const Icon(Icons.payments_outlined),
