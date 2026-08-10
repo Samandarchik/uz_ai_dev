@@ -493,6 +493,19 @@ class _AdminProductUiState extends State<AdminProductUi> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Продукт удален')),
                 );
+              } else if (context.mounted) {
+                // Server sababi bilan rad etdi (masalan: retseptlarda
+                // ishlatilgan — avval o'sha tex kartalardan olib tashlash kerak).
+                Navigator.pop(context);
+                final err = context.read<ProductProviderAdmin>().error ??
+                    'O\'chirib bo\'lmadi';
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(err.replaceFirst('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 7),
+                  ),
+                );
               }
             },
             child: const Text('Удалить'),

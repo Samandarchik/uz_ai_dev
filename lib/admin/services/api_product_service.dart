@@ -114,7 +114,9 @@ class ApiProductService {
         if (e.response!.statusCode == 404) {
           throw Exception('Mahsulot topilmadi');
         } else if (e.response!.statusCode == 409) {
-          throw Exception('Mahsulot o\'chirib bo\'lmaydi, u ishlatilmoqda');
+          // Server qaysi retseptlarda ishlatilganini aytadi — o'sha matnni ko'rsatamiz.
+          throw Exception(parseDioError(e,
+              fallback: 'Mahsulot o\'chirib bo\'lmaydi, u retseptlarda ishlatilmoqda'));
         }
         throw Exception('Mahsulot o\'chirishda Ошибка: ${parseDioError(e)}');
       } else {
