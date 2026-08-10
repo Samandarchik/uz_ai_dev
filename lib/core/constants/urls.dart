@@ -83,6 +83,13 @@ abstract final class AppUrls {
   // Tex kartasi bor mahsulotlar ro'yxati (buyurtma yaratish uchun).
   static String productionProducts = '$baseUrl/api/production/products';
 
+  // Яндекс/Узум yetkazib berish daftari (admin/bugalter): GET ?platform=&month=,
+  // POST day (kun upsert), GET summary (yillik), PUT settings (faqat admin).
+  static String delivery = '$baseUrl/api/delivery';
+  static String deliveryDay = '$baseUrl/api/delivery/day';
+  static String deliverySummary = '$baseUrl/api/delivery/summary';
+  static String deliverySettings = '$baseUrl/api/delivery/settings';
+
   // Admin boshqaruv paneli: bugungi buyurtmalar, ishlab chiqarish holati,
   // kam qolgan xomashyo jamlanmasi.
   static String dashboard = '$baseUrl/api/dashboard';
