@@ -14,7 +14,6 @@ import 'package:uz_ai_dev/admin/ui/admin_product_ui.dart';
 import 'package:uz_ai_dev/admin/ui/analytics_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/audit_log_ui.dart';
 import 'package:uz_ai_dev/admin/ui/convert_pf_ui.dart';
-import 'package:uz_ai_dev/admin/ui/delivery_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
@@ -159,14 +158,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
-                value: 'delivery',
-                child: ListTile(
-                  leading: Icon(Icons.delivery_dining),
-                  title: Text('Yetkazib berish (Яндекс/Узум)'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
                 value: 'audit_log',
                 child: ListTile(
                   leading: Icon(Icons.history),
@@ -220,9 +211,6 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'production_plan':
                   context.push(const ProductionPlanPage());
-                  break;
-                case 'delivery':
-                  context.push(const DeliveryUi());
                   break;
                 case 'audit_log':
                   context.push(const AuditLogUi());
