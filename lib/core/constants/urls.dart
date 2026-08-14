@@ -205,6 +205,13 @@ abstract final class AppUrls {
   // RK7 sotuv nuqtalari: GET — hammasi (mapping holati bilan);
   // POST {uot_guid, filial_id, sklad_id, active} — upsert.
   static const String rk7SalePlaces = '$baseUrl/api/rk7/sale-places';
+  // SH5 (StoreHouse) qoldiq ko'rinishi (faqat admin, PLAN_OSTATKA bosqich 0):
+  // GET — omborlar ro'yxati {sklads:[{id, sh5_rid, name, taken_at,
+  // goods_count}]}; manba vaqtincha StoreHouse, keyin Mone stock egallaydi.
+  static const String sh5Remains = '$baseUrl/api/sh5/remains';
+  // Bitta SH5 ombori tovarlari: GET ?q= (nom qidiruvi) — {name, taken_at,
+  // goods:[{rid, name, unit, qty_milli}]}. qty_milli — qoldiq×1000 BUTUN.
+  static String sh5Remain(int id) => '$baseUrl/api/sh5/remains/$id';
 
   //Category
   static const String category = '$baseUrl/api/categories';

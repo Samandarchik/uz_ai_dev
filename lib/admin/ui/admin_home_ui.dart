@@ -18,6 +18,7 @@ import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
 import 'package:uz_ai_dev/admin/ui/rk7_hub_ui.dart';
+import 'package:uz_ai_dev/admin/ui/sh5_ostatka_ui.dart';
 import 'package:uz_ai_dev/admin/ui/sklads_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/dashboard_card.dart';
@@ -183,6 +184,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'sh5_ostatka',
+                child: ListTile(
+                  leading: Icon(Icons.inventory_2_outlined),
+                  title: Text('Ostatka (SH5)'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'filials',
                 child: ListTile(
                   leading: Icon(Icons.store_outlined),
@@ -229,6 +238,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'rk7_hub':
                   context.push(const Rk7HubUi());
+                  break;
+                case 'sh5_ostatka':
+                  context.push(const Sh5OstatkaUi());
                   break;
                 case 'filials':
                   context.push(const FilialsUi());
