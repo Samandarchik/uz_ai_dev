@@ -190,6 +190,22 @@ abstract final class AppUrls {
   // default birinchi filial) — {filial_id, filial_name, categories, products}.
   // Faqat admin.
   static const String posMenu = '$baseUrl/api/pos-menu';
+  // RK7 integratsiyasi (faqat admin). Import qilingan smenalar: GET ?days=30 —
+  // {shifts:[...]}, eng yangisi birinchi, days clamp [1,92].
+  static const String rk7Shifts = '$baseUrl/api/rk7/shifts';
+  // Bitta smena to'liq: items/voids/deductions/unmapped.
+  static String rk7Shift(int id) => '$baseUrl/api/rk7/shifts/$id';
+  // Sotuvda uchragan bog'lanmagan RK7 taomlari (smenalardan jamlab):
+  // {dish_guid, dish_name, last_date, total_qty_milli}.
+  static const String rk7Unmapped = '$baseUrl/api/rk7/unmapped';
+  // Taom → Mone mahsuloti bog'lanishi: GET ?q= (nom/kod qidiruvi, limit 200);
+  // POST {dish_guid, product_id, deduct_mode, per_portion, active} — upsert.
+  // per_portion — BUTUN (1 porsiyaga necha saqlash birligi), float yo'q.
+  static const String rk7Mappings = '$baseUrl/api/rk7/mappings';
+  // RK7 sotuv nuqtalari: GET — hammasi (mapping holati bilan);
+  // POST {uot_guid, filial_id, sklad_id, active} — upsert.
+  static const String rk7SalePlaces = '$baseUrl/api/rk7/sale-places';
+
   //Category
   static const String category = '$baseUrl/api/categories';
   static const String categoryReorder = '$baseUrl/api/categories/reorder';

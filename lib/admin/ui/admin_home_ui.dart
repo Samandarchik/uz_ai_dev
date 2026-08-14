@@ -17,6 +17,7 @@ import 'package:uz_ai_dev/admin/ui/convert_pf_ui.dart';
 import 'package:uz_ai_dev/admin/ui/filials_ui.dart';
 import 'package:uz_ai_dev/admin/ui/pos_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/profit_control_ui.dart';
+import 'package:uz_ai_dev/admin/ui/rk7_hub_ui.dart';
 import 'package:uz_ai_dev/admin/ui/sklads_ui.dart';
 import 'package:uz_ai_dev/admin/ui/admin_stock_ui.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/dashboard_card.dart';
@@ -174,6 +175,14 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'rk7_hub',
+                child: ListTile(
+                  leading: Icon(Icons.sync_alt),
+                  title: Text('RK7'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'filials',
                 child: ListTile(
                   leading: Icon(Icons.store_outlined),
@@ -217,6 +226,9 @@ class _AdminHomeUiState extends State<AdminHomeUi> {
                   break;
                 case 'pos_hub':
                   context.push(const PosHubUi());
+                  break;
+                case 'rk7_hub':
+                  context.push(const Rk7HubUi());
                   break;
                 case 'filials':
                   context.push(const FilialsUi());

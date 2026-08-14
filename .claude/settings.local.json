@@ -5,7 +5,12 @@
       "Bash(flutter analyze:*)",
       "Bash(cd:*)",
       "Bash(sqlite3:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Read(//c/Users/Администратор/**)",
+      "Read(//c/Users/Администратор/.ssh/**)",
+      "Bash(where ssh *)",
+      "Bash(command -v ssh)",
+      "Read(//c/pos_flutter/**)"
     ]
   }
 }
