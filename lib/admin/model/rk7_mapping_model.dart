@@ -3,6 +3,9 @@
 //
 // MUHIM: `per_portion` — BUTUN son (1 porsiyaga necha SAQLASH birligi: шт→1,
 // кг mahsulotga gramm). Serverga float YUBORILMAYDI.
+//
+// `sklad_id` — IXTIYORIY sklad override (PLAN_RK7 §9.4): 0 = sotuv nuqtasining
+// skladi (default), ≠0 = shu mahsulot aynan tanlangan skladdan yechiladi.
 import 'package:uz_ai_dev/admin/model/rk7_shift_model.dart'
     show rk7AsBool, rk7AsInt;
 
@@ -22,6 +25,7 @@ class Rk7Mapping {
   final String productName; // backend qaytarsa ko'rsatiladi
   final String deductMode; // "self" | "ingredients"
   final int perPortion; // BUTUN, default 1
+  final int skladId; // 0 — nuqtaning skladi (default), aks holda override
   final bool active;
 
   const Rk7Mapping({
@@ -33,10 +37,14 @@ class Rk7Mapping {
     this.productName = '',
     this.deductMode = Rk7DeductMode.self,
     this.perPortion = 1,
+    this.skladId = 0,
     this.active = true,
   });
 
   bool get isMapped => productId > 0;
+
+  /// `sklad_id != 0` — yechish nuqta skladi o'rniga shu skladdan bo'ladi.
+  bool get hasSkladOverride => skladId > 0;
 
   factory Rk7Mapping.fromJson(Map<String, dynamic> json) {
     final mode = json['deduct_mode']?.toString() ?? '';
@@ -52,6 +60,7 @@ class Rk7Mapping {
           mode == Rk7DeductMode.ingredients ? mode : Rk7DeductMode.self,
       perPortion:
           json['per_portion'] == null ? 1 : rk7AsInt(json['per_portion']),
+      skladId: rk7AsInt(json['sklad_id']),
       active: json['active'] == null ? true : rk7AsBool(json['active']),
     );
   }
@@ -62,6 +71,7 @@ class Rk7Mapping {
         'product_id': productId,
         'deduct_mode': deductMode,
         'per_portion': perPortion,
+        'sklad_id': skladId,
         'active': active,
       };
 
@@ -70,6 +80,7 @@ class Rk7Mapping {
     String? productName,
     String? deductMode,
     int? perPortion,
+    int? skladId,
     bool? active,
   }) {
     return Rk7Mapping(
@@ -81,6 +92,7 @@ class Rk7Mapping {
       productName: productName ?? this.productName,
       deductMode: deductMode ?? this.deductMode,
       perPortion: perPortion ?? this.perPortion,
+      skladId: skladId ?? this.skladId,
       active: active ?? this.active,
     );
   }

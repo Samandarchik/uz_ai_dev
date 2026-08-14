@@ -12,6 +12,7 @@ import 'package:uz_ai_dev/admin/model/rk7_shift_model.dart';
 import 'package:uz_ai_dev/admin/provider/admin_product_provider.dart';
 import 'package:uz_ai_dev/admin/services/rk7_service.dart';
 import 'package:uz_ai_dev/admin/ui/widgets/rk7_common.dart';
+import 'package:uz_ai_dev/core/data/sklad_registry.dart';
 
 // Mapping tabi — RK7 taomini Mone mahsulotiga bog'lash. Bog'lanmagan taomlar
 // (sotuvda uchragan, lekin mapping'i yo'q) birinchi ko'rinadi, chunki ular
@@ -19,7 +20,8 @@ import 'package:uz_ai_dev/admin/ui/widgets/rk7_common.dart';
 //
 // MUHIM: per_portion — BUTUN son (1 porsiyaga necha SAQLASH birligi),
 // serverga float YUBORILMAYDI. Mahsulot manbai — ProductProviderAdmin
-// (CODEMAP: admin mahsulotlarining YAGONA manbai).
+// (CODEMAP: admin mahsulotlarining YAGONA manbai), sklad nomlari —
+// SkladRegistry (CODEMAP: YAGONA manba, hardcode map yozilmaydi).
 class Rk7MappingTab extends StatefulWidget {
   const Rk7MappingTab({super.key});
 
@@ -133,6 +135,13 @@ class _Rk7MappingTabState extends State<Rk7MappingTab>
     final perPortionController = TextEditingController(
       text: (existing?.perPortion ?? 1).toString(),
     );
+    // §9.4: ixtiyoriy sklad override. 0 = sotuv nuqtasining skladi (default).
+    // Registrda yo'q id (sklad o'chirilgan) bo'lsa ham tanlov yo'qolmasin.
+    int skladId = existing?.skladId ?? 0;
+    final skladIds = <int>[
+      ...SkladRegistry.ids,
+      if (skladId > 0 && !SkladRegistry.ids.contains(skladId)) skladId,
+    ];
 
     final saved = await showDialog<bool>(
       context: context,
@@ -216,6 +225,42 @@ class _Rk7MappingTabState extends State<Rk7MappingTab>
                     style:
                         TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                   ),
+                  const SizedBox(height: 12),
+                  // sklad_id — ixtiyoriy override (0 = nuqta skladi).
+                  DropdownButtonFormField<int>(
+                    initialValue: skladId,
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(
+                        value: 0,
+                        child: Text('Nuqta skladi'),
+                      ),
+                      for (final id in skladIds)
+                        DropdownMenuItem(
+                          value: id,
+                          child: Text(SkladRegistry.nameOf(id)),
+                        ),
+                    ],
+                    onChanged: (v) => setDialogState(() => skladId = v ?? 0),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    decoration: const InputDecoration(
+                      labelText: 'Sklad (ixtiyoriy)',
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: kRk7Accent, width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Bo\'sh qoldirilsa (Nuqta skladi) sotuv nuqtasining '
+                    'skladidan yechiladi.',
+                    style:
+                        TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -258,6 +303,7 @@ class _Rk7MappingTabState extends State<Rk7MappingTab>
         productId: product.id,
         deductMode: mode,
         perPortion: perPortion,
+        skladId: skladId,
       );
       if (!mounted) return;
       rk7Snack(context, 'Bog\'lanish saqlandi');
@@ -540,6 +586,17 @@ class _Rk7MappingTabState extends State<Rk7MappingTab>
                             : Colors.red.shade700,
                       ),
                     ),
+                    // §9.4: sklad override — 0 bo'lsa hech narsa ko'rsatilmaydi.
+                    if (mapping.hasSkladOverride) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: rk7Badge(
+                          SkladRegistry.nameOf(mapping.skladId),
+                          color: kRk7AccentDark,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

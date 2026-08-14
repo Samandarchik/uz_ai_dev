@@ -52,11 +52,13 @@ class Rk7Service {
   }
 
   /// Mapping upsert. perPortion — BUTUN son (float yuborilmaydi).
+  /// [skladId] — ixtiyoriy sklad override: 0 = nuqtaning skladi (default).
   Future<Rk7Mapping?> saveMapping({
     required String dishGuid,
     required int productId,
     required String deductMode,
     required int perPortion,
+    int skladId = 0,
     bool active = true,
   }) async {
     final data = await _post(AppUrls.rk7Mappings, {
@@ -64,6 +66,7 @@ class Rk7Service {
       'product_id': productId,
       'deduct_mode': deductMode,
       'per_portion': perPortion,
+      'sklad_id': skladId,
       'active': active,
     });
     final raw = data is Map && data['mapping'] is Map ? data['mapping'] : data;
