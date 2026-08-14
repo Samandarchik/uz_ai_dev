@@ -151,8 +151,47 @@ function Show-Menu([string]$ChatId) {
     foreach ($k in $Projects.Keys) {
         $btns += , (@(@{ text = $k; callback_data = "b:$k" }))
     }
+    # SH5 qoldiqlarini qo'lda yangilash (rk7_bridge sh5-remains) — test rejimi,
+    # daemon yo'q: faqat tugma bosilganda yangilanadi.
+    $btns += , (@(@{ text = "Ostatka yangilash (SH5)"; callback_data = "sh5:refresh" }))
     $markup = (@{ inline_keyboard = $btns } | ConvertTo-Json -Depth 6 -Compress)
     Send-Msg $ChatId "Qaysi loyihani build qilamiz? Tugmani bosing:" $markup | Out-Null
+}
+
+# --- SH5 qoldiqlarini yangilash (rk7_bridge sh5-remains) ---
+# SH5 (StoreHouse) dan qoldiqlarni o'qib Mone'ga push qiladi — ilovadagi
+# «Ostatka (SH5)» ekrani yangi raqamlarni ko'radi. Bridge config'i o'z
+# papkasidan o'qiladi, shuning uchun Push-Location shart.
+$Sh5BridgeDir = 'C:\112233\rk7_bridge'
+
+function Invoke-Sh5Refresh([string]$ChatId) {
+    $r = Send-Msg $ChatId "Ostatka yangilanmoqda (SH5 -> Mone)..."
+    $mid = $null
+    if ($r -and $r.result) { $mid = [string]$r.result.message_id }
+
+    $exe = Join-Path $Sh5BridgeDir 'rk7bridge.exe'
+    if (-not (Test-Path $exe)) {
+        $txt = "XATO: rk7bridge.exe topilmadi:`n$exe"
+        if ($mid) { Edit-Msg $ChatId $mid $txt } else { Send-Msg $ChatId $txt | Out-Null }
+        return
+    }
+
+    $out = ''
+    try {
+        Push-Location $Sh5BridgeDir
+        $out = ((& .\rk7bridge.exe sh5-remains 2>&1) | ForEach-Object { "$_" }) -join "`n"
+        $code = $LASTEXITCODE
+    } finally { Pop-Location }
+
+    # Oxirgi qatorlar yetarli (masalan "omborlar=40 tovar satrlari=3269").
+    $tail = (($out -split "`n") | Select-Object -Last 4) -join "`n"
+    if ($code -eq 0) {
+        $txt = "Ostatka yangilandi (SH5 -> Mone).`n$tail`nIlovada «Ostatka (SH5)» ni oching."
+    } else {
+        $txt = "Ostatka yangilash XATO (kod $code):`n$tail"
+    }
+    if ($mid) { Edit-Msg $ChatId $mid $txt } else { Send-Msg $ChatId $txt | Out-Null }
+    Write-Host ">>> ostatka yangilash: kod=$code" -ForegroundColor Cyan
 }
 
 # --- Bitta loyihani build qilish + progress ---
@@ -289,6 +328,10 @@ while ($true) {
                     Send-Msg $chatId "Ruxsat yo'q. Sizning ID: $fromId" | Out-Null; continue
                 }
                 $data = [string]$cb.data
+                if ($data -eq 'sh5:refresh') {
+                    Invoke-Sh5Refresh $chatId
+                    continue
+                }
                 if ($data -like 'b:*' -or $data -like 'f:*') {
                     $force = $data.StartsWith('f:')   # "Baribir build qilish" - versiya tekshiruvisiz
                     $name  = $data.Substring(2)
@@ -318,7 +361,8 @@ while ($true) {
             $cmd = ($text -replace '@\w+$', '').ToLower()
             switch -Regex ($cmd) {
                 '^/?(build|menu|start|loyiha)$' { Show-Menu $chatId }
-                '^/?(status|ping)$'             { Send-Msg $chatId "Bot tirik. Loyihalar: $($Projects.Keys -join ', '). 'build' deb yozing." | Out-Null }
+                '^/?(ostatka|astatka)$'         { Invoke-Sh5Refresh $chatId }
+                '^/?(status|ping)$'             { Send-Msg $chatId "Bot tirik. Loyihalar: $($Projects.Keys -join ', '). 'build' — menyu, 'ostatka' — SH5 qoldiqni yangilash." | Out-Null }
                 '^/?(versiya|version)$'         {
                     $st    = Get-State
                     $lines = @("Oxirgi build qilingan versiyalar:")
@@ -332,7 +376,7 @@ while ($true) {
                     }
                     Send-Msg $chatId ($lines -join "`n") | Out-Null
                 }
-                default                         { Send-Msg $chatId "'build' deb yozing - loyihalar ro'yxati chiqadi. 'versiya' - oxirgi build versiyalari." | Out-Null }
+                default                         { Send-Msg $chatId "'build' - loyihalar ro'yxati. 'versiya' - oxirgi build versiyalari. 'ostatka' - SH5 qoldiqni yangilash." | Out-Null }
             }
         }
     }
