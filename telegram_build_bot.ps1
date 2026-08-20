@@ -30,6 +30,7 @@ $Desktop = Join-Path $env:USERPROFILE 'Desktop'
 $Projects = [ordered]@{
     'uz_ai_dev'          = (Join-Path $Desktop 'uz_ai_dev')
     'workly_app'         = (Join-Path $Desktop 'workly_app')
+    'timekivi_app'       = (Join-Path $env:USERPROFILE 'timekivi_app')
     'qilinadigan_ishlar' = (Join-Path $Desktop 'qilinadigan_ishlar')
     'pos_flutter'        = 'C:\pos_flutter'
 }
@@ -126,11 +127,30 @@ function Get-ProjectVersion([string]$Path) {
 }
 
 # Build'dan oldin kodni yangilash. Qaytaradi: $true = pull o'tdi.
+# MUHIM: 3 daqiqa timeout bilan. GitHub'dan pack yuklab olish tarmoq sabab
+# o'rtasida qotib qolsa git o'zi hech qachon uzmaydi, bot esa sinxron kutgani
+# uchun BUTUN bot "versiya tekshirilmoqda..." da abadiy bloklanib qolardi.
+# Endi jarayon daraxti o'ldiriladi va $false qaytadi (build eski kod bilan
+# davom etadi yoki versiya bir xil bo'lsa bekor qilinadi).
 function Invoke-GitPull([string]$Path) {
+    $outLog = Join-Path $env:TEMP 'uzbot_gitpull.out.log'
+    $errLog = Join-Path $env:TEMP 'uzbot_gitpull.err.log'
     try {
-        $out = (& git -C $Path pull 2>&1) -join "`n"
-        Write-Host "    git pull: $out" -ForegroundColor DarkGray
-        return ($LASTEXITCODE -eq 0)
+        $p = Start-Process -FilePath 'git' `
+            -ArgumentList '-C', "`"$Path`"", 'pull' `
+            -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+        if (-not $p.WaitForExit(180000)) {
+            & taskkill /T /F /PID $p.Id 2>$null | Out-Null
+            Write-Host "[ogoh] git pull 3 daqiqada tugamadi - to'xtatildi (tarmoq qotgan?)" -ForegroundColor DarkYellow
+            return $false
+        }
+        $out = ''
+        foreach ($f in @($outLog, $errLog)) {
+            try { if (Test-Path $f) { $out += (Get-Content $f -Raw -Encoding UTF8) } } catch { }
+        }
+        Write-Host "    git pull: $($out.Trim())" -ForegroundColor DarkGray
+        return ($p.ExitCode -eq 0)
     } catch {
         Write-Host "[ogoh] git pull: $($_.Exception.Message)" -ForegroundColor DarkYellow
         return $false
