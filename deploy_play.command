@@ -410,7 +410,11 @@ SA_JSON="$PLAY_SA_JSON" PKG="$PKG" AAB="$AAB" MAPPING="$MAPPING" \
 TRACKS="$TRACKS" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
 PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" \
 "$PY_BIN" - <<'PY'
-import os, sys
+import os, socket, sys
+
+# googleapiclient http'ni socket.getdefaulttimeout() (bo'lmasa 60 s) bilan quradi —
+# katta fayllarda sekin tarmoqda "write operation timed out" beradi, kengaytiramiz.
+socket.setdefaulttimeout(600)
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -455,12 +459,21 @@ else:
     print(f"Yuklandi: versionCode {version_code}")
 
     if os.path.isfile(mapping):
+        # Mapping o'nlab MB bo'ladi — AAB kabi bo'laklab (resumable) yuklanmasa bitta
+        # ulkan so'rov timeout'ga uchraydi. Yuklanmasa ham reliz TO'XTAMAYDI:
+        # mapping faqat crash-hisobotlarni deobfuskatsiya qilish uchun kerak.
         print("ProGuard mapping yuklanmoqda...")
-        svc.edits().deobfuscationfiles().upload(
-            packageName=pkg, editId=edit_id, apkVersionCode=version_code,
-            deobfuscationFileType="proguard",
-            media_body=MediaFileUpload(mapping, mimetype="application/octet-stream"),
-        ).execute(num_retries=5)
+        try:
+            svc.edits().deobfuscationfiles().upload(
+                packageName=pkg, editId=edit_id, apkVersionCode=version_code,
+                deobfuscationFileType="proguard",
+                media_body=MediaFileUpload(mapping, mimetype="application/octet-stream",
+                                           chunksize=8 * 1024 * 1024, resumable=True),
+            ).execute(num_retries=5)
+        except Exception as e:
+            print(f"  [OGOHLANTIRISH] mapping yuklanmadi: {e}", file=sys.stderr)
+            print("  Reliz davom etadi — faqat crash-hisobotlar deobfuskatsiyasiz ko'rinadi.",
+                  file=sys.stderr)
 
 release = {
     "name": name,
