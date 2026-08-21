@@ -25,6 +25,10 @@
 // KESH: sahifa xotirada hech narsa yig'maydi — qator holati (kiritilgan son,
 // olingan rasm) faqat TAHRIRLANADIGAN qatorlar uchun ochiladi va item qabul
 // qilinishi bilan darhol tozalanadi.
+//
+// QAYTA TAHRIR: qabul qilingan qator, buyurtma to'liq yopilmaguncha,
+// double-tap bilan qayta tahrirlashga ochiladi (_reopened) — omborchi xato
+// kiritgan kelgan sonni tuzatib qayta yuboradi (eski rasm yetarli).
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -149,6 +153,12 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
   // Standart holat — filtr YONIQ, shuning uchun to'plam bo'sh boshlanadi.
   final Set<String> _showAllSkladlar = <String>{};
 
+  // Double-tap bilan QAYTA TAHRIRLASHGA ochilgan (allaqachon qabul qilingan)
+  // qatorlar (slotKey). Buyurtma to'liq yopilmaguncha omborchi xato kiritgan
+  // kelgan sonni shu yo'l bilan tuzatadi; qayta qabul muvaffaqiyatli bo'lgach
+  // qator yana read-only holatga qaytadi.
+  final Set<String> _reopened = <String>{};
+
   // Shu ekranda tarmoq rasmi ko'rsatildimi. Faqat shunda chiqishda rasm keshi
   // bo'shatiladi — rasm ko'rsatilmagan bo'lsa boshqa ekranlarning rasmiga
   // bekorga tegmaymiz.
@@ -220,6 +230,10 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       for (final k in stale) {
         _slots.remove(k)?.dispose();
       }
+      // Ro'yxatdan chiqib ketgan (masalan buyurtmasi yopilgan) qatorlarning
+      // qayta-tahrir belgisi ham tozalanadi. Ochiq (reopened) qator editable,
+      // ya'ni liveKeys ichida bo'ladi — unga tegilmaydi.
+      _reopened.retainAll(_liveKeys);
       _applySeeds();
     });
   }
@@ -421,7 +435,11 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
           isProche: (it) => it.isProche,
         );
         for (final item in seqItems) {
-          final row = _ItemRow.of(order, item);
+          final row = _ItemRow.of(
+            order,
+            item,
+            reopened: _reopened.contains('${order.id}_${item.productId}'),
+          );
           if (row.editable) {
             hasEditable = true;
             liveKeys.add(row.slotKey);
@@ -574,6 +592,11 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       onTapMedia: () => _pickMedia(row.slotKey),
       onAccept: () => _acceptItem(row),
       onDelete: () => _deleteItem(row),
+      // Qabul qilingan qatorni double-tap bilan qayta tahrirlashga ochish
+      // (buyurtma to'liq yopilmagan bo'lsa).
+      onReopen: row.reopenable
+          ? () => setState(() => _reopened.add(row.slotKey))
+          : null,
     );
   }
 
@@ -709,10 +732,9 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
     }
 
     // Maydonda UI birlik (kg/l) — API'ga butun gramm/ml yuboriladi.
-    // qtyFromUiSafe: 1000+ kiritilsa gramm deb olinadi (gramm-yozish himoyasi).
     final received = slot == null
         ? 0.0
-        : qtyFromUiSafe(_parseQty(slot.received.text), item.type).toDouble();
+        : qtyFromUi(_parseQty(slot.received.text), item.type).toDouble();
 
     // Kelgan soni kiritilmagan yoki 0 bo'lsa qabul yuborilmaydi.
     if (received <= 0) {
@@ -756,6 +778,8 @@ class _OmborOrdersViewState extends State<OmborOrdersView> {
       // Yuborilgan lokal fayllar endi kerak emas (backend URL qaytardi).
       // Slot shu orada tozalangan bo'lishi mumkin — map orqali qaytadan olamiz.
       _slots[row.slotKey]?.media.value = const _LocalMedia();
+      // Qayta tahrirlash rejimi yopiladi — qator yana read-only bo'ladi.
+      if (_reopened.remove(row.slotKey) && mounted) setState(() {});
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -881,6 +905,10 @@ class _ItemRow extends _Row {
   final bool notBrought;
   // Omborchi itemni buyurtmadan o'chira oladimi.
   final bool deletable;
+  // Qabul qilingan (read-only) qator double-tap bilan qayta tahrirlashga
+  // ochila oladimi — buyurtma to'liq yopilmagan bo'lsa (backend qayta
+  // qabulni qo'llab-quvvatlaydi: eski rasm yetarli, kirim ikkilanmaydi).
+  final bool reopenable;
 
   const _ItemRow._({
     required this.order,
@@ -888,14 +916,23 @@ class _ItemRow extends _Row {
     required this.editable,
     required this.notBrought,
     required this.deletable,
+    required this.reopenable,
   });
 
-  factory _ItemRow.of(OmborOrder order, OmborOrderItem item) {
+  factory _ItemRow.of(
+    OmborOrder order,
+    OmborOrderItem item, {
+    bool reopened = false,
+  }) {
     // Narxlangan buyurtmada olib kelinmagan mahsulot (taken 0, summa 0)
     // qabul qilinmaydi.
     final notTaken = order.isPriced && item.taken <= 0 && item.subtotal <= 0;
-    final editable =
-        !order.isAccepted && !item.accepted && !item.deleted && !notTaken;
+    // Qabul qilingan item odatda read-only, LEKIN omborchi uni double-tap
+    // bilan qayta ochgan bo'lsa (reopened) yana tahrirlanadi.
+    final editable = !order.isAccepted &&
+        (!item.accepted || reopened) &&
+        !item.deleted &&
+        !notTaken;
     // O'chirish: faqat katalog item (proche/rasxod emas), hali kelmagan va
     // order yopilmagan. Yopiq (narxlandi) chekda faqat summasiz item —
     // qolgani ledgerga tushgan.
@@ -914,6 +951,8 @@ class _ItemRow extends _Row {
           item.taken <= 0 &&
           item.subtotal <= 0,
       deletable: deletable,
+      reopenable:
+          !order.isAccepted && item.accepted && !item.deleted && !reopened,
     );
   }
 
@@ -927,8 +966,13 @@ class _ItemRow extends _Row {
   // "Kelgan soni" maydonining boshlang'ich qiymati: yuk keltiruvchi aytgan
   // miqdor (taken) — u qoralamada, ya'ni yuborishdan OLDIN ham keladi
   // (draft socket hodisasi). Yuk hali son kiritmagan bo'lsa maydon BO'SH.
-  String get initialQty =>
-      item.taken > 0 ? formatQty(item.taken, item.type) : '';
+  // Qayta tahrirlash (reopened) qatori esa omborchi avval yuborgan haqiqiy
+  // kelgan son (received) bilan ochiladi.
+  String get initialQty {
+    final qty =
+        item.accepted && item.received > 0 ? item.received : item.taken;
+    return qty > 0 ? formatQty(qty, item.type) : '';
+  }
 }
 
 // Tahrirlanadigan qator holati: kiritilgan son + olingan lokal media.
@@ -1222,6 +1266,9 @@ class _ItemView extends StatelessWidget {
   final VoidCallback onTapMedia;
   final VoidCallback onAccept;
   final VoidCallback onDelete;
+  // Qabul qilingan qator double-tap qilinsa qayta tahrirlashga ochiladi
+  // (buyurtma to'liq yopilmagan bo'lsa). null — double-tap ishlamaydi.
+  final VoidCallback? onReopen;
 
   const _ItemView({
     required this.item,
@@ -1234,6 +1281,7 @@ class _ItemView extends StatelessWidget {
     required this.onTapMedia,
     required this.onAccept,
     required this.onDelete,
+    this.onReopen,
   });
 
   // Qabul qilingan qatorda yuborilgan media bormi (rasm yoki video).
@@ -1255,6 +1303,7 @@ class _ItemView extends StatelessWidget {
 
     // Qabul qilingan qator: media ustuni umuman yo'q — uning eni nom ustuniga
     // qo'shiladi, rasm esa qatorning istalgan joyiga bosilganda ochiladi.
+    // Double-tap (onReopen) — qatorni qayta tahrirlashga ochadi.
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -1267,10 +1316,11 @@ class _ItemView extends StatelessWidget {
         ],
       ),
     );
-    if (!_hasSentMedia) return row;
+    if (!_hasSentMedia && onReopen == null) return row;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _openSentMedia(context),
+      onTap: _hasSentMedia ? () => _openSentMedia(context) : null,
+      onDoubleTap: onReopen,
       child: row,
     );
   }
@@ -1449,7 +1499,7 @@ class _ItemView extends StatelessWidget {
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: slot!.received,
           builder: (context, value, _) => _shortageText(
-            qtyFromUiSafe(_parseQty(value.text), item.type).toDouble(),
+            qtyFromUi(_parseQty(value.text), item.type).toDouble(),
           ),
         ),
       ],

@@ -1047,8 +1047,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
 
   // Soni maydonidan hisob asosi (API birlikda — кг/л uchun butun гр/мл):
   //  • ombor qabul qilgan bo'lsa maydon qulf, omborchining soni yakuniy;
-  //  • yuk son kiritgan bo'lsa — o'sha son (qtyFromUiSafe: 1000+ yozilsa
-  //    gramm deb olinadi, gramm-yozish himoyasi);
+  //  • yuk son kiritgan bo'lsa — o'sha son;
   //  • maydon BO'SH bo'lsa — 0. Bu "yuk hali son kiritmagan" degani: omborchi
   //    maydonida ham bo'sh ko'rinadi, buyurtma soni (count) esa faqat
   //    YUBORISHDA qo'yiladi (YukProvider._wireTaken).
@@ -1057,7 +1056,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final raw =
         _parse(_takenControllers[_key(order.id, item.productId)]?.text ?? '');
     if (raw <= 0) return 0;
-    return qtyFromUiSafe(raw, item.type).toDouble();
+    return qtyFromUi(raw, item.type).toDouble();
   }
 
   // ─────────────────── Biriktirmalar (rasm/video) ───────────────────

@@ -72,7 +72,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **WebSocket** | `lib/core/network/order_socket.dart` | `OrderSocket` (singleton) — buyurtma/targovli-pul/ishlab-chiqarish real-time hodisalari; auto-reconnect |
 | **Xato matni** | `lib/core/network/error_handler.dart` | `parseDioError()` — DioException → o'qiladigan matn |
 | **Lokal saqlash** | `lib/core/data/local/` | `BaseStorage` interfeys, `SharedPreferencesImpl`, `TokenStorage` (`token`). Kalitlar: `token`, `role`, `is_admin`, `user`, `name` |
-| **Birlik konverti** | `lib/core/utils/qty_units.dart` | `qtyFromUi`/`qtyFromUiSafe` (kg/l → BUTUN gr/ml), `qtyToUi`/`formatQty`/`formatQtyUnit` (gr/ml → kg/l). ⚠️ gram-yozish himoyasi bor |
+| **Birlik konverti** | `lib/core/utils/qty_units.dart` | `qtyFromUi` (kg/l → BUTUN gr/ml), `qtyToUi`/`formatQty`/`formatQtyUnit` (gr/ml → kg/l). Eski `qtyFromUiSafe` (1000+ = gramm himoyasi) majburiy update joriy bo'lgach OLIB TASHLANDI — 1000 kg endi 1000 kg |
 | **Rollar** | `lib/core/constants/roles.dart` | `AppRoles` — role string konstantalari |
 | **Media** | `lib/core/media/` | Ilova ICHIDA kamera/video: `InAppPhotoCamera`, `TelegramStyleVideoRecorder`, `VideoPreviewScreen` (`video_pervi`), `VideoProcessor`, `CircularNetworkVideoPlayer` |
 | **Tarmoq rasmi** | `lib/core/widgets/app_network_image.dart` | ⚠️ YAGONA yo'l: `AppNetworkImage` (vidjet, `maxDecodeWidth` bilan) yoki `appNetworkImageProvider`/`appFileImageProvider` (CircleAvatar kabi `ImageProvider` kerak bo'lganda). `Image.network`/`NetworkImage`/`CachedNetworkImage` TO'G'RIDAN-TO'G'RI ishlatilmaydi — o'lchamsiz dekod = rasmiga ~4 MB RAM = OOM |
@@ -92,7 +92,7 @@ hisoblama — o'sha helperlarni chaqir.
 | Foyda analitikasi | `lib/admin/ui/profit_analytics_ui.dart` (~1200 qator) | tortlar bo'yicha tushum/tannarx/foyda grafiklari (`GET /api/analytics/profit`) |
 | Shef buyurtma | `lib/shef/ui/shef_create_order_ui.dart`, `shef_order_detail_ui.dart` | полуфабрикат limiti (`pf-availability`), bosqich qabul/rad |
 | Ombor ishlab chiqarish | `lib/ombor/ui/ombor_production_ui.dart` | ishlab chiqarish oqimi |
-| Ombor buyurtmalari | `lib/ombor/ui/ombor_orders_ui.dart` (~1500 qator) | YASSI (flat) lazy ro'yxat: kartochka ko'rinishi saqlangan, lekin har qator alohida `ListView` elementi; qator holati (son+media) faqat tahrirlanadigan qatorda; rasm thumbnail o'lchamida. Fayl boshidagi izohni o'qi — bu qoidalar buzilsa ekran yana qotadi |
+| Ombor buyurtmalari | `lib/ombor/ui/ombor_orders_ui.dart` (~1500 qator) | YASSI (flat) lazy ro'yxat: kartochka ko'rinishi saqlangan, lekin har qator alohida `ListView` elementi; qator holati (son+media) faqat tahrirlanadigan qatorda; rasm thumbnail o'lchamida; qabul qilingan qator buyurtma to'liq yopilmaguncha DOUBLE-TAP bilan qayta tahrirlanadi. Fayl boshidagi izohni o'qi — bu qoidalar buzilsa ekran yana qotadi |
 | Inventarizatsiya | `lib/production/ui/inventory_page.dart`, `inventory_history_page.dart` | акт инвентаризации, real sanash to'ri |
 | Yuk bosh ekran | `lib/yuk/ui/yuk_home_ui.dart` (~2600 qator) | sklad buyurtmalari + targovli pul + kunlik hisob |
 | POS (Konak) | `lib/admin/ui/pos_*_ui.dart` (`pos_hub`, `pos_menu`, `pos_orders`, `pos_sales`, `pos_recons`) | Konak POS integratsiyasi (menyu, avto-buyurtma, sotuv, recon) |
