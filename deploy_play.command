@@ -25,6 +25,17 @@
 #   production -> Google ko'rigiga (review) tushadi, o'tgach hamma foydalanuvchiga chiqadi
 # Production hamma foydalanuvchiga tegishi uchun skript 5 soniya kutadi (Ctrl+C = bekor).
 #
+# KO'RIKKA YUBORISH: commit `changesNotSentForReview=false` bilan qilinadi — bu Play Console'dagi
+# "Отправить на проверку" tugmasining o'zi. Console'da avval 3-5 daqiqa "Проверка на наличие
+# распространенных проблем" (Google avto-tekshiruvi) ko'rinadi, u tugagach reliz
+# "На рассмотрении" bo'ladi. Shu bosqichda "yuborildi" degan yozuv chiqmaydi — bu normal.
+# Faqat ikki holatda qo'lda bosish kerak (skript buni oxirida baland aytadi):
+#   1) Google API "avtomatik yuborib bo'lmaydi" (400) desa — yuklangan build yo'qolmasin deb
+#      skript `changesNotSentForReview=true` bilan qayta commit qiladi, keyin Console ->
+#      Обзор публикации -> "Отправить на проверку" bosiladi;
+#   2) avto-tekshiruv muammo topsa — o'sha sahifada ogohlantirish bilan birga tugma chiqadi.
+# Tekshirish havolasi: PLAY_CONSOLE_URL (config'da; bo'lmasa Mone'niki standart).
+#
 # Testerlar ro'yxati BIR MARTA Play Console'da sozlanadi:
 #   Play Console -> Testing -> Internal testing -> Testers -> email ro'yxati (yoki Google guruh),
 #   keyin "Copy link" — testerlar shu link orqali bir marta qo'shiladi (opt-in).
@@ -45,6 +56,7 @@
 #
 # Konfiguratsiya: ~/.mone_play.env (bo'lmasa ~/.sadinov_play.env ishlatiladi):
 #   PLAY_SA_JSON=$HOME/.playconsole/mone-service-account.json
+#   PLAY_CONSOLE_URL=https://play.google.com/console/u/0/developers/<dev_id>/app/<app_id>   (ixtiyoriy)
 #
 # Service account: Google Cloud Console -> IAM -> Service Accounts'da yaratiladi, JSON kalit
 # yuklab olinadi, keyin Play Console -> Users and permissions orqali shu ilovaga
@@ -184,6 +196,10 @@ if [ -z "${PLAY_SA_JSON:-}" ]; then
     exit 1
 fi
 PLAY_SA_JSON="${PLAY_SA_JSON/#\~/$HOME}"
+
+# Play Console'dagi ilova sahifasi — faqat oxirida "qayerdan tekshirish" havolasi uchun.
+# (API'dan olib bo'lmaydi: dev_id/app_id faqat Console URL'ida bor.)
+PLAY_CONSOLE_URL="${PLAY_CONSOLE_URL:-https://play.google.com/console/u/0/developers/7404657258437147773/app/4974439267294493309}"
 
 if [ ! -f "$PLAY_SA_JSON" ]; then
     echo "Service account JSON topilmadi: $PLAY_SA_JSON" >&2
@@ -409,6 +425,7 @@ fi
 SA_JSON="$PLAY_SA_JSON" PKG="$PKG" AAB="$AAB" MAPPING="$MAPPING" \
 TRACKS="$TRACKS" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
 PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" \
+CONSOLE_URL="$PLAY_CONSOLE_URL" \
 "$PY_BIN" - <<'PY'
 import os, socket, sys
 
@@ -431,6 +448,7 @@ promote  = os.environ["PROMOTE"] == "1"
 name     = os.environ["RELEASE_NAME"]
 notes    = os.environ.get("NOTES", "").strip()
 rollout  = os.environ.get("ROLLOUT", "").strip()
+console  = os.environ.get("CONSOLE_URL", "").rstrip("/")
 
 creds = service_account.Credentials.from_service_account_file(
     sa_json, scopes=["https://www.googleapis.com/auth/androidpublisher"])
@@ -508,16 +526,48 @@ if validate:
     print("Tekshiruvdan o'tdi (yuklanmadi).")
     sys.exit(0)
 
-svc.edits().commit(packageName=pkg, editId=edit_id).execute()
+# changesNotSentForReview=False = Console'dagi "Отправить на проверку" tugmasi: commit bilan
+# birga o'zgarishlar Google ko'rigiga ketadi. Google buni ba'zi holatlarda (ilovada tugallanmagan
+# deklaratsiya, oldingi ko'rik hali tugamagan, akkaunt cheklovi) 400 bilan rad etadi:
+#   "Changes cannot be sent for review automatically. Please set ... changesNotSentForReview ..."
+# Unda yuklangan AAB yo'qolmasin deb True bilan qayta commit qilamiz — build Play'da saqlanadi,
+# faqat ko'rikka yuborish Console'da qo'lda bosiladi (pastda aytiladi).
+sent_for_review = True
+try:
+    svc.edits().commit(packageName=pkg, editId=edit_id,
+                       changesNotSentForReview=False).execute()
+except HttpError as e:
+    body = (e.content or b"").decode("utf-8", "ignore") if isinstance(e.content, bytes) else str(e.content)
+    if e.resp.status == 400 and "changesNotSentForReview" in body + str(e):
+        print("  [OGOHLANTIRISH] Google ko'rikka avtomatik yuborishga ruxsat bermadi —", file=sys.stderr)
+        print("  build saqlanadi, ko'rikka yuborish Console'da qo'lda bosiladi.", file=sys.stderr)
+        svc.edits().commit(packageName=pkg, editId=edit_id,
+                           changesNotSentForReview=True).execute()
+        sent_for_review = False
+    else:
+        raise
 print(f"Tayyor — build {name} quyidagi tracklarda: {', '.join(tracks)}")
 
 if "internal" in tracks:
     print("  internal: testerlarga bir necha daqiqada Play Store'da yangilanish chiqadi.")
     print("            (ro'yxat: Play Console -> Testing -> Internal testing -> Testers)")
 if "production" in tracks:
-    if rollout:
+    if not sent_for_review:
+        print()
+        print("  !!! PRODUCTION KO'RIKKA YUBORILMADI (Google avtomatik yuborishni rad etdi).")
+        print("      Play Console -> Обзор публикации -> \"Отправить на проверку\" tugmasini bosing:")
+        if console:
+            print(f"      {console}/publishing")
+    elif rollout:
         print(f"  production: Google ko'rigiga yuborildi, foydalanuvchilarning {float(rollout)*100:.0f}% iga chiqadi.")
     else:
         print("  production: Google ko'rigiga (review) yuborildi — odatda bir necha soatdan")
         print("              bir necha kungacha, o'tgach hamma foydalanuvchiga chiqadi.")
+    if sent_for_review:
+        print("      Console'da avval 3-5 daqiqa \"Проверка на наличие распространенных проблем\"")
+        print("      (Google avto-tekshiruvi) ko'rinadi, keyin reliz \"На рассмотрении\" bo'ladi.")
+        print("      Avto-tekshiruv muammo topsa — o'sha sahifada qo'lda \"Отправить на проверку\" bosiladi.")
+        if console:
+            print(f"      Tekshirish: {console}/publishing")
+            print(f"      Reliz holati: {console}/tracks/production")
 PY
