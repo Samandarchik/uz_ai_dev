@@ -19,6 +19,7 @@ import 'package:uz_ai_dev/core/context_extension.dart';
 import 'package:uz_ai_dev/core/media/in_app_photo_camera.dart';
 import 'package:uz_ai_dev/core/utils/money_input.dart';
 import 'package:uz_ai_dev/core/utils/order_sequence.dart';
+import 'package:uz_ai_dev/core/utils/piece_weight.dart';
 import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
@@ -2024,7 +2025,7 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final unitPrice = (takenVal > 0 && subtotalVal > 0)
         ? subtotalVal / qtyToUi(takenVal, item.type)
         : null;
-    final unitLabel = unitPrice != null
+    var unitLabel = unitPrice != null
         ? '${_fmtQty(takenVal, item.type)} * ${_formatMoney(unitPrice)}'
         : '';
     // Oldingi narx (kg/l yoki dona boshiga) va undan og'ish — 30%+ bo'lsa
@@ -2037,6 +2038,17 @@ class _YukSkladCardState extends State<YukSkladCard> {
         : yukPriceDeviation(unitPrice, prevPrice);
     final priceWarn =
         deviation != null && deviation.abs() >= kYukPriceWarnRatio;
+    // Donalab olinadigan кг/л mahsulot («1шт=200гр»): dona vazni nomdan
+    // o'qiladi — dona soni bilan kiritish tugmasi va dona narxi ko'rinadi.
+    final pieceG = pieceWeightFromName(item.name, item.type);
+    final pieces = (pieceG != null && takenVal > 0) ? takenVal / pieceG : null;
+    final canPieceEntry =
+        pieceG != null && !done && !_qtyLocked(item);
+    if (pieces != null && unitPrice != null && subtotalVal > 0) {
+      // «40 шт × 29 175» — dona narxi ko'rinsa xato darrov seziladi.
+      unitLabel += '  ·  ${_fmtPieces(pieces)} шт × '
+          '${_formatMoney(subtotalVal / pieces)}';
+    }
     final diff = takenVal - item.count;
     final showDiff =
         !item.isProche && takenVal > 0 && diff.abs() > 0.0001;
@@ -2118,6 +2130,44 @@ class _YukSkladCardState extends State<YukSkladCard> {
                       ),
                     ),
                   ],
+                  if (pieceG != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          '1 шт = ${_fmtQty(pieceG.toDouble(), item.type)} '
+                          '${item.type}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        if (canPieceEntry) ...[
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () =>
+                                _enterByPieces(order, item, pieceG),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _accentColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'dona bilan',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _accentColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                   if (prevPrice != null && !done) ...[
                     const SizedBox(height: 2),
                     Text(
@@ -2183,6 +2233,118 @@ class _YukSkladCardState extends State<YukSkladCard> {
         ],
       ),
     );
+  }
+
+  // Dona soni ko'rinishi: butun bo'lsa "40", bo'lmasa "2.5".
+  String _fmtPieces(double n) {
+    final r = (n * 100).round() / 100;
+    if (r == r.roundToDouble()) return r.toInt().toString();
+    return r.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+  }
+
+  // «dona bilan» — donalab olingan кг/л mahsulot uchun dona sonini so'rab,
+  // Soni maydoniga kg/l qiymatini (dona × bir dona vazni) yozadi. Birlik va
+  // sklad qoldig'i o'zgarmaydi — faqat kiritish xatosi (dona o'rniga kg,
+  // gramm o'rniga kg) kamayadi.
+  Future<void> _enterByPieces(
+    YukOrder order,
+    YukOrderItem item,
+    int pieceG,
+  ) async {
+    final ctrl = TextEditingController();
+    final n = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(item.name, style: const TextStyle(fontSize: 15)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [DecimalInputFormatter()],
+          decoration: InputDecoration(
+            labelText: 'Necha dona?',
+            helperText:
+                '1 шт = ${_fmtQty(pieceG.toDouble(), item.type)} ${item.type}',
+            isDense: true,
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, _parse(v)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Bekor'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _parse(ctrl.text)),
+            child: const Text('Qo\'yish'),
+          ),
+        ],
+      ),
+    );
+    if (n == null || n <= 0 || !mounted) return;
+    // API birlikda (gramm/ml) — maydonga UI (kg/l) ko'rinishida yoziladi.
+    final apiQty = (n * pieceG).round().toDouble();
+    _takenCtrlFor(order, item).text = formatQty(apiQty, item.type);
+    _onItemChanged(order, item);
+    setState(() {});
+  }
+
+  // Yuborishdan oldin keskin narx og'ishi tekshiruvi: oldingi narxdan 3 marta
+  // va undan ko'p farq qilgan qatorlar (kg o'rniga gramm, nol ko'p/kam,
+  // dona o'rniga kg) ro'yxat qilib ko'rsatiladi — foydalanuvchi tekshiradi
+  // yoki ataylab tasdiqlaydi. true = davom etish mumkin.
+  Future<bool> _confirmPriceOutliers(
+    YukProvider provider,
+    List<YukOrder> pending,
+  ) async {
+    final rows = <String>[];
+    for (final o in pending) {
+      for (final item in o.items.where((i) => !i.deleted && !i.isRasxod)) {
+        final p = provider.getItemPrice(o.id, item.productId);
+        if (p == null || p.zero || p.subtotal <= 0) continue;
+        final taken = _qtyLocked(item)
+            ? item.received
+            : (p.taken > 0 ? p.taken : _qtyBasis(item));
+        if (taken <= 0) continue;
+        final unitPrice = p.subtotal / qtyToUi(taken, item.type);
+        final prev = provider.lastPriceFor(
+            productId: item.productId, name: item.name);
+        final dev = yukPriceDeviation(unitPrice, prev);
+        if (dev == null || dev.abs() < kYukPriceBlockRatio) continue;
+        final unit = (item.type ?? '').isNotEmpty ? '/${item.type}' : '';
+        final times = dev > 0
+            ? '${(dev + 1).toStringAsFixed(1)}× qimmat'
+            : '${(1 / (dev + 1)).toStringAsFixed(1)}× arzon';
+        rows.add('${item.name}: ${_formatMoney(unitPrice)}$unit '
+            '(oldingi ${_formatMoney(prev!.price)}) — $times');
+      }
+    }
+    if (rows.isEmpty) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Narx keskin farq qiladi'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Quyidagi qatorlar oldingi narxdan 3 marta va undan ko\'p farq '
+            'qiladi — birlik (kg/gramm/dona) va summani tekshiring:\n\n'
+            '• ${rows.join('\n• ')}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Tekshiraman'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Baribir yuborish'),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
   }
 
   // Yuborishdan oldin tasdiq: summasi kiritilmagan qatorlar bo'lsa
@@ -2254,6 +2416,8 @@ class _YukSkladCardState extends State<YukSkladCard> {
       );
       if (ok != true) return;
     }
+    if (!mounted) return;
+    if (!await _confirmPriceOutliers(provider, pending)) return;
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final ok = await provider.submitAllForSklad(widget.skladId);

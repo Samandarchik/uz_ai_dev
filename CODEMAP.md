@@ -26,7 +26,7 @@ qayerda va «falon vazifa uchun qayerga qarash» kerak.
 | `lib/production/` | ishlab chiqarish + sklad qoldig'i + tannarx + narx tarixi + inventarizatsiya (акт). `ombor`/`admin`/`bugalter`/`shef` uchun umumiy | `StockInventoryPage`, `InventoryHistoryPage`, vidjetlar (`stock_widgets`, `production_order_widgets`, `cost_sheet`, `price_history_sheet`). Provider: `StockProvider`, `Base/Ombor/Admin/BugalterProductionProvider` |
 | `lib/shef/` | `shef`: ishlab chiqarish buyurtmasi yaratish, bosqichlarni qabul/rad, полуфабрикат limiti | `ShefHomeUi`, `ShefCreateOrderUi`, `ShefOrderDetailUi`. Provider: `ShefProvider` |
 | `lib/bugalter/` | `bugalter` (hisobchi): narxlangan buyurtmalar, mahsulot soni/summasini tuzatish + tahrirlar tarixi, yuk keltiruvchiga pul berish | `BugalterHomeUi`, `BugalterProductionUi`, `BugalterEditsUi`, `EditHistoryTile` (`ui/widgets/edit_history.dart`). Provider: `BugalterProvider` |
-| `lib/core/` | umumiy yadro: DI, tarmoq, lokal saqlash, endpointlar, birlik konverti, media | `di.dart`, `urls.dart` (`AppUrls`), `dio_settings.dart`, `order_socket.dart`, `qty_units.dart`, `context_extension.dart`, `media/*` (kamera/video) |
+| `lib/core/` | umumiy yadro: DI, tarmoq, lokal saqlash, endpointlar, birlik konverti, media | `di.dart`, `urls.dart` (`AppUrls`), `dio_settings.dart`, `order_socket.dart`, `qty_units.dart`, `piece_weight.dart` (nomdan «1шт=Xгр»), `context_extension.dart`, `media/*` (kamera/video) |
 | (root) `lib/` | kirish + marshrutlash | `main.dart`, `splash_screen.dart` (rolga yo'naltirish), `login_page.dart`, `check_version.dart` |
 
 ---
@@ -72,6 +72,7 @@ hisoblama — o'sha helperlarni chaqir.
 | **WebSocket** | `lib/core/network/order_socket.dart` | `OrderSocket` (singleton) — buyurtma/targovli-pul/ishlab-chiqarish real-time hodisalari; auto-reconnect |
 | **Xato matni** | `lib/core/network/error_handler.dart` | `parseDioError()` — DioException → o'qiladigan matn |
 | **Lokal saqlash** | `lib/core/data/local/` | `BaseStorage` interfeys, `SharedPreferencesImpl`, `TokenStorage` (`token`). Kalitlar: `token`, `role`, `is_admin`, `user`, `name` |
+| **Dona vazni (nomdan)** | `lib/core/utils/piece_weight.dart` | `pieceWeightFromName` — кг/л mahsulot nomidagi «1шт=200гр»/«(400гр)»/«150 гр» → гр/мл; yuk narxlashda «dona bilan» kiritish va dona narxi (birlik/qoldiq o'zgarmaydi) |
 | **Birlik konverti** | `lib/core/utils/qty_units.dart` | `qtyFromUi` (kg/l → BUTUN gr/ml), `qtyToUi`/`formatQty`/`formatQtyUnit` (gr/ml → kg/l). Eski `qtyFromUiSafe` (1000+ = gramm himoyasi) majburiy update joriy bo'lgach OLIB TASHLANDI — 1000 kg endi 1000 kg |
 | **Rollar** | `lib/core/constants/roles.dart` | `AppRoles` — role string konstantalari |
 | **Media** | `lib/core/media/` | Ilova ICHIDA kamera/video: `InAppPhotoCamera`, `TelegramStyleVideoRecorder`, `VideoPreviewScreen` (`video_pervi`), `VideoProcessor`, `CircularNetworkVideoPlayer` |

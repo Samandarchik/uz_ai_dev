@@ -90,3 +90,7 @@ double? yukPriceDeviation(double unitPrice, YukLastPrice? prev) {
 
 /// Shu ulushdan katta og'ishda ogohlantirish ko'rsatiladi (30%).
 const double kYukPriceWarnRatio = 0.30;
+
+/// Shu ulushdan katta og'ishda (3 marta va undan ko'p — +200% yoki −67%)
+/// yuborishdan oldin alohida tasdiq so'raladi (`_confirmPriceOutliers`).
+const double kYukPriceBlockRatio = 0.67;
