@@ -39,6 +39,9 @@ abstract final class AppUrls {
   // (?item_type=proche — katalog + ilgarigi nomlar, ?item_type=rasxod —
   // faqat ilgari yozilgan xarajat nomlari).
   static String procheNames = '$baseUrl/api/yuk/proche-names';
+  // Har mahsulotning oxirgi birlik narxi (narxlashda «oldingi narx» + keskin
+  // og'ish ogohlantirishi): {products:{id:{price,unit,date}}, names:{...}}.
+  static String yukLastPrices = '$baseUrl/api/yuk/last-prices';
   // Yuk keltiruvchining kunlik hisob daftari (ostatok/rasxod/prixod)
   static String yukLedger = '$baseUrl/api/yuk/ledger';
   // Bitta kunning xarajat tafsiloti (?date=YYYY-MM-DD[&user_id=N])

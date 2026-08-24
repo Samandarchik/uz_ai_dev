@@ -12,6 +12,7 @@ import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/core/network/order_socket.dart';
 import 'package:uz_ai_dev/core/utils/order_sequence.dart';
 import 'package:uz_ai_dev/core/widgets/order_period.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_last_price_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -90,6 +91,25 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
   // Hozir ko'rsatilayotgan ro'yxat internetdan emas, lokal keshdan olinganmi
   // (UI'da "offline" eslatmasi ko'rsatish uchun).
   bool isOffline = false;
+
+  // Har mahsulotning oxirgi birlik narxi (narxlash paytida «oldingi: N»
+  // ko'rsatish va 30%+ og'ishda ogohlantirish uchun). Buyurtmalar bilan
+  // birga yuklanadi; olinmasa bo'sh qoladi — narxlash ishlayveradi.
+  YukLastPrices lastPrices = const YukLastPrices();
+
+  Future<void> _loadLastPrices() async {
+    try {
+      lastPrices = await _service.fetchLastPrices();
+      notifyListeners();
+    } catch (_) {
+      // Faqat ko'rsatish uchun ma'lumot — xato jim o'tadi.
+    }
+  }
+
+  /// Katalog item uchun oldingi narx (id, bo'lmasa nom bo'yicha); qo'lda
+  /// qo'shilgan item uchun nom bo'yicha.
+  YukLastPrice? lastPriceFor({int productId = 0, String name = ''}) =>
+      lastPrices.lookup(productId: productId, name: name);
 
   // Joriy user ID (SharedPreferences'dagi 'user' JSON'dan, bir marta o'qiladi).
   // Begona (boshqa yuk keltiruvchi boshlagan, priced_by boshqa) qoralamani
@@ -233,6 +253,8 @@ class YukProvider extends ChangeNotifier with ClearableProvider {
     notifyListeners();
 
     try {
+      // Oldingi narxlar parallel yuklanadi (kutilmaydi).
+      unawaited(_loadLastPrices());
       // Asosiy sahifa uchun faqat yuborilmaganlarni olamiz.
       final fetched = await _service.fetchOrders(status: 'pending');
       // Endigina yuborilgan (undo oynasi hali ochiq) buyurtmalar pending

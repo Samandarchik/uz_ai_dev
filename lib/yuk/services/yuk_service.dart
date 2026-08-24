@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/di/di.dart';
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_last_price_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_ledger_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
@@ -200,6 +201,17 @@ class YukService {
       if (e is Exception) rethrow;
       throw Exception('Takliflarni yuklashda kutilmagan xato: $e');
     }
+  }
+
+  // GET /api/yuk/last-prices -> har mahsulotning oxirgi birlik narxi
+  // (katalog id va nom kaliti bo'yicha). Faqat ko'rsatish uchun — xato
+  // bo'lsa chaqiruvchi jim o'tadi (narxlash ishlayveradi).
+  Future<YukLastPrices> fetchLastPrices() async {
+    final response = await dio.get(AppUrls.yukLastPrices);
+    if (response.statusCode == 200 && response.data is Map) {
+      return YukLastPrices.fromJson(response.data['data']);
+    }
+    throw Exception('Oxirgi narxlarni yuklab bo\'lmadi: ${response.statusCode}');
   }
 
   // PUT /api/yuk/orders/{id} -> buyurtmaga narx kiritib omborga qaytarish.

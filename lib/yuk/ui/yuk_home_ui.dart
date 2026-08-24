@@ -23,7 +23,10 @@ import 'package:uz_ai_dev/core/utils/qty_units.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/core/widgets/full_screen_image.dart';
 import 'package:uz_ai_dev/core/widgets/qty_claim_label.dart';
+import 'package:uz_ai_dev/admin/ui/widgets/product_type_radio.dart'
+    show kProductTypeOptions;
 import 'package:uz_ai_dev/yuk/models/proche_name_model.dart';
+import 'package:uz_ai_dev/yuk/models/yuk_last_price_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_order_model.dart';
 import 'package:uz_ai_dev/yuk/models/yuk_transfer_model.dart';
 import 'package:uz_ai_dev/yuk/provider/yuk_provider.dart';
@@ -1399,127 +1402,245 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final nameController = TextEditingController();
     final qtyController = TextEditingController(text: '1');
     final sumController = TextEditingController();
+    final provider = context.read<YukProvider>();
+    // Proche itemning birligi: standart шт; katalogdagi nom tanlansa
+    // mahsulotning o'z birligi qo'yiladi. Bozor nakladnoyida (targovli)
+    // «900» va «0.47» birliksiz aralashib ketmasligi uchun majburiy.
+    String unit = rasxod ? '' : 'шт';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              rasxod ? 'Xarajat qo\'shish' : 'Mahsulot qo\'shish',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          final name = nameController.text.trim();
+          final prev = rasxod
+              ? null
+              : provider.lastPriceFor(name: name);
+          // Jonli birlik narx: kiritilgan son (UI birlikda) va summa.
+          final qtyUi = _parse(qtyController.text);
+          final sum = _parse(sumController.text);
+          final unitPrice = (!rasxod && qtyUi > 0 && sum > 0)
+              ? sum / qtyUi
+              : null;
+          final dev = unitPrice == null
+              ? null
+              : yukPriceDeviation(unitPrice, prev);
+          final warn = dev != null && dev.abs() >= kYukPriceWarnRatio;
+          final isKg = _isKg(unit);
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
             ),
-            const SizedBox(height: 4),
-            Text(
-              rasxod
-                  ? 'Masalan: yetkazib berish xizmati. Ombor qabul qilmaydi, '
-                      'chek oxirida alohida ko\'rsatiladi.'
-                  : 'Buyurtmada yo\'q qo\'shimcha mahsulot (masalan gaz plitasi).',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 14),
-            _NameAutocompleteField(
-              controller: nameController,
-              itemType: rasxod ? 'rasxod' : 'proche',
-            ),
-            const SizedBox(height: 12),
-            if (!rasxod) ...[
-              TextField(
-                controller: qtyController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [DecimalInputFormatter()],
-                decoration: InputDecoration(
-                  labelText: 'Soni',
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: _accentColor),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rasxod ? 'Xarajat qo\'shish' : 'Mahsulot qo\'shish',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            TextField(
-              controller: sumController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [ThousandsSeparatorInputFormatter()],
-              decoration: InputDecoration(
-                labelText: 'Jami summa',
-                suffixText: 'so\'m',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 4),
+                Text(
+                  rasxod
+                      ? 'Masalan: yetkazib berish xizmati. Ombor qabul qilmaydi, '
+                          'chek oxirida alohida ko\'rsatiladi.'
+                      : 'Buyurtmada yo\'q qo\'shimcha mahsulot (masalan gaz plitasi).',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: _accentColor),
+                const SizedBox(height: 14),
+                _NameAutocompleteField(
+                  controller: nameController,
+                  itemType: rasxod ? 'rasxod' : 'proche',
+                  onChanged: (_) => setSheet(() {}),
+                  // Katalog mahsuloti tanlansa birligi ham o'zi qo'yiladi.
+                  onSelected: (opt) => setSheet(() {
+                    final t = opt.type.trim().toLowerCase();
+                    if (!rasxod && t.isNotEmpty) unit = t;
+                  }),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final name = nameController.text.trim();
-                  final subtotal = _parse(sumController.text);
-                  final taken = rasxod ? 0.0 : _parse(qtyController.text);
-                  if (name.isEmpty) {
-                    ScaffoldMessenger.of(sheetContext).showSnackBar(
-                      const SnackBar(content: Text('Nomini kiriting')),
-                    );
-                    return;
-                  }
-                  if (subtotal <= 0) {
-                    ScaffoldMessenger.of(sheetContext).showSnackBar(
-                      const SnackBar(content: Text('Summani kiriting')),
-                    );
-                    return;
-                  }
-                  context.read<YukProvider>().addAddedItem(
+                if (!rasxod) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final t in kProductTypeOptions)
+                        ChoiceChip(
+                          label: Text(t),
+                          selected: unit == t,
+                          visualDensity: VisualDensity.compact,
+                          selectedColor: _accentColor.withValues(alpha: 0.25),
+                          onSelected: (_) => setSheet(() => unit = t),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: qtyController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [DecimalInputFormatter()],
+                    onChanged: (_) => setSheet(() {}),
+                    decoration: InputDecoration(
+                      labelText: isKg ? 'Miqdor ($unit)' : 'Soni ($unit)',
+                      helperText: isKg
+                          ? 'Kilogramm/litrda yozing (masalan 1.5)'
+                          : null,
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: _accentColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: sumController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  onChanged: (_) => setSheet(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Jami summa',
+                    suffixText: 'so\'m',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: _accentColor),
+                    ),
+                  ),
+                ),
+                // Oldingi narx + jonli birlik narx + keskin og'ish ogohi.
+                if (!rasxod && (prev != null || unitPrice != null)) ...[
+                  const SizedBox(height: 8),
+                  _priceHint(
+                    unitPrice: unitPrice,
+                    unit: unit,
+                    prev: prev,
+                    deviation: dev,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final name = nameController.text.trim();
+                      final subtotal = _parse(sumController.text);
+                      final taken = rasxod ? 0.0 : _parse(qtyController.text);
+                      if (name.isEmpty) {
+                        ScaffoldMessenger.of(sheetContext).showSnackBar(
+                          const SnackBar(content: Text('Nomini kiriting')),
+                        );
+                        return;
+                      }
+                      if (subtotal <= 0) {
+                        ScaffoldMessenger.of(sheetContext).showSnackBar(
+                          const SnackBar(content: Text('Summani kiriting')),
+                        );
+                        return;
+                      }
+                      // Miqdor API birlikda ketadi: кг/л -> butun gramm/ml.
+                      final takenUi = rasxod ? 0.0 : (taken > 0 ? taken : 1.0);
+                      provider.addAddedItem(
                         orderId,
                         YukAddedItem(
                           itemType: rasxod ? 'rasxod' : 'proche',
                           name: name,
-                          taken: rasxod ? 0 : (taken > 0 ? taken : 1),
+                          type: unit,
+                          taken: rasxod
+                              ? 0
+                              : qtyFromUi(takenUi, unit).toDouble(),
                           subtotal: subtotal,
                         ),
                       );
-                  Navigator.pop(sheetContext);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accentColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                      Navigator.pop(sheetContext);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: warn
+                          ? const Color(0xFFE65100)
+                          : _accentColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      warn ? 'Baribir qo\'shish' : 'Qo\'shish',
+                    ),
                   ),
                 ),
-                child: const Text('Qo\'shish'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Narx izohi: «oldingi: 22 641 so'm/кг (13.08)», joriy birlik narx va
+  // og'ish 30%+ bo'lsa qizil ogohlantirish (kg o'rniga gramm, nol ko'p/kam
+  // kabi kiritish xatolarini narxlash paytidayoq ushlash uchun).
+  Widget _priceHint({
+    required double? unitPrice,
+    required String unit,
+    required YukLastPrice? prev,
+    required double? deviation,
+  }) {
+    final warn = deviation != null && deviation.abs() >= kYukPriceWarnRatio;
+    final unitSuffix = unit.isNotEmpty ? '/$unit' : '';
+    final parts = <String>[];
+    if (unitPrice != null) {
+      parts.add('${_formatMoney(unitPrice)} so\'m$unitSuffix');
+    }
+    if (prev != null) {
+      final prevUnit = prev.unit.isNotEmpty ? '/${prev.unit}' : '';
+      final when = prev.shortDate.isNotEmpty ? ' (${prev.shortDate})' : '';
+      parts.add('oldingi: ${_formatMoney(prev.price)} so\'m$prevUnit$when');
+    }
+    final pct = deviation == null ? '' : (deviation * 100).round().toString();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          parts.join('  ·  '),
+          style: TextStyle(
+            fontSize: 12,
+            color: warn ? const Color(0xFFC62828) : _accentColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (warn)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '⚠ Oldingi narxdan ${deviation > 0 ? '+' : ''}$pct% farq — '
+              'birlik (kg/gramm) va summani tekshiring',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFC62828),
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -1591,8 +1712,11 @@ class _YukSkladCardState extends State<YukSkladCard> {
           const SizedBox(width: 6),
           Expanded(
             flex: _qtyFlex,
-            // Qo'shilgan (proche) itemning birligi yo'q — faktor 1.
-            child: _addedValueBox(_fmtQty(item.taken, null)),
+            // taken API birlikda (кг/л — gramm) — birligi bilan ko'rinadi.
+            child: _addedValueBox(
+              '${_fmtQty(item.taken, item.type)}'
+              '${item.type.isNotEmpty ? ' ${item.type}' : ''}',
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -1637,7 +1761,10 @@ class _YukSkladCardState extends State<YukSkladCard> {
           Expanded(
             flex: _qtyFlex,
             // taken API birlikda — item.type bo'yicha UI (kg) ko'rinadi.
-            child: _addedValueBox(_fmtQty(item.taken, item.type)),
+            child: _addedValueBox(
+              '${_fmtQty(item.taken, item.type)}'
+              '${(item.type ?? '').isNotEmpty ? ' ${item.type}' : ''}',
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -1900,6 +2027,16 @@ class _YukSkladCardState extends State<YukSkladCard> {
     final unitLabel = unitPrice != null
         ? '${_fmtQty(takenVal, item.type)} * ${_formatMoney(unitPrice)}'
         : '';
+    // Oldingi narx (kg/l yoki dona boshiga) va undan og'ish — 30%+ bo'lsa
+    // qizil ogohlantirish (kiritish xatosini shu yerdayoq ko'rsatadi).
+    final prevPrice = done
+        ? null
+        : provider.lastPriceFor(productId: item.productId, name: item.name);
+    final deviation = unitPrice == null
+        ? null
+        : yukPriceDeviation(unitPrice, prevPrice);
+    final priceWarn =
+        deviation != null && deviation.abs() >= kYukPriceWarnRatio;
     final diff = takenVal - item.count;
     final showDiff =
         !item.isProche && takenVal > 0 && diff.abs() > 0.0001;
@@ -1972,10 +2109,29 @@ class _YukSkladCardState extends State<YukSkladCard> {
                     const SizedBox(height: 2),
                     Text(
                       unitLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: _accentColor,
+                        color: priceWarn
+                            ? const Color(0xFFC62828)
+                            : _accentColor,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  if (prevPrice != null && !done) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'oldingi: ${_formatMoney(prevPrice.price)}'
+                      '${prevPrice.unit.isNotEmpty ? '/${prevPrice.unit}' : ''}'
+                      '${prevPrice.shortDate.isNotEmpty ? ' (${prevPrice.shortDate})' : ''}'
+                      '${priceWarn ? '  ⚠ ${deviation > 0 ? '+' : ''}${(deviation * 100).round()}%' : ''}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: priceWarn
+                            ? const Color(0xFFC62828)
+                            : Colors.grey.shade600,
+                        fontWeight:
+                            priceWarn ? FontWeight.w700 : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -2506,12 +2662,18 @@ class _NameAutocompleteField extends StatefulWidget {
   const _NameAutocompleteField({
     required this.controller,
     required this.itemType,
+    this.onSelected,
+    this.onChanged,
   });
 
   // Oynaning mavjud nameController'i — nima yuborilishi o'zgarmaydi.
   final TextEditingController controller;
   // 'proche' — katalog + ilgarigi nomlar, 'rasxod' — faqat ilgarigi nomlar.
   final String itemType;
+  // Taklif tanlanganda (katalog mahsuloti bo'lsa birligini olish uchun).
+  final ValueChanged<ProcheNameSuggestion>? onSelected;
+  // Matn o'zgarganda (oldingi narxni jonli ko'rsatish uchun).
+  final ValueChanged<String>? onChanged;
 
   @override
   State<_NameAutocompleteField> createState() => _NameAutocompleteFieldState();
@@ -2580,12 +2742,17 @@ class _NameAutocompleteFieldState extends State<_NameAutocompleteField> {
         // Tanlanganda nom AYNAN shu imloda maydonga tushadi — keyinchalik
         // nomlar bir-biriga mos tushishi uchun muhim.
         displayStringForOption: (option) => option.name,
-        onSelected: (_) => _focusNode.unfocus(),
+        onSelected: (option) {
+          _focusNode.unfocus();
+          widget.onSelected?.call(option);
+          widget.onChanged?.call(option.name);
+        },
         fieldViewBuilder:
             (context, controller, focusNode, onFieldSubmitted) => TextField(
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.sentences,
+          onChanged: widget.onChanged,
           onSubmitted: (_) => onFieldSubmitted(),
           decoration: InputDecoration(
             labelText: 'Nomi',

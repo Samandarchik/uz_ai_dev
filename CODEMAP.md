@@ -133,7 +133,7 @@ hisoblama — o'sha helperlarni chaqir.
 |---|---|---|
 | `ProductProvider` | `user/provider/provider.dart` | seller katalogi + savat (cart) |
 | `OmborProvider` | `ombor/provider/ombor_provider.dart` | bozor mahsulotlari, savat, ombor buyurtmalari, socket |
-| `YukProvider` | `yuk/provider/yuk_provider.dart` | yuk keltiruvchi: buyurtmalar, ledger, transferlar, narx qoralamalari, offline kesh |
+| `YukProvider` | `yuk/provider/yuk_provider.dart` | yuk keltiruvchi: buyurtmalar, ledger, transferlar, narx qoralamalari, offline kesh, oxirgi narxlar (`lastPrices` — `yuk/models/yuk_last_price_model.dart`, `/api/yuk/last-prices`) |
 | `BugalterProvider` | `bugalter/provider/bugalter_provider.dart` | hisobchi: narxlangan buyurtmalar, yuk userlar, to'lovlar |
 | `ShefProvider` | `shef/provider/shef_provider.dart` | shef: ishlab chiqarish buyurtmalari, mahsulotlar, bosqich holati |
 | `OmborProductionProvider` | `production/provider/production_orders_provider.dart` | ombor ishlab chiqarish buyurtmalari |

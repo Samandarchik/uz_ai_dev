@@ -107,12 +107,16 @@ class YukOrderItem {
 class YukAddedItem {
   final String itemType; // 'proche' | 'rasxod'
   final String name;
+  // Proche itemning birligi (шт/кг/л/...); rasxodda va eski yozuvlarda bo'sh.
+  // кг/л bo'lsa taken API birlikda — BUTUN gramm/ml (qtyFromUi bilan).
+  final String type;
   final double taken;
   final double subtotal;
 
   YukAddedItem({
     required this.itemType,
     required this.name,
+    this.type = '',
     required this.taken,
     required this.subtotal,
   });
@@ -124,6 +128,7 @@ class YukAddedItem {
     return YukAddedItem(
       itemType: json['item_type']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
       taken: (json['taken'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
     );
@@ -132,6 +137,7 @@ class YukAddedItem {
   Map<String, dynamic> toJson() => {
         'item_type': itemType,
         'name': name,
+        'type': type,
         // Butun qiymatlar kasrsiz (int) yuborilsin (naqsh: _asWire)
         'taken': taken % 1 == 0 ? taken.toInt() : taken,
         'subtotal': subtotal % 1 == 0 ? subtotal.toInt() : subtotal,
