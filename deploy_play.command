@@ -53,6 +53,10 @@
 # Play bir xil versionCode'ni ikkinchi marta qabul qilmaydi va u doim o'sishi shart —
 # skript Play'dagi eng katta versionCode'ni tekshirib, kerak bo'lsa undan yuqori qilib oladi
 # (qadam turi saqlanadi: --minor keyingi o'nlikka, --major keyingi yuzlikka).
+# Tekshiruv bo'lmasa skript to'xtaydi (taxminiy raqam bilan build qilinmaydi). Yuklashda
+# baribir "Version code N has already been used" chiqsa — raqam N+1 qilinib AAB qayta
+# build bo'ladi va qayta yuklanadi, qo'lda hech nima qilinmaydi. Build'dan keyin AAB'ning
+# haqiqiy versionCode'i pubspec bilan solishtiriladi (local.properties eskirib qolsa ushlanadi).
 #
 # Konfiguratsiya: ~/.mone_play.env (bo'lmasa ~/.sadinov_play.env ishlatiladi):
 #   PLAY_SA_JSON=$HOME/.playconsole/mone-service-account.json
@@ -72,7 +76,7 @@ cd "$(dirname "$0")"
 # Finder'dan (ikki bosish) ochilganda oynani natija bilan ochiq qoldirish
 cleanup_and_pause() {
     local code=$?
-    rm -f "${PRECHECK_PY:-}"
+    rm -f "${PRECHECK_PY:-}" "${USED_FILE:-}"
     if [ -t 0 ]; then
         echo
         [ $code -eq 0 ] || echo "[XATO] Skript $code kodi bilan tugadi."
@@ -80,6 +84,7 @@ cleanup_and_pause() {
     fi
 }
 PRECHECK_PY=""
+USED_FILE=""
 trap cleanup_and_pause EXIT
 
 # Finder'dan ikki marta bosib ochilganda PATH faqat /usr/bin:/bin:/usr/sbin:/sbin bo'ladi —
@@ -234,6 +239,60 @@ PKG="$(sed -n 's/.*applicationId *= *"\(.*\)".*/\1/p' android/app/build.gradle 2
 [ -n "$PKG" ] || { echo "applicationId topilmadi (android/app/build.gradle)." >&2; exit 1; }
 echo "Ilova: $PKG"
 
+# --- Build yordamchilari ---
+
+# android/local.properties'dagi bitta kalitni yozadi (yo'q bo'lsa qo'shadi).
+set_local_prop() {
+    local f=android/local.properties key="$1" val="$2"
+    [ -f "$f" ] || : > "$f"
+    if grep -q "^${key}=" "$f"; then
+        sed -i '' "s|^${key}=.*|${key}=${val}|" "$f"
+    else
+        # fayl oxirida yangi qator bo'lmasa qo'shamiz, aks holda kalit oldingi qatorga yopishadi
+        if [ -s "$f" ] && [ -n "$(tail -c1 "$f")" ]; then echo >> "$f"; fi
+        printf '%s=%s\n' "$key" "$val" >> "$f"
+    fi
+}
+
+# AAB build: SEMVER/BUILD_NUM dan. Gradle plagini versionCode'ni AYNAN android/local.properties
+# dan o'qiydi (FlutterPlugin.kt: flutter.versionCode); uni flutter tool build'da yangilashi
+# kerak, lekin 2026-08-25 da Finder'dan ishga tushganda yangilamadi — pubspec 107 bo'lsa ham
+# AAB eski 106 bilan chiqib Play "Version code 106 has already been used" dedi. Shuning uchun:
+#   1) faylni o'zimiz yozamiz,  2) --build-name/--build-number ni aniq beramiz,
+#   3) build'dan keyin AAB'ning haqiqiy versionCode'ini tekshiramiz (Play'ga yuborishdan OLDIN).
+build_aab() {
+    if [ "$CLEAN" -eq 1 ]; then
+        echo "Kesh tozalanmoqda..."
+        flutter clean >/dev/null
+        CLEAN=0
+    fi
+    set_local_prop flutter.versionName "$SEMVER"
+    set_local_prop flutter.versionCode "$BUILD_NUM"
+
+    echo "AAB build qilinmoqda (versiya $SEMVER, versionCode $BUILD_NUM)..."
+    flutter build appbundle --release --build-name "$SEMVER" --build-number "$BUILD_NUM"
+
+    AAB="build/app/outputs/bundle/release/app-release.aab"
+    [ -f "$AAB" ] || { echo "AAB fayl topilmadi — build muvaffaqiyatsiz." >&2; exit 1; }
+
+    local manifest="build/app/intermediates/packaged_manifests/release/processReleaseManifestForPackage/AndroidManifest.xml"
+    local built=""
+    if [ -f "$manifest" ]; then
+        built="$(grep -o 'android:versionCode="[0-9]*"' "$manifest" | head -1 | tr -dc '0-9')"
+    fi
+    if [ -n "$built" ] && [ "$built" != "$BUILD_NUM" ]; then
+        echo "AAB ichidagi versionCode $built, kutilgan esa $BUILD_NUM — build eski raqam bilan ketdi." >&2
+        echo "android/local.properties va gradle keshini tekshiring; --clean bilan qayta uring." >&2
+        exit 1
+    fi
+    if [ -n "$built" ]; then
+        echo "AAB tayyor: $AAB ($(du -h "$AAB" | cut -f1)), versionCode $built tekshirildi"
+    else
+        echo "AAB tayyor: $AAB ($(du -h "$AAB" | cut -f1))"
+    fi
+    MAPPING="build/app/outputs/mapping/release/mapping.txt"
+}
+
 # --- 2. Versiya ---
 # Play'dagi eng katta versionCode'ni oldindan so'raymiz: shu bilan (a) auth/huquq xatosi
 # 10 daqiqalik build'dan OLDIN chiqadi, (b) versionCode aniq o'sadi.
@@ -309,20 +368,32 @@ finally:
 print(max(codes))
 PY
 
-set +e
-PLAY_MAX="$(SA_JSON="$PLAY_SA_JSON" PKG="$PKG" "$PY_BIN" "$PRECHECK_PY")"
-PRECHECK_RC=$?
-set -e
-
-# Huquq / ilova topilmadi xatosi — 10 daqiqalik build'dan oldin to'xtaymiz.
-# (`set -e` bor: shart bajarilmasa butun skript chiqib ketmasligi uchun `if` ishlatilgan,
-#  `[ ... ] && exit` emas.)
-if [ "$PRECHECK_RC" -eq 2 ]; then
-    exit 1
-fi
+# Tarmoq/API xatosida 3 marta urinamiz. Baribir bo'lmasa TO'XTAYMIZ — avval "lokal raqam
+# ishlatiladi" deb jimgina davom etardi, natijada Play'da bor raqam bilan build ketib
+# 10 daqiqadan keyin "Version code N has already been used" chiqardi.
+PLAY_MAX=""
+PRECHECK_RC=0
+for attempt in 1 2 3; do
+    set +e
+    PLAY_MAX="$(SA_JSON="$PLAY_SA_JSON" PKG="$PKG" "$PY_BIN" "$PRECHECK_PY")"
+    PRECHECK_RC=$?
+    set -e
+    # Huquq / ilova topilmadi xatosi — qayta urinish ma'nosiz, build'dan oldin to'xtaymiz.
+    # (`set -e` bor: `[ ... ] && exit` emas, `if` ishlatilgan.)
+    if [ "$PRECHECK_RC" -eq 2 ]; then
+        exit 1
+    fi
+    case "$PLAY_MAX" in
+        ''|*[!0-9]*) echo "  (urinish $attempt/3: Play'dan javob olib bo'lmadi, 3 s dan keyin qayta...)"; sleep 3 ;;
+        *) break ;;
+    esac
+done
 
 case "$PLAY_MAX" in
-    ''|*[!0-9]*) echo "  (versionCode ro'yxatini olib bo'lmadi — lokal raqam ishlatiladi)"; PLAY_MAX=0 ;;
+    ''|*[!0-9]*)
+        echo "Play'dagi versionCode ro'yxatini olib bo'lmadi (tarmoq yoki API xatosi, yuqoridagi xabar)." >&2
+        echo "Taxminiy raqam bilan davom etilmaydi — aks holda build bekor ketadi ('already been used')." >&2
+        exit 1 ;;
     *) echo "  Play'dagi eng katta versionCode: $PLAY_MAX" ;;
 esac
 
@@ -389,19 +460,7 @@ else
 
     # --- 3. Build ---
 
-    if [ "$CLEAN" -eq 1 ]; then
-        echo "Kesh tozalanmoqda..."
-        flutter clean >/dev/null
-    fi
-
-    echo "AAB build qilinmoqda..."
-    flutter build appbundle --release
-
-    AAB="build/app/outputs/bundle/release/app-release.aab"
-    [ -f "$AAB" ] || { echo "AAB fayl topilmadi — build muvaffaqiyatsiz." >&2; exit 1; }
-    echo "AAB tayyor: $AAB ($(du -h "$AAB" | cut -f1))"
-
-    MAPPING="build/app/outputs/mapping/release/mapping.txt"
+    build_aab
 fi
 
 # --- 4. Google Play ---
@@ -422,12 +481,16 @@ else
     echo "Google Play'ga yuborilmoqda (tracklar: $TRACKS)..."
 fi
 
+# Yuklash alohida funksiya: "versionCode allaqachon ishlatilgan" (exit 3) bo'lsa raqamni
+# oshirib qayta build qilib, YANA shu funksiya chaqiriladi.
+USED_FILE="$(mktemp -t play_used_code)"
+upload_to_play() {
 SA_JSON="$PLAY_SA_JSON" PKG="$PKG" AAB="$AAB" MAPPING="$MAPPING" \
 TRACKS="$TRACKS" VALIDATE="$VALIDATE" RELEASE_NAME="$TARGET" NOTES="$NOTES" \
-PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" \
+PROMOTE="$PROMOTE" VERSION_CODE="$BUILD_NUM" ROLLOUT="$ROLLOUT" USED_FILE="$USED_FILE" \
 CONSOLE_URL="$PLAY_CONSOLE_URL" \
 "$PY_BIN" - <<'PY'
-import os, socket, sys
+import os, re, socket, sys
 
 # googleapiclient http'ni socket.getdefaulttimeout() (bo'lmasa 60 s) bilan quradi —
 # katta fayllarda sekin tarmoqda "write operation timed out" beradi, kengaytiramiz.
@@ -471,8 +534,26 @@ else:
     print("AAB yuklanmoqda...")
     media = MediaFileUpload(aab, mimetype="application/octet-stream",
                             chunksize=8 * 1024 * 1024, resumable=True)
-    bundle = svc.edits().bundles().upload(
-        packageName=pkg, editId=edit_id, media_body=media).execute(num_retries=5)
+    try:
+        bundle = svc.edits().bundles().upload(
+            packageName=pkg, editId=edit_id, media_body=media).execute(num_retries=5)
+    except HttpError as e:
+        # "Version code N has already been used" — precheck ko'rmagan raqam (masalan trackka
+        # qo'yilmagan, faqat yuklangan bundle). Raqamni bash'ga qaytarib (exit 3) qayta build
+        # qildiramiz — foydalanuvchi qo'l bilan hech nima qilmaydi.
+        text = (e.content.decode("utf-8", "ignore") if isinstance(e.content, bytes) else str(e.content)) + str(e)
+        m = re.search(r"[Vv]ersion code (\d+) has already been used", text)
+        if m:
+            print(f"  Play: versionCode {m.group(1)} allaqachon ishlatilgan.", file=sys.stderr)
+            try:
+                svc.edits().delete(packageName=pkg, editId=edit_id).execute()
+            except Exception:
+                pass
+            if os.environ.get("USED_FILE"):
+                with open(os.environ["USED_FILE"], "w") as f:
+                    f.write(m.group(1))
+            sys.exit(3)
+        raise
     version_code = bundle["versionCode"]
     print(f"Yuklandi: versionCode {version_code}")
 
@@ -571,3 +652,25 @@ if "production" in tracks:
             print(f"      Tekshirish: {console}/publishing")
             print(f"      Reliz holati: {console}/tracks/production")
 PY
+}
+
+set +e
+upload_to_play
+UP_RC=$?
+set -e
+if [ "$UP_RC" -eq 3 ] && [ "$PROMOTE" -eq 0 ]; then
+    USED="$(tr -dc '0-9' < "$USED_FILE" 2>/dev/null || true)"
+    [ -n "$USED" ] || exit 1
+    echo
+    echo "  versionCode $USED Play'da allaqachon bor (precheck ko'rmagan) — raqam oshirilib qayta build qilinadi..."
+    PLAY_MAX="$USED"
+    BUILD_NUM=$((USED + 1))
+    SEMVER="$(version_from_code "$BUILD_NUM")"
+    TARGET="${SEMVER}+${BUILD_NUM}"
+    sed -i '' "s/^version: .*/version: ${TARGET}/" pubspec.yaml
+    echo "Versiya: -> $TARGET"
+    build_aab
+    upload_to_play
+elif [ "$UP_RC" -ne 0 ]; then
+    exit "$UP_RC"
+fi
