@@ -15,7 +15,7 @@
 #   ./deploy_play.command --track a,b      track ro'yxati (internal|alpha|beta|production), vergul bilan
 #   ./deploy_play.command --rollout 0.2    production'ga bosqichma-bosqich (20% foydalanuvchi)
 #   ./deploy_play.command --notes "matn"   relizga izoh (testerlar/foydalanuvchilar ko'radi)
-#   ./deploy_play.command --yes            production ogohlantirishini kutmaydi (5 s pauza yo'q)
+#   ./deploy_play.command --yes            (eski parametr, hech nima qilmaydi — pauza umuman yo'q)
 #   ./deploy_play.command --validate       yuklamaydi, faqat Play tekshiruvidan o'tkazadi
 #   ./deploy_play.command --clean          flutter keshini tozalab build qiladi
 #
@@ -23,7 +23,8 @@
 # edit ichida `internal` va `production` tracklarga qo'yiladi -> commit.
 #   internal   -> testerlarga darhol, Play Store'da yangilanish O'ZI chiqadi
 #   production -> Google ko'rigiga (review) tushadi, o'tgach hamma foydalanuvchiga chiqadi
-# Production hamma foydalanuvchiga tegishi uchun skript 5 soniya kutadi (Ctrl+C = bekor).
+# Hech qanday tasdiq yoki pauza yo'q — ikki marta bosilgan zahoti hammasi avtomatik ketadi
+# (build -> yuklash -> internal + production ko'rikka). Bekor qilish = oynani yopish/Ctrl+C.
 #
 # KO'RIKKA YUBORISH: commit `changesNotSentForReview=false` bilan qilinadi — bu Play Console'dagi
 # "Отправить на проверку" tugmasining o'zi. Console'da avval 3-5 daqiqa "Проверка на наличие
@@ -465,14 +466,10 @@ fi
 
 # --- 4. Google Play ---
 
-# Production hamma foydalanuvchiga tegadi — bekor qilishga imkon beramiz.
-# (Ctrl+C bosilmasa o'zi davom etadi, ya'ni avtomatikaga xalal bermaydi.)
-if [ "$VALIDATE" -eq 0 ] && [ "$ASSUME_YES" -eq 0 ] && echo ",$TRACKS," | grep -q ',production,'; then
-    echo
-    echo "  !!! PRODUCTION: bu build Google ko'rigiga tushadi va o'tgach HAMMA"
-    echo "      foydalanuvchiga chiqadi. Bekor qilish uchun Ctrl+C — 5 soniya..."
-    sleep 5
-    echo
+# Hech qanday pauza/tasdiq YO'Q: Finder'da ikki marta bosilganda hammasi o'zi ketadi.
+# (Avval 5 soniyalik "Ctrl+C = bekor" pauzasi bor edi — olib tashlandi.)
+if [ "$VALIDATE" -eq 0 ] && echo ",$TRACKS," | grep -q ',production,'; then
+    echo "  PRODUCTION: bu build Google ko'rigiga tushadi, o'tgach hamma foydalanuvchiga chiqadi."
 fi
 
 if [ "$VALIDATE" -eq 1 ]; then
