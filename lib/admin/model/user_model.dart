@@ -1,5 +1,5 @@
 // admin/model/user_model.dart — foydalanuvchi va bog'liq modellar:
-// User (role, filial, categoryIds, sklads, sources, telegramChatId,
+// User (role, filial, categoryIds, sklads, sh5Sklads, sources, telegramChatId,
 // passwordPlain), Filial, CreateUserRequest/UpdateUserRequest (user_management
 // servisi so'rov tanalari), SendAllCredentialsResult/SendCredentialsFailure.
 class User {
@@ -13,6 +13,9 @@ class User {
   final String? password;
   final List<int>? categoryIds;
   final List<int> sklads;
+  // Ostatka (SH5) omborlari — ko'rish ruxsati berilganlari (Sh5RemainSklad.id).
+  // Bo'sh — ruxsat yo'q (admin baribir hammasini ko'radi).
+  final List<int> sh5Sklads;
   // yuk_keltiruvchi uchun mahsulot manbalari ("samarqand"/"toshkent"/"zagranitsa").
   // Bo'sh — cheklov yo'q (hammasini ko'radi).
   final List<String> sources;
@@ -33,6 +36,7 @@ class User {
     this.password,
     this.categoryIds,
     this.sklads = const [],
+    this.sh5Sklads = const [],
     this.sources = const [],
     this.telegramGroupId,
     this.telegramChatId = 0,
@@ -52,6 +56,10 @@ class User {
           ?.map((e) => e as int)
           .toList(),
       sklads: (json['sklads'] as List?)?.map((e) => e as int).toList() ?? [],
+      sh5Sklads: (json['sh5_sklads'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          [],
       sources:
           (json['sources'] as List?)?.map((e) => e.toString()).toList() ?? [],
       telegramGroupId: json['telegram_group_id'],
@@ -69,6 +77,7 @@ class User {
       'role': role,
       'filial_id': filialId,
       'sklads': sklads,
+      'sh5_sklads': sh5Sklads,
       'sources': sources,
       if (password != null) 'password': password,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
@@ -85,6 +94,7 @@ class User {
     Filial? filial,
     String? password,
     List<int>? sklads,
+    List<int>? sh5Sklads,
     List<String>? sources,
     String? telegramGroupId,
   }) {
@@ -98,6 +108,7 @@ class User {
       filial: filial ?? this.filial,
       password: password ?? this.password,
       sklads: sklads ?? this.sklads,
+      sh5Sklads: sh5Sklads ?? this.sh5Sklads,
       sources: sources ?? this.sources,
       telegramGroupId: telegramGroupId ?? this.telegramGroupId,
     );
@@ -151,6 +162,8 @@ class UpdateUserRequest {
   final String? password;
   final List<int>? categoryIds;
   final List<int>? sklads;
+  // Ostatka (SH5) ruxsati; null — yuborilmaydi (backenddagi qiymat qoladi).
+  final List<int>? sh5Sklads;
   // null — yuborilmaydi (backenddagi qiymat o'zgarmaydi).
   final List<String>? sources;
   final String? telegramGroupId;
@@ -164,6 +177,7 @@ class UpdateUserRequest {
     this.password,
     this.categoryIds,
     this.sklads,
+    this.sh5Sklads,
     this.sources,
     this.telegramGroupId,
   });
@@ -178,6 +192,7 @@ class UpdateUserRequest {
     if (password != null && password!.isNotEmpty) data['password'] = password;
     if (categoryIds != null) data['category_list'] = categoryIds;
     if (sklads != null) data['sklads'] = sklads;
+    if (sh5Sklads != null) data['sh5_sklads'] = sh5Sklads;
     if (sources != null) data['sources'] = sources;
     // Bo'sh string ham yuboriladi — backend bo'sh qiymatda tozalaydi.
     if (telegramGroupId != null) data['telegram_group_id'] = telegramGroupId;
@@ -237,6 +252,8 @@ class CreateUserRequest {
   final int? filialId;
   final List<int>? categoryIds;
   final List<int> sklads;
+  // Ostatka (SH5) omborlari — ko'rish ruxsati.
+  final List<int> sh5Sklads;
   final List<String>? sources;
   final String? telegramGroupId;
 
@@ -249,6 +266,7 @@ class CreateUserRequest {
     this.filialId,
     this.categoryIds,
     this.sklads = const [],
+    this.sh5Sklads = const [],
     this.sources,
     this.telegramGroupId,
   });
@@ -263,6 +281,7 @@ class CreateUserRequest {
       if (filialId != null) 'filial_id': filialId,
       'category_list': categoryIds,
       'sklads': sklads,
+      'sh5_sklads': sh5Sklads,
       if (sources != null) 'sources': sources,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };

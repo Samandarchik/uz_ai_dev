@@ -215,6 +215,26 @@ abstract final class AppUrls {
   // Bitta SH5 ombori tovarlari: GET ?q= (nom qidiruvi) — {name, taken_at,
   // goods:[{rid, name, unit, qty_milli}]}. qty_milli — qoldiq×1000 BUTUN.
   static String sh5Remain(int id) => '$baseUrl/api/sh5/remains/$id';
+  // Bridge'dan qoldiqni QAYTA o'qishni so'rash (kassir «yangilash» bosganda):
+  // POST — {requested:true}. Bridge poll qilib push qiladi, keyin taken_at
+  // yangilanadi (ilova shuni kutadi).
+  static const String sh5Refresh = '$baseUrl/api/sh5/refresh';
+  // Smena topshirish qoralamasi: GET ?sklad_id= — {sklad_id, sklad_name,
+  // taken_at, has_open, open_handover_id, prev, items:[{rid, name, unit,
+  // sh5_milli, prev_out_milli}]}. Miqdorlar milli BUTUN son.
+  static const String sh5HandoverDraft = '$baseUrl/api/sh5/handover/draft';
+  // Qabul kutayotgan topshiriq: GET ?sklad_id= — Sh5Handover yoki null.
+  static const String sh5HandoverOpen = '$baseUrl/api/sh5/handover/open';
+  // Smenani topshirish: POST {sklad_id, note, items:[{rid, qty_milli}]}.
+  // Yuborilmagan tovar StoreHouse soni bilan yoziladi.
+  static const String sh5Handover = '$baseUrl/api/sh5/handover';
+  // Qabul qilish: POST {note, items:[{rid, qty_milli}]} — farq = kamomad.
+  static String sh5HandoverAccept(int id) =>
+      '$baseUrl/api/sh5/handover/$id/accept';
+  // Topshiriqlar tarixi: GET ?sklad_id=&days=&all=1 — {handovers:[...]}.
+  static const String sh5Handovers = '$baseUrl/api/sh5/handovers';
+  // Bitta topshiriq: GET ?diff=1 — faqat farq chiqqan qatorlar.
+  static String sh5HandoverDetail(int id) => '$baseUrl/api/sh5/handovers/$id';
 
   //Category
   static const String category = '$baseUrl/api/categories';

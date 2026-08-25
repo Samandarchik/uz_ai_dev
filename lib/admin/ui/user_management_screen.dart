@@ -556,6 +556,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   // Keng ekran qatori: hamma element bitta gorizontal qatorda.
   Widget _rowWide(User u, int index) {
     final catCount = u.categoryIds?.length ?? 0;
+    // Ostatka (SH5) ruxsati berilgan ombor soni (0 — ruxsat yo'q).
+    final sh5Count = u.sh5Sklads.length;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _openEditDialog(u),
@@ -622,6 +624,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     '$catCount ta kategoriya',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
+                  if (sh5Count > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Ostatka: $sh5Count ta ombor',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.blue.shade700),
+                      ),
+                    ),
                 ],
               ),
             ),

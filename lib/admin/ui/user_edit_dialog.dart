@@ -9,12 +9,17 @@
 //     yuk_keltiruvchi → bir nechta sklad + manbalar (sources)
 //   - ombor → Telegram guruh ID (ixtiyoriy)
 //   - bugalter/shef → kategoriya so'ralmaydi (bo'sh ro'yxat yuboriladi)
+//   - seller → «Ostatka (SH5) omborlari» ruxsati (kategoriya chiplari naqshi):
+//     tanlangan omborlarni sotuvchi ilovada ochib ko'radi va smena
+//     topshiradi/qabul qiladi (User.sh5Sklads)
 //   - create → POST /api/register, edit → PUT /api/users/{id}
 //     (edit'da ism/parol faqat bo'sh bo'lmaganda yuboriladi)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uz_ai_dev/admin/model/sh5_remain_model.dart';
 import 'package:uz_ai_dev/admin/model/user_model.dart';
+import 'package:uz_ai_dev/admin/services/sh5_service.dart';
 import 'package:uz_ai_dev/admin/services/user_management_service.dart';
 import 'package:uz_ai_dev/core/constants/roles.dart';
 import 'package:uz_ai_dev/user/provider/provider.dart';
@@ -33,6 +38,7 @@ class _UserEditDialogState extends State<UserEditDialog> {
   final _formKey = GlobalKey<FormState>();
   final UserManagementService _userService = UserManagementService();
   final FilialService _filialService = FilialService();
+  final Sh5Service _sh5Service = Sh5Service();
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -65,6 +71,12 @@ class _UserEditDialogState extends State<UserEditDialog> {
   List<int> _categoryIds = [];
   String _filialError = '';
 
+  // Ostatka (SH5) omborlari — admin ro'yxati va tanlangan ruxsatlar.
+  List<Sh5RemainSklad> _sh5Sklads = [];
+  List<int> _selectedSh5Sklads = [];
+  bool _sh5Loading = true;
+  String _sh5Error = '';
+
   static const Color _accent = Color(0xFF3699ff);
 
   @override
@@ -82,6 +94,7 @@ class _UserEditDialogState extends State<UserEditDialog> {
     _selectedSklads = List.from(widget.user?.sklads ?? []);
     _selectedSources = List.from(widget.user?.sources ?? []);
     _categoryIds = List.from(widget.user?.categoryIds ?? []);
+    _selectedSh5Sklads = List.from(widget.user?.sh5Sklads ?? []);
 
     // Rol tanlovi. Standart rollar + agar userning roli ulardan boshqa bo'lsa
     // (masalan superadmin) uni ham ro'yxatga qo'shamiz (chip yo'qolib qolmasligi uchun).
@@ -104,6 +117,7 @@ class _UserEditDialogState extends State<UserEditDialog> {
       if (!mounted) return;
       _loadFilials();
       _loadCategories();
+      _loadSh5Sklads();
     });
   }
 
@@ -154,6 +168,28 @@ class _UserEditDialogState extends State<UserEditDialog> {
       setState(() {
         _filialError = e.toString();
         _isLoadingFilials = false;
+      });
+    }
+  }
+
+  // Ostatka omborlari ro'yxati (admin so'raganda hammasi keladi).
+  Future<void> _loadSh5Sklads() async {
+    setState(() {
+      _sh5Loading = true;
+      _sh5Error = '';
+    });
+    try {
+      final list = await _sh5Service.fetchSklads();
+      if (!mounted) return;
+      setState(() {
+        _sh5Sklads = list;
+        _sh5Loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _sh5Error = e.toString();
+        _sh5Loading = false;
       });
     }
   }
@@ -215,6 +251,11 @@ class _UserEditDialogState extends State<UserEditDialog> {
             ? []
             : _categoryIds;
 
+    // Ostatka ruxsati FAQAT sotuvchi uchun; rol almashtirilsa eski tanlov
+    // qolib ketmasligi uchun bo'sh ro'yxat yuboriladi.
+    final List<int> sh5Sklads =
+        _selectedRole == AppRoles.seller ? _selectedSh5Sklads : [];
+
     setState(() => _isSaving = true);
 
     try {
@@ -235,6 +276,7 @@ class _UserEditDialogState extends State<UserEditDialog> {
               : null,
           categoryIds: categoryIds,
           sklads: _selectedSklads,
+          sh5Sklads: sh5Sklads,
           // sources faqat yuk_keltiruvchi roli uchun yuboriladi;
           // boshqa rollarda kalit yuborilmaydi (backenddagi qiymat saqlanadi).
           sources: _selectedRole == AppRoles.yukKeltiruvchi
@@ -254,6 +296,7 @@ class _UserEditDialogState extends State<UserEditDialog> {
           filialId: filialId,
           categoryIds: categoryIds,
           sklads: _selectedSklads,
+          sh5Sklads: sh5Sklads,
           sources: _selectedRole == AppRoles.yukKeltiruvchi
               ? _selectedSources
               : null,
@@ -616,6 +659,90 @@ class _UserEditDialogState extends State<UserEditDialog> {
     );
   }
 
+  // Ostatka (SH5) ombor ruxsati — sotuvchi uchun (kategoriya chiplari naqshi).
+  // Tanlanmasa sotuvchi «Ostatka» ekranini umuman ko'rmaydi.
+  Widget _buildSh5Chips() {
+    Widget body;
+    if (_sh5Loading) {
+      body = const Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 12),
+          Text('Omborlar yuklanmoqda...', style: TextStyle(fontSize: 13)),
+        ],
+      );
+    } else if (_sh5Error.isNotEmpty) {
+      body = Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade600, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Omborlar yuklanmadi',
+              style: TextStyle(fontSize: 13, color: Colors.red),
+            ),
+          ),
+          TextButton(
+            onPressed: _loadSh5Sklads,
+            child: const Text('Qayta urinish'),
+          ),
+        ],
+      );
+    } else if (_sh5Sklads.isEmpty) {
+      body = Text(
+        'Ombor topilmadi (StoreHouse hali qoldiq yubormagan)',
+        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+      );
+    } else {
+      body = Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _sh5Sklads.map((s) {
+          final sel = _selectedSh5Sklads.contains(s.id);
+          return FilterChip(
+            label: Text(
+              s.name,
+              style: TextStyle(fontSize: 12, color: sel ? Colors.white : null),
+            ),
+            selected: sel,
+            onSelected: (v) {
+              setState(() {
+                if (v) {
+                  if (!_selectedSh5Sklads.contains(s.id)) {
+                    _selectedSh5Sklads.add(s.id);
+                  }
+                } else {
+                  _selectedSh5Sklads.remove(s.id);
+                }
+              });
+            },
+            selectedColor: _accent,
+            checkmarkColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          );
+        }).toList(),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Ostatka (SH5) omborlari'),
+        const SizedBox(height: 4),
+        Text(
+          'Tanlangan omborni sotuvchi ochib ko\'radi va smena topshiradi',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 8),
+        body,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.user != null;
@@ -716,6 +843,12 @@ class _UserEditDialogState extends State<UserEditDialog> {
                 else if (_selectedRole != AppRoles.bugalter &&
                     _selectedRole != AppRoles.shef)
                   _buildCategoryChips(),
+
+                // Ostatka (SH5) ruxsati — faqat sotuvchi uchun.
+                if (_selectedRole == AppRoles.seller) ...[
+                  const SizedBox(height: 16),
+                  _buildSh5Chips(),
+                ],
               ],
             ),
           ),

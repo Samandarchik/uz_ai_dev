@@ -1,10 +1,15 @@
 // user/ui/user_home_ui.dart — Seller roli bosh ekrani: UserHomeUi (ProductProvider). Qidiruv,
 // kategoriyalar va kartochkalar; savat (CartPage) hamda buyurtmalar (OrdersPage) ga o'tish.
+// «Ostatka» tugmasi FAQAT ruxsat berilganda chiqadi: ekran ochilganda
+// /api/sh5/remains so'raladi (backend userga biriktirilganini qaytaradi) —
+// ro'yxat bo'sh bo'lsa tugma umuman ko'rinmaydi.
 import 'package:flutter/material.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uz_ai_dev/admin/services/sh5_service.dart';
+import 'package:uz_ai_dev/admin/ui/sh5_ostatka_ui.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/context_extension.dart';
@@ -26,6 +31,8 @@ class _UserHomeUiState extends State<UserHomeUi> {
   String name = '';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  // Ostatka (SH5) ruxsati bormi — tugmani ko'rsatish uchun.
+  bool _hasOstatka = false;
 
   static const Color _buttonColor = Color(0xFFC5A97B);
   static const Color _bgColor = Color(0xFFFAF6F1);
@@ -55,6 +62,18 @@ class _UserHomeUiState extends State<UserHomeUi> {
       context.read<ProductProvider>().fetchProducts();
     });
     getMe();
+    _checkOstatka();
+  }
+
+  // Ruxsat tekshiruvi: bo'sh ro'yxat yoki xato — tugma chiqmaydi (jim).
+  Future<void> _checkOstatka() async {
+    try {
+      final sklads = await Sh5Service().fetchSklads();
+      if (!mounted) return;
+      if (sklads.isNotEmpty) setState(() => _hasOstatka = true);
+    } catch (_) {
+      // Ruxsat yo'q yoki tarmoq xatosi — bosh ekran o'z ishida davom etadi.
+    }
   }
 
   @override
@@ -79,6 +98,11 @@ class _UserHomeUiState extends State<UserHomeUi> {
           IconButton(
               onPressed: () => logoutAndClear(context),
               icon: Icon(Icons.logout)),
+          if (_hasOstatka)
+            IconButton(
+                tooltip: 'Ostatka',
+                onPressed: () => context.push(const Sh5OstatkaUi()),
+                icon: Icon(Icons.inventory_2_outlined)),
           IconButton(
               onPressed: () => context.push(OrdersPage()),
               icon: Icon(Icons.receipt_long)),
