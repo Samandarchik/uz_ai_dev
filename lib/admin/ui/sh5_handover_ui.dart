@@ -12,6 +12,7 @@
 // SON QOIDASI: ekranda kg/dona ko'rinadi, serverga milli BUTUN son ketadi
 // (×1000, sh5MilliFromInput). Float yuborilmaydi.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uz_ai_dev/admin/model/rk7_shift_model.dart' show formatPortions;
 import 'package:uz_ai_dev/admin/model/sh5_handover_model.dart';
@@ -136,14 +137,19 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
   TextEditingController _ctrlFor(_Row r) => _ctrls.putIfAbsent(
       r.rid, () => TextEditingController(text: formatPortions(_factOf(r))));
 
-  // Fokus yo'qolganda bo'sh/noto'g'ri matn tayanch songa qaytariladi —
-  // maydon hech qachon «bo'sh» holatda qolib ketmasin.
+  // Fokus KELGANDA butun matn tanlanadi (ustiga darhol yozib ketiladi),
+  // KETGANDA bo'sh/noto'g'ri matn tayanch songa qaytariladi — maydon hech
+  // qachon «bo'sh» holatda qolib ketmasin.
   FocusNode _nodeFor(_Row r) => _nodes.putIfAbsent(r.rid, () {
         final node = FocusNode();
         node.addListener(() {
-          if (node.hasFocus) return;
           final ctrl = _ctrls[r.rid];
           if (ctrl == null) return;
+          if (node.hasFocus) {
+            ctrl.selection =
+                TextSelection(baseOffset: 0, extentOffset: ctrl.text.length);
+            return;
+          }
           if (sh5MilliFromInput(ctrl.text) == null) {
             ctrl.text = formatPortions(_factOf(r));
           }
@@ -171,8 +177,9 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
   }
 
   // Farq chiqqan qatorlar (tasdiqlash oynasi va pastki panel uchun).
-  List<_Row> get _diffRows =>
-      _rows.where((r) => _edited[r.rid] != null && _edited[r.rid] != r.baseMilli).toList();
+  List<_Row> get _diffRows => _rows
+      .where((r) => _edited[r.rid] != null && _edited[r.rid] != r.baseMilli)
+      .toList();
 
   int _factOf(_Row r) => _edited[r.rid] ?? r.baseMilli;
 
@@ -216,7 +223,9 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
                         '(${diff > 0 ? '+' : '−'}${formatPortions(diff.abs())})',
                         style: TextStyle(
                           fontSize: 13,
-                          color: diff < 0 ? Colors.red.shade700 : Colors.green.shade700,
+                          color: diff < 0
+                              ? Colors.red.shade700
+                              : Colors.green.shade700,
                         ),
                       ),
                     );
@@ -341,8 +350,9 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
       return '${widget.skladName} • StoreHouse: $when';
     }
     final h = widget.open!;
-    final when =
-        h.outAt == null ? '' : DateFormat('dd.MM HH:mm').format(h.outAt!.toLocal());
+    final when = h.outAt == null
+        ? ''
+        : DateFormat('dd.MM HH:mm').format(h.outAt!.toLocal());
     return '${widget.skladName} • Topshirdi: ${h.outUserName} $when';
   }
 
@@ -353,8 +363,6 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      // Klaviatura ochilganda ro'yxatni surganda maydondan fokus ketsin.
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: rows.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) => _row(rows[i]),
@@ -368,21 +376,22 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
     final fact = _factOf(r);
     final diff = fact - r.baseMilli;
     final changed = diff != 0;
-    final color =
-        diff < 0 ? Colors.red.shade700 : Colors.green.shade700;
+    final color = diff < 0 ? Colors.red.shade700 : Colors.green.shade700;
     final node = _nodeFor(r);
-    return Container(
-      color: changed
-          ? (diff < 0 ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9))
-          : Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              // Nomni bosganda ham maydon ochiladi (nishon kattaroq bo'lsin).
-              onTap: _saving ? null : () => _focusRow(r),
-              behavior: HitTestBehavior.opaque,
+    // BUTUN qator bosiladi — nomi, bo'sh joyi, sonining atrofi ham. Maydonning
+    // o'zi bosilsa TextField'ning ichki ishlovchisi ustun keladi (bola vidjet
+    // gesture arenasida yutadi), shuning uchun ikkalasi ham to'g'ri ishlaydi.
+    return GestureDetector(
+      onTap: _saving ? null : () => _focusRow(r),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        color: changed
+            ? (diff < 0 ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9))
+            : Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -393,87 +402,96 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
                     '${_isSubmit ? 'StoreHouse' : 'Topshirilgan'}: '
                     '${formatPortions(r.baseMilli)} ${r.unit}'
                     '${r.prevMilli > 0 ? '  •  oldingi: ${formatPortions(r.prevMilli)}' : ''}',
-                    style: const TextStyle(fontSize: 11.5, color: Colors.black54),
+                    style:
+                        const TextStyle(fontSize: 11.5, color: Colors.black54),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 92,
-            child: TextField(
-              controller: _ctrlFor(r),
-              focusNode: node,
-              enabled: !_saving,
-              textAlign: TextAlign.center,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              textInputAction: TextInputAction.done,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: changed ? color : kRk7AccentDark,
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 104,
+              child: TextField(
+                controller: _ctrlFor(r),
+                focusNode: node,
+                enabled: !_saving,
+                textAlign: TextAlign.center,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textInputAction: TextInputAction.done,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: changed ? color : kRk7AccentDark,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  suffixText: r.unit.isEmpty ? null : r.unit,
+                  suffixStyle:
+                      const TextStyle(fontSize: 11, color: Colors.black54),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                        color: changed ? color : Colors.grey.shade300,
+                        width: changed ? 1.4 : 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: kRk7AccentDark, width: 1.6),
+                  ),
+                ),
+                // Matnni tanlash fokus listenerida (ikkinchi bosishda kursor
+                // joylashtirish ishlashi uchun bu yerda tanlanmaydi).
+                // scrollPadding — klaviatura ochilganda qator uning ostida
+                // qolib ketmasin.
+                scrollPadding: const EdgeInsets.only(bottom: 120),
+                onChanged: (v) => _onQtyChanged(r, v),
+                onSubmitted: (_) => node.unfocus(),
               ),
-              decoration: InputDecoration(
-                isDense: true,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                suffixText: r.unit.isEmpty ? null : r.unit,
-                suffixStyle:
-                    const TextStyle(fontSize: 11, color: Colors.black54),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: changed ? color : Colors.grey.shade300,
-                      width: changed ? 1.4 : 1),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: kRk7AccentDark, width: 1.6),
-                ),
-              ),
-              onTap: () => _selectAll(r),
-              onChanged: (v) => _onQtyChanged(r, v),
-              onSubmitted: (_) => node.unfocus(),
             ),
-          ),
-          SizedBox(
-            width: 52,
-            child: changed
-                ? Text(
-                    '${diff > 0 ? '+' : '−'}${formatPortions(diff.abs())}',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+            SizedBox(
+              width: 52,
+              child: changed
+                  ? Text(
+                      '${diff > 0 ? '+' : '−'}${formatPortions(diff.abs())}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // Maydonga fokus berish + matnni to'liq tanlash (ustiga yozish oson bo'lsin).
+  // Qatorning istalgan joyi bosilganda maydonni ochish. DIQQAT:
+  // requestFocus() o'zi telefonda klaviaturani HAR DOIM ochmaydi (maydonning
+  // o'z bosish ishlovchisi orqali kelmagani uchun) — shuning uchun
+  // TextInput.show ham chaqiriladi. Desktopda bu buyruq zararsiz.
   void _focusRow(_Row r) {
-    _nodeFor(r).requestFocus();
-    _selectAll(r);
-  }
-
-  void _selectAll(_Row r) {
-    final ctrl = _ctrlFor(r);
-    ctrl.selection =
-        TextSelection(baseOffset: 0, extentOffset: ctrl.text.length);
+    final node = _nodeFor(r);
+    if (node.hasFocus) {
+      // Allaqachon ochiq — matnni qayta tanlaymiz (ustiga yozish uchun).
+      _ctrlFor(r).selection =
+          TextSelection(baseOffset: 0, extentOffset: _ctrlFor(r).text.length);
+      return;
+    }
+    node.requestFocus();
+    SystemChannels.textInput.invokeMethod<void>('TextInput.show');
   }
 
   Widget _bottomBar(int diffCount) {
@@ -484,7 +502,8 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06), blurRadius: 6),
           ],
         ),
         child: Row(

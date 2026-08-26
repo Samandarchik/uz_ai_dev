@@ -42,6 +42,10 @@ void main() {
     await t.tap(find.widgetWithText(TextField, '10'));
     await t.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
+    expect(t.widget<TextField>(find.widgetWithText(TextField, '10'))
+        .focusNode!
+        .hasFocus,
+        isTrue);
 
     // Joyida yozamiz: 10 → 9. Farq darhol hisoblanadi.
     await t.enterText(find.widgetWithText(TextField, '10'), '9');
@@ -53,6 +57,35 @@ void main() {
     await t.enterText(find.widgetWithText(TextField, '9'), '10');
     await t.pump();
     expect(find.text('2 ta tovar • farq yo\'q'), findsOneWidget);
+  });
+
+  // Nishon KATTA bo'lishi kerak: qatorning istalgan joyi (tovar nomi, bo'sh
+  // joy) bosilganda ham maydon ochilib, matn to'liq tanlanadi — kassir darhol
+  // ustiga yozadi. Bu buzilganda «bosyapman, ochilmayapti» holati qaytadi.
+  testWidgets('tovar nomini bosish ham maydonni ochadi va matnni tanlaydi',
+      (t) async {
+    await t.pumpWidget(MaterialApp(
+      home: Sh5HandoverCountUi.submit(
+        skladId: 1,
+        skladName: 'SMOKE BAR',
+        draft: _draft(),
+      ),
+    ));
+    await t.pumpAndSettle();
+
+    await t.tap(find.text('Kola'));
+    await t.pumpAndSettle();
+
+    final field = t.widget<TextField>(find.widgetWithText(TextField, '10'));
+    expect(field.focusNode!.hasFocus, isTrue,
+        reason: 'nomni bosganda maydonga fokus tushmadi');
+    // Butun matn tanlangan — ustiga yozilsa eski son o'chadi.
+    expect(field.controller!.selection.start, 0);
+    expect(field.controller!.selection.end, 2);
+
+    await t.enterText(find.widgetWithText(TextField, '10'), '9');
+    await t.pump();
+    expect(find.text('1 ta pozitsiyada farq'), findsOneWidget);
   });
 
   testWidgets('qabul rejimida tayanch son — topshirilgan miqdor', (t) async {
