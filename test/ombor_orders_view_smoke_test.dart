@@ -3,6 +3,11 @@
 // LAZY qolishi kerak (40 qatorli buyurtmada ham faqat ekrandagi qatorlar
 // quriladi). Eski versiya hamma qatorni birdan qurib, iPhone'da ham qotib
 // ilovani o'ldirardi.
+//
+// DIQQAT: sklad sarlavhasidagi «Yangi» filtri STANDART YONIQ — qabul
+// qilingan qatorlar yashirin turadi (ombor_orders_ui.dart, «Faqat yangi»
+// filtri). Sinov ma'lumotida juft raqamli mahsulotlar qabul qilingan, ya'ni
+// standart holatda faqat TOQ raqamlilari ko'rinadi.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,9 +70,12 @@ void main() {
     provider.notifyListeners();
     await tester.pump();
 
-    // Sklad sarlavhasi va birinchi qatorlar ko'rinadi.
+    // Sklad sarlavhasi va birinchi qatorlar ko'rinadi. «Yangi» filtri yoniq:
+    // qabul qilingan «Mahsulot 0» yashirin, birinchi ko'rinadigani —
+    // «Mahsulot 1».
     expect(find.text('Asosiy sklad'), findsOneWidget);
-    expect(find.text('Mahsulot 0'), findsOneWidget);
+    expect(find.text('Mahsulot 1'), findsOneWidget);
+    expect(find.text('Mahsulot 0'), findsNothing);
 
     // LAZY: 40 ta qatordan faqat ekranga sig'gani qurilgan bo'lishi kerak.
     final builtFields = find.byType(TextField).evaluate().length;
@@ -92,6 +100,48 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 9000));
     await tester.pump();
     expect(find.text('2.4'), findsOneWidget);
+  });
+
+  // «Yangi» filtri qorovuli: shu xatti-harakat o'zgarganda yuqoridagi test
+  // jimgina yiqilgan edi — endi filtr o'zi ham qamrab olinadi.
+  testWidgets('«Yangi» filtri qabul qilinganlarni yashiradi va qaytaradi',
+      (tester) async {
+    final provider = OmborProvider();
+    provider.myOrders = [
+      _order(2, 'Asosiy sklad', [
+        _item(0, 'Qabul qilingan', accepted: true),
+        _item(1, 'Yangi qator'),
+      ]),
+    ];
+    provider.isLoadingOrders = true;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<OmborProvider>.value(
+        value: provider,
+        child: const MaterialApp(home: Scaffold(body: OmborOrdersView())),
+      ),
+    );
+    await tester.pump();
+    provider.isLoadingOrders = false;
+    provider.notifyListeners();
+    await tester.pump();
+
+    // Standart holat — filtr YONIQ ('Yangi' yozuvi), qabul qilingani yashirin.
+    expect(find.text('Yangi'), findsOneWidget);
+    expect(find.text('Yangi qator'), findsOneWidget);
+    expect(find.text('Qabul qilingan'), findsNothing);
+
+    // Filtrni o'chiramiz — hamma qator ko'rinadi.
+    await tester.tap(find.text('Yangi'));
+    await tester.pump();
+    expect(find.text('Hammasi'), findsOneWidget);
+    expect(find.text('Qabul qilingan'), findsOneWidget);
+    expect(find.text('Yangi qator'), findsOneWidget);
+
+    // Qaytarib yoqamiz.
+    await tester.tap(find.text('Hammasi'));
+    await tester.pump();
+    expect(find.text('Qabul qilingan'), findsNothing);
   });
 
   testWidgets('bo\'sh holat', (tester) async {
