@@ -2,9 +2,12 @@
 // (Sh5HandoverCountUi): bitta ekran ikki rejimda ishlaydi —
 //   • topshirish (mode = submit): tayanch son = StoreHouse qoldig'i;
 //   • qabul     (mode = accept): tayanch son = oldingi kassir topshirgan son.
-// Kassir FAQAT farq qilgan qatorni bosib tuzatadi (224 ta tovarni qayta
-// terish shart emas) — o'zgartirilmagan qatorlar serverda tayanch son bilan
-// yoziladi. Farq chiqsa qizil ko'rinadi va tasdiqlash oynasida sanab beriladi.
+// Son maydoni qatorning O'ZIDA tahrirlanadi (dialog YO'Q): bosish bilan
+// klaviatura ochiladi va matn to'liq tanlanadi — ustiga yozib ketaveradi.
+// Kassir FAQAT farq qilgan qatorni tuzatadi (224 ta tovarni qayta terish
+// shart emas) — o'zgartirilmagan qatorlar serverda tayanch son bilan
+// yoziladi. Farq chiqsa qator qizil/yashil bo'ladi va tasdiqlashdan oldin
+// sanab beriladi.
 //
 // SON QOIDASI: ekranda kg/dona ko'rinadi, serverga milli BUTUN son ketadi
 // (×1000, sh5MilliFromInput). Float yuborilmaydi.
@@ -83,6 +86,11 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
   late final List<_Row> _rows;
   // Kassir tuzatgan qatorlar: rid → milli. Faqat shular serverga ketadi.
   final Map<int, int> _edited = {};
+  // Har qatorning kiritish maydoni — rid bo'yicha kesh. ListView.builder
+  // faqat ko'rinadigan qatorni quradi, shuning uchun controller ham FAQAT
+  // ko'rilgan qatorlar uchun yaratiladi (224 ta tovarda ham yengil).
+  final Map<int, TextEditingController> _ctrls = {};
+  final Map<int, FocusNode> _nodes = {};
   bool _saving = false;
   String _query = '';
 
@@ -114,8 +122,46 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
 
   @override
   void dispose() {
+    for (final c in _ctrls.values) {
+      c.dispose();
+    }
+    for (final n in _nodes.values) {
+      n.dispose();
+    }
     _search.dispose();
     super.dispose();
+  }
+
+  // Qator maydonining controlleri (birinchi ko'rinishda yaratiladi).
+  TextEditingController _ctrlFor(_Row r) => _ctrls.putIfAbsent(
+      r.rid, () => TextEditingController(text: formatPortions(_factOf(r))));
+
+  // Fokus yo'qolganda bo'sh/noto'g'ri matn tayanch songa qaytariladi —
+  // maydon hech qachon «bo'sh» holatda qolib ketmasin.
+  FocusNode _nodeFor(_Row r) => _nodes.putIfAbsent(r.rid, () {
+        final node = FocusNode();
+        node.addListener(() {
+          if (node.hasFocus) return;
+          final ctrl = _ctrls[r.rid];
+          if (ctrl == null) return;
+          if (sh5MilliFromInput(ctrl.text) == null) {
+            ctrl.text = formatPortions(_factOf(r));
+          }
+        });
+        return node;
+      });
+
+  // Matn o'zgarganda: to'g'ri son bo'lsa yozamiz, tayanch songa teng bo'lsa
+  // «tuzatilmagan» deb hisoblanadi (serverga yuborilmaydi).
+  void _onQtyChanged(_Row r, String text) {
+    final milli = sh5MilliFromInput(text);
+    setState(() {
+      if (milli == null || milli == r.baseMilli) {
+        _edited.remove(r.rid);
+      } else {
+        _edited[r.rid] = milli;
+      }
+    });
   }
 
   List<_Row> get _visible {
@@ -129,82 +175,6 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
       _rows.where((r) => _edited[r.rid] != null && _edited[r.rid] != r.baseMilli).toList();
 
   int _factOf(_Row r) => _edited[r.rid] ?? r.baseMilli;
-
-  // ─────────────────────── Miqdor kiritish ───────────────────────
-
-  Future<void> _editRow(_Row r) async {
-    final ctrl = TextEditingController(text: formatPortions(_factOf(r)));
-    final result = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(r.name, style: const TextStyle(fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${_isSubmit ? 'StoreHouse' : 'Topshirilgan'}: '
-              '${formatPortions(r.baseMilli)} ${r.unit}',
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
-            ),
-            if (r.prevMilli > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  'Oldingi smena: ${formatPortions(r.prevMilli)} ${r.unit}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Sanaldi (${r.unit.isEmpty ? 'dona' : r.unit})',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                isDense: true,
-              ),
-              onSubmitted: (v) {
-                final milli = sh5MilliFromInput(v);
-                if (milli != null) Navigator.pop(ctx, milli);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Bekor'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: kRk7AccentDark),
-            onPressed: () {
-              final milli = sh5MilliFromInput(ctrl.text);
-              if (milli == null) {
-                rk7Snack(ctx, 'Son noto\'g\'ri kiritildi', error: true);
-                return;
-              }
-              Navigator.pop(ctx, milli);
-            },
-            child: const Text('Saqlash'),
-          ),
-        ],
-      ),
-    );
-    ctrl.dispose();
-    if (result == null || !mounted) return;
-    setState(() {
-      if (result == r.baseMilli) {
-        _edited.remove(r.rid);
-      } else {
-        _edited[r.rid] = result;
-      }
-    });
-  }
 
   // ─────────────────────── Saqlash ───────────────────────
 
@@ -383,54 +353,127 @@ class _Sh5HandoverCountUiState extends State<Sh5HandoverCountUi> {
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      // Klaviatura ochilganda ro'yxatni surganda maydondan fokus ketsin.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: rows.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, i) {
-        final r = rows[i];
-        final fact = _factOf(r);
-        final diff = fact - r.baseMilli;
-        final changed = diff != 0;
-        return ListTile(
-          dense: true,
-          tileColor: changed
-              ? (diff < 0 ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9))
-              : Colors.white,
-          onTap: _saving ? null : () => _editRow(r),
-          title: Text(r.name, style: const TextStyle(fontSize: 14)),
-          subtitle: Text(
-            '${_isSubmit ? 'StoreHouse' : 'Topshirilgan'}: '
-            '${formatPortions(r.baseMilli)} ${r.unit}'
-            '${r.prevMilli > 0 ? '  •  oldingi: ${formatPortions(r.prevMilli)}' : ''}',
-            style: const TextStyle(fontSize: 11.5),
+      itemBuilder: (context, i) => _row(rows[i]),
+    );
+  }
+
+  // Bitta qator: chapda nom + tayanch son, o'ngda TO'G'RIDAN-TO'G'RI
+  // tahrirlanadigan son maydoni (dialog yo'q — bosish bilan klaviatura
+  // ochiladi va matn tanlanadi).
+  Widget _row(_Row r) {
+    final fact = _factOf(r);
+    final diff = fact - r.baseMilli;
+    final changed = diff != 0;
+    final color =
+        diff < 0 ? Colors.red.shade700 : Colors.green.shade700;
+    final node = _nodeFor(r);
+    return Container(
+      color: changed
+          ? (diff < 0 ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9))
+          : Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              // Nomni bosganda ham maydon ochiladi (nishon kattaroq bo'lsin).
+              onTap: _saving ? null : () => _focusRow(r),
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(r.name, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_isSubmit ? 'StoreHouse' : 'Topshirilgan'}: '
+                    '${formatPortions(r.baseMilli)} ${r.unit}'
+                    '${r.prevMilli > 0 ? '  •  oldingi: ${formatPortions(r.prevMilli)}' : ''}',
+                    style: const TextStyle(fontSize: 11.5, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
           ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${formatPortions(fact)} ${r.unit}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14.5,
-                  color: changed
-                      ? (diff < 0 ? Colors.red.shade700 : Colors.green.shade700)
-                      : kRk7AccentDark,
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 92,
+            child: TextField(
+              controller: _ctrlFor(r),
+              focusNode: node,
+              enabled: !_saving,
+              textAlign: TextAlign.center,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: changed ? color : kRk7AccentDark,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                suffixText: r.unit.isEmpty ? null : r.unit,
+                suffixStyle:
+                    const TextStyle(fontSize: 11, color: Colors.black54),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: changed ? color : Colors.grey.shade300,
+                      width: changed ? 1.4 : 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      const BorderSide(color: kRk7AccentDark, width: 1.6),
                 ),
               ),
-              if (changed)
-                Text(
-                  '${diff > 0 ? '+' : '−'}${formatPortions(diff.abs())}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: diff < 0 ? Colors.red.shade700 : Colors.green.shade700,
-                  ),
-                ),
-            ],
+              onTap: () => _selectAll(r),
+              onChanged: (v) => _onQtyChanged(r, v),
+              onSubmitted: (_) => node.unfocus(),
+            ),
           ),
-        );
-      },
+          SizedBox(
+            width: 52,
+            child: changed
+                ? Text(
+                    '${diff > 0 ? '+' : '−'}${formatPortions(diff.abs())}',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
+  }
+
+  // Maydonga fokus berish + matnni to'liq tanlash (ustiga yozish oson bo'lsin).
+  void _focusRow(_Row r) {
+    _nodeFor(r).requestFocus();
+    _selectAll(r);
+  }
+
+  void _selectAll(_Row r) {
+    final ctrl = _ctrlFor(r);
+    ctrl.selection =
+        TextSelection(baseOffset: 0, extentOffset: ctrl.text.length);
   }
 
   Widget _bottomBar(int diffCount) {
