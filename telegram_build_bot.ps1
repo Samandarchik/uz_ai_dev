@@ -33,6 +33,7 @@ $Projects = [ordered]@{
     'timekivi_app'       = (Join-Path $env:USERPROFILE 'timekivi_app')
     'qilinadigan_ishlar' = (Join-Path $Desktop 'qilinadigan_ishlar')
     'pos_flutter'        = 'C:\pos_flutter'
+    'taxi'               = (Join-Path $Desktop 'mone-taxi-mobile')
 }
 
 # --- Config (token + chat id) ---
