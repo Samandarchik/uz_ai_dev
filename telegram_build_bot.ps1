@@ -34,6 +34,8 @@ $Projects = [ordered]@{
     'qilinadigan_ishlar' = (Join-Path $Desktop 'qilinadigan_ishlar')
     'pos_flutter'        = 'C:\pos_flutter'
     'taxi'               = (Join-Path $Desktop 'mone-taxi-mobile')
+    # Flutter loyihasi repo ichidagi papkada: web_end_bot_app_hr\hr_mobile_app
+    'hr_mobile_app'      = (Join-Path $Desktop 'web_end_bot_app_hr\hr_mobile_app')
 }
 
 # --- Config (token + chat id) ---
