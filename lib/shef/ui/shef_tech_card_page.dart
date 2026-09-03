@@ -2,8 +2,10 @@
 // ShefTechCardCategoriesPage (unga belgilangan kategoriyalar — backend
 // GET /api/categories ni shefning category_list bo'yicha O'ZI filtrlaydi)
 // va ShefTechCardProductsPage (kategoriya mahsulotlari + qidiruv). Mahsulot
-// bosilsa TechCardEditorPage NARXSIZ rejimda ochiladi (canEditPrices: false):
-// shef faqat retseptni tahrirlaydi, narx/foyda/nakladnoy unga yopiq.
+// bosilsa TechCardEditorPage faqat-o'qish narx rejimida ochiladi
+// (canEditPrices: false): shef retseptni tahrirlaydi, masalliq narxi /
+// «Сумма» / tannarx / sotuv narxini KO'RADI, lekin narx/foyda/nakladnoyni
+// o'zgartira olmaydi.
 // Mahsulot qo'shish/o'chirish/tartiblash/PDF bu yerda YO'Q.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -320,8 +322,7 @@ class _ShefTechCardProductsPageState extends State<ShefTechCardProductsPage> {
           if (provider.error != null && provider.products.isEmpty) {
             return _ErrorView(
               message: provider.error!.replaceFirst('Exception: ', ''),
-              onRetry: () =>
-                  provider.initializeProducts(forceRefresh: true),
+              onRetry: () => provider.initializeProducts(forceRefresh: true),
             );
           }
 
@@ -331,9 +332,7 @@ class _ShefTechCardProductsPageState extends State<ShefTechCardProductsPage> {
           final query = _searchQuery.trim().toLowerCase();
           final rows = query.isEmpty
               ? all
-              : all
-                  .where((p) => p.name.toLowerCase().contains(query))
-                  .toList();
+              : all.where((p) => p.name.toLowerCase().contains(query)).toList();
 
           return Column(
             children: [
@@ -351,8 +350,7 @@ class _ShefTechCardProductsPageState extends State<ShefTechCardProductsPage> {
                                 all.isEmpty
                                     ? 'Bu kategoriyada mahsulot yo\'q'
                                     : 'Topilmadi',
-                                style:
-                                    const TextStyle(color: Colors.black54),
+                                style: const TextStyle(color: Colors.black54),
                               ),
                             ),
                           ],
@@ -361,8 +359,7 @@ class _ShefTechCardProductsPageState extends State<ShefTechCardProductsPage> {
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
                           itemCount: rows.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1),
+                          separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) => _ProductTile(
                             product: rows[index],
                             onTap: () => _openTechCard(rows[index]),

@@ -4,9 +4,11 @@
 // Narxlar SHU YERDA qo'lda kiritiladi: «Цена продажи» qatori tahrirlanadi
 // (marja + partiya jami ko'rsatiladi), «Цена» katagi esa masalliqning qo'lda
 // xarid narxi sheet'ini ochadi.
-// `canEditPrices: false` — NARXSIZ rejim (shef): retsept to'liq tahrirlanadi,
-// lekin sotuv narxi / foyda / nakladnoy faqat o'qiladi va masalliqning
-// qo'lda xarid narxi sheet'i ochilmaydi (manual-price PUT umuman yo'q).
+// `canEditPrices: false` — FAQAT O'QISH rejimi (shef): retsept to'liq
+// tahrirlanadi, narx/«Сумма»/tannarx kataklari KO'RINADI (backend
+// /api/prices/latest shefga ochiq), lekin sotuv narxi / foyda / nakladnoy
+// faqat o'qiladi va «Цена» katagi xarid tarixini QO'LDA NARX BLOKISIZ ochadi
+// (manual-price PUT umuman yo'q).
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -576,9 +578,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
     if (!_profitSumFocus.hasFocus) {
       final sum = _profitPerPiece;
-      final t = (c.profitMode.isEmpty || sum == null)
-          ? ''
-          : formatMoneyInput(sum);
+      final t =
+          (c.profitMode.isEmpty || sum == null) ? '' : formatMoneyInput(sum);
       if (_profitSumCtrl.text != t) _profitSumCtrl.text = t;
     }
   }
@@ -591,9 +592,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     }
     if (!_overheadSumFocus.hasFocus) {
       final sum = _overheadSum;
-      final t = (c.overheadMode.isEmpty || sum == null)
-          ? ''
-          : formatMoneyInput(sum);
+      final t =
+          (c.overheadMode.isEmpty || sum == null) ? '' : formatMoneyInput(sum);
       if (_overheadSumCtrl.text != t) _overheadSumCtrl.text = t;
     }
   }
@@ -1360,11 +1360,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   bg: _isManualPrice(ing) ? const Color(0xFFD6E9FB) : null,
                   tooltip:
                       _isManualPrice(ing) ? 'Qo\'lda kiritilgan narx' : null,
-                  // Narxsiz rejimda (shef) bosilmaydi — xarid tarixi
-                  // endpointi faqat admin/bugalterga ochiq.
-                  onTap: (widget.canEditPrices && ing.productId != 0)
-                      ? () => _openPriceSheet(ing)
-                      : null,
+                  // Shef rejimida ham ochiladi — tarix faqat o'qiladi
+                  // (allowManualEdit: canEditPrices).
+                  onTap: ing.productId != 0 ? () => _openPriceSheet(ing) : null,
                 ),
                 _moneyCell(
                   cost == null ? '—' : fmtCostMoney(cost),
@@ -2493,8 +2491,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // tahriri). Qo'lda narx saqlansa sheet `true` qaytaradi: mahsulot
   // keshlarini bekor qilib narxlarni qayta yuklaymiz, shunda «Цена»,
   // «Сумма» va «Себестоимость» kataklari darhol jonli yangilanadi.
-  // Narxsiz rejimda (shef) bu sheet UMUMAN ochilmaydi — «Цена» kataklari
-  // bosilmaydi (yuqoriga qara), qo'lda narx bloki ham chiqmaydi.
+  // Shef rejimida (canEditPrices: false) sheet FAQAT xarid tarixini
+  // ko'rsatadi — qo'lda narx bloki chizilmaydi.
   Future<void> _openPriceSheet(TechItem item) async {
     final changed = await showPriceHistorySheet(
       context,
@@ -2627,9 +2625,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         ? const Color(0xFFD6E9FB)
                         : (stale ? const Color(0xFFFFECB3) : null),
                     tooltip: manual ? 'Qo\'lda kiritilgan narx' : null,
-                    // Narxsiz rejimda (shef) bosilmaydi — xarid tarixi
-                    // endpointi faqat admin/bugalterga ochiq.
-                    onTap: (widget.canEditPrices && item.productId != 0)
+                    // Shef rejimida ham ochiladi — tarix faqat o'qiladi
+                    // (allowManualEdit: canEditPrices).
+                    onTap: item.productId != 0
                         ? () => _openPriceSheet(item)
                         : null,
                   ),
