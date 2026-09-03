@@ -4,6 +4,9 @@
 // Narxlar SHU YERDA qo'lda kiritiladi: «Цена продажи» qatori tahrirlanadi
 // (marja + partiya jami ko'rsatiladi), «Цена» katagi esa masalliqning qo'lda
 // xarid narxi sheet'ini ochadi.
+// `canEditPrices: false` — NARXSIZ rejim (shef): retsept to'liq tahrirlanadi,
+// lekin sotuv narxi / foyda / nakladnoy faqat o'qiladi va masalliqning
+// qo'lda xarid narxi sheet'i ochilmaydi (manual-price PUT umuman yo'q).
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -110,7 +113,16 @@ const double _kSumColW = 80; // «Сумма» ustuni (qator tannarxi)
 class TechCardEditorPage extends StatefulWidget {
   final ProductModelAdmin product;
 
-  const TechCardEditorPage({super.key, required this.product});
+  /// false — narx maydonlari FAQAT o'qiladi (shef rejimi): «Цена продажи»,
+  /// «Прибыль», «Доп. расходы» tahrirlanmaydi va masalliqning qo'lda xarid
+  /// narxi sheet'i ochilmaydi. Retseptning qolgan qismi to'liq ishlaydi.
+  final bool canEditPrices;
+
+  const TechCardEditorPage({
+    super.key,
+    required this.product,
+    this.canEditPrices = true,
+  });
 
   @override
   State<TechCardEditorPage> createState() => _TechCardEditorPageState();
@@ -208,10 +220,18 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
       );
       Navigator.pop(context, true);
     } else {
+      final raw = provider.error ?? '';
+      // Backend ruxsat bermadi (masalan shef o'z kategoriyasidan tashqari
+      // mahsulotni saqlamoqchi) — tushunarli xabar chiqaramiz.
+      final msg = raw.contains('403')
+          ? 'Bu mahsulotni tahrirlashga ruxsat yo\'q — u sizga '
+              'belgilangan kategoriyada emas'
+          : (raw.isEmpty ? 'Ошибка сохранения' : raw);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.error ?? 'Ошибка сохранения'),
+          content: Text(msg.replaceFirst('Exception: ', '')),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -1340,8 +1360,11 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                   bg: _isManualPrice(ing) ? const Color(0xFFD6E9FB) : null,
                   tooltip:
                       _isManualPrice(ing) ? 'Qo\'lda kiritilgan narx' : null,
-                  onTap:
-                      ing.productId != 0 ? () => _openPriceSheet(ing) : null,
+                  // Narxsiz rejimda (shef) bosilmaydi — xarid tarixi
+                  // endpointi faqat admin/bugalterga ochiq.
+                  onTap: (widget.canEditPrices && ing.productId != 0)
+                      ? () => _openPriceSheet(ing)
+                      : null,
                 ),
                 _moneyCell(
                   cost == null ? '—' : fmtCostMoney(cost),
@@ -1475,15 +1498,18 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             onPressed: _showHistorySheet,
           ),
           // Tannarx (1 dona / 1 partiya) — GET /api/production/cost.
-          IconButton(
-            icon: const Icon(Icons.payments_outlined),
-            tooltip: 'Tannarx',
-            onPressed: () => showProductionCostSheet(
-              context,
-              productId: widget.product.id,
-              productName: widget.product.name,
+          // Narxsiz rejimda (shef) KO'RSATILMAYDI: bu endpoint faqat
+          // admin/bugalterga ochiq, tugma baribir 403 berardi.
+          if (widget.canEditPrices)
+            IconButton(
+              icon: const Icon(Icons.payments_outlined),
+              tooltip: 'Tannarx',
+              onPressed: () => showProductionCostSheet(
+                context,
+                productId: widget.product.id,
+                productName: widget.product.name,
+              ),
             ),
-          ),
           _saving
               ? const Padding(
                   padding: EdgeInsets.all(14),
@@ -1933,6 +1959,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             focusNode: _profitPctFocus,
             width: 56,
             decimal: true,
+            readOnly: !widget.canEditPrices,
             onChanged: _onProfitPctChanged,
           ),
           const Text(' %', style: _kCellBold),
@@ -1942,6 +1969,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             focusNode: _profitSumFocus,
             width: 96,
             decimal: false,
+            readOnly: !widget.canEditPrices,
             onChanged: _onProfitSumChanged,
           ),
           const Text(' сум', style: _kCellBold),
@@ -1963,6 +1991,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             focusNode: _overheadPctFocus,
             width: 56,
             decimal: true,
+            readOnly: !widget.canEditPrices,
             onChanged: _onOverheadPctChanged,
           ),
           const Text(' %', style: _kCellBold),
@@ -1972,6 +2001,7 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
             focusNode: _overheadSumFocus,
             width: 96,
             decimal: false,
+            readOnly: !widget.canEditPrices,
             onChanged: _onOverheadSumChanged,
           ),
           const Text(' сум', style: _kCellBold),
@@ -1987,10 +2017,13 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // Tavsiya (suggested) saqlanganidan farq qilsa, ostida to'q sariq
   // «Yangi: X» + «Almashtirish» chiqadi — bosilsa controller.salePrice
   // (va maydon ham) yangilanadi. Bu admin tasdiq oqimi.
+  // Narxsiz rejimda (shef) maydon o'rniga faqat o'qiladigan qiymat
+  // ko'rsatiladi va «Almashtirish» tugmasi umuman chiqmaydi.
   Widget _salePriceRow() {
     final stored = c.salePrice;
     final suggested = _suggestedSalePrice;
-    final showHint = suggested != null && suggested != stored;
+    final showHint =
+        widget.canEditPrices && suggested != null && suggested != stored;
     // Marja faqat tannarx ma'lum bo'lganda chiqadi.
     final margin = (stored > 0 && _pricesLoaded)
         ? techMarginPercent(stored, _fullPieceCost)
@@ -2011,13 +2044,23 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
               Expanded(
                 child: Text('Цена продажи за $_unitOne', style: _kCellBold),
               ),
-              _profitField(
-                controller: _salePriceCtrl,
-                focusNode: _salePriceFocus,
-                width: 96,
-                decimal: false,
-                onChanged: _onSalePriceChanged,
-              ),
+              if (widget.canEditPrices)
+                _profitField(
+                  controller: _salePriceCtrl,
+                  focusNode: _salePriceFocus,
+                  width: 96,
+                  decimal: false,
+                  onChanged: _onSalePriceChanged,
+                )
+              else
+                SizedBox(
+                  width: 96,
+                  child: Text(
+                    stored > 0 ? fmtCostMoney(stored) : '—',
+                    textAlign: TextAlign.right,
+                    style: _kCellBold,
+                  ),
+                ),
               const Text(' сум', style: _kCellBold),
             ],
           ),
@@ -2072,18 +2115,23 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     );
   }
 
+  // readOnly=true — qiymat ko'rinadi, lekin o'zgartirib bo'lmaydi
+  // (narxsiz/shef rejimi).
   Widget _profitField({
     required TextEditingController controller,
     required FocusNode focusNode,
     required double width,
     required bool decimal,
     required ValueChanged<String> onChanged,
+    bool readOnly = false,
   }) {
     return SizedBox(
       width: width,
       child: TextField(
         controller: controller,
         focusNode: focusNode,
+        readOnly: readOnly,
+        enableInteractiveSelection: !readOnly,
         keyboardType: TextInputType.numberWithOptions(decimal: decimal),
         inputFormatters: [
           // decimal — FOIZ maydoni (12.5% bo'lishi mumkin), guruhlanmaydi;
@@ -2098,6 +2146,8 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
         decoration: InputDecoration(
           isDense: true,
           hintText: '—',
+          filled: readOnly,
+          fillColor: Colors.grey.shade100,
           hintStyle: TextStyle(color: Colors.grey.shade400),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
@@ -2443,11 +2493,14 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // tahriri). Qo'lda narx saqlansa sheet `true` qaytaradi: mahsulot
   // keshlarini bekor qilib narxlarni qayta yuklaymiz, shunda «Цена»,
   // «Сумма» va «Себестоимость» kataklari darhol jonli yangilanadi.
+  // Narxsiz rejimda (shef) bu sheet UMUMAN ochilmaydi — «Цена» kataklari
+  // bosilmaydi (yuqoriga qara), qo'lda narx bloki ham chiqmaydi.
   Future<void> _openPriceSheet(TechItem item) async {
     final changed = await showPriceHistorySheet(
       context,
       productId: item.productId,
       productName: item.name,
+      allowManualEdit: widget.canEditPrices,
     );
     if (!mounted || changed != true) return;
     setState(() {
@@ -2574,7 +2627,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                         ? const Color(0xFFD6E9FB)
                         : (stale ? const Color(0xFFFFECB3) : null),
                     tooltip: manual ? 'Qo\'lda kiritilgan narx' : null,
-                    onTap: item.productId != 0
+                    // Narxsiz rejimda (shef) bosilmaydi — xarid tarixi
+                    // endpointi faqat admin/bugalterga ochiq.
+                    onTap: (widget.canEditPrices && item.productId != 0)
                         ? () => _openPriceSheet(item)
                         : null,
                   ),

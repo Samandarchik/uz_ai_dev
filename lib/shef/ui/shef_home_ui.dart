@@ -1,6 +1,7 @@
 // shef/ui/shef_home_ui.dart — shef bosh ekrani: ShefHomeUi — mening ishlab
 // chiqarish buyurtmalarim ro'yxati (status chip, progress); ShefProvider ustida,
-// productionStatusChip shu yerda eksport qilinadi.
+// productionStatusChip shu yerda eksport qilinadi. AppBar'dan пф qoldig'i,
+// тех карта (ShefTechCardCategoriesPage) va kunlik reja ekranlari ochiladi.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/shef/ui/pf_stock_page.dart';
 import 'package:uz_ai_dev/shef/ui/shef_create_order_ui.dart';
 import 'package:uz_ai_dev/shef/ui/shef_order_detail_ui.dart';
+import 'package:uz_ai_dev/shef/ui/shef_tech_card_page.dart';
 
 // Shef roli uchun bosh ekran: mening ishlab chiqarish buyurtmalarim.
 // Har karta: order_id, sana, mahsulotlar qisqacha, status chip va umumiy
@@ -87,6 +89,17 @@ class _ShefHomeUiState extends State<ShefHomeUi> {
               MaterialPageRoute(builder: (_) => const PfStockPage()),
             ),
             icon: const Icon(Icons.inventory_2_outlined),
+          ),
+          // Тех карта — shefga belgilangan kategoriyalar retsepti
+          // (narxlarsiz: faqat tarkib tahrirlanadi).
+          IconButton(
+            tooltip: 'Тех карта',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ShefTechCardCategoriesPage()),
+            ),
+            icon: const Icon(Icons.menu_book_outlined),
           ),
           // Kunlik ishlab chiqarish rejasi (MRP) — nima pishirish kerak.
           IconButton(

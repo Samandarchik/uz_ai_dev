@@ -1,6 +1,6 @@
 // admin/model/user_model.dart — foydalanuvchi va bog'liq modellar:
-// User (role, filial, categoryIds, sklads, sh5Sklads, canViewCategories,
-// sources, telegramChatId, passwordPlain), Filial, CreateUserRequest/
+// User (role, filial, categoryIds, sklads, sh5Sklads, sources,
+// telegramChatId, passwordPlain), Filial, CreateUserRequest/
 // UpdateUserRequest (user_management servisi so'rov tanalari),
 // SendAllCredentialsResult/SendCredentialsFailure.
 class User {
@@ -17,9 +17,6 @@ class User {
   // Ostatka (SH5) omborlari — ko'rish ruxsati berilganlari (Sh5RemainSklad.id).
   // Bo'sh — ruxsat yo'q (admin baribir hammasini ko'radi).
   final List<int> sh5Sklads;
-  // Shef roli uchun ruxsat: kategoriyalar ro'yxatini ko'ra oladimi
-  // (GET /api/categories). Boshqa rollarga ta'sir qilmaydi.
-  final bool canViewCategories;
   // yuk_keltiruvchi uchun mahsulot manbalari ("samarqand"/"toshkent"/"zagranitsa").
   // Bo'sh — cheklov yo'q (hammasini ko'radi).
   final List<String> sources;
@@ -41,7 +38,6 @@ class User {
     this.categoryIds,
     this.sklads = const [],
     this.sh5Sklads = const [],
-    this.canViewCategories = false,
     this.sources = const [],
     this.telegramGroupId,
     this.telegramChatId = 0,
@@ -65,7 +61,6 @@ class User {
               ?.map((e) => (e as num).toInt())
               .toList() ??
           [],
-      canViewCategories: json['can_view_categories'] == true,
       sources:
           (json['sources'] as List?)?.map((e) => e.toString()).toList() ?? [],
       telegramGroupId: json['telegram_group_id'],
@@ -84,7 +79,6 @@ class User {
       'filial_id': filialId,
       'sklads': sklads,
       'sh5_sklads': sh5Sklads,
-      'can_view_categories': canViewCategories,
       'sources': sources,
       if (password != null) 'password': password,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
@@ -102,7 +96,6 @@ class User {
     String? password,
     List<int>? sklads,
     List<int>? sh5Sklads,
-    bool? canViewCategories,
     List<String>? sources,
     String? telegramGroupId,
   }) {
@@ -117,7 +110,6 @@ class User {
       password: password ?? this.password,
       sklads: sklads ?? this.sklads,
       sh5Sklads: sh5Sklads ?? this.sh5Sklads,
-      canViewCategories: canViewCategories ?? this.canViewCategories,
       sources: sources ?? this.sources,
       telegramGroupId: telegramGroupId ?? this.telegramGroupId,
     );
@@ -173,8 +165,6 @@ class UpdateUserRequest {
   final List<int>? sklads;
   // Ostatka (SH5) ruxsati; null — yuborilmaydi (backenddagi qiymat qoladi).
   final List<int>? sh5Sklads;
-  // Shef kategoriya ruxsati; null — yuborilmaydi (backenddagi qiymat qoladi).
-  final bool? canViewCategories;
   // null — yuborilmaydi (backenddagi qiymat o'zgarmaydi).
   final List<String>? sources;
   final String? telegramGroupId;
@@ -189,7 +179,6 @@ class UpdateUserRequest {
     this.categoryIds,
     this.sklads,
     this.sh5Sklads,
-    this.canViewCategories,
     this.sources,
     this.telegramGroupId,
   });
@@ -205,9 +194,6 @@ class UpdateUserRequest {
     if (categoryIds != null) data['category_list'] = categoryIds;
     if (sklads != null) data['sklads'] = sklads;
     if (sh5Sklads != null) data['sh5_sklads'] = sh5Sklads;
-    if (canViewCategories != null) {
-      data['can_view_categories'] = canViewCategories;
-    }
     if (sources != null) data['sources'] = sources;
     // Bo'sh string ham yuboriladi — backend bo'sh qiymatda tozalaydi.
     if (telegramGroupId != null) data['telegram_group_id'] = telegramGroupId;
@@ -269,8 +255,6 @@ class CreateUserRequest {
   final List<int> sklads;
   // Ostatka (SH5) omborlari — ko'rish ruxsati.
   final List<int> sh5Sklads;
-  // Shef roli uchun kategoriyalar ro'yxati ruxsati.
-  final bool canViewCategories;
   final List<String>? sources;
   final String? telegramGroupId;
 
@@ -284,7 +268,6 @@ class CreateUserRequest {
     this.categoryIds,
     this.sklads = const [],
     this.sh5Sklads = const [],
-    this.canViewCategories = false,
     this.sources,
     this.telegramGroupId,
   });
@@ -300,7 +283,6 @@ class CreateUserRequest {
       'category_list': categoryIds,
       'sklads': sklads,
       'sh5_sklads': sh5Sklads,
-      'can_view_categories': canViewCategories,
       if (sources != null) 'sources': sources,
       if (telegramGroupId != null) 'telegram_group_id': telegramGroupId,
     };
