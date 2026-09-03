@@ -3,6 +3,10 @@
 //
 // Buyurtma yaratilganda tex kartadan SNAPSHOT olinadi, shuning uchun bu
 // modellar tex karta modellaridan mustaqil.
+//
+// Ichidagilar: ProductionProduct, PfLimit/PfAvailability (buyurtma limiti),
+// PfStockRow/PfStockData (полуфабрикат qoldig'i ekrani), ProductionIngredient,
+// ProductionStage, ProductionItem, ProductionOrder.
 
 int _asInt(dynamic v) {
   if (v is num) return v.toInt();
@@ -135,6 +139,78 @@ class PfAvailability {
       skladId: _asInt(json['sklad_id']),
       maxQty: json['max_qty'] == null ? null : _asInt(json['max_qty']),
       limits: PfLimit.listFromJson(json['limits']),
+    );
+  }
+}
+
+// GET /api/production/pf-stock javobidagi bitta полуфабрикат qatori:
+// skladdagi qoldiq, band qilingan va ishlatish mumkin bo'lgan miqdor.
+// Buyurtmaga bog'liq emas — «qaysi pf bor, nechtadan bor» ro'yxati.
+class PfStockRow {
+  final int productId;
+  final String name;
+  final String imageUrl; // '/static/...' yoki to'liq URL yoki ''
+  final String unit; // ko'rsatish birligi: 'шт' | 'гр' ...
+  final num stock; // qoldiq (kasr bo'lishi mumkin)
+  final num reserved; // band (boshqa buyurtmalarga)
+  final num available; // mumkin (manfiy bo'lishi mumkin — UI 0 ga qisadi)
+  final int batchQty; // bitta partiyadan chiqadigan dona (0 bo'lishi mumkin)
+  final int usedIn; // nechta mahsulot tex kartasida ishlatiladi
+
+  const PfStockRow({
+    required this.productId,
+    required this.name,
+    this.imageUrl = '',
+    this.unit = '',
+    this.stock = 0,
+    this.reserved = 0,
+    this.available = 0,
+    this.batchQty = 0,
+    this.usedIn = 0,
+  });
+
+  factory PfStockRow.fromJson(Map<String, dynamic> json) {
+    return PfStockRow(
+      productId: _asInt(json['product_id']),
+      name: json['name']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      unit: json['unit']?.toString() ?? '',
+      stock: (json['stock'] as num?) ?? _asDouble(json['stock']),
+      reserved: (json['reserved'] as num?) ?? _asDouble(json['reserved']),
+      available: (json['available'] as num?) ?? _asDouble(json['available']),
+      batchQty: _asInt(json['batch_qty']),
+      usedIn: _asInt(json['used_in']),
+    );
+  }
+
+  // Manfiy «mumkin» — 0 (server minusni ham qaytarishi mumkin).
+  num get availableClamped => available < 0 ? 0 : available;
+
+  // Qoldig'i tugagan (yoki minusga ketgan) pf.
+  bool get isEmptyStock => available <= 0;
+
+  static List<PfStockRow> listFromJson(dynamic data) {
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => PfStockRow.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [];
+  }
+}
+
+// GET /api/production/pf-stock javobi (data): sklad + qatorlar.
+class PfStockData {
+  final int skladId;
+  final List<PfStockRow> items;
+
+  const PfStockData({this.skladId = 0, this.items = const []});
+
+  factory PfStockData.fromJson(Map<String, dynamic> json) {
+    return PfStockData(
+      skladId: _asInt(json['sklad_id']),
+      items: PfStockRow.listFromJson(json['items']),
     );
   }
 }

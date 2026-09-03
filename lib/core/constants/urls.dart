@@ -106,6 +106,11 @@ abstract final class AppUrls {
   // (null = cheksiz), limits: [{product_id, name, image_url, batch_qty,
   // per_batch_need, need, stock, reserved, available}] }.
   static String pfAvailability = '$baseUrl/api/production/pf-availability';
+  // Полуфабрикат QOLDIG'I (butun ro'yxat, buyurtmaga bog'liq emas):
+  // GET [?sklad_id=N] (shef/ombor — o'z skladi; admin/bugalter sklad_id
+  // berishi mumkin). data: { sklad_id, items: [{product_id, name, image_url,
+  // unit, stock, reserved, available, batch_qty, used_in}] }.
+  static String pfStock = '$baseUrl/api/production/pf-stock';
   // Takrorlanadigan bir xil bazalarni полуфабрикат mahsulotlarga aylantirish
   // (faqat admin). POST {"dry_run": true|false} -> data: {created, skipped}.
   static String techcardsConvertPf = '$baseUrl/api/techcards/convert-pf';
