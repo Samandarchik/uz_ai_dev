@@ -1,6 +1,7 @@
 // shef/ui/shef_create_order_ui.dart — yangi ishlab chiqarish buyurtmasi yaratish
 // ekrani: ShefCreateOrderUi — tex kartali mahsulotlar savati «Полуфабрикат» va
-// «Готовый» bo'limlariga ajratilgan, partiya yaxlitlashi jonli;
+// «Готовый» bo'limlariga ajratilgan, har bo'lim ichida ro'yxat KATEGORIYA
+// bo'yicha guruhlangan (category_group.dart), partiya yaxlitlashi jonli;
 // ShefProvider ustida.
 import 'dart:async';
 
@@ -12,6 +13,7 @@ import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/shef/services/shef_service.dart';
+import 'package:uz_ai_dev/shef/ui/widgets/category_group.dart';
 
 // Yangi ishlab chiqarish buyurtmasi yaratish sahifasi.
 // Tex kartali mahsulotlar ro'yxati (rasm bilan), qidiruv, har mahsulotga son
@@ -20,6 +22,10 @@ import 'package:uz_ai_dev/shef/services/shef_service.dart';
 // Ro'yxat ikki bo'limga ajratilgan: «Полуфабрикат» (is_semi_finished) va
 // «Готовый». Qidiruv ikkalasida ham ishlaydi, savat esa UMUMIY — ikki
 // bo'limdan tanlanganlar bitta buyurtmaga ketadi.
+// Har bo'lim ichida qatorlar kategoriya sarlavhalari ostida guruhlanadi
+// (bitta kategoriya bo'lsa sarlavha chiqmaydi). Guruhlash HAR BUILD'da emas —
+// faqat mahsulotlar ro'yxati yoki qidiruv o'zgarganda hisoblanib keshlanadi
+// (`_rebuildGroups`), ListView esa yassi (flat) indeks ustida chizadi.
 class ShefCreateOrderUi extends StatefulWidget {
   const ShefCreateOrderUi({super.key});
 
@@ -39,6 +45,43 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
 
   // Savat: productId -> son.
   final Map<int, int> _cart = {};
+
+  // ── Guruhlash keshi ──────────────────────────────────────────────────────
+  // Manba ro'yxat (identity) va qidiruv matni o'zgarmaguncha qayta hisoblamaymiz.
+  List<ProductionProduct>? _groupsSource;
+  String _groupsQuery = '';
+  // Yassi (flat) ro'yxatlar: CategoryHeader | ProductionProduct elementlari.
+  List<Object> _pfEntries = const [];
+  List<Object> _readyEntries = const [];
+  // Tab yorlig'idagi son — filtrdan keyingi mahsulotlar soni.
+  int _pfCount = 0;
+  int _readyCount = 0;
+
+  // Faqat manba/qidiruv o'zgarganda ishlaydi (build ichidan chaqiriladi, lekin
+  // setState qilmaydi — bu shunchaki kesh).
+  void _rebuildGroups(List<ProductionProduct> source, String query) {
+    if (identical(_groupsSource, source) && _groupsQuery == query) return;
+    _groupsSource = source;
+    _groupsQuery = query;
+
+    final matched = query.isEmpty
+        ? source
+        : source.where((p) => p.name.toLowerCase().contains(query)).toList();
+    final pfList = matched.where((p) => p.isSemiFinished).toList();
+    final readyList = matched.where((p) => !p.isSemiFinished).toList();
+    _pfCount = pfList.length;
+    _readyCount = readyList.length;
+    _pfEntries = buildCategoryEntries<ProductionProduct>(
+      pfList,
+      categoryId: (p) => p.categoryId,
+      categoryName: (p) => p.categoryName,
+    );
+    _readyEntries = buildCategoryEntries<ProductionProduct>(
+      readyList,
+      categoryId: (p) => p.categoryId,
+      categoryName: (p) => p.categoryName,
+    );
+  }
 
   @override
   void initState() {
@@ -148,21 +191,15 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
             );
           }
 
+          // Bo'limlar (полуфабрикат / tayyor) + kategoriya guruhlari keshdan.
           final query = _searchQuery.toLowerCase();
-          final matched = query.isEmpty
-              ? provider.products
-              : provider.products
-                  .where((p) => p.name.toLowerCase().contains(query))
-                  .toList();
-          // Bo'limlar: полуфабрикат / tayyor mahsulot (qidiruvdan keyin).
-          final pfList = matched.where((p) => p.isSemiFinished).toList();
-          final readyList = matched.where((p) => !p.isSemiFinished).toList();
+          _rebuildGroups(provider.products, query);
           // Tanlangan bo'lim bo'sh, ikkinchisida natija bor bo'lsa —
           // ko'rsatishda ikkinchisiga o'tamiz (masalan katalogda пф yo'q).
           var tab = _tab;
-          if (tab == 0 && pfList.isEmpty && readyList.isNotEmpty) tab = 1;
-          if (tab == 1 && readyList.isEmpty && pfList.isNotEmpty) tab = 0;
-          final products = tab == 0 ? pfList : readyList;
+          if (tab == 0 && _pfCount == 0 && _readyCount > 0) tab = 1;
+          if (tab == 1 && _readyCount == 0 && _pfCount > 0) tab = 0;
+          final entries = tab == 0 ? _pfEntries : _readyEntries;
 
           return Column(
             children: [
@@ -194,15 +231,21 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
                   ),
                 ),
               ),
-              _sectionTabs(tab, pfList.length, readyList.length),
+              _sectionTabs(tab, _pfCount, _readyCount),
               Expanded(
-                child: products.isEmpty
+                child: entries.isEmpty
                     ? const Center(child: Text('Mahsulot topilmadi'))
                     : ListView.builder(
                         padding: const EdgeInsets.only(bottom: 120),
-                        itemCount: products.length,
-                        itemBuilder: (context, index) =>
-                            _productTile(products[index]),
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) {
+                          final entry = entries[index];
+                          // Yassi ro'yxat: sarlavha yoki mahsulot qatori.
+                          if (entry is CategoryHeader) {
+                            return CategoryHeaderTile(header: entry);
+                          }
+                          return _productTile(entry as ProductionProduct);
+                        },
                       ),
               ),
             ],

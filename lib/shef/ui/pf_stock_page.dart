@@ -1,16 +1,22 @@
 // shef/ui/pf_stock_page.dart — «Полуфабрикат qoldig'i» ekrani: PfStockPage —
-// shef skladidagi pf'lar ro'yxati (Bor / Band / Mumkin ustunlari, qidiruv,
-// tugaganlari qizil bilan). GET /api/production/pf-stock, ShefProvider ustida.
+// shef skladidagi pf'lar ro'yxati KATEGORIYA bo'yicha guruhlangan holda
+// (category_group.dart; Bor / Band / Mumkin ustunlari, qidiruv, tugaganlari
+// qizil bilan). GET /api/production/pf-stock, ShefProvider ustida.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
 import 'package:uz_ai_dev/core/widgets/app_network_image.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
 import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
+import 'package:uz_ai_dev/shef/ui/widgets/category_group.dart';
 
 // Shef uchun полуфабрикат qoldig'i: qaysi pf bor, nechtadan bor, nechtasi
 // band (boshqa buyurtmalarga), nechtasini ishlatish mumkin.
 // Buyurtmaga bog'liq emas — umumiy sklad ko'rinishi.
+// Ro'yxat kategoriya sarlavhalari ostida guruhlanadi (bitta kategoriya bo'lsa
+// sarlavha chiqmaydi). Guruhlash har build'da emas — faqat qoldiq ro'yxati yoki
+// qidiruv o'zgarganda hisoblanib keshlanadi (`_rebuildGroups`), ListView esa
+// yassi (flat) indeks ustida chizadi.
 class PfStockPage extends StatefulWidget {
   const PfStockPage({super.key});
 
@@ -24,6 +30,36 @@ class _PfStockPageState extends State<PfStockPage> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // ── Guruhlash keshi ──────────────────────────────────────────────────────
+  // Manba ro'yxat (identity) va qidiruv matni o'zgarmaguncha qayta hisoblamaymiz.
+  List<PfStockRow>? _groupsSource;
+  String _groupsQuery = '';
+  // Yassi (flat) ro'yxat: CategoryHeader | PfStockRow elementlari.
+  List<Object> _entries = const [];
+  // Filtrdan keyingi qatorlar soni (bo'shligini tekshirish uchun).
+  int _rowCount = 0;
+  // Qoldig'i tugaganlar soni — xulosa qatori uchun (filtrdan mustaqil).
+  int _emptyCount = 0;
+
+  // Faqat manba/qidiruv o'zgarganda ishlaydi (build ichidan chaqiriladi, lekin
+  // setState qilmaydi — bu shunchaki kesh).
+  void _rebuildGroups(List<PfStockRow> source, String query) {
+    if (identical(_groupsSource, source) && _groupsQuery == query) return;
+    _groupsSource = source;
+    _groupsQuery = query;
+
+    final rows = query.isEmpty
+        ? source
+        : source.where((r) => r.name.toLowerCase().contains(query)).toList();
+    _rowCount = rows.length;
+    _emptyCount = source.where((r) => r.isEmptyStock).length;
+    _entries = buildCategoryEntries<PfStockRow>(
+      rows,
+      categoryId: (r) => r.categoryId,
+      categoryName: (r) => r.categoryName,
+    );
+  }
 
   @override
   void initState() {
@@ -111,24 +147,21 @@ class _PfStockPageState extends State<PfStockPage> {
 
           final all = provider.pfStock;
           final query = _searchQuery.trim().toLowerCase();
-          final rows = query.isEmpty
-              ? all
-              : all
-                  .where((r) => r.name.toLowerCase().contains(query))
-                  .toList();
-          final emptyCount = all.where((r) => r.isEmptyStock).length;
+          // Kategoriya guruhlari keshdan (faqat ro'yxat/qidiruv o'zgarsa).
+          _rebuildGroups(all, query);
+          final entries = _entries;
 
           return Column(
             children: [
               if (all.isNotEmpty) ...[
                 _searchField(),
-                _summaryLine(all.length, emptyCount),
+                _summaryLine(all.length, _emptyCount),
                 _columnsHeader(),
               ],
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => provider.fetchPfStock(),
-                  child: rows.isEmpty
+                  child: _rowCount == 0
                       ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           children: [
@@ -146,9 +179,15 @@ class _PfStockPageState extends State<PfStockPage> {
                       : ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.only(bottom: 24),
-                          itemCount: rows.length,
-                          itemBuilder: (context, index) =>
-                              _PfStockTile(row: rows[index]),
+                          itemCount: entries.length,
+                          itemBuilder: (context, index) {
+                            final entry = entries[index];
+                            // Yassi ro'yxat: sarlavha yoki пф qatori.
+                            if (entry is CategoryHeader) {
+                              return CategoryHeaderTile(header: entry);
+                            }
+                            return _PfStockTile(row: entry as PfStockRow);
+                          },
                         ),
                 ),
               ),

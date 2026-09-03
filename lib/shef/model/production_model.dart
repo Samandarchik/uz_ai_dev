@@ -7,6 +7,10 @@
 // Ichidagilar: ProductionProduct, PfLimit/PfAvailability (buyurtma limiti),
 // PfStockRow/PfStockData (полуфабрикат qoldig'i ekrani), ProductionIngredient,
 // ProductionStage, ProductionItem, ProductionOrder.
+//
+// ProductionProduct va PfStockRow'da category_id/category_name bor — ekranlar
+// ro'yxatni kategoriya bo'yicha guruhlaydi (shef/ui/widgets/category_group.dart).
+// Eski backend bu maydonlarni yubormasa default 0 / '' bo'ladi.
 
 int _asInt(dynamic v) {
   if (v is num) return v.toInt();
@@ -30,6 +34,10 @@ class ProductionProduct {
   // Полуфабрикат (biskvit kabi) — ro'yxatda qatnashadi, chunki u ham
   // ishlab chiqariladi.
   final bool isSemiFinished;
+  // Kategoriya (ro'yxatni guruhlash uchun). Server topa olmasa 0 / ''
+  // qaytaradi; eski backend bu maydonlarni umuman yubormasligi mumkin.
+  final int categoryId;
+  final String categoryName;
 
   const ProductionProduct({
     required this.id,
@@ -38,6 +46,8 @@ class ProductionProduct {
     this.batchQty = 1,
     this.listQty = 1,
     this.isSemiFinished = false,
+    this.categoryId = 0,
+    this.categoryName = '',
   });
 
   factory ProductionProduct.fromJson(Map<String, dynamic> json) {
@@ -50,6 +60,8 @@ class ProductionProduct {
       batchQty: bq < 1 ? 1 : bq,
       listQty: lq < 1 ? 1 : lq,
       isSemiFinished: json['is_semi_finished'] == true,
+      categoryId: _asInt(json['category_id'] ?? 0),
+      categoryName: json['category_name']?.toString() ?? '',
     );
   }
 
@@ -156,6 +168,9 @@ class PfStockRow {
   final num available; // mumkin (manfiy bo'lishi mumkin — UI 0 ga qisadi)
   final int batchQty; // bitta partiyadan chiqadigan dona (0 bo'lishi mumkin)
   final int usedIn; // nechta mahsulot tex kartasida ishlatiladi
+  // Kategoriya (ro'yxatni guruhlash uchun). Server topa olmasa 0 / ''.
+  final int categoryId;
+  final String categoryName;
 
   const PfStockRow({
     required this.productId,
@@ -167,6 +182,8 @@ class PfStockRow {
     this.available = 0,
     this.batchQty = 0,
     this.usedIn = 0,
+    this.categoryId = 0,
+    this.categoryName = '',
   });
 
   factory PfStockRow.fromJson(Map<String, dynamic> json) {
@@ -180,6 +197,8 @@ class PfStockRow {
       available: (json['available'] as num?) ?? _asDouble(json['available']),
       batchQty: _asInt(json['batch_qty']),
       usedIn: _asInt(json['used_in']),
+      categoryId: _asInt(json['category_id'] ?? 0),
+      categoryName: json['category_name']?.toString() ?? '',
     );
   }
 
