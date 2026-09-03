@@ -1,6 +1,7 @@
 // shef/ui/shef_create_order_ui.dart — yangi ishlab chiqarish buyurtmasi yaratish
-// ekrani: ShefCreateOrderUi — tex kartali mahsulotlar savati, partiya yaxlitlashi
-// jonli; ShefProvider ustida.
+// ekrani: ShefCreateOrderUi — tex kartali mahsulotlar savati «Полуфабрикат» va
+// «Готовый» bo'limlariga ajratilgan, partiya yaxlitlashi jonli;
+// ShefProvider ustida.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,9 @@ import 'package:uz_ai_dev/shef/services/shef_service.dart';
 // Tex kartali mahsulotlar ro'yxati (rasm bilan), qidiruv, har mahsulotga son
 // kiritish (dialog). Partiya yaxlitlashi jonli ko'rinadi:
 // «130 dona → 7 partiya (140 talik masalliq)».
+// Ro'yxat ikki bo'limga ajratilgan: «Полуфабрикат» (is_semi_finished) va
+// «Готовый». Qidiruv ikkalasida ham ishlaydi, savat esa UMUMIY — ikki
+// bo'limdan tanlanganlar bitta buyurtmaga ketadi.
 class ShefCreateOrderUi extends StatefulWidget {
   const ShefCreateOrderUi({super.key});
 
@@ -29,6 +33,9 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Tanlangan bo'lim: 0 — Полуфабрикат, 1 — Готовый.
+  int _tab = 0;
 
   // Savat: productId -> son.
   final Map<int, int> _cart = {};
@@ -142,11 +149,20 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
           }
 
           final query = _searchQuery.toLowerCase();
-          final products = query.isEmpty
+          final matched = query.isEmpty
               ? provider.products
               : provider.products
                   .where((p) => p.name.toLowerCase().contains(query))
                   .toList();
+          // Bo'limlar: полуфабрикат / tayyor mahsulot (qidiruvdan keyin).
+          final pfList = matched.where((p) => p.isSemiFinished).toList();
+          final readyList = matched.where((p) => !p.isSemiFinished).toList();
+          // Tanlangan bo'lim bo'sh, ikkinchisida natija bor bo'lsa —
+          // ko'rsatishda ikkinchisiga o'tamiz (masalan katalogda пф yo'q).
+          var tab = _tab;
+          if (tab == 0 && pfList.isEmpty && readyList.isNotEmpty) tab = 1;
+          if (tab == 1 && readyList.isEmpty && pfList.isNotEmpty) tab = 0;
+          final products = tab == 0 ? pfList : readyList;
 
           return Column(
             children: [
@@ -178,6 +194,7 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
                   ),
                 ),
               ),
+              _sectionTabs(tab, pfList.length, readyList.length),
               Expanded(
                 child: products.isEmpty
                     ? const Center(child: Text('Mahsulot topilmadi'))
@@ -193,6 +210,47 @@ class _ShefCreateOrderUiState extends State<ShefCreateOrderUi> {
         },
       ),
       bottomNavigationBar: _cart.isEmpty ? null : _cartBar(),
+    );
+  }
+
+  // «Полуфабрикат» / «Готовый» bo'lim tanlagichi (qavsda topilgan soni).
+  Widget _sectionTabs(int tab, int pfCount, int readyCount) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          Expanded(child: _tabButton(tab, 0, 'Полуфабрикат', pfCount)),
+          const SizedBox(width: 8),
+          Expanded(child: _tabButton(tab, 1, 'Готовый', readyCount)),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabButton(int tab, int index, String label, int count) {
+    final selected = tab == index;
+    return InkWell(
+      onTap: () => setState(() => _tab = index),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _accentColor : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? _accentColor : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          '$label ($count)',
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : Colors.grey.shade700,
+          ),
+        ),
+      ),
     );
   }
 
