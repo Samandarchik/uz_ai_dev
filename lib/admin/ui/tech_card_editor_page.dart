@@ -43,6 +43,11 @@ import 'package:uz_ai_dev/production/ui/widgets/price_history_sheet.dart';
 // + umumiy og'irliklar) → «Kesish sxemasi» diagrammasi (shakl kiritilganda) →
 // rangli sarlavhali baza bloklari → to'q sariq «Расходник» bloki.
 // Keng ekranda bloklar 2 ustunda, telefonda 1 ustunda.
+// SHEF rejimida (canEditPrices: false) tartib boshqacha: og'irlik/tannarx/
+// narx jadvali tepada emas, sahifaning ENG OXIRIDA chiqadi.
+// Полуфабрикат qatori: «ПФ» chipi bosilsa tarkibi shu yerda ochiladi, qator
+// IKKI MARTA bosilsa (double-tap) esa o'sha пф'ning tex kartasi shu
+// muharrirda ochilib, tahrirlanadi va saqlanadi (`_openPfCard`).
 
 // ---- Excel uslubi konstantalar ----
 
@@ -1199,6 +1204,34 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     });
   }
 
+  // ---- Полуфабрикат qatoriga DOUBLE TAP — пф'ning O'Z tex kartasi ----
+  // Пф qatori (va ochilgan tarkibdagi ichki пф qatori) ikki marta bosilsa
+  // o'sha полуфабрикат mahsulotning tex kartasi SHU muharrirda ochiladi:
+  // to'liq tahrirlanadi va o'z «✓» tugmasi bilan saqlanadi (rejim bir xil —
+  // shefda narx maydonlari baribir faqat o'qiladi).
+  // Qaytgach пф saqlangan bo'lsa (`true`) mahsulot keshlari bekor qilinadi
+  // va narxlar qayta yuklanadi — shu kartadagi og'irlik/«Сумма»/tannarx
+  // kataklari yangi пф retsepti bo'yicha darhol qayta hisoblanadi.
+  Future<void> _openPfCard(TechItem item) async {
+    final pf = _productById[item.productId];
+    if (pf == null || !pf.isSemiFinished) return;
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TechCardEditorPage(
+          product: pf,
+          canEditPrices: widget.canEditPrices,
+        ),
+      ),
+    );
+    if (!mounted || saved != true) return;
+    setState(() {
+      _productByIdCache = null;
+      _wasteFactorsCache = null;
+    });
+    await _loadPrices();
+  }
+
   // Пф qatorining ULUSHI: qatorda ko'rsatilgan miqdor пф partiyasining necha
   // barobari. 'pcs' — amount / partiya donasi; 'g' — (amount / 1 dona vazni) /
   // partiya donasi (гр rejimidagi пф'da 1 dona = 1 гр). null — hisoblab
@@ -1308,68 +1341,78 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            border: const Border(bottom: _kSide),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(12.0 + 14 * depth, 6, 8, 6),
-                    child: Row(
-                      children: [
-                        Icon(Icons.subdirectory_arrow_right,
-                            size: 12, color: Colors.grey.shade500),
-                        const SizedBox(width: 4),
-                        Flexible(child: Text(ing.name, style: subStyle)),
-                        if (canExpand)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _togglePfRow(rowKey),
-                            child: _pfChip(withIcon: true, expanded: expanded),
-                          ),
-                      ],
+        // Ichki пф qatori ham ikki marta bosilsa o'z tex kartasini ochadi
+        // (chuqurlik chegarasidan qat'i nazar — bu alohida sahifa).
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTap: nested != null ? () => _openPfCard(ing) : null,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: const Border(bottom: _kSide),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(12.0 + 14 * depth, 6, 8, 6),
+                      child: Row(
+                        children: [
+                          Icon(Icons.subdirectory_arrow_right,
+                              size: 12, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Flexible(child: Text(ing.name, style: subStyle)),
+                          if (canExpand)
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _togglePfRow(rowKey),
+                              child:
+                                  _pfChip(withIcon: true, expanded: expanded),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  width: _kUnitColW,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(border: Border(left: _kSide)),
-                  child: Text(_excelUnitLabel(ing.unit), style: subStyle),
-                ),
-                Container(
-                  width: _kAmountColW,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(border: Border(left: _kSide)),
-                  child: Text(
-                    _scaledAmountText(ing.unit, ing.amount * factor),
-                    style: subStyle,
+                  Container(
+                    width: _kUnitColW,
+                    alignment: Alignment.center,
+                    decoration:
+                        const BoxDecoration(border: Border(left: _kSide)),
+                    child: Text(_excelUnitLabel(ing.unit), style: subStyle),
                   ),
-                ),
-                // Ichki пф masallig'ining «Цена»si ham bosiladi — narxi yo'q
-                // masalliqni shu yerdan qo'lda narxlash mumkin.
-                _moneyCell(
-                  price == null ? '—' : fmtCostMoney(price),
-                  width: _kPriceColW,
-                  grey: price == null,
-                  bg: _isManualPrice(ing) ? const Color(0xFFD6E9FB) : null,
-                  tooltip:
-                      _isManualPrice(ing) ? 'Qo\'lda kiritilgan narx' : null,
-                  // Shef rejimida ham ochiladi — tarix faqat o'qiladi
-                  // (allowManualEdit: canEditPrices).
-                  onTap: ing.productId != 0 ? () => _openPriceSheet(ing) : null,
-                ),
-                _moneyCell(
-                  cost == null ? '—' : fmtCostMoney(cost),
-                  width: _kSumColW,
-                  grey: cost == null,
-                ),
-              ],
+                  Container(
+                    width: _kAmountColW,
+                    alignment: Alignment.center,
+                    decoration:
+                        const BoxDecoration(border: Border(left: _kSide)),
+                    child: Text(
+                      _scaledAmountText(ing.unit, ing.amount * factor),
+                      style: subStyle,
+                    ),
+                  ),
+                  // Ichki пф masallig'ining «Цена»si ham bosiladi — narxi yo'q
+                  // masalliqni shu yerdan qo'lda narxlash mumkin.
+                  _moneyCell(
+                    price == null ? '—' : fmtCostMoney(price),
+                    width: _kPriceColW,
+                    grey: price == null,
+                    bg: _isManualPrice(ing) ? const Color(0xFFD6E9FB) : null,
+                    tooltip:
+                        _isManualPrice(ing) ? 'Qo\'lda kiritilgan narx' : null,
+                    // Shef rejimida ham ochiladi — tarix faqat o'qiladi
+                    // (allowManualEdit: canEditPrices).
+                    onTap:
+                        ing.productId != 0 ? () => _openPriceSheet(ing) : null,
+                  ),
+                  _moneyCell(
+                    cost == null ? '—' : fmtCostMoney(cost),
+                    width: _kSumColW,
+                    grey: cost == null,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1549,6 +1592,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
                     label: const Text('База'),
                   ),
                 ),
+                // Shef rejimida og'irlik/tannarx/narx jadvali SHU YERDA —
+                // tex kartaning oxirida (adminda u tepada turadi).
+                _footerSummaryTable(),
                 const SizedBox(height: 24),
               ],
             ),
@@ -1588,9 +1634,12 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
   // --- Sarlavha jadvallari (chap: nom/diametr/shtuk, o'ng: umumiy og'irlik) ---
 
   Widget _headerTables(bool wide) {
-    final card = c.build();
     final left = _headerLeftTable();
-    final right = _headerRightTable(card);
+    // Shef rejimida (canEditPrices: false) o'ng jadval — og'irlik / tannarx /
+    // narx bloki — tepada CHIQMAYDI: u tex karta OXIRIGA ko'chirilgan
+    // (`_footerSummaryTable`), shef avval retseptni ko'rsin.
+    if (!widget.canEditPrices) return left;
+    final right = _headerRightTable(c.build());
     if (wide) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1604,6 +1653,18 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [left, const SizedBox(height: 8), right],
+    );
+  }
+
+  // Shef rejimidagi PASTKI jadval: og'irlik / tannarx / доп. расходы /
+  // прибыль / цена продажи bloki tex kartaning eng oxirida chiqadi.
+  // Admin-bugalter rejimida bu jadval tepada (`_headerTables` ichida) —
+  // shuning uchun bu yerda hech narsa chizilmaydi.
+  Widget _footerSummaryTable() {
+    if (widget.canEditPrices) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: _headerRightTable(c.build()),
     );
   }
 
@@ -2538,6 +2599,9 @@ class _TechCardEditorPageState extends State<TechCardEditorPage> {
           ),
           child: InkWell(
             onLongPress: onLongPress,
+            // Пф qatori ikki marta bosilsa — o'sha пф'ning tex kartasi
+            // ochiladi (tahrir + saqlash). Oddiy masalliqda gest yo'q.
+            onDoubleTap: isPf ? () => _openPfCard(item) : null,
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
