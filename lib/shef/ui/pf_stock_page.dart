@@ -1,7 +1,8 @@
 // shef/ui/pf_stock_page.dart — «Полуфабрикат qoldig'i» ekrani: PfStockPage —
 // shef skladidagi pf'lar ro'yxati KATEGORIYA bo'yicha guruhlangan holda
-// (category_group.dart; Bor / Band / Mumkin ustunlari, qidiruv, tugaganlari
-// qizil bilan). GET /api/production/pf-stock, ShefProvider ustida.
+// (category_group.dart; Bor / Band / Mumkin ustunlari, qidiruv, kategoriya
+// tab-bar filtri, tugaganlari qizil bilan). GET /api/production/pf-stock,
+// ShefProvider ustida.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/constants/urls.dart';
@@ -14,9 +15,12 @@ import 'package:uz_ai_dev/shef/ui/widgets/category_group.dart';
 // band (boshqa buyurtmalarga), nechtasini ishlatish mumkin.
 // Buyurtmaga bog'liq emas — umumiy sklad ko'rinishi.
 // Ro'yxat kategoriya sarlavhalari ostida guruhlanadi (bitta kategoriya bo'lsa
-// sarlavha chiqmaydi). Guruhlash har build'da emas — faqat qoldiq ro'yxati yoki
-// qidiruv o'zgarganda hisoblanib keshlanadi (`_rebuildGroups`), ListView esa
-// yassi (flat) indeks ustida chizadi.
+// sarlavha chiqmaydi). Qidiruv ostida kategoriya TAB-BAR'i bor: «Hammasi» +
+// har bir kategoriya (soni bilan); tanlangan tab ro'yxatni shu kategoriyaga
+// qisadi (u holda guruh sarlavhasi ham chiqmaydi — bitta guruh). Guruhlash har
+// build'da emas — faqat qoldiq ro'yxati, qidiruv yoki tanlangan kategoriya
+// o'zgarganda hisoblanib keshlanadi (`_rebuildGroups`), ListView esa yassi
+// (flat) indeks ustida chizadi.
 class PfStockPage extends StatefulWidget {
   const PfStockPage({super.key});
 
@@ -31,34 +35,104 @@ class _PfStockPageState extends State<PfStockPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Tanlangan kategoriya tabi: `_kAllKey` — hammasi, aks holda `_CategoryTab.key`.
+  static const String _kAllKey = '*';
+  String _selectedCatKey = _kAllKey;
+
   // ── Guruhlash keshi ──────────────────────────────────────────────────────
-  // Manba ro'yxat (identity) va qidiruv matni o'zgarmaguncha qayta hisoblamaymiz.
+  // Manba ro'yxat (identity), qidiruv matni va tanlangan kategoriya
+  // o'zgarmaguncha qayta hisoblamaymiz.
   List<PfStockRow>? _groupsSource;
   String _groupsQuery = '';
+  String _groupsCatKey = _kAllKey;
   // Yassi (flat) ro'yxat: CategoryHeader | PfStockRow elementlari.
   List<Object> _entries = const [];
   // Filtrdan keyingi qatorlar soni (bo'shligini tekshirish uchun).
   int _rowCount = 0;
-  // Qoldig'i tugaganlar soni — xulosa qatori uchun (filtrdan mustaqil).
+  // Tanlangan kategoriya doirasidagi (qidiruvdan mustaqil) qatorlar soni va
+  // ulardan qoldig'i tugaganlari — xulosa qatori uchun.
+  int _scopeCount = 0;
   int _emptyCount = 0;
+  // Tab-bar uchun kategoriyalar (manba ro'yxatdan; alifbo tartibida,
+  // «Kategoriyasiz» oxirida). Faqat manba o'zgarganda qayta hisoblanadi.
+  List<_CategoryTab> _catTabs = const [];
+  // Tab-bar'ni qayta yaratish kaliti (kategoriyalar to'plami o'zgarsa).
+  String _catTabsKey = '';
 
-  // Faqat manba/qidiruv o'zgarganda ishlaydi (build ichidan chaqiriladi, lekin
-  // setState qilmaydi — bu shunchaki kesh).
+  // Faqat manba/qidiruv/kategoriya o'zgarganda ishlaydi (build ichidan
+  // chaqiriladi, lekin setState qilmaydi — bu shunchaki kesh).
   void _rebuildGroups(List<PfStockRow> source, String query) {
-    if (identical(_groupsSource, source) && _groupsQuery == query) return;
+    if (identical(_groupsSource, source) &&
+        _groupsQuery == query &&
+        _groupsCatKey == _selectedCatKey) {
+      return;
+    }
+    // Manba yangilansa tab'lar ham qayta hisoblanadi (tanlangan kategoriya
+    // yo'qolgan bo'lsa `_selectedCatKey` «hammasi»ga qaytadi — shuning uchun
+    // kalit shundan KEYIN o'qiladi).
+    if (!identical(_groupsSource, source)) _rebuildCatTabs(source);
+    final catKey = _selectedCatKey;
     _groupsSource = source;
     _groupsQuery = query;
+    _groupsCatKey = catKey;
+
+    // Avval kategoriya doirasi (xulosa shu doirada), keyin qidiruv.
+    final scoped = catKey == _kAllKey
+        ? source
+        : source.where((r) => _catKeyOf(r) == catKey).toList();
+    _scopeCount = scoped.length;
+    _emptyCount = scoped.where((r) => r.isEmptyStock).length;
 
     final rows = query.isEmpty
-        ? source
-        : source.where((r) => r.name.toLowerCase().contains(query)).toList();
+        ? scoped
+        : scoped.where((r) => r.name.toLowerCase().contains(query)).toList();
     _rowCount = rows.length;
-    _emptyCount = source.where((r) => r.isEmptyStock).length;
     _entries = buildCategoryEntries<PfStockRow>(
       rows,
       categoryId: (r) => r.categoryId,
       categoryName: (r) => r.categoryName,
     );
+  }
+
+  // Kategoriya kaliti — category_group.dart bilan bir xil qoida: nomi bo'sh
+  // bo'lsa hammasi bitta «Kategoriyasiz» guruhi (''), aks holda id|nom.
+  static String _catKeyOf(PfStockRow r) {
+    final name = r.categoryName.trim();
+    return name.isEmpty ? '' : '${r.categoryId}|$name';
+  }
+
+  // Manba ro'yxatdan tab'lar ro'yxati (soni bilan). 2 tadan kam kategoriya
+  // bo'lsa tab-bar umuman chiqmaydi (bo'sh ro'yxat).
+  void _rebuildCatTabs(List<PfStockRow> source) {
+    final counts = <String, int>{};
+    final titles = <String, String>{};
+    for (final r in source) {
+      final key = _catKeyOf(r);
+      counts[key] = (counts[key] ?? 0) + 1;
+      titles[key] = key.isEmpty ? kUncategorizedTitle : r.categoryName.trim();
+    }
+    if (counts.length < 2) {
+      _catTabs = const [];
+      _catTabsKey = '';
+      _selectedCatKey = _kAllKey;
+      return;
+    }
+    final keys = counts.keys.toList()
+      ..sort((a, b) {
+        if (a.isEmpty) return b.isEmpty ? 0 : 1;
+        if (b.isEmpty) return -1;
+        final c = titles[a]!.toLowerCase().compareTo(titles[b]!.toLowerCase());
+        return c != 0 ? c : a.compareTo(b);
+      });
+    _catTabs = [
+      _CategoryTab(_kAllKey, 'Hammasi', source.length),
+      for (final k in keys) _CategoryTab(k, titles[k]!, counts[k]!),
+    ];
+    _catTabsKey = keys.join(',');
+    // Tanlangan kategoriya yo'qolgan bo'lsa (yangilangan ro'yxat) — hammasi.
+    if (!counts.containsKey(_selectedCatKey) && _selectedCatKey != _kAllKey) {
+      _selectedCatKey = _kAllKey;
+    }
   }
 
   @override
@@ -147,7 +221,7 @@ class _PfStockPageState extends State<PfStockPage> {
 
           final all = provider.pfStock;
           final query = _searchQuery.trim().toLowerCase();
-          // Kategoriya guruhlari keshdan (faqat ro'yxat/qidiruv o'zgarsa).
+          // Kategoriya guruhlari keshdan (faqat ro'yxat/qidiruv/tab o'zgarsa).
           _rebuildGroups(all, query);
           final entries = _entries;
 
@@ -155,7 +229,8 @@ class _PfStockPageState extends State<PfStockPage> {
             children: [
               if (all.isNotEmpty) ...[
                 _searchField(),
-                _summaryLine(all.length, _emptyCount),
+                if (_catTabs.isNotEmpty) _categoryTabBar(),
+                _summaryLine(_scopeCount, _emptyCount),
                 _columnsHeader(),
               ],
               Expanded(
@@ -229,7 +304,70 @@ class _PfStockPageState extends State<PfStockPage> {
     );
   }
 
-  // Qisqa xulosa: «12 ta полуфабрикат • 3 tasi tugagan».
+  // Kategoriya tab-bar'i: «Hammasi» + har bir kategoriya (soni bilan).
+  // TabBarView yo'q — tab bosilganda faqat ro'yxat filtri o'zgaradi.
+  // DefaultTabController kaliti kategoriyalar to'plamiga bog'langan: to'plam
+  // o'zgarsa controller qayta yaratilib, tanlangan tab'ga tushadi.
+  Widget _categoryTabBar() {
+    final tabs = _catTabs;
+    var initial = tabs.indexWhere((t) => t.key == _selectedCatKey);
+    if (initial < 0) initial = 0;
+    return DefaultTabController(
+      key: ValueKey('pf-cat-tabs:$_catTabsKey'),
+      length: tabs.length,
+      initialIndex: initial,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: TabBar(
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+          indicatorColor: _accentColor,
+          indicatorWeight: 2.5,
+          indicatorSize: TabBarIndicatorSize.label,
+          dividerColor: Colors.grey.shade300,
+          labelColor: Colors.brown.shade800,
+          unselectedLabelColor: Colors.black54,
+          labelStyle:
+              const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          unselectedLabelStyle:
+              const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          splashFactory: NoSplash.splashFactory,
+          onTap: (i) {
+            final key = tabs[i].key;
+            if (key == _selectedCatKey) return;
+            setState(() => _selectedCatKey = key);
+          },
+          tabs: [
+            for (final t in tabs)
+              Tab(
+                height: 38,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(t.title),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${t.count}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Qisqa xulosa: «12 ta полуфабрикат • 3 tasi tugagan» (tanlangan kategoriya
+  // doirasida, qidiruvdan mustaqil).
   Widget _summaryLine(int total, int emptyCount) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
@@ -287,6 +425,16 @@ class _PfStockPageState extends State<PfStockPage> {
       ),
     );
   }
+}
+
+// Tab-bar'dagi bitta kategoriya: kalit (`_kAllKey` yoki id|nom yoki '' —
+// Kategoriyasiz), ko'rsatiladigan nomi va manba ro'yxatdagi soni.
+class _CategoryTab {
+  final String key;
+  final String title;
+  final int count;
+
+  const _CategoryTab(this.key, this.title, this.count);
 }
 
 // Ro'yxatdagi bitta полуфабрикат qatori: rasm + nomi (+ partiya/ishlatilish)
