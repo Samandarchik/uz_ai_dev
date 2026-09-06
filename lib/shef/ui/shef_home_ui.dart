@@ -1,16 +1,18 @@
-// shef/ui/shef_home_ui.dart — shef bosh ekrani: ShefHomeUi — menyu kartalari
-// (buyurtmalar, yangi buyurtma, пф qoldig'i, тех карта, kunlik reja). Ilgari
-// AppBar ikonalari ortida turgan bo'limlar endi to'g'ridan-to'g'ri asosiy
-// sahifada. Buyurtmalar ro'yxati ShefOrdersPage ga ko'chirildi (shu faylda);
-// productionStatusChip shu yerdan eksport qilinadi (boshqa rollar ham ishlatadi).
+// shef/ui/shef_home_ui.dart — shef bosh ekrani: ShefHomeUi — menyu kartalari.
+// 2026-09-06 dan menyuda FAQAT ikki bo'lim: «Полуфабрикат» (qoldiq) va
+// «Тех карта». Buyurtmalar / yangi buyurtma / ishlab chiqarish rejasi kartalari
+// olib tashlandi (ShefOrdersPage klassi shu faylda qoldi — boshqa joydan
+// ochilishi mumkin). productionStatusChip shu yerdan eksport qilinadi (boshqa
+// rollar ham ishlatadi).
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/core/auth/session.dart';
 import 'package:uz_ai_dev/shef/model/production_model.dart';
-import 'package:uz_ai_dev/production/ui/production_plan_page.dart';
 import 'package:uz_ai_dev/shef/provider/shef_provider.dart';
 import 'package:uz_ai_dev/shef/ui/pf_stock_page.dart';
+// ShefOrdersPage ichidagi «Yangi buyurtma» tugmasi uchun kerak (bosh menyudan
+// olib tashlangan bo'lsa ham).
 import 'package:uz_ai_dev/shef/ui/shef_create_order_ui.dart';
 import 'package:uz_ai_dev/shef/ui/shef_order_detail_ui.dart';
 import 'package:uz_ai_dev/shef/ui/shef_tech_card_page.dart';
@@ -25,15 +27,6 @@ class ShefHomeUi extends StatelessWidget {
 
   void _open(BuildContext context, Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-  }
-
-  Future<void> _openCreateOrder(BuildContext context) async {
-    final provider = context.read<ShefProvider>();
-    final created = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const ShefCreateOrderUi()),
-    );
-    if (created == true) provider.fetchOrders();
   }
 
   @override
@@ -61,18 +54,6 @@ class ShefHomeUi extends StatelessWidget {
         mainAxisSpacing: 12,
         childAspectRatio: 1.05,
         children: [
-          _MenuCard(
-            icon: Icons.assignment_outlined,
-            title: 'Buyurtmalar',
-            subtitle: 'Mening ishlab chiqarish buyurtmalarim',
-            onTap: () => _open(context, const ShefOrdersPage()),
-          ),
-          _MenuCard(
-            icon: Icons.add_box_outlined,
-            title: 'Yangi buyurtma',
-            subtitle: 'Ishlab chiqarishga buyurtma berish',
-            onTap: () => _openCreateOrder(context),
-          ),
           // Полуфабрикат qoldig'i — qaysi pf bor, nechtasi band/mumkin.
           _MenuCard(
             icon: Icons.inventory_2_outlined,
@@ -87,13 +68,6 @@ class ShefHomeUi extends StatelessWidget {
             title: 'Тех карта',
             subtitle: 'Retsept tarkibini tahrirlash',
             onTap: () => _open(context, const ShefTechCardCategoriesPage()),
-          ),
-          // Kunlik ishlab chiqarish rejasi (MRP) — nima pishirish kerak.
-          _MenuCard(
-            icon: Icons.event_note,
-            title: 'Ishlab chiqarish rejasi',
-            subtitle: 'Kunlik reja — nima pishirish kerak',
-            onTap: () => _open(context, const ProductionPlanPage()),
           ),
         ],
       ),
