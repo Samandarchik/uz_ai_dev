@@ -427,6 +427,7 @@ class _PfStockPageState extends State<PfStockPage> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
+          _tabArrow(left: true),
           Expanded(
             child: SizedBox(
               height: 46,
@@ -455,6 +456,10 @@ class _PfStockPageState extends State<PfStockPage> {
                     child: ReorderableListView.builder(
                       scrollController: _tabScroll,
                       scrollDirection: Axis.horizontal,
+                      // Clamping — sudralganda «uchib ketish» (fling
+                      // inertsiyasi) kamayadi, ro'yxat qo'l uzilgan joyda
+                      // qoladi.
+                      physics: const ClampingScrollPhysics(),
                       buildDefaultDragHandles: false,
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
                       itemCount: cats.length,
@@ -476,6 +481,7 @@ class _PfStockPageState extends State<PfStockPage> {
               ),
             ),
           ),
+          _tabArrow(left: false),
           // Yagona menyu tugmasi: «Kategoriya qo'shish» ham shu yerda.
           // DOIM ko'rinadi — ro'yxat bo'sh bo'lsa ham, aks holda birinchi
           // kategoriyani ochishning yo'li qolmasdi.
@@ -492,20 +498,72 @@ class _PfStockPageState extends State<PfStockPage> {
     );
   }
 
-  // Bitta kategoriya chipi. Sudralayotganda yonidagi kichik son
-  // KO'RINMAYDI, qo'yilgach yana chiqadi.
   // Sichqoncha g'ildiragi: vertikal aylantirish gorizontal surishga
   // o'giriladi (gorizontal ro'yxatda g'ildirak o'z-o'zidan ishlamaydi).
+  // Delta ATAYLAB susaytiriladi: bitta «tirqillash» ~100px bo'lib, ro'yxat
+  // bir zumda uchib o'tib ketardi va kategoriyani o'qishga ulgurmasdingiz.
+  static const double _wheelDamping = 0.35;
+
   void _onTabWheel(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || !_tabScroll.hasClients) return;
-    final delta =
+    final raw =
         event.scrollDelta.dy != 0 ? event.scrollDelta.dy : event.scrollDelta.dx;
-    if (delta == 0) return;
+    if (raw == 0) return;
+    final p = _tabScroll.position;
     _tabScroll.jumpTo(
-      (_tabScroll.offset + delta)
-          .clamp(0.0, _tabScroll.position.maxScrollExtent),
+      (p.pixels + raw * _wheelDamping)
+          .clamp(p.minScrollExtent, p.maxScrollExtent),
     );
   }
+
+  // Yon o'qlar: bosilganda bir-ikki chip masofasiga SILLIQ suriladi. Qadam
+  // ataylab kichik — bosganda «o'tib ketmasin».
+  static const double _arrowStep = 140;
+
+  void _scrollTabs({required bool left}) {
+    if (!_tabScroll.hasClients) return;
+    final p = _tabScroll.position;
+    final target = (p.pixels + (left ? -_arrowStep : _arrowStep))
+        .clamp(p.minScrollExtent, p.maxScrollExtent);
+    if (target == p.pixels) return;
+    _tabScroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  // Chekkaga yetganda o'q so'nadi. AnimatedBuilder faqat SHU tugmani qayta
+  // chizadi — surish paytida butun ekran qayta qurilmasin.
+  Widget _tabArrow({required bool left}) {
+    return AnimatedBuilder(
+      animation: _tabScroll,
+      builder: (context, _) {
+        // Hali o'lchanmagan bo'lsa yoqiq qoldiramiz — bosilsa guard ushlaydi.
+        var enabled = true;
+        if (_tabScroll.hasClients) {
+          final p = _tabScroll.position;
+          enabled = left
+              ? p.pixels > p.minScrollExtent + 1
+              : p.pixels < p.maxScrollExtent - 1;
+        }
+        return IconButton(
+          onPressed: enabled ? () => _scrollTabs(left: left) : null,
+          icon: Icon(left ? Icons.chevron_left : Icons.chevron_right),
+          iconSize: 20,
+          color: Colors.brown.shade700,
+          disabledColor: Colors.grey.shade300,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 26, height: 36),
+          visualDensity: VisualDensity.compact,
+          tooltip: left ? 'Chapga' : 'O\'ngga',
+        );
+      },
+    );
+  }
+
+  // Bitta kategoriya chipi. Sudralayotganda yonidagi kichik son
+  // KO'RINMAYDI, qo'yilgach yana chiqadi.
 
   Widget _categoryChip(_PfCategory cat, int index) {
     final selected = cat.key == _selectedKey;
