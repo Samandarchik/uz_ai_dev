@@ -504,12 +504,26 @@ class _PfStockPageState extends State<PfStockPage> {
   // bir zumda uchib o'tib ketardi va kategoriyani o'qishga ulgurmasdingiz.
   static const double _wheelDamping = 0.35;
 
+  // O'lchamlari TAYYOR scroll pozitsiyasi (aks holda null).
+  //
+  // DIQQAT: `hasClients` yetarli EMAS — kontroller ulangan bo'lsa ham
+  // birinchi build'da pozitsiyaning kontent o'lchamlari hali yo'q va
+  // min/maxScrollExtent o'qilsa «Null check operator used on a null value»
+  // bilan yiqiladi.
+  ScrollPosition? get _tabPos {
+    if (!_tabScroll.hasClients) return null;
+    final p = _tabScroll.position;
+    if (!p.hasPixels || !p.hasContentDimensions) return null;
+    return p;
+  }
+
   void _onTabWheel(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent || !_tabScroll.hasClients) return;
+    if (event is! PointerScrollEvent) return;
+    final p = _tabPos;
+    if (p == null) return;
     final raw =
         event.scrollDelta.dy != 0 ? event.scrollDelta.dy : event.scrollDelta.dx;
     if (raw == 0) return;
-    final p = _tabScroll.position;
     _tabScroll.jumpTo(
       (p.pixels + raw * _wheelDamping)
           .clamp(p.minScrollExtent, p.maxScrollExtent),
@@ -521,8 +535,8 @@ class _PfStockPageState extends State<PfStockPage> {
   static const double _arrowStep = 140;
 
   void _scrollTabs({required bool left}) {
-    if (!_tabScroll.hasClients) return;
-    final p = _tabScroll.position;
+    final p = _tabPos;
+    if (p == null) return;
     final target = (p.pixels + (left ? -_arrowStep : _arrowStep))
         .clamp(p.minScrollExtent, p.maxScrollExtent);
     if (target == p.pixels) return;
@@ -539,14 +553,13 @@ class _PfStockPageState extends State<PfStockPage> {
     return AnimatedBuilder(
       animation: _tabScroll,
       builder: (context, _) {
-        // Hali o'lchanmagan bo'lsa yoqiq qoldiramiz — bosilsa guard ushlaydi.
-        var enabled = true;
-        if (_tabScroll.hasClients) {
-          final p = _tabScroll.position;
-          enabled = left
-              ? p.pixels > p.minScrollExtent + 1
-              : p.pixels < p.maxScrollExtent - 1;
-        }
+        // Hali o'lchanmagan bo'lsa yoqiq qoldiramiz — bosilsa `_scrollTabs`
+        // dagi guard ushlaydi.
+        final p = _tabPos;
+        final enabled = p == null ||
+            (left
+                ? p.pixels > p.minScrollExtent + 1
+                : p.pixels < p.maxScrollExtent - 1);
         return IconButton(
           onPressed: enabled ? () => _scrollTabs(left: left) : null,
           icon: Icon(left ? Icons.chevron_left : Icons.chevron_right),
