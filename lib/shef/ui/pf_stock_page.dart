@@ -92,8 +92,12 @@ List<_PfCategory> _buildPfCategories(
     productCounts[p.categoryId] = (productCounts[p.categoryId] ?? 0) + 1;
   }
 
-  // Asosiy ro'yxat — `allCats` tartibida.
-  final result = <_PfCategory>[];
+  // Asosiy ro'yxat — `allCats` tartibida, lekin BO'SH (hali пф'i yo'q)
+  // kategoriyalar OLDINGA chiqariladi: «+» bilan yangi qo'shilgani darhol
+  // ko'zga tashlansin. Aks holda u ro'yxat oxiriga tushib, gorizontal
+  // tab'lar orasida ekrandan chiqib ketardi.
+  final fresh = <_PfCategory>[];
+  final filled = <_PfCategory>[];
   final used = <String>{};
   for (final c in allCats) {
     final name = c.name.trim();
@@ -103,14 +107,10 @@ List<_PfCategory> _buildPfCategories(
     // Пф'i bor YOKI umuman mahsulotsiz (yangi ochilgan) kategoriyalar.
     if (pfCount == null && (productCounts[c.id] ?? 0) > 0) continue;
     used.add(key);
-    result.add(_PfCategory(
-      key,
-      c.id,
-      name,
-      pfCount ?? 0,
-      empties[key] ?? 0,
-    ));
+    final cat = _PfCategory(key, c.id, name, pfCount ?? 0, empties[key] ?? 0);
+    (pfCount == null ? fresh : filled).add(cat);
   }
+  final result = <_PfCategory>[...fresh, ...filled];
 
   // `allCats` ga tushmagan, lekin qoldiqda uchraydiganlar (shefga kategoriya
   // ro'yxati kelmagan holat) — tartibsiz qolmasin deb oxiriga qo'shiladi;
