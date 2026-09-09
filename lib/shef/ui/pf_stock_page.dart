@@ -11,8 +11,10 @@
 // O'ZI tahrirlanadi (EditProductPage).
 // Tab-bar'da kategoriya boshqaruvi: bir marta bosish — o'tish; BOSIB TURISH —
 // barmoq turgan joyda kichik menyu (nomini o'zgartirish / mahsulot qo'shish /
-// joyini o'zgartirish / o'chirish); ikki marta bosish — nomini o'zgartirish;
-// o'ngdagi «+» — yangi kategoriya. Kategoriya dialoglari shu
+// o'chirish); ikki marta bosish — nomini o'zgartirish; bosib turib sudrash —
+// tartibni o'zgartirish. O'ngdagi «⋮» — o'sha menyu, ichida «Kategoriya
+// qo'shish» ham bor (u tanlangan kategoriyadan mustaqil, shuning uchun
+// ro'yxat bo'sh bo'lsa ham ochiladi). Kategoriya dialoglari shu
 // yerda MINIMAL (bitta maydon); rasm/printer admin ekranidagi to'liq
 // CategoryDialog'da sozlanadi.
 // Manba: GET /api/production/pf-stock → ShefProvider.pfStock.
@@ -421,22 +423,16 @@ class _PfStockPageState extends State<PfStockPage> {
               ),
             ),
           ),
-          // Tanlangan kategoriya menyusi — tanlanmagan bo'lsa (ro'yxat bo'sh)
-          // ko'rsatilmaydi, aks holda hech nima qilmaydigan tugma bo'lardi.
-          if (cats.isNotEmpty)
-            Builder(
-              builder: (btnContext) => IconButton(
-                onPressed: () => _showSelectedCategoryMenu(btnContext),
-                icon: const Icon(Icons.more_vert, color: Colors.black54),
-                tooltip: 'Kategoriya amallari',
-                visualDensity: VisualDensity.compact,
-              ),
+          // Yagona menyu tugmasi: «Kategoriya qo'shish» ham shu yerda.
+          // DOIM ko'rinadi — ro'yxat bo'sh bo'lsa ham, aks holda birinchi
+          // kategoriyani ochishning yo'li qolmasdi.
+          Builder(
+            builder: (btnContext) => IconButton(
+              onPressed: () => _showSelectedCategoryMenu(btnContext),
+              icon: const Icon(Icons.more_vert, color: Colors.black54),
+              tooltip: 'Kategoriya amallari',
+              visualDensity: VisualDensity.compact,
             ),
-          IconButton(
-            onPressed: _addCategory,
-            icon: const Icon(Icons.add, color: _accentColor),
-            tooltip: 'Kategoriya qo\'shish',
-            visualDensity: VisualDensity.compact,
           ),
         ],
       ),
@@ -499,8 +495,9 @@ class _PfStockPageState extends State<PfStockPage> {
 
   // «⋮» — tanlangan kategoriya ustidagi amallar menyusi (tugma ostida ochiladi).
   void _showSelectedCategoryMenu(BuildContext buttonContext) {
+    // Tanlangan kategoriya bo'lmasa ham menyu ochiladi — «Kategoriya
+    // qo'shish» bandi undan mustaqil.
     final cat = _cats.where((c) => c.key == _selectedKey).firstOrNull;
-    if (cat == null) return;
     final box = buttonContext.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(box.size.bottomLeft(Offset.zero));
@@ -510,11 +507,11 @@ class _PfStockPageState extends State<PfStockPage> {
   // Tab'ni BOSIB TURISH — barmoq turgan joyda kichik menyu. Og'ir
   // CategoryDialog o'rniga shu yerdan: nomini o'zgartirish, kategoriyaga
   // mahsulot qo'shish, kategoriyani o'chirish.
-  Future<void> _showCategoryMenu(_PfCategory cat, Offset pos) async {
-    if (cat.key.isEmpty) {
-      _snack('«$kUncategorizedTitle» — haqiqiy kategoriya emas', Colors.orange);
-      return;
-    }
+  Future<void> _showCategoryMenu(_PfCategory? cat, Offset pos) async {
+    // «Kategoriyasiz» haqiqiy kategoriya emas (backend'da id'si yo'q) —
+    // uning ustida amal bajarilmaydi, lekin menyu baribir ochiladi, chunki
+    // «Kategoriya qo'shish» ham shu yerda.
+    final target = (cat != null && cat.key.isNotEmpty) ? cat : null;
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
@@ -525,34 +522,45 @@ class _PfStockPageState extends State<PfStockPage> {
         pos & const Size(1, 1),
         Offset.zero & overlay.size,
       ),
-      items: const [
-        PopupMenuItem(
-          value: 'rename',
+      items: [
+        const PopupMenuItem(
+          value: 'new',
           height: 40,
-          child: _MenuRow(Icons.edit_outlined, 'Nomini o\'zgartirish'),
+          child: _MenuRow(Icons.add, 'Kategoriya qo\'shish'),
         ),
-        PopupMenuItem(
-          value: 'add',
-          height: 40,
-          child: _MenuRow(Icons.add_box_outlined, 'Mahsulot qo\'shish'),
-        ),
-        PopupMenuDivider(height: 1),
-        PopupMenuItem(
-          value: 'delete',
-          height: 40,
-          child: _MenuRow(Icons.delete_outline, 'O\'chirish', danger: true),
-        ),
+        // Qolgan amallar — faqat haqiqiy kategoriya tanlangan bo'lsa.
+        if (target != null) ...const [
+          PopupMenuDivider(height: 1),
+          PopupMenuItem(
+            value: 'rename',
+            height: 40,
+            child: _MenuRow(Icons.edit_outlined, 'Nomini o\'zgartirish'),
+          ),
+          PopupMenuItem(
+            value: 'add',
+            height: 40,
+            child: _MenuRow(Icons.add_box_outlined, 'Mahsulot qo\'shish'),
+          ),
+          PopupMenuDivider(height: 1),
+          PopupMenuItem(
+            value: 'delete',
+            height: 40,
+            child: _MenuRow(Icons.delete_outline, 'O\'chirish', danger: true),
+          ),
+        ],
       ],
     );
     if (action == null || !mounted) return;
 
     switch (action) {
+      case 'new':
+        await _addCategory();
       case 'rename':
-        await _renameCategory(cat);
+        await _renameCategory(target!);
       case 'add':
         await _addProduct();
       case 'delete':
-        await _showDeleteCategoryDialog(cat);
+        await _showDeleteCategoryDialog(target!);
     }
   }
 
