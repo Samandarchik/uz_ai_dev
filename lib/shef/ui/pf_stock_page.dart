@@ -21,6 +21,7 @@
 // `ready: true` — «Готовый»: пф BO'LMAGAN tayyor mahsulotlar
 // (GET pf-stock?kind=ready → readyStock). Ekran tuzilishi bir xil, faqat
 // manba ro'yxat va AppBar sarlavhasi boshqa.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
@@ -168,6 +169,10 @@ class _PfStockPageState extends State<PfStockPage> {
   // yashiriladi, qo'yilgach yana ko'rinadi.
   int? _draggingIndex;
 
+  // Kategoriya qatorining scroll'i: sichqoncha g'ildiragi va ko'rsatkich
+  // (Scrollbar) uchun kerak — ro'yxat ekranga sig'masa qolgani ko'rinsin.
+  final ScrollController _tabScroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -186,6 +191,7 @@ class _PfStockPageState extends State<PfStockPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _tabScroll.dispose();
     super.dispose();
   }
 
@@ -420,22 +426,50 @@ class _PfStockPageState extends State<PfStockPage> {
         children: [
           Expanded(
             child: SizedBox(
-              height: 42,
-              child: ReorderableListView.builder(
-                scrollDirection: Axis.horizontal,
-                buildDefaultDragHandles: false,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: cats.length,
-                onReorderStart: (i) => setState(() => _draggingIndex = i),
-                onReorderEnd: (_) => setState(() => _draggingIndex = null),
-                // `onReorderItem` — `onReorder` o'rnini bosuvchi: newIndex
-                // olib tashlangan element uchun ALLAQACHON to'g'irlangan.
-                onReorderItem: (oldIndex, newIndex) {
-                  setState(() => _draggingIndex = null);
-                  _moveCategory(oldIndex, newIndex);
-                },
-                itemBuilder: (context, index) =>
-                    _categoryChip(cats[index], index),
+              height: 46,
+              // Ro'yxat gorizontal va ekranga sig'masligi mumkin. Windows'da
+              // Flutter standart holatda SICHQONCHA bilan sudrab surishga
+              // ruxsat bermaydi (dragDevices'da mouse yo'q) — shuning uchun
+              // qolgan kategoriyalarga yetib bo'lmasdi. Bu yerda sichqoncha
+              // ham qo'shiladi, g'ildirak gorizontal surishga o'giriladi va
+              // yupqa Scrollbar «yana bor» ekanini ko'rsatib turadi.
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  scrollbars: false,
+                  dragDevices: const {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  },
+                ),
+                child: Scrollbar(
+                  controller: _tabScroll,
+                  thumbVisibility: true,
+                  thickness: 3,
+                  child: Listener(
+                    onPointerSignal: _onTabWheel,
+                    child: ReorderableListView.builder(
+                      scrollController: _tabScroll,
+                      scrollDirection: Axis.horizontal,
+                      buildDefaultDragHandles: false,
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                      itemCount: cats.length,
+                      onReorderStart: (i) => setState(() => _draggingIndex = i),
+                      onReorderEnd: (_) =>
+                          setState(() => _draggingIndex = null),
+                      // `onReorderItem` — `onReorder` o'rnini bosuvchi:
+                      // newIndex olib tashlangan element uchun ALLAQACHON
+                      // to'g'irlangan.
+                      onReorderItem: (oldIndex, newIndex) {
+                        setState(() => _draggingIndex = null);
+                        _moveCategory(oldIndex, newIndex);
+                      },
+                      itemBuilder: (context, index) =>
+                          _categoryChip(cats[index], index),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -457,6 +491,19 @@ class _PfStockPageState extends State<PfStockPage> {
 
   // Bitta kategoriya chipi. Sudralayotganda yonidagi kichik son
   // KO'RINMAYDI, qo'yilgach yana chiqadi.
+  // Sichqoncha g'ildiragi: vertikal aylantirish gorizontal surishga
+  // o'giriladi (gorizontal ro'yxatda g'ildirak o'z-o'zidan ishlamaydi).
+  void _onTabWheel(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || !_tabScroll.hasClients) return;
+    final delta =
+        event.scrollDelta.dy != 0 ? event.scrollDelta.dy : event.scrollDelta.dx;
+    if (delta == 0) return;
+    _tabScroll.jumpTo(
+      (_tabScroll.offset + delta)
+          .clamp(0.0, _tabScroll.position.maxScrollExtent),
+    );
+  }
+
   Widget _categoryChip(_PfCategory cat, int index) {
     final selected = cat.key == _selectedKey;
     final dragging = _draggingIndex == index;
@@ -544,6 +591,13 @@ class _PfStockPageState extends State<PfStockPage> {
           height: 40,
           child: _MenuRow(Icons.add, 'Kategoriya qo\'shish'),
         ),
+        // Mahsulot qo'shish kategoriya tanlanishiga BOG'LIQ EMAS (kategoriya
+        // formaning o'zida tanlanadi), shuning uchun doim ko'rinadi.
+        const PopupMenuItem(
+          value: 'add',
+          height: 40,
+          child: _MenuRow(Icons.add_box_outlined, 'Mahsulot qo\'shish'),
+        ),
         // Qolgan amallar — faqat haqiqiy kategoriya tanlangan bo'lsa.
         if (target != null) ...const [
           PopupMenuDivider(height: 1),
@@ -552,12 +606,6 @@ class _PfStockPageState extends State<PfStockPage> {
             height: 40,
             child: _MenuRow(Icons.edit_outlined, 'Nomini o\'zgartirish'),
           ),
-          PopupMenuItem(
-            value: 'add',
-            height: 40,
-            child: _MenuRow(Icons.add_box_outlined, 'Mahsulot qo\'shish'),
-          ),
-          PopupMenuDivider(height: 1),
           PopupMenuItem(
             value: 'delete',
             height: 40,
