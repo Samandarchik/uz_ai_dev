@@ -173,6 +173,11 @@ class _PfStockPageState extends State<PfStockPage> {
   // (Scrollbar) uchun kerak — ro'yxat ekranga sig'masa qolgani ko'rinsin.
   final ScrollController _tabScroll = ScrollController();
 
+  // Ekran matnlaridagi «nima»: ikkala rejimda bir xil ekran ishlatilgani
+  // uchun sarlavha/xulosa/qidiruv matni shu yerdan olinadi.
+  String get _noun => widget.ready ? 'tayyor mahsulot' : 'полуфабрикат';
+  String get _nounCap => widget.ready ? 'Tayyor mahsulot' : 'Полуфабрикат';
+
   @override
   void initState() {
     super.initState();
@@ -352,9 +357,7 @@ class _PfStockPageState extends State<PfStockPage> {
                             const SizedBox(height: 140),
                             Center(
                               child: Text(
-                                all.isEmpty
-                                    ? 'Полуфабрикат yo\'q'
-                                    : 'Topilmadi',
+                                all.isEmpty ? '$_nounCap yo\'q' : 'Topilmadi',
                                 style: const TextStyle(color: Colors.black54),
                               ),
                             ),
@@ -387,7 +390,7 @@ class _PfStockPageState extends State<PfStockPage> {
         controller: _searchController,
         onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
-          hintText: 'Полуфабрикат qidirish...',
+          hintText: '$_nounCap qidirish...',
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -606,6 +609,8 @@ class _PfStockPageState extends State<PfStockPage> {
             height: 40,
             child: _MenuRow(Icons.edit_outlined, 'Nomini o\'zgartirish'),
           ),
+          // O'chirish qaytarilmaydi — tasodifan bosilmasin deb ajratilgan.
+          PopupMenuDivider(height: 1),
           PopupMenuItem(
             value: 'delete',
             height: 40,
@@ -786,7 +791,7 @@ class _PfStockPageState extends State<PfStockPage> {
         title: const Text('Kategoriyani o\'chirish'),
         content: Text(
           cat.count > 0
-              ? '«${cat.title}» ichida ${cat.count} ta полуфабрикат bor. '
+              ? '«${cat.title}» ichida ${cat.count} ta $_noun bor. '
                   'O\'chirishga urinilsinmi?'
               : '«${cat.title}» o\'chirilsinmi?',
         ),
@@ -845,7 +850,7 @@ class _PfStockPageState extends State<PfStockPage> {
       child: Row(
         children: [
           Text(
-            '$total ta полуфабрикат',
+            '$total ta $_noun',
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
