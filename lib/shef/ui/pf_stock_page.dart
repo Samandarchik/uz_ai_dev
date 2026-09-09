@@ -17,7 +17,10 @@
 // ro'yxat bo'sh bo'lsa ham ochiladi). Kategoriya dialoglari shu
 // yerda MINIMAL (bitta maydon); rasm/printer admin ekranidagi to'liq
 // CategoryDialog'da sozlanadi.
-// Manba: GET /api/production/pf-stock → ShefProvider.pfStock.
+// IKKI REJIM: `ready: false` — пф qoldig'i (GET pf-stock → pfStock);
+// `ready: true` — «Готовый»: пф BO'LMAGAN tayyor mahsulotlar
+// (GET pf-stock?kind=ready → readyStock). Ekran tuzilishi bir xil, faqat
+// manba ro'yxat va AppBar sarlavhasi boshqa.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uz_ai_dev/admin/model/category_model.dart';
@@ -131,7 +134,11 @@ List<_PfCategory> _buildPfCategories(
 }
 
 class PfStockPage extends StatefulWidget {
-  const PfStockPage({super.key});
+  // ready: true — «Готовый» rejimi: пф EMAS, TAYYOR mahsulotlar qoldig'i.
+  // Ekran tuzilishi bir xil, faqat manba ro'yxat va sarlavha boshqa.
+  final bool ready;
+
+  const PfStockPage({super.key, this.ready = false});
 
   @override
   State<PfStockPage> createState() => _PfStockPageState();
@@ -166,7 +173,7 @@ class _PfStockPageState extends State<PfStockPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<ShefProvider>().fetchPfStock();
+      context.read<ShefProvider>().fetchPfStock(ready: widget.ready);
       // Тех карта qatordan ochilishi uchun mahsulotlar YAGONA manbadan bir
       // marta yuklanadi (admin naqshi) — allaqachon yuklangan bo'lsa jim.
       context.read<ProductProviderAdmin>().initializeProducts();
@@ -247,14 +254,15 @@ class _PfStockPageState extends State<PfStockPage> {
       appBar: AppBar(
         backgroundColor: _bgColor,
         elevation: 0,
-        title: const Text(
-          'Полуфабрикат qoldig\'i',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        title: Text(
+          widget.ready ? 'Готовый qoldig\'i' : 'Полуфабрикат qoldig\'i',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
           // Jami soni — ro'yxat yuklanganda ko'rinadi (qidiruvdan mustaqil).
           Selector<ShefProvider, int>(
-            selector: (_, p) => p.pfStock.length,
+            selector: (_, p) =>
+                widget.ready ? p.readyStock.length : p.pfStock.length,
             builder: (context, total, _) => total == 0
                 ? const SizedBox.shrink()
                 : Padding(
@@ -275,18 +283,26 @@ class _PfStockPageState extends State<PfStockPage> {
       ),
       body: Consumer<ShefProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoadingPfStock && provider.pfStock.isEmpty) {
+          // Ikkala rejim uchun manba holat (пф / tayyor) shu yerda tanlanadi,
+          // qolgan kod bir xil.
+          final ready = widget.ready;
+          final all = ready ? provider.readyStock : provider.pfStock;
+          final loading =
+              ready ? provider.isLoadingReadyStock : provider.isLoadingPfStock;
+          final error =
+              ready ? provider.readyStockError : provider.pfStockError;
+
+          if (loading && all.isEmpty) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
 
-          if (provider.pfStockError != null && provider.pfStock.isEmpty) {
+          if (error != null && all.isEmpty) {
             return _ErrorView(
-              message: provider.pfStockError!,
-              onRetry: () => provider.fetchPfStock(),
+              message: error,
+              onRetry: () => provider.fetchPfStock(ready: ready),
             );
           }
 
-          final all = provider.pfStock;
           // Bo'sh (mahsulotsiz) kategoriyalar ham tab bo'lib chiqishi uchun —
           // «+» bilan qo'shilgani darhol ko'rinsin.
           _rebuildCats(
@@ -322,7 +338,7 @@ class _PfStockPageState extends State<PfStockPage> {
               ],
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => provider.fetchPfStock(),
+                  onRefresh: () => provider.fetchPfStock(ready: ready),
                   child: rows.isEmpty
                       ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
@@ -705,7 +721,7 @@ class _PfStockPageState extends State<PfStockPage> {
           forceRefresh: true,
         );
     if (!mounted) return;
-    await context.read<ShefProvider>().fetchPfStock();
+    await context.read<ShefProvider>().fetchPfStock(ready: widget.ready);
   }
 
   // Tab'ni BOSIB TURISH — o'chirish. Tasdiqlashsiz o'chirmaymiz, chunki
@@ -759,7 +775,7 @@ class _PfStockPageState extends State<PfStockPage> {
       if (_selectedKey == cat.key) _selectedKey = null;
       await context.read<CategoryProviderAdmin>().getCategories();
       if (!mounted) return;
-      await context.read<ShefProvider>().fetchPfStock();
+      await context.read<ShefProvider>().fetchPfStock(ready: widget.ready);
       if (!mounted) return;
       _snack('«${cat.title}» o\'chirildi', Colors.green);
     } else {
